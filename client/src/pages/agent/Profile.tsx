@@ -78,6 +78,7 @@ export default function AgentProfile() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your full name"
+                autoComplete="name"
                 data-testid="input-profile-name"
               />
             </div>
@@ -119,6 +120,7 @@ export default function AgentProfile() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
+                autoComplete="current-password"
                 data-testid="input-current-password"
               />
             </div>
@@ -131,6 +133,7 @@ export default function AgentProfile() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
+                autoComplete="new-password"
                 data-testid="input-new-password"
               />
             </div>
@@ -143,6 +146,7 @@ export default function AgentProfile() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
+                autoComplete="new-password"
                 data-testid="input-confirm-password"
               />
             </div>

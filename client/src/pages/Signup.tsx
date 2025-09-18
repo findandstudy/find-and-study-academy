@@ -57,6 +57,7 @@ export default function Signup() {
             onChange={(e) => updateField('name', e.target.value)}
             placeholder="Your full name"
             required
+            autoComplete="name"
             data-testid="input-name"
           />
         </div>
@@ -70,6 +71,7 @@ export default function Signup() {
             onChange={(e) => updateField('email', e.target.value)}
             placeholder="Your email address"
             required
+            autoComplete="email"
             data-testid="input-email"
           />
         </div>
@@ -83,6 +85,7 @@ export default function Signup() {
             onChange={(e) => updateField('password', e.target.value)}
             placeholder="Create a password"
             required
+            autoComplete="new-password"
             data-testid="input-password"
           />
         </div>
@@ -96,6 +99,7 @@ export default function Signup() {
             onChange={(e) => updateField('agencyName', e.target.value)}
             placeholder="Your education agency name"
             required
+            autoComplete="organization"
             data-testid="input-agency"
           />
         </div>
@@ -109,6 +113,7 @@ export default function Signup() {
             onChange={(e) => updateField('country', e.target.value)}
             placeholder="Your country"
             required
+            autoComplete="country-name"
             data-testid="input-country"
           />
         </div>
