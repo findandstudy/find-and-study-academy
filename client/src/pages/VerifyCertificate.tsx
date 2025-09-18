@@ -12,25 +12,39 @@ export default function VerifyCertificate() {
   const [code, setCode] = useState('');
   const [verificationResult, setVerificationResult] = useState<'valid' | 'invalid' | null>(null);
   const [certificateData, setCertificateData] = useState<any>(null);
-  const { certificates, users, courses } = useDataStore();
+  const { certificates, users, courses, initialize } = useDataStore();
 
   useEffect(() => {
+    // Ensure data store is initialized
+    initialize();
+    
     // Auto-verify if code is in URL params
     const urlParams = new URLSearchParams(window.location.search);
     const urlCode = urlParams.get('code');
     if (urlCode) {
       setCode(urlCode);
-      verifyCertificate(urlCode);
+      // Add a small delay to ensure data is loaded
+      setTimeout(() => verifyCertificate(urlCode), 100);
     }
-  }, []);
+  }, [initialize]);
 
   const verifyCertificate = (verifyCode: string) => {
-    const certificate = certificates.find(c => c.code === verifyCode);
+    // Refresh data to ensure we have latest certificates
+    initialize();
+    
+    // Get the latest certificates from storage
+    const { certificates: latestCertificates, users: latestUsers, courses: latestCourses } = useDataStore.getState();
+    
+    console.log('Verifying code:', verifyCode);
+    console.log('Available certificates:', latestCertificates);
+    
+    const certificate = latestCertificates.find(c => c.code === verifyCode);
     
     if (certificate) {
-      const user = users.find(u => u.id === certificate.userId);
-      const course = courses.find(c => c.id === certificate.courseId);
+      const user = latestUsers.find(u => u.id === certificate.userId);
+      const course = latestCourses.find(c => c.id === certificate.courseId);
       
+      console.log('Certificate found:', certificate);
       setVerificationResult('valid');
       setCertificateData({
         certificate,
@@ -38,6 +52,7 @@ export default function VerifyCertificate() {
         course
       });
     } else {
+      console.log('Certificate not found for code:', verifyCode);
       setVerificationResult('invalid');
       setCertificateData(null);
     }
@@ -97,7 +112,7 @@ export default function VerifyCertificate() {
               
               <div>
                 <h3 className="text-lg font-semibold text-green-700">Valid Certificate</h3>
-                <Badge variant="success" className="mt-1">Verified</Badge>
+                <Badge className="mt-1 bg-green-100 text-green-700 hover:bg-green-200">Verified</Badge>
               </div>
 
               <div className="bg-green-50 rounded-lg p-4 text-left space-y-2">
