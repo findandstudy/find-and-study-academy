@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
+import { issueCertificate, submitAttempt } from '@/lib/api';
 import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Quiz, Question, Attempt } from '../../types';
 
@@ -60,7 +61,7 @@ export function QuizModal({ quiz, onClose, onComplete }: QuizModalProps) {
     }
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
     if (!user) return;
 
     // Calculate score
@@ -77,7 +78,7 @@ export function QuizModal({ quiz, onClose, onComplete }: QuizModalProps) {
     const scorePercent = Math.round((correct / quiz.questions.length) * 100);
     const passed = scorePercent >= quiz.passPercent;
 
-    // Save attempt
+    // Save attempt locally and to server
     const attempt: Attempt = {
       id: `attempt-${Date.now()}`,
       userId: user.id,
@@ -89,28 +90,75 @@ export function QuizModal({ quiz, onClose, onComplete }: QuizModalProps) {
     };
     addAttempt(attempt);
 
-    // If final quiz and passed, issue certificate
+    // Also submit to server for certificate validation
+    try {
+      await submitAttempt({
+        quizId: quiz.id,
+        scorePercent,
+        correct,
+        incorrect: quiz.questions.length - correct
+      });
+    } catch (error) {
+      console.error('Failed to submit attempt to server:', error);
+      // Don't block the UI, but log the error
+    }
+
+    // If final quiz and passed, issue certificate via server API
     if (quiz.isFinal && passed) {
       const course = courses.find(c => 
-        c.sections.some(s => s.lessons.some(l => l.quizId === quiz.id)) ||
-        quiz.isFinal
+        c.sections.some(s => s.lessons.some(l => l.quizId === quiz.id))
       );
 
       if (course) {
-        const certificate = {
-          id: `cert-${Date.now()}`,
-          userId: user.id,
-          courseId: course.id,
-          scorePercent,
-          code: `FAS-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-          issuedAt: new Date().toISOString()
-        };
-        addCertificate(certificate);
+        try {
+          // Issue certificate via secure server API (authentication and code generation handled server-side)
+          const result = await issueCertificate({
+            courseId: course.id,
+            quizId: quiz.id
+          });
 
-        toast({
-          title: 'Congratulations! 🎉',
-          description: `You've earned your certificate with ${scorePercent}% score!`
-        });
+          if (result.success) {
+            // Add to localStorage for immediate UI feedback
+            const certificate = {
+              id: result.certificate!.id,
+              userId: user.id,
+              courseId: course.id,
+              scorePercent: result.certificate!.scorePercent,
+              code: result.certificate!.code,
+              issuedAt: result.certificate!.issuedAt
+            };
+            addCertificate(certificate);
+
+            toast({
+              title: 'Congratulations! 🎉',
+              description: `You've earned your certificate with ${result.certificate!.scorePercent}% score! Code: ${result.certificate!.code}`
+            });
+          } else {
+            console.error('Certificate issuance failed:', result.message);
+            
+            // Check if it's a duplicate certificate (409 response)
+            if (result.message?.includes('already issued') || result.message?.includes('Certificate already')) {
+              toast({
+                title: 'Certificate Already Earned! 🎓',
+                description: result.message || 'You already have a certificate for this course.',
+                variant: 'default'
+              });
+            } else {
+              toast({
+                title: 'Certificate Issue Error',
+                description: result.message || 'Failed to issue certificate. Please contact support.',
+                variant: 'destructive'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Certificate issuance error:', error);
+          toast({
+            title: 'Certificate Issue Error',
+            description: 'Network error while issuing certificate. Please try again.',
+            variant: 'destructive'
+          });
+        }
       }
     }
 

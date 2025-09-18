@@ -4,63 +4,51 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useDataStore } from '@/store/data';
-import { CheckCircle, XCircle, Search, Award } from 'lucide-react';
+import { verifyCertificate, type CertificateVerificationResponse } from '@/lib/api';
+import { CheckCircle, XCircle, Search, Award, Loader2 } from 'lucide-react';
 
 export default function VerifyCertificate() {
   const [location] = useLocation();
   const [code, setCode] = useState('');
   const [verificationResult, setVerificationResult] = useState<'valid' | 'invalid' | null>(null);
-  const [certificateData, setCertificateData] = useState<any>(null);
-  const { certificates, users, courses, initialize } = useDataStore();
+  const [certificateData, setCertificateData] = useState<CertificateVerificationResponse['certificate'] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Ensure data store is initialized
-    initialize();
-    
     // Auto-verify if code is in URL params
     const urlParams = new URLSearchParams(window.location.search);
     const urlCode = urlParams.get('code');
     if (urlCode) {
       setCode(urlCode);
-      // Add a small delay to ensure data is loaded
-      setTimeout(() => verifyCertificate(urlCode), 100);
+      handleVerifyCertificate(urlCode);
     }
-  }, [initialize]);
+  }, []);
 
-  const verifyCertificate = (verifyCode: string) => {
-    // Refresh data to ensure we have latest certificates
-    initialize();
+  const handleVerifyCertificate = async (verifyCode: string) => {
+    setIsLoading(true);
     
-    // Get the latest certificates from storage
-    const { certificates: latestCertificates, users: latestUsers, courses: latestCourses } = useDataStore.getState();
-    
-    console.log('Verifying code:', verifyCode);
-    console.log('Available certificates:', latestCertificates);
-    
-    const certificate = latestCertificates.find(c => c.code === verifyCode);
-    
-    if (certificate) {
-      const user = latestUsers.find(u => u.id === certificate.userId);
-      const course = latestCourses.find(c => c.id === certificate.courseId);
+    try {
+      const result = await verifyCertificate(verifyCode);
       
-      console.log('Certificate found:', certificate);
-      setVerificationResult('valid');
-      setCertificateData({
-        certificate,
-        user,
-        course
-      });
-    } else {
-      console.log('Certificate not found for code:', verifyCode);
+      if (result.success && result.certificate) {
+        setVerificationResult('valid');
+        setCertificateData(result.certificate);
+      } else {
+        setVerificationResult('invalid');
+        setCertificateData(null);
+      }
+    } catch (error) {
+      console.error('Verification failed:', error);
       setVerificationResult('invalid');
       setCertificateData(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVerify = () => {
     if (code.trim()) {
-      verifyCertificate(code.trim());
+      handleVerifyCertificate(code.trim());
     }
   };
 
@@ -91,10 +79,11 @@ export default function VerifyCertificate() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Enter certificate code (e.g., FAS-ABC123)"
+                  disabled={isLoading}
                   data-testid="input-certificate-code"
                 />
-                <Button onClick={handleVerify} data-testid="button-verify">
-                  <Search className="w-4 h-4" />
+                <Button onClick={handleVerify} disabled={isLoading || !code.trim()} data-testid="button-verify">
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
               
@@ -124,9 +113,9 @@ export default function VerifyCertificate() {
                 <div className="space-y-1 text-sm">
                   <p><strong>Recipient:</strong> {certificateData.user?.name}</p>
                   <p><strong>Course:</strong> {certificateData.course?.title}</p>
-                  <p><strong>Score:</strong> {certificateData.certificate.scorePercent}%</p>
-                  <p><strong>Issued:</strong> {new Date(certificateData.certificate.issuedAt).toLocaleDateString()}</p>
-                  <p><strong>Code:</strong> {certificateData.certificate.code}</p>
+                  <p><strong>Score:</strong> {certificateData.scorePercent}%</p>
+                  <p><strong>Issued:</strong> {new Date(certificateData.issuedAt).toLocaleDateString()}</p>
+                  <p><strong>Code:</strong> {certificateData.code}</p>
                 </div>
               </div>
 
