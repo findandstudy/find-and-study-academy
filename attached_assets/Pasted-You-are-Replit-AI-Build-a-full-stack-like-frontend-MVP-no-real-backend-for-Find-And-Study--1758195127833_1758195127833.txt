@@ -1,0 +1,236 @@
+You are Replit AI. Build a full-stack-like **frontend MVP** (no real backend) for **Find And Study – Agents Portal** with **React + Vite + TypeScript + TailwindCSS**. Language: **English UI only**. Branding colors: **#143591 (navy)**, **#ED1C24 (red)**, **#FFFFFF (white)**. Data persistence via **localStorage**. Clean, modular, TypeScript-first. Include a complete seed.
+
+### Install packages
+- react-router-dom
+- zustand
+- dayjs
+- uuid
+- qrcode
+- jspdf
+- html2canvas
+
+### Project structure
+src/
+  main.tsx
+  index.css
+  app.css
+  types.ts
+  data/seed.ts
+  lib/
+    auth.ts          # mock auth & session helpers
+    storage.ts       # localStorage helpers (get/set with namespaces)
+    pdf.ts           # certificate PDF generator (jsPDF + html2canvas)
+    qr.ts            # QR dataURL generator (qrcode)
+    payments.ts      # mock payments plumbing
+  store/
+    auth.ts          # zustand: session, login/logout/signup
+    data.ts          # zustand: users, agencies, courses, quizzes, attempts, certificates, orders, integrations, payments config
+  routes/
+    Auth.tsx         # guards + public routes
+    Admin.tsx        # admin guard
+    Agent.tsx        # agent guard
+  components/
+    Layouts/
+      AuthCard.tsx
+      AdminLayout.tsx
+      AgentLayout.tsx
+    UI/
+      Button.tsx Input.tsx Select.tsx Textarea.tsx Tabs.tsx Modal.tsx Table.tsx Badge.tsx Progress.tsx Tooltip.tsx Switch.tsx
+    Course/
+      CourseList.tsx LessonTree.tsx LessonView.tsx QuizPanel.tsx QuizResultModal.tsx
+    Certificate/
+      CertificatePreview.tsx
+  pages/
+    login.tsx
+    signup.tsx
+    forgot.tsx
+    verify.tsx
+    admin/
+      Dashboard.tsx
+      ContentCountries.tsx
+      Quizzes.tsx
+      Certificates.tsx
+      Agencies.tsx
+      Users.tsx
+      Reports.tsx
+      Announcements.tsx
+      SettingsPayments.tsx
+      Integrations.tsx
+    agent/
+      Dashboard.tsx
+      Courses.tsx
+      Certificates.tsx
+      Profile.tsx
+      Agency.tsx
+      ExamsOrders.tsx
+      Subscriptions.tsx
+    errors/
+      Forbidden403.tsx
+      NotFound404.tsx
+
+### Routing & guards
+- Single login at **/login**. After login → redirect by role:
+  - admin → **/admin/dashboard**
+  - agent → **/agent/dashboard**
+- **/signup**: only for **agent** registration. Admin accounts are created from Admin > Users.
+- **/forgot-password**: mock email flow.
+- **/admin/** routes require role==='admin'. If not, show **403 (Forbidden)** with a button “Go to my panel”.
+- **/agent/** routes require role==='agent'. Wrong role → 403.
+- **/verify?code=FAS-XXXXXX**: certificate verification page.
+- 404 page for unknown routes.
+
+### Types (src/types.ts)
+Define:
+- Role = 'admin' | 'agent'
+- User { id, name, email, role, agencyId? }
+- Agency { id, name, logoUrl?, address?, lat?, lng?, staffSize?, annualStudents?, website?, phone?, primaryContactName?, primaryContactEmail? }
+- Course { id, title, slug, sections: Section[] }
+- Section { id, title, lessons: Lesson[] }
+- Lesson { id, title, html, quizId? }
+- Quiz { id, title, questions: Question[], passPercent, isFinal? }
+- Question = MCQ | BooleanQ
+- MCQ { id, type:'mcq', text, options:string[], answerIndex:number }
+- BooleanQ { id, type:'boolean', text, answer:boolean }
+- Progress { userId, courseId, percent, lessonCompletedIds:string[] }
+- Attempt { id, userId, quizId, scorePercent, correct, incorrect, date }
+- Certificate { id, userId, courseId, scorePercent, code, issuedAt }
+- PaymentProvider = 'none'|'stripe'|'iyzico'|'paytr'|'paypal'
+- PaymentStatus = 'unpaid'|'pending'|'paid'|'failed'|'refunded'
+- Order { id, userId, courseId?, title, currency:'USD'|'EUR'|'TRY', amount:number, status:PaymentStatus, provider:PaymentProvider, paymentIntentId?, createdAt, updatedAt }
+- IntegrationConfig {
+    id; name:'Generic Webhook'|'n8n'|'Kommo'|'Google Sheets'|'SMTP Mail'|'Custom API';
+    enabled:boolean;
+    endpointUrl?, apiKey?, webhookSecret?;
+    smtpHost?, smtpPort?, smtpUser?, smtpPass?, fromEmail?;
+    sheetId?, tabName?;
+    kommoDomain?, kommoToken?;
+    n8nWorkflowId?;
+    lastTestAt?, lastTestStatus?:'ok'|'fail';
+  }
+- PaymentConfig { enabled:boolean; provider:PaymentProvider; publicKey?; secretKey?; successUrl?; cancelUrl?; webhookSecret? }
+
+### Seed data (src/data/seed.ts)
+- One **admin** user and one **agent** user with simple passwords.
+- One **Agency** for the agent (half-filled).
+- One **Course**: “Find And Study Agent Training”
+  - Section: “A1 Destination Countries”
+  - **Lesson: Turkey**
+    - html content (rich HTML) with headings:
+      - Five Quick Points About Turkey
+      - Location & Geography
+      - Climate
+      - History & Population
+      - Society & Culture
+      - Economy
+      - Government
+      - Living Conditions & Cost of Living
+      - Education System (Higher Education in Türkiye)
+      - Information for International Students (residence permit, health insurance, part-time work – generic guidance)
+      - More Information (Official Links) with list:
+        * Council of Higher Education (YÖK): https://www.yok.gov.tr/
+        * e-Visa: https://www.evisa.gov.tr/
+        * Presidency of Migration Management: https://en.goc.gov.tr/
+        * Türkiye Scholarships: https://www.turkiyeburslari.gov.tr/
+        * Study in Türkiye portal: https://studyinturkiye.gov.tr/
+    - A **mini quiz** (3 questions; T/F + MCQ).
+  - A **Final Quiz** (10 questions), `passPercent=70`, `isFinal=true`.
+- **Orders**:
+  - ORD-1001 (amount 0, unpaid, provider 'none')
+  - ORD-1002 (amount 50, unpaid, provider 'none')
+- **Integrations** (6 entries, all disabled): Generic Webhook, n8n, Kommo, Google Sheets, SMTP Mail, Custom API.
+- **Subscriptions defaults for agent**: all **enabled** (Enrolled, 50%, 75%, Completed).
+
+### Auth (src/lib/auth.ts)
+- Mock functions: `login(email, password)`, `signupAgent(payload)`, `getSession()`, `logout()`.
+- After login, set session in storage; expose `currentUser()` returning {user, role}.
+
+### State (zustand)
+- auth store: session user, login/logout/signup actions.
+- data store: arrays for users, agencies, courses, quizzes, progresses, attempts, certificates, orders, integrations, plus `paymentConfig`.
+- Sync to localStorage on change; load from localStorage or seed on first run.
+
+### UI/UX
+- **Header** with Find And Study logo placeholder and brand colors (navy background).
+- **/login**: centered card (email, password), “New user? Sign Up” → /signup, “Forgot password?” → /forgot.
+- **/signup**: ONLY agent registration (name, email, password, initial agency name, country). After signup, redirect to /agent/dashboard.
+- **/forgot**: mock submit → show “We sent a reset link (demo)”.
+- **/agent/dashboard**:
+  - Course cards with progress bars and “View” button.
+  - Announcements banner area.
+- **/agent/courses** → select course → show **LessonTree** (left) + **LessonView** (right) with a top progress bar.
+- **LessonView**: render `lesson.html` (safe), “Start Quiz” → QuizPanel.
+- **QuizPanel**: supports BooleanQ and MCQ, next/prev, submit; on completion open **QuizResultModal** (score %, correct/incorrect, duration).
+- Passing a mini quiz marks that lesson as completed. Progress = completedLessons/totalLessons * 100.
+- **Final Quiz** available after lessons; need score ≥ 70 to pass.
+- Certificate is issued **only if all mini quizzes completed** AND **final quiz ≥ 70**.
+- **/agent/certificates**: list; each has **Download PDF** and **Download Badge** (badge can be a simple PNG placeholder with initials).
+- **Certificate PDF** (jsPDF + html2canvas):
+  - Fields: Full Name, Agency Name, Course Name, Date, Score %, Code, **Signature Name: "Dr. Eymen Namazcı"**, QR (points to `/verify?code=...`).
+  - File name: `FAS_Certificate_{user}_{course}.pdf`.
+- **/verify**: if `?code=` present, auto-lookup in store; else show input. If found → Valid (show user, course, date, score); otherwise Invalid/Revoked.
+- **/agent/agency**:
+  - Logo upload (base64), address, **lat/lng inputs**.
+  - If lat/lng present → show small **Google Maps iframe** placeholder using a no-key URL with the coords (simple embed that doesn’t require billing; if not feasible, show a static map URL placeholder and coordinates).
+  - Website, phone, primary contact (name/email).
+- **/agent/exams-orders**:
+  - Table: Order #, Title, Amount, Status pill, Action button.
+  - Since payments are disabled, **Pay** button is disabled with tooltip “Payments are not enabled yet.”
+  - Info banner: “Payments will be enabled soon. All courses and exams are currently free.”
+- **/agent/subscriptions**:
+  - 4 toggles: Enrolled, 50%, 75%, Completed → **all ON by default**; save to localStorage.
+- **/agent/profile**: name, email (readonly), change password (mock).
+- **403** and **404** simple pages.
+
+### Admin area
+- **/admin/dashboard**: tiles (Agents count, Completions, Certificates issued, Active announcements).
+- **/admin/content/countries**:
+  - List lessons (country pages). Create/Edit with `<textarea>` for HTML + live preview pane; upload fields for image URLs; optional map image URL.
+  - Save updates to store.
+- **/admin/quizzes**: list quizzes; add/edit quiz; add MCQ/BooleanQ; set passPercent; attach quiz to a lesson or mark as Final.
+- **/admin/certificates**:
+  - Template settings: logo URL, **signatureName default: "Dr. Eymen Namazcı"**, optional signature image URL, code format `FAS-{6}` (A-Z0-9), QR placement.
+- **/admin/agencies**: CRUD; assign users to agencies.
+- **/admin/users**: list users; **Add Admin** form creates admin accounts (since `/signup` is agent-only).
+- **/admin/reports**: filters (course, date range); table with user, agency, progress %, last attempt score, certificate status (issued/not).
+- **/admin/announcements**: CRUD; show active banners on agent dashboard.
+
+### Integrations (Admin > Integrations)
+Provide **at least 6 connector rows** (all saved to localStorage):
+1) **Generic Webhook** — fields: `endpointUrl`, `webhookSecret`, enabled toggle, **“Send Test”** (POST demo JSON with HMAC header if secret present; store `lastTestStatus`, `lastTestAt`).
+2) **n8n** — fields: `endpointUrl`, `n8nWorkflowId`, `apiKey`, enabled, Send Test.
+3) **Kommo** — fields: `kommoDomain`, `kommoToken`, enabled, Send Test.
+4) **Google Sheets** — fields: `sheetId`, `tabName`, `apiKey`, enabled, Send Test.
+5) **SMTP Mail** — fields: `smtpHost`, `smtpPort`, `smtpUser`, `smtpPass`, `fromEmail`, enabled, Send Test (mock: just mark ok/fail).
+6) **Custom API** — fields: `endpointUrl`, `apiKey`, enabled, Send Test.
+
+Each row shows current status: green “ok” or red “fail” with timestamp.
+
+### Payments (Admin > SettingsPayments)
+- `PaymentConfig`: default `{ enabled:false, provider:'none' }`.
+- Fields: enable toggle, provider select (Stripe / iyzico / PayTR / PayPal), publicKey, secretKey, successUrl, cancelUrl, webhookSecret.
+- Save to localStorage. When `enabled===false`, agent Pay button stays disabled; when true (future), `lib/payments.ts` can return a redirectUrl (mock for now).
+
+### Theming & polish
+- Tailwind theme extension for brand colors.
+- Buttons: primary (navy), danger (red), neutral.
+- Modals, tables, badges, progress bars; consistent spacing and rounded-2xl cards.
+- Keep code strictly TypeScript, no “any” if possible.
+
+### Acceptance checklist
+- [ ] Single **/login** with role-based redirect; **/signup** agent-only; **/forgot-password** mock flow.
+- [ ] Admin vs Agent protected routes with role guards; wrong role → **403**.
+- [ ] Seeded **Turkey** lesson with headings + official links; visible in Agent > Courses.
+- [ ] Mini quizzes work; Final quiz (10 Q) with **70% pass**; progress updates.
+- [ ] Passing all minis + final issues a **certificate** with code `FAS-XXXXXX`.
+- [ ] **Download PDF** includes **“Dr. Eymen Namazcı”** signature name and a **QR** pointing to `/verify?code=...`.
+- [ ] `/verify` validates codes from store; shows Valid/Invalid view.
+- [ ] Agent > Subscriptions: 4 triggers, **all ON by default**.
+- [ ] Agent > My Agency: logo upload, address, **lat/lng + map embed** placeholder.
+- [ ] Agent > Exams/Orders: shows two orders; Pay disabled with tooltip.
+- [ ] Admin > Integrations: 6 connectors, enable toggles, **Send Test** updates status/time (mock).
+- [ ] Admin > SettingsPayments: payments config screen (disabled by default).
+- [ ] Admin > Users: can **Add Admin** (since Sign Up is agent-only).
+- [ ] Admin > Content/Quizzes/Certificates/Reports/Announcements basic CRUD screens.
+- [ ] All data persists to **localStorage**.
+
+Build it now.
