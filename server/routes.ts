@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCertificateSchema } from "@shared/schema";
 import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Authentication middleware - verify user session
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -35,6 +38,21 @@ function generateSecureCertificateCode(): string {
   const code = randomBytes.toString('hex').toUpperCase().substring(0, 12);
   return `FAS-${code}`;
 }
+
+// Configure multer for profile picture uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Quiz attempt submission endpoint (required for certificate validation)
@@ -318,6 +336,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Internal server error during verification'
+      });
+    }
+  });
+
+  // Profile picture upload endpoint
+  app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded'
+        });
+      }
+
+      // Generate unique filename
+      const fileExtension = path.extname(file.originalname);
+      const filename = `profile_${authenticatedUser.id}_${Date.now()}${fileExtension}`;
+      
+      // Use local uploads directory for demo
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+      
+      // Ensure directory exists
+      try {
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+      } catch (mkdirError) {
+        console.error('Failed to create uploads directory:', mkdirError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to prepare upload directory'
+        });
+      }
+      
+      const filePath = path.join(uploadsDir, filename);
+      
+      // Write file
+      try {
+        fs.writeFileSync(filePath, file.buffer);
+      } catch (writeError) {
+        console.error('Failed to write file:', writeError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to save uploaded file'
+        });
+      }
+      
+      // Generate public URL (for demo purposes)
+      const publicUrl = `/api/profile-picture/${filename}`;
+      
+      // Update user profile picture in database
+      await storage.updateUser(authenticatedUser.id, { profilePicture: publicUrl });
+      
+      res.json({
+        success: true,
+        url: publicUrl
+      });
+      
+    } catch (error) {
+      console.error('Profile picture upload error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during upload'
+      });
+    }
+  });
+
+  // Get current user endpoint
+  app.get('/api/me', (req, res) => {
+    try {
+      const userId = req.headers['x-user-id'] as string;
+      const userRole = req.headers['x-user-role'] as string;
+
+      if (!userId || !userRole) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      // Get user from storage
+      const users = storage.getUsers();
+      const user = users.find(u => u.id === userId);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Return user data without password
+      const { password, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        user: userWithoutPassword,
+        role: userRole
+      });
+    } catch (error) {
+      console.error('Get current user error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching user data'
+      });
+    }
+  });
+
+  // Serve profile pictures
+  app.get('/api/profile-picture/:filename', (req, res) => {
+    try {
+      const { filename } = req.params;
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
+      const filePath = path.join(uploadsDir, filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({
+          success: false,
+          message: 'Image not found'
+        });
+      }
+      
+      res.sendFile(path.resolve(filePath));
+    } catch (error) {
+      console.error('Profile picture serve error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error serving image'
       });
     }
   });

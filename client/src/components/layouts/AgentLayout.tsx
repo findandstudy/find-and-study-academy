@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { 
@@ -100,11 +101,12 @@ export function AgentLayout({ children }: AgentLayoutProps) {
           {/* User section */}
           <div className="p-4 border-t border-card-border">
             <div className="flex items-center space-x-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground text-sm font-medium">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                <AvatarFallback className="text-sm font-medium">
                   {user?.name.charAt(0)}
-                </span>
-              </div>
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
                   {user?.name}

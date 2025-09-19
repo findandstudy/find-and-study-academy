@@ -1,27 +1,31 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock } from 'lucide-react';
+import { User, Lock, Camera, Upload } from 'lucide-react';
 
 export default function AgentProfile() {
-  const { user } = useAuthStore();
-  const { updateUser } = useDataStore();
+  const { user, updateUser: updateAuthUser } = useAuthStore();
+  const { updateUser: updateDataUser } = useDataStore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState(user?.name || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const handleUpdateProfile = () => {
     if (!user) return;
     
-    updateUser(user.id, { name });
+    updateDataUser(user.id, { name });
+    updateAuthUser({ name });
     toast({
       title: 'Profile Updated',
       description: 'Your profile has been updated successfully.'
@@ -41,7 +45,8 @@ export default function AgentProfile() {
     }
 
     // Mock password change
-    updateUser(user.id, { password: newPassword });
+    updateDataUser(user.id, { password: newPassword });
+    updateAuthUser({ password: newPassword });
     toast({
       title: 'Password Changed',
       description: 'Your password has been updated successfully.'
@@ -50,6 +55,71 @@ export default function AgentProfile() {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid File Type',
+        description: 'Please select an image file.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File Too Large',
+        description: 'Please select an image smaller than 5MB.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+
+      const response = await fetch('/api/upload-profile-picture', {
+        method: 'POST',
+        headers: {
+          'x-user-id': user.id,
+          'x-user-role': user.role,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      
+      // Update user in both stores
+      updateDataUser(user.id, { profilePicture: result.url } as any);
+      updateAuthUser({ profilePicture: result.url } as any);
+      
+      toast({
+        title: 'Profile Picture Updated',
+        description: 'Your profile picture has been updated successfully.'
+      });
+    } catch (error) {
+      console.error('Profile picture upload failed:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Failed to upload profile picture. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -62,6 +132,53 @@ export default function AgentProfile() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Profile Picture */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />
+              Profile Picture
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col items-center space-y-4">
+              <Avatar className="w-32 h-32">
+                <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                <AvatarFallback className="text-2xl">
+                  {user?.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Upload a new profile picture
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  variant="outline"
+                  data-testid="button-upload-profile-picture"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploading ? 'Uploading...' : 'Choose Photo'}
+                </Button>
+              </div>
+              
+              <p className="text-xs text-muted-foreground text-center">
+                Maximum file size: 5MB<br />
+                Supported formats: JPG, PNG, GIF
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Profile Information */}
         <Card>
           <CardHeader>

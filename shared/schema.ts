@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   role: text("role").notNull().default('agent'), // 'admin' | 'agent'
   agencyId: varchar("agency_id"),
+  profilePicture: text("profile_picture"), // URL to profile picture
 });
 
 // Certificates table for secure server-side verification
