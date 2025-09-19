@@ -17,6 +17,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -59,9 +60,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-card-border">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">F&S</span>
-              </div>
+              <img 
+                src={logoImage} 
+                alt="Find & Study Logo" 
+                className="w-8 h-8 rounded object-contain"
+              />
               <span className="font-semibold text-foreground">Admin Panel</span>
             </div>
             <Button

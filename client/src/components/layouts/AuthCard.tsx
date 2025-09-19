@@ -1,4 +1,5 @@
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 interface AuthCardProps {
   children: React.ReactNode;
@@ -12,9 +13,11 @@ export function AuthCard({ children, title, description }: AuthCardProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="mb-4">
-            <div className="w-12 h-12 mx-auto rounded-md bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">F&S</span>
-            </div>
+            <img 
+              src={logoImage} 
+              alt="Find & Study Logo" 
+              className="w-12 h-12 mx-auto rounded-md object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>
           {description && (
