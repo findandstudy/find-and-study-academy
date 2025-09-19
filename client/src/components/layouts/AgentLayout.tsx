@@ -58,18 +58,17 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-card-border">
-            <div className="flex items-center space-x-2">
+            <Link href="/agent/dashboard" className="flex-1 flex justify-center">
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className="w-8 h-8 rounded object-contain"
+                className="w-12 h-12 rounded object-contain hover-elevate cursor-pointer"
               />
-              <span className="font-semibold text-foreground">Agent Portal</span>
-            </div>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden absolute right-6"
               onClick={() => setSidebarOpen(false)}
               data-testid="button-close-sidebar"
             >
