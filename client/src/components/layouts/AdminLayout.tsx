@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
 import { 
   LayoutDashboard, 
@@ -13,6 +14,7 @@ import {
   Megaphone,
   Settings,
   Plug,
+  User,
   LogOut,
   Menu,
   X
@@ -25,6 +27,7 @@ interface AdminLayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Profile', href: '/admin/profile', icon: User },
   { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText },
   { name: 'Quizzes', href: '/admin/quizzes', icon: Award },
   { name: 'Certificates', href: '/admin/certificates', icon: Award },
@@ -102,11 +105,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* User section */}
           <div className="p-4 border-t border-card-border">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground text-sm font-medium">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                <AvatarFallback className="text-sm font-medium">
                   {user?.name.charAt(0)}
-                </span>
-              </div>
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
                   {user?.name}

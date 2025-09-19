@@ -27,6 +27,7 @@ import AgentSubscriptions from './pages/agent/Subscriptions';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminProfile from './pages/admin/Profile';
 
 // Public Pages
 import VerifyCertificate from './pages/VerifyCertificate';
@@ -98,6 +99,14 @@ function Router() {
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
             <AdminDashboard />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/profile">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminProfile />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

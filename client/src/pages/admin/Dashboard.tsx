@@ -1,9 +1,12 @@
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useDataStore } from '@/store/data';
+import { useAuthStore } from '@/store/auth';
 import { Users, Award, Building, Megaphone } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 export default function AdminDashboard() {
+  const { user } = useAuthStore();
   const { users, certificates, agencies, announcements } = useDataStore();
 
   const agents = users.filter(u => u.role === 'agent');
@@ -40,12 +43,15 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <img 
-            src={logoImage} 
-            alt="Find & Study Logo" 
-            className="w-10 h-10 rounded object-contain"
-          />
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+            <AvatarFallback className="text-sm font-medium">
+              {user?.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome back, {user?.name}!
+          </h1>
         </div>
         <p className="text-muted-foreground mt-1">
           Manage the Find And Study platform and monitor agent activities.
