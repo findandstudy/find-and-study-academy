@@ -24,6 +24,19 @@ export const certificates = pgTable("certificates", {
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
 });
 
+// Agencies table  
+export const agencies = pgTable("agencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  country: text("country").notNull(),
+  city: text("city").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+  status: text("status").notNull().default('pending'), // 'active' | 'inactive' | 'pending'
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Courses table
 export const courses = pgTable("courses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -59,6 +72,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
 });
 
+export const insertAgencySchema = createInsertSchema(agencies).omit({
+  id: true,
+  createdAt: true,
+});
 export const insertCertificateSchema = createInsertSchema(certificates);
 export const insertCourseSchema = createInsertSchema(courses);
 export const insertAttemptSchema = createInsertSchema(attempts);
@@ -66,10 +83,12 @@ export const insertQuizSchema = createInsertSchema(quizzes);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type Agency = typeof agencies.$inferSelect;
 export type Certificate = typeof certificates.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Attempt = typeof attempts.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;
+export type InsertAgency = z.infer<typeof insertAgencySchema>;
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;

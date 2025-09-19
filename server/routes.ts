@@ -1,30 +1,45 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCertificateSchema } from "@shared/schema";
+import { insertCertificateSchema, insertAgencySchema, type Agency, type InsertAgency } from "@shared/schema";
 import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Authentication middleware - verify user session
+// Authentication middleware - verify user session with server-side validation
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    // For now, extract user info from request headers (in real app would use proper session/JWT)
+    // Extract user ID from headers (client sends this from their session)
     const userId = req.headers['x-user-id'] as string;
-    const userRole = req.headers['x-user-role'] as string;
     
-    if (!userId || !userRole) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
 
-    // Add user info to request for use in route handlers
-    (req as any).user = { id: userId, role: userRole };
+    // Server-side validation: Verify user exists in storage and get their actual role
+    const users = storage.getUsers();
+    const user = users.find(u => u.id === userId);
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid user credentials'
+      });
+    }
+
+    // Add VERIFIED user info to request (role comes from server, not client)
+    (req as any).user = { 
+      id: user.id, 
+      role: user.role,  // Use actual role from storage, not client-provided
+      email: user.email 
+    };
     next();
   } catch (error) {
+    console.error('Authentication error:', error);
     res.status(401).json({
       success: false,
       message: 'Invalid authentication'
@@ -467,6 +482,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Error serving image'
+      });
+    }
+  });
+
+  // Admin-only middleware
+  async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = (req as any).user;
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+      
+      next();
+    } catch (error) {
+      res.status(403).json({
+        success: false,
+        message: 'Authorization failed'
+      });
+    }
+  }
+
+  // Agency management routes (admin only)
+  app.get('/api/admin/agencies', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const agencies = await storage.getAgencies();
+      res.json({
+        success: true,
+        agencies
+      });
+    } catch (error) {
+      console.error('Get agencies error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve agencies'
+      });
+    }
+  });
+
+  app.post('/api/admin/agencies', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = insertAgencySchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid agency data',
+          errors: validation.error.errors
+        });
+      }
+
+      const agency = await storage.createAgency(validation.data);
+      
+      res.status(201).json({
+        success: true,
+        agency
+      });
+    } catch (error) {
+      console.error('Create agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create agency'
+      });
+    }
+  });
+
+  app.patch('/api/admin/agencies/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertAgencySchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid agency data',
+          errors: validation.error.errors
+        });
+      }
+
+      // Check if agency exists
+      const existingAgency = await storage.getAgencyById(id);
+      if (!existingAgency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      const agency = await storage.updateAgency(id, validation.data);
+      
+      res.json({
+        success: true,
+        agency
+      });
+    } catch (error) {
+      console.error('Update agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update agency'
+      });
+    }
+  });
+
+  app.delete('/api/admin/agencies/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if agency exists
+      const existingAgency = await storage.getAgencyById(id);
+      if (!existingAgency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      await storage.deleteAgency(id);
+      
+      res.json({
+        success: true,
+        message: 'Agency deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete agency'
       });
     }
   });

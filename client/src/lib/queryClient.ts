@@ -1,5 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Get session from localStorage - only send user ID, server will validate and determine role
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const sessionData = localStorage.getItem('fas_session');
+    if (!sessionData) return {};
+    
+    const session = JSON.parse(sessionData);
+    if (session?.user?.id) {
+      return {
+        'x-user-id': String(session.user.id)
+        // Note: No longer sending x-user-role - server validates user and gets role from database
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get auth headers:', error);
+  }
+  return {};
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -12,9 +31,15 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const authHeaders = getAuthHeaders();
+  const headers: Record<string, string> = {
+    ...authHeaders,
+    ...(data ? { "Content-Type": "application/json" } : {})
+  };
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,7 +54,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const authHeaders = getAuthHeaders();
     const res = await fetch(queryKey.join("/") as string, {
+      headers: authHeaders,
       credentials: "include",
     });
 

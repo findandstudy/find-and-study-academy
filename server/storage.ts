@@ -4,16 +4,19 @@ import {
   courses, 
   attempts,
   quizzes,
+  agencies,
   type User, 
   type InsertUser,
   type Certificate,
   type Course,
   type Attempt,
   type Quiz,
+  type Agency,
+  type InsertAgency,
   type InsertCertificate
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -38,6 +41,13 @@ export interface IStorage {
   
   // Quiz methods for validation
   getQuizById(quizId: string): Promise<Quiz | undefined>;
+  
+  // Agency methods
+  getAgencies(): Promise<Array<Agency & { agentCount: number }>>;
+  createAgency(agency: InsertAgency): Promise<Agency>;
+  updateAgency(id: string, updates: Partial<InsertAgency>): Promise<Agency>;
+  deleteAgency(id: string): Promise<void>;
+  getAgencyById(id: string): Promise<Agency | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -119,6 +129,58 @@ export class DatabaseStorage implements IStorage {
       .from(quizzes)
       .where(eq(quizzes.id, quizId));
     return quiz || undefined;
+  }
+
+  // Agency methods
+  async getAgencies(): Promise<Array<Agency & { agentCount: number }>> {
+    // Get all agencies first
+    const allAgencies = await db.select().from(agencies);
+    
+    // Calculate agent count for each agency
+    const agenciesWithCount = await Promise.all(
+      allAgencies.map(async (agency) => {
+        const [agentCountResult] = await db
+          .select({ count: count() })
+          .from(users)
+          .where(eq(users.agencyId, agency.id));
+        
+        return {
+          ...agency,
+          agentCount: agentCountResult?.count || 0
+        };
+      })
+    );
+    
+    return agenciesWithCount;
+  }
+
+  async createAgency(insertAgency: InsertAgency): Promise<Agency> {
+    const [agency] = await db
+      .insert(agencies)
+      .values(insertAgency)
+      .returning();
+    return agency;
+  }
+
+  async updateAgency(id: string, updates: Partial<InsertAgency>): Promise<Agency> {
+    const [agency] = await db
+      .update(agencies)
+      .set(updates)
+      .where(eq(agencies.id, id))
+      .returning();
+    return agency;
+  }
+
+  async deleteAgency(id: string): Promise<void> {
+    await db.delete(agencies).where(eq(agencies.id, id));
+  }
+
+  async getAgencyById(id: string): Promise<Agency | undefined> {
+    const [agency] = await db
+      .select()
+      .from(agencies)
+      .where(eq(agencies.id, id));
+    return agency || undefined;
   }
 }
 
