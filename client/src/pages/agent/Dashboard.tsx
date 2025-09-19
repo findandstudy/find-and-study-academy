@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { BookOpen, Award, Users, TrendingUp } from 'lucide-react';
 import { Link } from 'wouter';
+import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 export default function AgentDashboard() {
   const { user } = useAuthStore();
@@ -48,9 +49,16 @@ export default function AgentDashboard() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Welcome back, {user?.name}!
-        </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <img 
+            src={logoImage} 
+            alt="Find & Study Logo" 
+            className="w-10 h-10 rounded object-contain"
+          />
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome back, {user?.name}!
+          </h1>
+        </div>
         <p className="text-muted-foreground mt-1">
           Track your progress and continue your agent training journey.
         </p>
@@ -112,7 +120,7 @@ export default function AgentDashboard() {
                 <div key={course.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">{course.title}</h3>
-                    <Badge variant={progressPercent === 100 ? 'success' : 'secondary'}>
+                    <Badge variant={progressPercent === 100 ? 'default' : 'secondary'}>
                       {progressPercent}%
                     </Badge>
                   </div>
@@ -154,7 +162,7 @@ export default function AgentDashboard() {
                           Score: {cert.scorePercent}% • {new Date(cert.issuedAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge variant="success">Certified</Badge>
+                      <Badge variant="default">Certified</Badge>
                     </div>
                   );
                 })}

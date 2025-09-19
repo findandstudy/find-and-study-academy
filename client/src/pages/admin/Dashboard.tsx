@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { useDataStore } from '@/store/data';
 import { Users, Award, Building, Megaphone } from 'lucide-react';
+import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 export default function AdminDashboard() {
   const { users, certificates, agencies, announcements } = useDataStore();
@@ -38,7 +39,14 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <img 
+            src={logoImage} 
+            alt="Find & Study Logo" 
+            className="w-10 h-10 rounded object-contain"
+          />
+          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+        </div>
         <p className="text-muted-foreground mt-1">
           Manage the Find And Study platform and monitor agent activities.
         </p>
