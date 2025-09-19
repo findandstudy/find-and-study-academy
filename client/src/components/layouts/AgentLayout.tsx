@@ -57,7 +57,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-40 px-6 border-b border-card-border">
+          <div className="flex items-center justify-between h-24 px-6 border-b border-card-border">
             <Link href="/agent/dashboard" className="flex-1 flex justify-center">
               <img 
                 src={logoImage} 
