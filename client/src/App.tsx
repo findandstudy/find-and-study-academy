@@ -28,6 +28,15 @@ import AgentSubscriptions from './pages/agent/Subscriptions';
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProfile from './pages/admin/Profile';
+import AdminContentCountries from './pages/admin/ContentCountries';
+import AdminQuizzes from './pages/admin/Quizzes';
+import AdminCertificates from './pages/admin/Certificates';
+import AdminAgencies from './pages/admin/Agencies';
+import AdminUsers from './pages/admin/Users';
+import AdminReports from './pages/admin/Reports';
+import AdminAnnouncements from './pages/admin/Announcements';
+import AdminSettingsPayments from './pages/admin/SettingsPayments';
+import AdminIntegrations from './pages/admin/Integrations';
 
 // Public Pages
 import VerifyCertificate from './pages/VerifyCertificate';
@@ -107,6 +116,78 @@ function Router() {
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
             <AdminProfile />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/content/countries">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminContentCountries />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/quizzes">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminQuizzes />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/certificates">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminCertificates />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/agencies">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminAgencies />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/users">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminUsers />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/reports">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminReports />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/announcements">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminAnnouncements />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/settings/payments">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminSettingsPayments />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/integrations">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminIntegrations />
           </AdminLayout>
         </ProtectedRoute>
       </Route>
