@@ -2,6 +2,7 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { BookOpen, Award, Users, TrendingUp } from 'lucide-react';
@@ -50,11 +51,12 @@ export default function AgentDashboard() {
       {/* Welcome Section */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <img 
-            src={logoImage} 
-            alt="Find & Study Logo" 
-            className="w-10 h-10 rounded object-contain"
-          />
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+            <AvatarFallback className="text-sm font-medium">
+              {user?.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
           <h1 className="text-3xl font-bold text-foreground">
             Welcome back, {user?.name}!
           </h1>
