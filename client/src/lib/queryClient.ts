@@ -3,15 +3,27 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 // Get session from localStorage - only send user ID, server will validate and determine role
 function getAuthHeaders(): Record<string, string> {
   try {
+    console.log('=== CLIENT AUTH DEBUG ===');
     const sessionData = localStorage.getItem('fas_session');
-    if (!sessionData) return {};
+    console.log('Session data raw:', sessionData);
+    
+    if (!sessionData) {
+      console.log('No session data found');
+      return {};
+    }
     
     const session = JSON.parse(sessionData);
+    console.log('Parsed session:', session);
+    
     if (session?.user?.id) {
-      return {
+      const headers = {
         'x-user-id': String(session.user.id)
         // Note: No longer sending x-user-role - server validates user and gets role from database
       };
+      console.log('Auth headers to send:', headers);
+      return headers;
+    } else {
+      console.log('Session exists but missing user.id:', session);
     }
   } catch (error) {
     console.error('Failed to get auth headers:', error);

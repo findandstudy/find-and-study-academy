@@ -5,6 +5,8 @@ import {
   attempts,
   quizzes,
   agencies,
+  countries,
+  contents,
   type User, 
   type InsertUser,
   type Certificate,
@@ -13,7 +15,11 @@ import {
   type Quiz,
   type Agency,
   type InsertAgency,
-  type InsertCertificate
+  type InsertCertificate,
+  type Country,
+  type InsertCountry,
+  type Content,
+  type InsertContent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count } from "drizzle-orm";
@@ -48,6 +54,20 @@ export interface IStorage {
   updateAgency(id: string, updates: Partial<InsertAgency>): Promise<Agency>;
   deleteAgency(id: string): Promise<void>;
   getAgencyById(id: string): Promise<Agency | undefined>;
+
+  // Country methods
+  getCountries(): Promise<Country[]>;
+  createCountry(country: InsertCountry): Promise<Country>;
+  updateCountry(id: string, updates: Partial<InsertCountry>): Promise<Country>;
+  deleteCountry(id: string): Promise<void>;
+  getCountryById(id: string): Promise<Country | undefined>;
+
+  // Content methods
+  getContents(): Promise<Array<Content & { countryName?: string }>>;
+  createContent(content: InsertContent): Promise<Content>;
+  updateContent(id: string, updates: Partial<InsertContent>): Promise<Content>;
+  deleteContent(id: string): Promise<void>;
+  getContentById(id: string): Promise<Content | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -181,6 +201,99 @@ export class DatabaseStorage implements IStorage {
       .from(agencies)
       .where(eq(agencies.id, id));
     return agency || undefined;
+  }
+
+  // Country methods implementation
+  async getCountries(): Promise<Country[]> {
+    return await db.select().from(countries).orderBy(countries.name);
+  }
+
+  async createCountry(insertCountry: InsertCountry): Promise<Country> {
+    const [country] = await db
+      .insert(countries)
+      .values(insertCountry)
+      .returning();
+    return country;
+  }
+
+  async updateCountry(id: string, updates: Partial<InsertCountry>): Promise<Country> {
+    const [country] = await db
+      .update(countries)
+      .set(updates)
+      .where(eq(countries.id, id))
+      .returning();
+    return country;
+  }
+
+  async deleteCountry(id: string): Promise<void> {
+    await db.delete(countries).where(eq(countries.id, id));
+  }
+
+  async getCountryById(id: string): Promise<Country | undefined> {
+    const [country] = await db.select().from(countries).where(eq(countries.id, id));
+    return country || undefined;
+  }
+
+  // Content methods implementation
+  async getContents(): Promise<Array<Content & { countryName?: string }>> {
+    // Join with countries table to get country name
+    const contentsWithCountry = await db
+      .select({
+        id: contents.id,
+        title: contents.title,
+        slug: contents.slug,
+        description: contents.description,
+        type: contents.type,
+        countryId: contents.countryId,
+        courseId: contents.courseId,
+        content: contents.content,
+        status: contents.status,
+        order: contents.order,
+        createdAt: contents.createdAt,
+        updatedAt: contents.updatedAt,
+        countryName: countries.name
+      })
+      .from(contents)
+      .leftJoin(countries, eq(contents.countryId, countries.id))
+      .orderBy(contents.order, contents.title);
+
+    // Convert null to undefined for type compatibility
+    return contentsWithCountry.map(item => ({
+      ...item,
+      countryName: item.countryName ?? undefined
+    }));
+  }
+
+  async createContent(insertContent: InsertContent): Promise<Content> {
+    const [content] = await db
+      .insert(contents)
+      .values({
+        ...insertContent,
+        updatedAt: new Date()
+      })
+      .returning();
+    return content;
+  }
+
+  async updateContent(id: string, updates: Partial<InsertContent>): Promise<Content> {
+    const [content] = await db
+      .update(contents)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(contents.id, id))
+      .returning();
+    return content;
+  }
+
+  async deleteContent(id: string): Promise<void> {
+    await db.delete(contents).where(eq(contents.id, id));
+  }
+
+  async getContentById(id: string): Promise<Content | undefined> {
+    const [content] = await db.select().from(contents).where(eq(contents.id, id));
+    return content || undefined;
   }
 }
 

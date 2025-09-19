@@ -1,7 +1,18 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCertificateSchema, insertAgencySchema, type Agency, type InsertAgency } from "@shared/schema";
+import { 
+  insertCertificateSchema, 
+  insertAgencySchema, 
+  insertCountrySchema,
+  insertContentSchema,
+  type Agency, 
+  type InsertAgency,
+  type Country,
+  type InsertCountry,
+  type Content,
+  type InsertContent
+} from "@shared/schema";
 import crypto from "crypto";
 import multer from "multer";
 import path from "path";
@@ -10,10 +21,16 @@ import fs from "fs";
 // Authentication middleware - verify user session with server-side validation
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log('=== AUTH DEBUG ===');
+    console.log('Request URL:', req.url);
+    console.log('Request method:', req.method);
+    console.log('Headers x-user-id:', req.headers['x-user-id']);
+    
     // Extract user ID from headers (client sends this from their session)
     const userId = req.headers['x-user-id'] as string;
     
     if (!userId) {
+      console.log('AUTH FAILED: No user ID in headers');
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
@@ -21,15 +38,22 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     }
 
     // Server-side validation: Verify user exists in storage and get their actual role
-    const users = storage.getUsers();
+    const users = await storage.getUsers();
+    console.log('Users found in database:', users.length);
+    console.log('Looking for user ID:', userId);
+    
     const user = users.find(u => u.id === userId);
     
     if (!user) {
+      console.log('AUTH FAILED: User not found in database');
+      console.log('Available user IDs:', users.map(u => u.id));
       return res.status(401).json({
         success: false,
         message: 'Invalid user credentials'
       });
     }
+    
+    console.log('AUTH SUCCESS: User found:', user.email, 'Role:', user.role);
 
     // Add VERIFIED user info to request (role comes from server, not client)
     (req as any).user = { 
@@ -612,6 +636,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Failed to delete agency'
+      });
+    }
+  });
+
+  // Countries management routes (admin only)
+  app.get('/api/admin/countries', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const countries = await storage.getCountries();
+      res.json({
+        success: true,
+        countries
+      });
+    } catch (error) {
+      console.error('Get countries error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve countries'
+      });
+    }
+  });
+
+  app.post('/api/admin/countries', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = insertCountrySchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid country data',
+          errors: validation.error.errors
+        });
+      }
+
+      const country = await storage.createCountry(validation.data);
+      
+      res.status(201).json({
+        success: true,
+        country
+      });
+    } catch (error) {
+      console.error('Create country error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create country'
+      });
+    }
+  });
+
+  app.patch('/api/admin/countries/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertCountrySchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid country data',
+          errors: validation.error.errors
+        });
+      }
+
+      const existingCountry = await storage.getCountryById(id);
+      if (!existingCountry) {
+        return res.status(404).json({
+          success: false,
+          message: 'Country not found'
+        });
+      }
+
+      const country = await storage.updateCountry(id, validation.data);
+      
+      res.json({
+        success: true,
+        country
+      });
+    } catch (error) {
+      console.error('Update country error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update country'
+      });
+    }
+  });
+
+  app.delete('/api/admin/countries/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingCountry = await storage.getCountryById(id);
+      if (!existingCountry) {
+        return res.status(404).json({
+          success: false,
+          message: 'Country not found'
+        });
+      }
+
+      await storage.deleteCountry(id);
+      
+      res.json({
+        success: true,
+        message: 'Country deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete country error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete country'
+      });
+    }
+  });
+
+  // Content management routes (admin only)
+  app.get('/api/admin/contents', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const contents = await storage.getContents();
+      res.json({
+        success: true,
+        contents
+      });
+    } catch (error) {
+      console.error('Get contents error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve contents'
+      });
+    }
+  });
+
+  app.post('/api/admin/contents', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = insertContentSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid content data',
+          errors: validation.error.errors
+        });
+      }
+
+      const content = await storage.createContent(validation.data);
+      
+      res.status(201).json({
+        success: true,
+        content
+      });
+    } catch (error) {
+      console.error('Create content error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create content'
+      });
+    }
+  });
+
+  app.patch('/api/admin/contents/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertContentSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid content data',
+          errors: validation.error.errors
+        });
+      }
+
+      const existingContent = await storage.getContentById(id);
+      if (!existingContent) {
+        return res.status(404).json({
+          success: false,
+          message: 'Content not found'
+        });
+      }
+
+      const content = await storage.updateContent(id, validation.data);
+      
+      res.json({
+        success: true,
+        content
+      });
+    } catch (error) {
+      console.error('Update content error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update content'
+      });
+    }
+  });
+
+  app.delete('/api/admin/contents/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingContent = await storage.getContentById(id);
+      if (!existingContent) {
+        return res.status(404).json({
+          success: false,
+          message: 'Content not found'
+        });
+      }
+
+      await storage.deleteContent(id);
+      
+      res.json({
+        success: true,
+        message: 'Content deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete content error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete content'
       });
     }
   });
