@@ -6,31 +6,59 @@ import {
   insertAgencySchema, 
   insertCountrySchema,
   insertContentSchema,
+  insertQuizSchema,
   type Agency, 
   type InsertAgency,
   type Country,
   type InsertCountry,
   type Content,
-  type InsertContent
+  type InsertContent,
+  type Quiz,
+  type InsertQuiz
 } from "@shared/schema";
+import { z } from "zod";
 import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+// Server-side questions validation schema (matches frontend)
+const questionSchema = z.discriminatedUnion('type', [
+  z.object({
+    id: z.string(),
+    type: z.literal('boolean'),
+    text: z.string().min(1, 'Question text is required'),
+    answer: z.boolean()
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal('mcq'),
+    text: z.string().min(1, 'Question text is required'),
+    options: z.array(z.string().min(1, 'Option text required')).min(2, 'At least 2 options required').max(6, 'Maximum 6 options allowed'),
+    answerIndex: z.number().min(0)
+  })
+]);
+
+// Quiz validation schema with questions validation
+const quizValidationSchema = insertQuizSchema.extend({
+  questions: z.string().refine((val) => {
+    try {
+      const parsed = JSON.parse(val);
+      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid questions format - must be valid JSON array of question objects')
+});
+
 // Authentication middleware - verify user session with server-side validation
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    console.log('=== AUTH DEBUG ===');
-    console.log('Request URL:', req.url);
-    console.log('Request method:', req.method);
-    console.log('Headers x-user-id:', req.headers['x-user-id']);
-    
     // Extract user ID from headers (client sends this from their session)
     const userId = req.headers['x-user-id'] as string;
     
     if (!userId) {
-      console.log('AUTH FAILED: No user ID in headers');
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
@@ -39,21 +67,14 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
 
     // Server-side validation: Verify user exists in storage and get their actual role
     const users = await storage.getUsers();
-    console.log('Users found in database:', users.length);
-    console.log('Looking for user ID:', userId);
-    
     const user = users.find(u => u.id === userId);
     
     if (!user) {
-      console.log('AUTH FAILED: User not found in database');
-      console.log('Available user IDs:', users.map(u => u.id));
       return res.status(401).json({
         success: false,
         message: 'Invalid user credentials'
       });
     }
-    
-    console.log('AUTH SUCCESS: User found:', user.email, 'Role:', user.role);
 
     // Add VERIFIED user info to request (role comes from server, not client)
     (req as any).user = { 
@@ -850,6 +871,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Failed to delete content'
+      });
+    }
+  });
+
+  // Quiz management routes (admin only)
+  app.get('/api/admin/quizzes', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const quizzes = await storage.getQuizzes();
+      
+      // Parse questions JSON for each quiz
+      const quizzesWithParsedQuestions = quizzes.map(quiz => ({
+        ...quiz,
+        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+      }));
+      
+      res.json({
+        success: true,
+        quizzes: quizzesWithParsedQuestions
+      });
+    } catch (error) {
+      console.error('Get quizzes error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve quizzes'
+      });
+    }
+  });
+
+  app.post('/api/admin/quizzes', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = quizValidationSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid quiz data',
+          errors: validation.error.errors
+        });
+      }
+
+      // Convert questions array to JSON string for storage
+      const quizData = {
+        ...validation.data,
+        questions: JSON.stringify(validation.data.questions || [])
+      };
+
+      const quiz = await storage.createQuiz(quizData);
+      
+      // Parse questions back to object for response
+      const responseQuiz = {
+        ...quiz,
+        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+      };
+      
+      res.status(201).json({
+        success: true,
+        quiz: responseQuiz
+      });
+    } catch (error) {
+      console.error('Create quiz error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create quiz'
+      });
+    }
+  });
+
+  app.patch('/api/admin/quizzes/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = quizValidationSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid quiz data',
+          errors: validation.error.errors
+        });
+      }
+
+      const existingQuiz = await storage.getQuizById(id);
+      if (!existingQuiz) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quiz not found'
+        });
+      }
+
+      // Convert questions array to JSON string if provided
+      const updateData = {
+        ...validation.data,
+        ...(validation.data.questions && {
+          questions: JSON.stringify(validation.data.questions)
+        })
+      };
+
+      const quiz = await storage.updateQuiz(id, updateData);
+      
+      // Parse questions back to object for response
+      const responseQuiz = {
+        ...quiz,
+        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+      };
+      
+      res.json({
+        success: true,
+        quiz: responseQuiz
+      });
+    } catch (error) {
+      console.error('Update quiz error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update quiz'
+      });
+    }
+  });
+
+  app.delete('/api/admin/quizzes/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingQuiz = await storage.getQuizById(id);
+      if (!existingQuiz) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quiz not found'
+        });
+      }
+
+      await storage.deleteQuiz(id);
+      
+      res.json({
+        success: true,
+        message: 'Quiz deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete quiz error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete quiz'
       });
     }
   });

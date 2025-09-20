@@ -142,13 +142,45 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(attempts);
   }
 
-  // Quiz methods for validation
+  // Quiz methods for validation and admin management
   async getQuizById(quizId: string): Promise<Quiz | undefined> {
     const [quiz] = await db
       .select()
       .from(quizzes)
       .where(eq(quizzes.id, quizId));
     return quiz || undefined;
+  }
+
+  async getQuizzes(): Promise<Quiz[]> {
+    return await db.select().from(quizzes).orderBy(quizzes.order, quizzes.title);
+  }
+
+  async createQuiz(insertQuiz: InsertQuiz): Promise<Quiz> {
+    const [quiz] = await db
+      .insert(quizzes)
+      .values({
+        ...insertQuiz,
+        id: insertQuiz.id || `quiz-${Date.now()}`, // Generate ID if not provided
+        updatedAt: new Date()
+      })
+      .returning();
+    return quiz;
+  }
+
+  async updateQuiz(id: string, updates: Partial<InsertQuiz>): Promise<Quiz> {
+    const [quiz] = await db
+      .update(quizzes)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(quizzes.id, id))
+      .returning();
+    return quiz;
+  }
+
+  async deleteQuiz(id: string): Promise<void> {
+    await db.delete(quizzes).where(eq(quizzes.id, id));
   }
 
   // Agency methods

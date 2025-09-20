@@ -78,6 +78,12 @@ export const quizzes = pgTable("quizzes", {
   courseId: varchar("course_id").notNull(),
   isFinal: boolean("is_final").notNull().default(false),
   passPercent: integer("pass_percent").notNull().default(70),
+  questions: text("questions"), // JSON string of questions array (nullable for now)
+  description: text("description"),
+  status: text("status").notNull().default('active'), // 'active' | 'inactive' | 'draft'
+  order: integer("order").default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Quiz attempts for progress tracking
@@ -118,7 +124,10 @@ export const insertContentSchema = createInsertSchema(contents).omit({
 export const insertCertificateSchema = createInsertSchema(certificates);
 export const insertCourseSchema = createInsertSchema(courses);
 export const insertAttemptSchema = createInsertSchema(attempts);
-export const insertQuizSchema = createInsertSchema(quizzes);
+export const insertQuizSchema = createInsertSchema(quizzes).omit({
+  createdAt: true,
+  updatedAt: true,
+});
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -136,3 +145,32 @@ export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+
+// Frontend question types (matches client-side form)
+export const frontendQuestionSchema = z.discriminatedUnion('type', [
+  z.object({
+    id: z.string(),
+    type: z.literal('boolean'),
+    text: z.string().min(1, 'Question text is required'),
+    answer: z.boolean()
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal('mcq'),
+    text: z.string().min(1, 'Question text is required'),
+    options: z.array(z.string().min(1, 'Option text required')).min(2).max(6),
+    answerIndex: z.number().min(0)
+  })
+]);
+
+export type FrontendQuestion = z.infer<typeof frontendQuestionSchema>;
+
+// Frontend Quiz DTO (questions as parsed array)  
+export type QuizDTO = Omit<Quiz, 'questions'> & {
+  questions: FrontendQuestion[];
+};
+
+// Frontend Insert Quiz DTO  
+export type InsertQuizDTO = Omit<InsertQuiz, 'questions'> & {
+  questions: FrontendQuestion[];
+};
