@@ -56,10 +56,10 @@ export default function AdminQuizzes() {
   const { data: quizzes = [], isLoading: quizzesLoading } = useQuery({
     queryKey: ['/api/admin/quizzes'],
     select: (data) => {
-      // Parse questions JSON string to array for frontend use
+      // Backend already parses questions JSON - use directly as array
       return data.quizzes.map((quiz: any) => ({
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: quiz.questions || []  // Already parsed by backend
       })) as QuizDTO[];
     }
   });
