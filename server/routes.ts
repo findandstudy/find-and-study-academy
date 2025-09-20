@@ -400,6 +400,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin certificates endpoint - get all certificates for management
+  app.get('/api/admin/certificates', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      // Get all certificates with user and course information
+      const allCertificates = await storage.getCertificates();
+      const users = await storage.getUsers();
+      const courses = await storage.getCourses();
+
+      // Enrich certificates with user and course data
+      const enrichedCertificates = allCertificates.map(cert => {
+        const user = users.find(u => u.id === cert.userId);
+        const course = courses.find(c => c.id === cert.courseId);
+        
+        return {
+          id: cert.id,
+          code: cert.code,
+          scorePercent: cert.scorePercent,
+          issuedAt: cert.issuedAt,
+          user: user ? {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          } : null,
+          course: course ? {
+            id: course.id,
+            title: course.title,
+            slug: course.slug
+          } : null
+        };
+      });
+
+      res.json({
+        success: true,
+        certificates: enrichedCertificates
+      });
+    } catch (error) {
+      console.error('Admin certificates retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during admin certificates retrieval'
+      });
+    }
+  });
+
   // Profile picture upload endpoint
   app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
     try {
@@ -467,21 +512,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user endpoint
-  app.get('/api/me', (req, res) => {
+  app.get('/api/me', requireAuth, async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
-      const userRole = req.headers['x-user-role'] as string;
-
-      if (!userId || !userRole) {
-        return res.status(401).json({
-          success: false,
-          message: 'Authentication required'
-        });
-      }
-
-      // Get user from storage
-      const users = storage.getUsers();
-      const user = users.find(u => u.id === userId);
+      const authenticatedUser = (req as any).user;
+      
+      // Get complete user data from storage (already verified by requireAuth)
+      const users = await storage.getUsers();
+      const user = users.find(u => u.id === authenticatedUser.id);
       
       if (!user) {
         return res.status(404).json({
@@ -490,13 +527,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Return user data without password
+      // Return user data without password, using server-validated role
       const { password, ...userWithoutPassword } = user;
       
       res.json({
         success: true,
         user: userWithoutPassword,
-        role: userRole
+        role: user.role  // Use server-side role, not client-provided
       });
     } catch (error) {
       console.error('Get current user error:', error);
