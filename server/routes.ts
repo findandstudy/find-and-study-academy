@@ -528,6 +528,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin analytics endpoints
+  app.get('/api/admin/analytics/overview', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const certificates = await storage.getCertificates();
+      const attempts = await storage.getAttempts();
+      const agencies = await storage.getAgencies();
+
+      // Calculate overview statistics
+      const totalUsers = users.length;
+      const totalCertificates = certificates.length;
+      const totalAttempts = attempts.length;
+      const totalAgencies = agencies.length;
+
+      // Calculate monthly certificate issuance
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const certificatesThisMonth = certificates.filter(cert => 
+        new Date(cert.issuedAt) >= thisMonth
+      ).length;
+
+      // Calculate average quiz score
+      const totalScore = attempts.reduce((sum, attempt) => sum + attempt.scorePercent, 0);
+      const averageScore = attempts.length > 0 ? Math.round(totalScore / attempts.length) : 0;
+
+      // Calculate pass rate (70% threshold)
+      const passedAttempts = attempts.filter(attempt => attempt.scorePercent >= 70).length;
+      const passRate = attempts.length > 0 ? Math.round((passedAttempts / attempts.length) * 100) : 0;
+
+      res.json({
+        success: true,
+        overview: {
+          totalUsers,
+          totalCertificates,
+          totalAttempts,
+          totalAgencies,
+          certificatesThisMonth,
+          averageScore,
+          passRate
+        }
+      });
+    } catch (error) {
+      console.error('Analytics overview error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve analytics overview'
+      });
+    }
+  });
+
+  app.get('/api/admin/analytics/charts', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const certificates = await storage.getCertificates();
+      const attempts = await storage.getAttempts();
+      const agencies = await storage.getAgencies();
+
+      // User role distribution
+      const userRoleData = [
+        { name: 'Administrators', value: users.filter(u => u.role === 'admin').length },
+        { name: 'Agents', value: users.filter(u => u.role === 'agent').length }
+      ];
+
+      // Certificate issuance over last 6 months
+      const certificateMonthlyData = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthName = date.toLocaleString('default', { month: 'short' });
+        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        const count = certificates.filter(cert => {
+          const certDate = new Date(cert.issuedAt);
+          return certDate >= monthStart && certDate <= monthEnd;
+        }).length;
+        
+        certificateMonthlyData.push({ month: monthName, certificates: count });
+      }
+
+      // Agency distribution by country
+      const countryStats = agencies.reduce((acc: any, agency) => {
+        acc[agency.country] = (acc[agency.country] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const agencyCountryData = Object.entries(countryStats).map(([country, count]) => ({
+        country,
+        agencies: count
+      }));
+
+      // Quiz performance over time (last 30 attempts)
+      const recentAttempts = attempts
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 30)
+        .reverse();
+
+      const quizPerformanceData = recentAttempts.map((attempt, index) => ({
+        attempt: index + 1,
+        score: attempt.scorePercent
+      }));
+
+      // Score distribution
+      const scoreRanges = [
+        { range: '0-30%', count: 0 },
+        { range: '31-50%', count: 0 },
+        { range: '51-69%', count: 0 },
+        { range: '70-85%', count: 0 },
+        { range: '86-100%', count: 0 }
+      ];
+
+      attempts.forEach(attempt => {
+        const score = attempt.scorePercent;
+        if (score <= 30) scoreRanges[0].count++;
+        else if (score <= 50) scoreRanges[1].count++;
+        else if (score <= 69) scoreRanges[2].count++;
+        else if (score <= 85) scoreRanges[3].count++;
+        else scoreRanges[4].count++;
+      });
+
+      res.json({
+        success: true,
+        charts: {
+          userRoles: userRoleData,
+          certificateMonthly: certificateMonthlyData,
+          agencyCountries: agencyCountryData,
+          quizPerformance: quizPerformanceData,
+          scoreDistribution: scoreRanges
+        }
+      });
+    } catch (error) {
+      console.error('Analytics charts error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve analytics charts'
+      });
+    }
+  });
+
   // Profile picture upload endpoint
   app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
     try {
