@@ -445,6 +445,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin user management endpoints
+  app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      // Get all users with their agency information
+      const allUsers = await storage.getUsers();
+      const agencies = await storage.getAgencies();
+
+      // Enrich users with agency data and remove sensitive info
+      const enrichedUsers = allUsers.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        const agency = agencies.find(a => a.id === user.agencyId);
+        
+        return {
+          ...userWithoutPassword,
+          agency: agency ? {
+            id: agency.id,
+            name: agency.name,
+            country: agency.country,
+            city: agency.city
+          } : null
+        };
+      });
+
+      res.json({
+        success: true,
+        users: enrichedUsers
+      });
+    } catch (error) {
+      console.error('Admin users retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during admin users retrieval'
+      });
+    }
+  });
+
+  // Update user role and information (admin only)
+  app.patch('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role, name, email } = req.body;
+
+      // Validate role if provided
+      if (role && !['admin', 'agent'].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role. Must be admin or agent.'
+        });
+      }
+
+      // Check if user exists
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Prepare update data
+      const updates: any = {};
+      if (role !== undefined) updates.role = role;
+      if (name !== undefined) updates.name = name;
+      if (email !== undefined) updates.email = email;
+
+      const updatedUser = await storage.updateUser(id, updates);
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = updatedUser;
+      
+      res.json({
+        success: true,
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error('User update error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update user'
+      });
+    }
+  });
+
   // Profile picture upload endpoint
   app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
     try {
