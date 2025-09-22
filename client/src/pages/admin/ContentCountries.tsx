@@ -41,13 +41,13 @@ export default function AdminContentCountries() {
   // Countries query
   const { data: countries = [], isLoading: countriesLoading, refetch: refetchCountries } = useQuery({
     queryKey: ['/api/admin/countries'],
-    select: (data) => data.countries as Country[]
+    select: (data: any) => data.countries as Country[]
   });
 
   // Contents query
   const { data: contents = [], isLoading: contentsLoading, refetch: refetchContents } = useQuery({
     queryKey: ['/api/admin/contents'],
-    select: (data) => data.contents as Array<Content & { countryName?: string }>
+    select: (data: any) => data.contents as Array<Content & { countryName?: string }>
   });
 
   // Country form
@@ -370,7 +370,7 @@ export default function AdminContentCountries() {
                             <FormItem>
                               <FormLabel>Flag (emoji or URL)</FormLabel>
                               <FormControl>
-                                <Input placeholder="🇹🇷" {...field} data-testid="input-country-flag" />
+                                <Input placeholder="🇹🇷" {...field} value={field.value || ''} data-testid="input-country-flag" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -407,6 +407,7 @@ export default function AdminContentCountries() {
                                 <Textarea 
                                   placeholder="Country description or additional info..." 
                                   {...field} 
+                                  value={field.value || ''}
                                   data-testid="textarea-country-description"
                                 />
                               </FormControl>
@@ -565,7 +566,7 @@ export default function AdminContentCountries() {
                             <FormItem>
                               <FormLabel>Description</FormLabel>
                               <FormControl>
-                                <Input placeholder="Brief description" {...field} data-testid="input-content-description" />
+                                <Input placeholder="Brief description" {...field} value={field.value || ''} data-testid="input-content-description" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -625,7 +626,7 @@ export default function AdminContentCountries() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Country (Optional)</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} defaultValue={field.value || 'none'}>
                                   <FormControl>
                                     <SelectTrigger data-testid="select-content-country">
                                       <SelectValue placeholder="Select country" />
@@ -655,6 +656,7 @@ export default function AdminContentCountries() {
                                     type="number" 
                                     placeholder="0" 
                                     {...field}
+                                    value={field.value?.toString() || '0'}
                                     onChange={(e) => field.onChange(Number(e.target.value))}
                                     data-testid="input-content-order"
                                   />
@@ -675,6 +677,7 @@ export default function AdminContentCountries() {
                                   placeholder="Content body (HTML, Markdown, etc.)" 
                                   className="min-h-[150px]"
                                   {...field} 
+                                  value={field.value || ''}
                                   data-testid="textarea-content-body"
                                 />
                               </FormControl>
