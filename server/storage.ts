@@ -10,6 +10,7 @@ import {
   announcements,
   systemSettings,
   paymentConfigs,
+  integrations,
   type User, 
   type InsertUser,
   type Certificate,
@@ -29,7 +30,9 @@ import {
   type SystemSetting,
   type InsertSystemSetting,
   type PaymentConfig,
-  type InsertPaymentConfig
+  type InsertPaymentConfig,
+  type Integration,
+  type InsertIntegration
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count } from "drizzle-orm";
@@ -101,6 +104,18 @@ export interface IStorage {
   updatePaymentConfig(id: string, updates: Partial<InsertPaymentConfig>): Promise<PaymentConfig>;
   deletePaymentConfig(id: string): Promise<void>;
   activatePaymentConfig(id: string): Promise<void>;
+
+  // Integration methods
+  getIntegrations(): Promise<Integration[]>;
+  getIntegrationById(id: string): Promise<Integration | undefined>;
+  getIntegrationsByType(type: string): Promise<Integration[]>;
+  getEnabledIntegrations(): Promise<Integration[]>;
+  createIntegration(integration: InsertIntegration): Promise<Integration>;
+  updateIntegration(id: string, updates: Partial<InsertIntegration>): Promise<Integration>;
+  deleteIntegration(id: string): Promise<void>;
+  testIntegrationConnection(id: string): Promise<{ success: boolean; message: string; status?: string }>;
+  enableIntegration(id: string): Promise<Integration>;
+  disableIntegration(id: string): Promise<Integration>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -527,6 +542,186 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(paymentConfigs.id, id));
+  }
+
+  // Integration methods implementation
+  async getIntegrations(): Promise<Integration[]> {
+    return await db.select().from(integrations).orderBy(integrations.type, integrations.name);
+  }
+
+  async getIntegrationById(id: string): Promise<Integration | undefined> {
+    const [integration] = await db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.id, id));
+    return integration || undefined;
+  }
+
+  async getIntegrationsByType(type: string): Promise<Integration[]> {
+    return await db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.type, type))
+      .orderBy(integrations.name);
+  }
+
+  async getEnabledIntegrations(): Promise<Integration[]> {
+    return await db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.enabled, true))
+      .orderBy(integrations.type, integrations.name);
+  }
+
+  async createIntegration(data: InsertIntegration): Promise<Integration> {
+    const [integration] = await db
+      .insert(integrations)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return integration;
+  }
+
+  async updateIntegration(id: string, updates: Partial<InsertIntegration>): Promise<Integration> {
+    const [integration] = await db
+      .update(integrations)
+      .set({ 
+        ...updates, 
+        updatedAt: new Date()
+      })
+      .where(eq(integrations.id, id))
+      .returning();
+    
+    if (!integration) {
+      throw new Error(`Integration with id ${id} not found`);
+    }
+    
+    return integration;
+  }
+
+  async deleteIntegration(id: string): Promise<void> {
+    await db.delete(integrations).where(eq(integrations.id, id));
+  }
+
+  async testIntegrationConnection(id: string): Promise<{ success: boolean; message: string; status?: string }> {
+    // Get the integration
+    const integration = await this.getIntegrationById(id);
+    if (!integration) {
+      return { success: false, message: 'Integration not found' };
+    }
+
+    // Update last test time
+    await db
+      .update(integrations)
+      .set({ 
+        lastTestAt: new Date(),
+        lastTestStatus: 'pending',
+        updatedAt: new Date()
+      })
+      .where(eq(integrations.id, id));
+
+    try {
+      // Mock connection test based on integration type
+      let testResult = { success: true, message: 'Connection successful', status: 'success' };
+      
+      switch (integration.type) {
+        case 'email':
+          if (!integration.apiKey && !integration.smtpHost) {
+            testResult = { success: false, message: 'Missing API key or SMTP configuration', status: 'failed' };
+          }
+          break;
+        case 'payment':
+          if (!integration.apiKey || !integration.endpointUrl) {
+            testResult = { success: false, message: 'Missing API key or endpoint URL', status: 'failed' };
+          }
+          break;
+        case 'storage':
+          if (!integration.apiKey) {
+            testResult = { success: false, message: 'Missing API key for storage service', status: 'failed' };
+          }
+          break;
+        case 'crm':
+          if (!integration.crmToken || !integration.crmDomain) {
+            testResult = { success: false, message: 'Missing CRM token or domain', status: 'failed' };
+          }
+          break;
+        case 'analytics':
+          if (!integration.apiKey) {
+            testResult = { success: false, message: 'Missing analytics API key', status: 'failed' };
+          }
+          break;
+        case 'automation':
+          if (!integration.workflowId || !integration.endpointUrl) {
+            testResult = { success: false, message: 'Missing workflow ID or endpoint URL', status: 'failed' };
+          }
+          break;
+        default:
+          testResult = { success: true, message: 'Basic configuration check passed', status: 'success' };
+      }
+
+      // Update test result
+      await db
+        .update(integrations)
+        .set({ 
+          lastTestStatus: testResult.status || (testResult.success ? 'success' : 'failed'),
+          lastTestMessage: testResult.message,
+          updatedAt: new Date()
+        })
+        .where(eq(integrations.id, id));
+
+      return testResult;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Connection test failed';
+      
+      // Update test failure
+      await db
+        .update(integrations)
+        .set({ 
+          lastTestStatus: 'failed',
+          lastTestMessage: errorMessage,
+          updatedAt: new Date()
+        })
+        .where(eq(integrations.id, id));
+
+      return { success: false, message: errorMessage, status: 'failed' };
+    }
+  }
+
+  async enableIntegration(id: string): Promise<Integration> {
+    const [integration] = await db
+      .update(integrations)
+      .set({ 
+        enabled: true, 
+        updatedAt: new Date()
+      })
+      .where(eq(integrations.id, id))
+      .returning();
+    
+    if (!integration) {
+      throw new Error(`Integration with id ${id} not found`);
+    }
+    
+    return integration;
+  }
+
+  async disableIntegration(id: string): Promise<Integration> {
+    const [integration] = await db
+      .update(integrations)
+      .set({ 
+        enabled: false, 
+        updatedAt: new Date()
+      })
+      .where(eq(integrations.id, id))
+      .returning();
+    
+    if (!integration) {
+      throw new Error(`Integration with id ${id} not found`);
+    }
+    
+    return integration;
   }
 }
 

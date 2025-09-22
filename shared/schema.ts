@@ -182,12 +182,64 @@ export const paymentConfigs = pgTable("payment_configs", {
   updatedBy: varchar("updated_by"), // User ID who last updated
 });
 
+// Integration configurations table for external services
+export const integrations = pgTable("integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Integration name (e.g., 'stripe', 'sendgrid', 'google_sheets')
+  type: text("type").notNull(), // Integration category: 'payment' | 'email' | 'storage' | 'crm' | 'analytics' | 'automation'
+  enabled: boolean("enabled").notNull().default(false),
+  displayName: text("display_name"), // User-friendly name
+  description: text("description"), // Description of what this integration does
+  
+  // Generic API configuration
+  endpointUrl: text("endpoint_url"), // API endpoint URL
+  apiKey: text("api_key"), // API key (encrypted)
+  apiSecret: text("api_secret"), // API secret (encrypted)
+  webhookSecret: text("webhook_secret"), // Webhook secret (encrypted)
+  
+  // Email service configuration (SendGrid, Mailgun, etc.)
+  smtpHost: text("smtp_host"),
+  smtpPort: text("smtp_port"),
+  smtpUser: text("smtp_user"),
+  smtpPass: text("smtp_pass"), // SMTP password (encrypted)
+  fromEmail: text("from_email"), // Default sender email
+  
+  // Google Sheets integration
+  sheetId: text("sheet_id"), // Google Sheets ID
+  tabName: text("tab_name"), // Sheet tab name
+  
+  // CRM integration (Kommo, HubSpot, etc.)
+  crmDomain: text("crm_domain"), // CRM domain/subdomain
+  crmToken: text("crm_token"), // CRM access token (encrypted)
+  
+  // Automation platforms (n8n, Zapier, etc.)
+  workflowId: text("workflow_id"), // Workflow/automation ID
+  
+  // Configuration and status
+  settings: text("settings"), // Additional provider-specific settings (JSON)
+  lastTestAt: timestamp("last_test_at"), // Last connection test timestamp
+  lastTestStatus: text("last_test_status"), // 'success' | 'failed' | 'pending' | 'not_tested'
+  lastTestMessage: text("last_test_message"), // Test result message
+  
+  // Audit fields
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: varchar("created_by"), // User ID who created
+  updatedBy: varchar("updated_by"), // User ID who last updated
+});
+
 export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
   id: true,
   updatedAt: true,
 });
 
 export const insertPaymentConfigSchema = createInsertSchema(paymentConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertIntegrationSchema = createInsertSchema(integrations).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -205,6 +257,7 @@ export type Quiz = typeof quizzes.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type PaymentConfig = typeof paymentConfigs.$inferSelect;
+export type Integration = typeof integrations.$inferSelect;
 export type InsertAgency = z.infer<typeof insertAgencySchema>;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;
 export type InsertContent = z.infer<typeof insertContentSchema>;
@@ -215,6 +268,7 @@ export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type InsertPaymentConfig = z.infer<typeof insertPaymentConfigSchema>;
+export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [

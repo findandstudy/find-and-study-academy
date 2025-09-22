@@ -1752,6 +1752,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Integration management endpoints
+  app.get('/api/admin/integrations', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { type, enabled } = req.query;
+      let integrations;
+
+      if (type) {
+        integrations = await storage.getIntegrationsByType(type as string);
+      } else if (enabled === 'true') {
+        integrations = await storage.getEnabledIntegrations();
+      } else {
+        integrations = await storage.getIntegrations();
+      }
+
+      // Mask sensitive data in API responses
+      const maskedIntegrations = integrations.map(integration => ({
+        ...integration,
+        apiKey: integration.apiKey ? '***masked***' : null,
+        apiSecret: integration.apiSecret ? '***masked***' : null,
+        webhookSecret: integration.webhookSecret ? '***masked***' : null,
+        smtpPass: integration.smtpPass ? '***masked***' : null,
+        crmToken: integration.crmToken ? '***masked***' : null,
+      }));
+
+      res.json({
+        success: true,
+        integrations: maskedIntegrations,
+        count: maskedIntegrations.length
+      });
+    } catch (error) {
+      console.error('Error fetching integrations:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch integrations'
+      });
+    }
+  });
+
+  app.post('/api/admin/integrations', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { 
+        name, 
+        type, 
+        enabled, 
+        displayName, 
+        description,
+        endpointUrl,
+        apiKey,
+        apiSecret,
+        webhookSecret,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+        fromEmail,
+        sheetId,
+        tabName,
+        crmDomain,
+        crmToken,
+        workflowId,
+        settings
+      } = req.body;
+
+      if (!name || !type) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name and type are required'
+        });
+      }
+
+      const validTypes = ['payment', 'email', 'storage', 'crm', 'analytics', 'automation'];
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid integration type. Must be one of: ' + validTypes.join(', ')
+        });
+      }
+
+      const newIntegration = await storage.createIntegration({
+        name,
+        type,
+        enabled: enabled || false,
+        displayName,
+        description,
+        endpointUrl,
+        apiKey,
+        apiSecret,
+        webhookSecret,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+        fromEmail,
+        sheetId,
+        tabName,
+        crmDomain,
+        crmToken,
+        workflowId,
+        settings: settings ? JSON.stringify(settings) : undefined,
+        createdBy: authenticatedUser.id,
+        updatedBy: authenticatedUser.id
+      });
+
+      const maskedIntegration = {
+        ...newIntegration,
+        apiKey: newIntegration.apiKey ? '***masked***' : null,
+        apiSecret: newIntegration.apiSecret ? '***masked***' : null,
+        webhookSecret: newIntegration.webhookSecret ? '***masked***' : null,
+        smtpPass: newIntegration.smtpPass ? '***masked***' : null,
+        crmToken: newIntegration.crmToken ? '***masked***' : null,
+      };
+
+      res.status(201).json({
+        success: true,
+        integration: maskedIntegration,
+        message: 'Integration created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating integration:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create integration'
+      });
+    }
+  });
+
+  app.put('/api/admin/integrations/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { id } = req.params;
+      const updates = req.body;
+
+      const existingIntegration = await storage.getIntegrationById(id);
+      if (!existingIntegration) {
+        return res.status(404).json({
+          success: false,
+          message: 'Integration not found'
+        });
+      }
+
+      const filteredUpdates = { ...updates };
+      ['apiKey', 'apiSecret', 'webhookSecret', 'smtpPass', 'crmToken'].forEach(key => {
+        if (filteredUpdates[key] === '') {
+          delete filteredUpdates[key];
+        }
+      });
+
+      if (filteredUpdates.settings && typeof filteredUpdates.settings !== 'string') {
+        filteredUpdates.settings = JSON.stringify(filteredUpdates.settings);
+      }
+
+      const updatedIntegration = await storage.updateIntegration(id, {
+        ...filteredUpdates,
+        updatedBy: authenticatedUser.id
+      });
+
+      const maskedIntegration = {
+        ...updatedIntegration,
+        apiKey: updatedIntegration.apiKey ? '***masked***' : null,
+        apiSecret: updatedIntegration.apiSecret ? '***masked***' : null,
+        webhookSecret: updatedIntegration.webhookSecret ? '***masked***' : null,
+        smtpPass: updatedIntegration.smtpPass ? '***masked***' : null,
+        crmToken: updatedIntegration.crmToken ? '***masked***' : null,
+      };
+
+      res.json({
+        success: true,
+        integration: maskedIntegration,
+        message: 'Integration updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating integration:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update integration'
+      });
+    }
+  });
+
+  app.post('/api/admin/integrations/:id/test', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const integration = await storage.getIntegrationById(id);
+      if (!integration) {
+        return res.status(404).json({
+          success: false,
+          message: 'Integration not found'
+        });
+      }
+
+      const testResult = await storage.testIntegrationConnection(id);
+
+      res.json({
+        success: true,
+        testResult,
+        message: testResult.success ? 'Connection test successful' : 'Connection test failed'
+      });
+    } catch (error) {
+      console.error('Error testing integration connection:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to test integration connection'
+      });
+    }
+  });
+
+  app.post('/api/admin/integrations/:id/enable', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const integration = await storage.getIntegrationById(id);
+      if (!integration) {
+        return res.status(404).json({
+          success: false,
+          message: 'Integration not found'
+        });
+      }
+
+      const enabledIntegration = await storage.enableIntegration(id);
+
+      const maskedIntegration = {
+        ...enabledIntegration,
+        apiKey: enabledIntegration.apiKey ? '***masked***' : null,
+        apiSecret: enabledIntegration.apiSecret ? '***masked***' : null,
+        webhookSecret: enabledIntegration.webhookSecret ? '***masked***' : null,
+        smtpPass: enabledIntegration.smtpPass ? '***masked***' : null,
+        crmToken: enabledIntegration.crmToken ? '***masked***' : null,
+      };
+
+      res.json({
+        success: true,
+        integration: maskedIntegration,
+        message: 'Integration enabled successfully'
+      });
+    } catch (error) {
+      console.error('Error enabling integration:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to enable integration'
+      });
+    }
+  });
+
+  app.delete('/api/admin/integrations/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const integration = await storage.getIntegrationById(id);
+      if (!integration) {
+        return res.status(404).json({
+          success: false,
+          message: 'Integration not found'
+        });
+      }
+
+      await storage.deleteIntegration(id);
+
+      res.json({
+        success: true,
+        message: 'Integration deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting integration:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete integration'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
