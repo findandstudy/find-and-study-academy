@@ -23,7 +23,9 @@ import {
   BookOpen,
   VideoIcon,
   FileIcon,
-  HelpCircle
+  HelpCircle,
+  Power,
+  PowerOff
 } from 'lucide-react';
 import { insertCountrySchema, insertContentSchema, type Country, type Content, type InsertCountry, type InsertContent } from '@shared/schema';
 
@@ -121,6 +123,20 @@ export default function AdminContentCountries() {
     },
     onError: () => {
       toast({ title: 'Error', description: 'Failed to delete country', variant: 'destructive' });
+    }
+  });
+
+  const toggleCountryStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest('PATCH', `/api/admin/countries/${id}`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Country status updated successfully' });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/countries'] });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to update country status', variant: 'destructive' });
     }
   });
 
@@ -238,6 +254,11 @@ export default function AdminContentCountries() {
     if (window.confirm('Are you sure you want to delete this country? This action cannot be undone.')) {
       deleteCountryMutation.mutate(id);
     }
+  };
+
+  const handleToggleCountryStatus = (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    toggleCountryStatusMutation.mutate({ id, status: newStatus });
   };
 
   const handleDeleteContent = (id: string) => {
@@ -441,6 +462,20 @@ export default function AdminContentCountries() {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={country.status === 'active' ? 'default' : 'outline'}
+                          onClick={() => handleToggleCountryStatus(country.id, country.status)}
+                          disabled={toggleCountryStatusMutation.isPending}
+                          data-testid={`button-toggle-country-${country.id}`}
+                          title={country.status === 'active' ? 'Deactivate country' : 'Activate country'}
+                        >
+                          {country.status === 'active' ? (
+                            <Power className="w-4 h-4 text-white" />
+                          ) : (
+                            <PowerOff className="w-4 h-4" />
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
