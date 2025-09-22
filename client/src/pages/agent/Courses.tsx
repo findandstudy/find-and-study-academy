@@ -11,14 +11,14 @@ export default function AgentCourses() {
   const { courses } = useDataStore();
   const [selectedCountry, setSelectedCountry] = useState<string>('turkey');
 
-  // Fetch countries and contents from admin panel
+  // Fetch countries and contents from public APIs (no auth required)
   const { data: countries = [] } = useQuery({
-    queryKey: ['/api/admin/countries'],
+    queryKey: ['/api/public/countries'],
     select: (data: any) => data.countries as Country[]
   });
 
   const { data: contents = [] } = useQuery({
-    queryKey: ['/api/admin/contents'],
+    queryKey: ['/api/public/contents'],
     select: (data: any) => data.contents as Array<Content & { countryName?: string }>
   });
 

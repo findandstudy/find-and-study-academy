@@ -115,6 +115,73 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // PUBLIC API endpoints for agents (no authentication required for published content)
+  
+  // Get active countries with published content
+  app.get('/api/public/countries', async (req, res) => {
+    try {
+      const countries = await storage.getCountries();
+      const contents = await storage.getContents();
+      
+      // Filter to only active countries that have published content
+      const activeCountriesWithContent = countries.filter(country => {
+        if (country.status !== 'active') return false;
+        return contents.some(content => 
+          content.countryId === country.id && 
+          content.status === 'published'
+        );
+      });
+      
+      res.json({
+        success: true,
+        countries: activeCountriesWithContent
+      });
+    } catch (error) {
+      console.error('Public countries error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch countries'
+      });
+    }
+  });
+
+  // Get published content (optionally filtered by countryId)
+  app.get('/api/public/contents', async (req, res) => {
+    try {
+      const { countryId } = req.query;
+      const contents = await storage.getContents();
+      const countries = await storage.getCountries();
+      
+      // Filter to only published content
+      let publishedContents = contents.filter(content => content.status === 'published');
+      
+      // Optionally filter by country
+      if (countryId && typeof countryId === 'string') {
+        publishedContents = publishedContents.filter(content => content.countryId === countryId);
+      }
+      
+      // Add country name to each content
+      const contentsWithCountryName = publishedContents.map(content => {
+        const country = countries.find(c => c.id === content.countryId);
+        return {
+          ...content,
+          countryName: country?.name || 'Unknown'
+        };
+      });
+      
+      res.json({
+        success: true,
+        contents: contentsWithCountryName
+      });
+    } catch (error) {
+      console.error('Public contents error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch contents'
+      });
+    }
+  });
+
   // Quiz attempt submission endpoint (required for certificate validation)
   app.post('/api/attempts', requireAuth, async (req, res) => {
     try {
