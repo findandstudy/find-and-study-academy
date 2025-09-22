@@ -667,6 +667,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin announcements management endpoints
+  app.get('/api/admin/announcements', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const announcements = await storage.getAnnouncements();
+      res.json({
+        success: true,
+        announcements
+      });
+    } catch (error) {
+      console.error('Admin announcements retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve announcements'
+      });
+    }
+  });
+
+  app.post('/api/admin/announcements', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { title, content, type, priority, targetAudience, status, publishedAt, expiresAt } = req.body;
+
+      // Validate required fields
+      if (!title || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title and content are required'
+        });
+      }
+
+      // Create announcement with creator info
+      const announcementData = {
+        title,
+        content,
+        type: type || 'info',
+        priority: priority || 'medium',
+        targetAudience: targetAudience || 'all',
+        status: status || 'draft',
+        publishedAt: publishedAt ? new Date(publishedAt) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdBy: authenticatedUser.id
+      };
+
+      const newAnnouncement = await storage.createAnnouncement(announcementData);
+
+      res.json({
+        success: true,
+        message: 'Announcement created successfully',
+        announcement: newAnnouncement
+      });
+    } catch (error) {
+      console.error('Create announcement error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create announcement'
+      });
+    }
+  });
+
+  app.put('/api/admin/announcements/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content, type, priority, targetAudience, status, publishedAt, expiresAt } = req.body;
+
+      // Check if announcement exists
+      const existingAnnouncement = await storage.getAnnouncementById(id);
+      if (!existingAnnouncement) {
+        return res.status(404).json({
+          success: false,
+          message: 'Announcement not found'
+        });
+      }
+
+      // Update announcement
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      if (content !== undefined) updateData.content = content;
+      if (type !== undefined) updateData.type = type;
+      if (priority !== undefined) updateData.priority = priority;
+      if (targetAudience !== undefined) updateData.targetAudience = targetAudience;
+      if (status !== undefined) updateData.status = status;
+      if (publishedAt !== undefined) updateData.publishedAt = publishedAt ? new Date(publishedAt) : null;
+      if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+
+      const updatedAnnouncement = await storage.updateAnnouncement(id, updateData);
+
+      res.json({
+        success: true,
+        message: 'Announcement updated successfully',
+        announcement: updatedAnnouncement
+      });
+    } catch (error) {
+      console.error('Update announcement error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update announcement'
+      });
+    }
+  });
+
+  app.delete('/api/admin/announcements/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if announcement exists
+      const existingAnnouncement = await storage.getAnnouncementById(id);
+      if (!existingAnnouncement) {
+        return res.status(404).json({
+          success: false,
+          message: 'Announcement not found'
+        });
+      }
+
+      await storage.deleteAnnouncement(id);
+
+      res.json({
+        success: true,
+        message: 'Announcement deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete announcement error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete announcement'
+      });
+    }
+  });
+
   // Profile picture upload endpoint
   app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
     try {

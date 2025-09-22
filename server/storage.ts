@@ -7,19 +7,23 @@ import {
   agencies,
   countries,
   contents,
+  announcements,
   type User, 
   type InsertUser,
   type Certificate,
   type Course,
   type Attempt,
   type Quiz,
+  type InsertQuiz,
   type Agency,
   type InsertAgency,
   type InsertCertificate,
   type Country,
   type InsertCountry,
   type Content,
-  type InsertContent
+  type InsertContent,
+  type Announcement,
+  type InsertAnnouncement
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count } from "drizzle-orm";
@@ -68,6 +72,13 @@ export interface IStorage {
   updateContent(id: string, updates: Partial<InsertContent>): Promise<Content>;
   deleteContent(id: string): Promise<void>;
   getContentById(id: string): Promise<Content | undefined>;
+
+  // Announcement methods
+  getAnnouncements(): Promise<Array<Announcement & { creatorName?: string }>>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
+  deleteAnnouncement(id: string): Promise<void>;
+  getAnnouncementById(id: string): Promise<Announcement | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -326,6 +337,67 @@ export class DatabaseStorage implements IStorage {
   async getContentById(id: string): Promise<Content | undefined> {
     const [content] = await db.select().from(contents).where(eq(contents.id, id));
     return content || undefined;
+  }
+
+  // Announcement methods implementation
+  async getAnnouncements(): Promise<Array<Announcement & { creatorName?: string }>> {
+    const announcementsWithCreator = await db
+      .select({
+        id: announcements.id,
+        title: announcements.title,
+        content: announcements.content,
+        type: announcements.type,
+        priority: announcements.priority,
+        targetAudience: announcements.targetAudience,
+        status: announcements.status,
+        publishedAt: announcements.publishedAt,
+        expiresAt: announcements.expiresAt,
+        createdBy: announcements.createdBy,
+        createdAt: announcements.createdAt,
+        updatedAt: announcements.updatedAt,
+        creatorName: users.name
+      })
+      .from(announcements)
+      .leftJoin(users, eq(announcements.createdBy, users.id))
+      .orderBy(announcements.createdAt);
+
+    // Convert null to undefined for type compatibility
+    return announcementsWithCreator.map(item => ({
+      ...item,
+      creatorName: item.creatorName ?? undefined
+    }));
+  }
+
+  async createAnnouncement(insertAnnouncement: InsertAnnouncement): Promise<Announcement> {
+    const [announcement] = await db
+      .insert(announcements)
+      .values({
+        ...insertAnnouncement,
+        updatedAt: new Date()
+      })
+      .returning();
+    return announcement;
+  }
+
+  async updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement> {
+    const [announcement] = await db
+      .update(announcements)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(announcements.id, id))
+      .returning();
+    return announcement;
+  }
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
+  }
+
+  async getAnnouncementById(id: string): Promise<Announcement | undefined> {
+    const [announcement] = await db.select().from(announcements).where(eq(announcements.id, id));
+    return announcement || undefined;
   }
 }
 

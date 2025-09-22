@@ -97,6 +97,22 @@ export const attempts = pgTable("attempts", {
   date: timestamp("date").notNull().defaultNow(),
 });
 
+// Announcements table
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull().default('info'), // 'info' | 'warning' | 'success' | 'error'
+  priority: text("priority").notNull().default('medium'), // 'low' | 'medium' | 'high' | 'urgent'
+  targetAudience: text("target_audience").notNull().default('all'), // 'all' | 'admins' | 'agents'
+  status: text("status").notNull().default('draft'), // 'draft' | 'published' | 'archived'
+  publishedAt: timestamp("published_at"),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull(), // userId of creator
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -129,6 +145,12 @@ export const insertQuizSchema = createInsertSchema(quizzes).omit({
   updatedAt: true,
 });
 
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Agency = typeof agencies.$inferSelect;
@@ -138,6 +160,7 @@ export type Certificate = typeof certificates.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Attempt = typeof attempts.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
 export type InsertAgency = z.infer<typeof insertAgencySchema>;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;
 export type InsertContent = z.infer<typeof insertContentSchema>;
@@ -145,6 +168,7 @@ export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [
