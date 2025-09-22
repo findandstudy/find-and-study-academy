@@ -8,6 +8,8 @@ import {
   countries,
   contents,
   announcements,
+  systemSettings,
+  paymentConfigs,
   type User, 
   type InsertUser,
   type Certificate,
@@ -23,7 +25,11 @@ import {
   type Content,
   type InsertContent,
   type Announcement,
-  type InsertAnnouncement
+  type InsertAnnouncement,
+  type SystemSetting,
+  type InsertSystemSetting,
+  type PaymentConfig,
+  type InsertPaymentConfig
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count } from "drizzle-orm";
@@ -79,6 +85,22 @@ export interface IStorage {
   updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
   deleteAnnouncement(id: string): Promise<void>;
   getAnnouncementById(id: string): Promise<Announcement | undefined>;
+
+  // System Settings methods
+  getSystemSettings(): Promise<SystemSetting[]>;
+  getSystemSettingByKey(key: string): Promise<SystemSetting | undefined>;
+  createSystemSetting(setting: InsertSystemSetting): Promise<SystemSetting>;
+  updateSystemSetting(key: string, updates: Partial<InsertSystemSetting>): Promise<SystemSetting>;
+  deleteSystemSetting(key: string): Promise<void>;
+
+  // Payment Configuration methods
+  getPaymentConfigs(): Promise<PaymentConfig[]>;
+  getActivePaymentConfig(): Promise<PaymentConfig | undefined>;
+  getPaymentConfigById(id: string): Promise<PaymentConfig | undefined>;
+  createPaymentConfig(config: InsertPaymentConfig): Promise<PaymentConfig>;
+  updatePaymentConfig(id: string, updates: Partial<InsertPaymentConfig>): Promise<PaymentConfig>;
+  deletePaymentConfig(id: string): Promise<void>;
+  activatePaymentConfig(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,6 +420,113 @@ export class DatabaseStorage implements IStorage {
   async getAnnouncementById(id: string): Promise<Announcement | undefined> {
     const [announcement] = await db.select().from(announcements).where(eq(announcements.id, id));
     return announcement || undefined;
+  }
+
+  // System Settings methods implementation
+  async getSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings).orderBy(systemSettings.category, systemSettings.key);
+  }
+
+  async getSystemSettingByKey(key: string): Promise<SystemSetting | undefined> {
+    const [setting] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key));
+    return setting || undefined;
+  }
+
+  async createSystemSetting(insertSetting: InsertSystemSetting): Promise<SystemSetting> {
+    const [setting] = await db
+      .insert(systemSettings)
+      .values({
+        ...insertSetting,
+        updatedAt: new Date()
+      })
+      .returning();
+    return setting;
+  }
+
+  async updateSystemSetting(key: string, updates: Partial<InsertSystemSetting>): Promise<SystemSetting> {
+    const [setting] = await db
+      .update(systemSettings)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(systemSettings.key, key))
+      .returning();
+    return setting;
+  }
+
+  async deleteSystemSetting(key: string): Promise<void> {
+    await db.delete(systemSettings).where(eq(systemSettings.key, key));
+  }
+
+  // Payment Configuration methods implementation
+  async getPaymentConfigs(): Promise<PaymentConfig[]> {
+    return await db.select().from(paymentConfigs).orderBy(paymentConfigs.provider, paymentConfigs.displayName);
+  }
+
+  async getActivePaymentConfig(): Promise<PaymentConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(paymentConfigs)
+      .where(eq(paymentConfigs.isActive, true));
+    return config || undefined;
+  }
+
+  async getPaymentConfigById(id: string): Promise<PaymentConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(paymentConfigs)
+      .where(eq(paymentConfigs.id, id));
+    return config || undefined;
+  }
+
+  async createPaymentConfig(insertConfig: InsertPaymentConfig): Promise<PaymentConfig> {
+    const [config] = await db
+      .insert(paymentConfigs)
+      .values({
+        ...insertConfig,
+        updatedAt: new Date()
+      })
+      .returning();
+    return config;
+  }
+
+  async updatePaymentConfig(id: string, updates: Partial<InsertPaymentConfig>): Promise<PaymentConfig> {
+    const [config] = await db
+      .update(paymentConfigs)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(paymentConfigs.id, id))
+      .returning();
+    return config;
+  }
+
+  async deletePaymentConfig(id: string): Promise<void> {
+    await db.delete(paymentConfigs).where(eq(paymentConfigs.id, id));
+  }
+
+  async activatePaymentConfig(id: string): Promise<void> {
+    // First, deactivate all payment configs
+    await db
+      .update(paymentConfigs)
+      .set({
+        isActive: false,
+        updatedAt: new Date()
+      });
+
+    // Then, activate the specified config
+    await db
+      .update(paymentConfigs)
+      .set({
+        isActive: true,
+        updatedAt: new Date()
+      })
+      .where(eq(paymentConfigs.id, id));
   }
 }
 

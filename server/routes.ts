@@ -795,6 +795,356 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System Settings endpoints
+  app.get('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getSystemSettings();
+      res.json({
+        success: true,
+        settings
+      });
+    } catch (error) {
+      console.error('Settings retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve system settings'
+      });
+    }
+  });
+
+  app.post('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { key, value, category, type, description, isPublic } = req.body;
+
+      if (!key || value === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'Key and value are required'
+        });
+      }
+
+      const settingData = {
+        key,
+        value: typeof value === 'string' ? value : JSON.stringify(value),
+        category: category || 'general',
+        type: type || 'string',
+        description,
+        isPublic: isPublic || false,
+        updatedBy: authenticatedUser.id
+      };
+
+      const newSetting = await storage.createSystemSetting(settingData);
+
+      res.json({
+        success: true,
+        message: 'Setting created successfully',
+        setting: newSetting
+      });
+    } catch (error) {
+      console.error('Create setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create setting'
+      });
+    }
+  });
+
+  app.put('/api/admin/settings/:key', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { key } = req.params;
+      const { value, category, type, description, isPublic } = req.body;
+
+      const existingSetting = await storage.getSystemSettingByKey(key);
+      if (!existingSetting) {
+        return res.status(404).json({
+          success: false,
+          message: 'Setting not found'
+        });
+      }
+
+      const updateData: any = {
+        updatedBy: authenticatedUser.id
+      };
+      if (value !== undefined) updateData.value = typeof value === 'string' ? value : JSON.stringify(value);
+      if (category !== undefined) updateData.category = category;
+      if (type !== undefined) updateData.type = type;
+      if (description !== undefined) updateData.description = description;
+      if (isPublic !== undefined) updateData.isPublic = isPublic;
+
+      const updatedSetting = await storage.updateSystemSetting(key, updateData);
+
+      res.json({
+        success: true,
+        message: 'Setting updated successfully',
+        setting: updatedSetting
+      });
+    } catch (error) {
+      console.error('Update setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update setting'
+      });
+    }
+  });
+
+  app.delete('/api/admin/settings/:key', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { key } = req.params;
+
+      const existingSetting = await storage.getSystemSettingByKey(key);
+      if (!existingSetting) {
+        return res.status(404).json({
+          success: false,
+          message: 'Setting not found'
+        });
+      }
+
+      await storage.deleteSystemSetting(key);
+
+      res.json({
+        success: true,
+        message: 'Setting deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete setting'
+      });
+    }
+  });
+
+  // Payment Configuration endpoints
+  app.get('/api/admin/payment-configs', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const configs = await storage.getPaymentConfigs();
+      
+      // Mask sensitive data in response
+      const maskedConfigs = configs.map(config => ({
+        ...config,
+        secretKey: config.secretKey ? '***masked***' : null,
+        webhookSecret: config.webhookSecret ? '***masked***' : null
+      }));
+
+      res.json({
+        success: true,
+        configs: maskedConfigs
+      });
+    } catch (error) {
+      console.error('Payment configs retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve payment configurations'
+      });
+    }
+  });
+
+  app.get('/api/admin/payment-configs/active', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const activeConfig = await storage.getActivePaymentConfig();
+      
+      if (activeConfig) {
+        // Mask sensitive data
+        const maskedConfig = {
+          ...activeConfig,
+          secretKey: activeConfig.secretKey ? '***masked***' : null,
+          webhookSecret: activeConfig.webhookSecret ? '***masked***' : null
+        };
+        
+        res.json({
+          success: true,
+          config: maskedConfig
+        });
+      } else {
+        res.json({
+          success: true,
+          config: null
+        });
+      }
+    } catch (error) {
+      console.error('Active payment config retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve active payment configuration'
+      });
+    }
+  });
+
+  app.post('/api/admin/payment-configs', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { 
+        provider, 
+        enabled, 
+        displayName, 
+        publicKey, 
+        secretKey, 
+        webhookSecret, 
+        successUrl, 
+        cancelUrl,
+        settings 
+      } = req.body;
+
+      if (!provider) {
+        return res.status(400).json({
+          success: false,
+          message: 'Provider is required'
+        });
+      }
+
+      const configData = {
+        provider,
+        enabled: enabled || false,
+        displayName,
+        publicKey,
+        secretKey, // Note: In production, these should be encrypted
+        webhookSecret, // Note: In production, these should be encrypted
+        successUrl,
+        cancelUrl,
+        settings: settings ? JSON.stringify(settings) : null,
+        isActive: false, // New configs start inactive
+        updatedBy: authenticatedUser.id
+      };
+
+      const newConfig = await storage.createPaymentConfig(configData);
+
+      // Mask sensitive data in response
+      const maskedConfig = {
+        ...newConfig,
+        secretKey: newConfig.secretKey ? '***masked***' : null,
+        webhookSecret: newConfig.webhookSecret ? '***masked***' : null
+      };
+
+      res.json({
+        success: true,
+        message: 'Payment configuration created successfully',
+        config: maskedConfig
+      });
+    } catch (error) {
+      console.error('Create payment config error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create payment configuration'
+      });
+    }
+  });
+
+  app.put('/api/admin/payment-configs/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { id } = req.params;
+      const { 
+        provider, 
+        enabled, 
+        displayName, 
+        publicKey, 
+        secretKey, 
+        webhookSecret, 
+        successUrl, 
+        cancelUrl,
+        settings 
+      } = req.body;
+
+      const existingConfig = await storage.getPaymentConfigById(id);
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          message: 'Payment configuration not found'
+        });
+      }
+
+      const updateData: any = {
+        updatedBy: authenticatedUser.id
+      };
+      if (provider !== undefined) updateData.provider = provider;
+      if (enabled !== undefined) updateData.enabled = enabled;
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (publicKey !== undefined) updateData.publicKey = publicKey;
+      if (secretKey !== undefined) updateData.secretKey = secretKey; // In production, encrypt this
+      if (webhookSecret !== undefined) updateData.webhookSecret = webhookSecret; // In production, encrypt this
+      if (successUrl !== undefined) updateData.successUrl = successUrl;
+      if (cancelUrl !== undefined) updateData.cancelUrl = cancelUrl;
+      if (settings !== undefined) updateData.settings = settings ? JSON.stringify(settings) : null;
+
+      const updatedConfig = await storage.updatePaymentConfig(id, updateData);
+
+      // Mask sensitive data in response
+      const maskedConfig = {
+        ...updatedConfig,
+        secretKey: updatedConfig.secretKey ? '***masked***' : null,
+        webhookSecret: updatedConfig.webhookSecret ? '***masked***' : null
+      };
+
+      res.json({
+        success: true,
+        message: 'Payment configuration updated successfully',
+        config: maskedConfig
+      });
+    } catch (error) {
+      console.error('Update payment config error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update payment configuration'
+      });
+    }
+  });
+
+  app.post('/api/admin/payment-configs/:id/activate', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingConfig = await storage.getPaymentConfigById(id);
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          message: 'Payment configuration not found'
+        });
+      }
+
+      await storage.activatePaymentConfig(id);
+
+      res.json({
+        success: true,
+        message: 'Payment configuration activated successfully'
+      });
+    } catch (error) {
+      console.error('Activate payment config error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to activate payment configuration'
+      });
+    }
+  });
+
+  app.delete('/api/admin/payment-configs/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const existingConfig = await storage.getPaymentConfigById(id);
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          message: 'Payment configuration not found'
+        });
+      }
+
+      await storage.deletePaymentConfig(id);
+
+      res.json({
+        success: true,
+        message: 'Payment configuration deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete payment config error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete payment configuration'
+      });
+    }
+  });
+
   // Profile picture upload endpoint
   app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
     try {

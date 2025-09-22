@@ -151,6 +151,48 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
   updatedAt: true,
 });
 
+// System settings table - stores configuration values
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // Setting identifier (e.g., 'site_name', 'maintenance_mode')
+  value: text("value"), // Setting value (stored as JSON string for complex values)
+  category: text("category").notNull().default('general'), // 'general' | 'security' | 'notification' | 'appearance'
+  type: text("type").notNull().default('string'), // 'string' | 'number' | 'boolean' | 'json'
+  description: text("description"), // Human-readable description
+  isPublic: boolean("is_public").notNull().default(false), // Whether setting is visible to frontend
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: varchar("updated_by"), // User ID who last updated
+});
+
+// Payment configuration table - stores payment provider settings
+export const paymentConfigs = pgTable("payment_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull().default('none'), // 'none' | 'stripe' | 'paypal' | 'razorpay'
+  enabled: boolean("enabled").notNull().default(false),
+  displayName: text("display_name"), // User-friendly provider name
+  publicKey: text("public_key"), // Public API key (encrypted)
+  secretKey: text("secret_key"), // Secret API key (encrypted) 
+  webhookSecret: text("webhook_secret"), // Webhook secret (encrypted)
+  successUrl: text("success_url"), // Payment success redirect URL
+  cancelUrl: text("cancel_url"), // Payment cancel redirect URL
+  settings: text("settings"), // Provider-specific settings (JSON)
+  isActive: boolean("is_active").notNull().default(false), // Only one provider can be active
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: varchar("updated_by"), // User ID who last updated
+});
+
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertPaymentConfigSchema = createInsertSchema(paymentConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Agency = typeof agencies.$inferSelect;
@@ -161,6 +203,8 @@ export type Course = typeof courses.$inferSelect;
 export type Attempt = typeof attempts.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type PaymentConfig = typeof paymentConfigs.$inferSelect;
 export type InsertAgency = z.infer<typeof insertAgencySchema>;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;
 export type InsertContent = z.infer<typeof insertContentSchema>;
@@ -169,6 +213,8 @@ export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type InsertPaymentConfig = z.infer<typeof insertPaymentConfigSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [
