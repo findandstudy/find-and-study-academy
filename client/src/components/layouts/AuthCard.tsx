@@ -16,11 +16,11 @@ export function AuthCard({ children, title, description }: AuthCardProps) {
     >
       <Card className="w-full max-w-md backdrop-blur-sm bg-background/95">
         <CardHeader className="space-y-1 text-center">
-          <div className="mb-6">
+          <div className="mb-8">
             <img 
               src={logoImage} 
               alt="Find & Study Logo" 
-              className="w-32 h-32 mx-auto rounded-md object-contain"
+              className="w-64 h-64 mx-auto rounded-md object-contain"
             />
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>
