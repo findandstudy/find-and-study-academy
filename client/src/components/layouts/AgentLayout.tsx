@@ -93,7 +93,11 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 `}>
                   <item.icon 
                     className="mr-3 h-5 w-5" 
-                    style={(item as any).iconColor ? { color: (item as any).iconColor, stroke: (item as any).iconColor } : undefined}
+                    style={(item as any).iconColor ? { 
+                      color: (item as any).iconColor, 
+                      stroke: (item as any).iconColor,
+                      transform: 'rotate(90deg)'
+                    } : undefined}
                   />
                   {item.name}
                 </div>
