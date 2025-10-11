@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, Role } from '../types';
-import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, SignupData, LoginCredentials } from '../lib/auth';
+import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, SignupData, LoginCredentials, Session } from '../lib/auth';
+import { storage } from '../lib/storage';
 
 interface AuthState {
   user: User | null;
@@ -61,8 +62,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   updateUser: (updates: Partial<User>) => {
-    set((state) => ({
-      user: state.user ? { ...state.user, ...updates } : null
-    }));
+    set((state) => {
+      if (!state.user) return state;
+      
+      const updatedUser = { ...state.user, ...updates };
+      
+      // Persist updated user to session/localStorage
+      const session: Session = { user: updatedUser, role: state.role || updatedUser.role };
+      storage.setSession(session);
+      
+      return { user: updatedUser };
+    });
   }
 }));

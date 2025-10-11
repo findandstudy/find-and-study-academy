@@ -131,9 +131,14 @@ export default function AgentProfile() {
 
       const result = await updateResponse.json();
       
+      console.log('[PROFILE PICTURE] Backend response:', result);
+      console.log('[PROFILE PICTURE] Updating stores with URL:', result.url);
+      
       // Update user in both stores
       updateDataUser(user.id, { profilePicture: result.url } as any);
       updateAuthUser({ profilePicture: result.url } as any);
+      
+      console.log('[PROFILE PICTURE] Updated user in stores, user now:', useAuthStore.getState().user);
       
       toast({
         title: 'Profile Picture Updated',

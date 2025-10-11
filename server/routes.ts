@@ -1254,7 +1254,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Update user profile picture in database
-      await storage.updateUser(authenticatedUser.id, { profilePicture: objectPath });
+      const updatedUser = await storage.updateUser(authenticatedUser.id, { profilePicture: objectPath });
+
+      console.log('[PROFILE PICTURE UPDATE] Success:', {
+        userId: authenticatedUser.id,
+        profilePictureURL: objectPath,
+        updatedUserProfilePicture: updatedUser?.profilePicture
+      });
 
       res.json({
         success: true,
