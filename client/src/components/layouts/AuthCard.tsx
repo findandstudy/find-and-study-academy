@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
+import backgroundImage from '@assets/portal-background.png';
 
 interface AuthCardProps {
   children: React.ReactNode;
@@ -9,8 +10,11 @@ interface AuthCardProps {
 
 export function AuthCard({ children, title, description }: AuthCardProps) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <Card className="w-full max-w-md backdrop-blur-sm bg-background/95">
         <CardHeader className="space-y-1 text-center">
           <div className="mb-6">
             <img 
