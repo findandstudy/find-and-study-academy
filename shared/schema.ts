@@ -58,6 +58,7 @@ export const contents = pgTable("contents", {
   countryId: varchar("country_id"), // Optional - content can be country-specific
   courseId: varchar("course_id"), // Link to courses if needed
   content: text("content"), // Main content body (HTML, markdown, etc.)
+  section: text("section"), // Section/category name (e.g., "A1 Destination Countries", "A2 Advanced Level")
   status: text("status").notNull().default('draft'), // 'draft' | 'published' | 'archived'
   order: integer("order").default(0), // For sorting content within a course/country
   createdAt: timestamp("created_at").notNull().defaultNow(),

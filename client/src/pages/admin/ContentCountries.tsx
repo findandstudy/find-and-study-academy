@@ -214,7 +214,8 @@ export default function AdminContentCountries() {
     const processedData = {
       ...data,
       countryId: data.countryId === 'none' ? null : data.countryId,
-      courseId: data.courseId === 'none' ? null : data.courseId
+      courseId: data.courseId === 'none' ? null : data.courseId,
+      section: data.section === 'none' ? null : data.section
     };
     
     if (editingContent) {
@@ -241,7 +242,8 @@ export default function AdminContentCountries() {
       contentForm.reset({
         ...content,
         countryId: content.countryId || 'none',
-        courseId: content.courseId || 'none'
+        courseId: content.courseId || 'none',
+        section: content.section || 'none'
       });
     } else {
       setEditingContent(null);
@@ -619,6 +621,31 @@ export default function AdminContentCountries() {
                             )}
                           />
                         </div>
+                        <FormField
+                          control={contentForm.control}
+                          name="section"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Section (Optional)</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value || 'none'}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-content-section">
+                                    <SelectValue placeholder="Select section" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">No section</SelectItem>
+                                  <SelectItem value="A1 Destination Countries">A1 Destination Countries</SelectItem>
+                                  <SelectItem value="A2 Advanced Level">A2 Advanced Level</SelectItem>
+                                  <SelectItem value="B1 Professional Topics">B1 Professional Topics</SelectItem>
+                                  <SelectItem value="B2 Expert Training">B2 Expert Training</SelectItem>
+                                  <SelectItem value="C1 Leadership">C1 Leadership</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}

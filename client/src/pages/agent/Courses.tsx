@@ -87,21 +87,34 @@ export default function AgentCourses() {
 
     if (!selectedCountryData) return null;
 
+    // Group contents by section
+    const contentsBySection = countryContents.reduce((acc, content) => {
+      const sectionName = content.section || 'A1 Destination Countries'; // Default section
+      if (!acc[sectionName]) {
+        acc[sectionName] = [];
+      }
+      acc[sectionName].push(content);
+      return acc;
+    }, {} as Record<string, typeof countryContents>);
+
+    // Create sections from grouped contents
+    const sections = Object.entries(contentsBySection).map(([sectionName, sectionContents]) => ({
+      id: `section-${sectionName.toLowerCase().replace(/\s+/g, '-')}`,
+      title: sectionName,
+      lessons: sectionContents.map(content => ({
+        id: content.id,
+        title: content.title,
+        html: content.content || `<h2>${content.title}</h2><p>${content.description}</p>`,
+        quizId: content.type === 'quiz' ? content.id : undefined
+      }))
+    }));
+
     // Create dynamic course from admin contents
     return {
       id: `course-${selectedCountryData.id}`,
       title: `${selectedCountryData.name} Agent Training`,
       slug: `${selectedCountryData.code.toLowerCase()}-training`,
-      sections: [{
-        id: `section-${selectedCountryData.id}`,
-        title: `A1 Destination Countries`,
-        lessons: countryContents.map(content => ({
-          id: content.id,
-          title: content.title,
-          html: content.content || `<h2>${content.title}</h2><p>${content.description}</p>`,
-          quizId: content.type === 'quiz' ? content.id : undefined
-        }))
-      }]
+      sections
     };
   }, [selectedCountryData, countryContents, courses, selectedCountry]);
 
