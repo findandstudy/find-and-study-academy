@@ -7,7 +7,7 @@
 
 ### A. Color Palette
 **Brand Colors (provided):**
-- Primary Navy: 210 75% 30% (`#143591`)
+- Primary Navy: 224 76% 32% (`#143591`)
 - Brand Red: 356 88% 53% (`#ED1C24`) 
 - Pure White: 0 0% 100% (`#FFFFFF`)
 
