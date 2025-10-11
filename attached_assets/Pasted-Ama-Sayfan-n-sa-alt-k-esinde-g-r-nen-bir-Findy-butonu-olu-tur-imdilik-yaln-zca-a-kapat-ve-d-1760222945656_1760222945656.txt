@@ -1,0 +1,77 @@
+Amaç: Sayfanın sağ-alt köşesinde görünen bir “Findy” butonu oluştur. Şimdilik yalnızca aç/kapat ve durum göstergesi olsun. n8n bağlantısı daha sonra eklenecek: şimdiden WEBHOOK_URL değişkenini hazırla ve tıklandığında bu URL’ye POST atabilecek altyapıyı kur (varsayılan null kalsın).
+
+Gereksinimler
+
+Konum: Sağ-alt fixed; masaüstü ve mobil uyumlu.
+
+Renkler: Aksen/primary #ED1C24 (Find And Study kırmızısı). Metin beyaz.
+
+Teknoloji: Vanilla HTML/CSS/JS (framework yok).
+
+Erişilebilirlik:
+
+Buton: aria-label="Chat with Findy"
+
+Klavye ile odaklanabilir (Enter/Space ile tetiklenir).
+
+Durumlar: idle → loading → success / error (ikon/animasyon veya küçük toast).
+
+Değişken: JS içinde en üstte const WEBHOOK_URL = null; tanımla.
+
+Davranış
+
+Tıklama (şimdi):
+
+WEBHOOK_URL === null ise hiçbir ağ isteği yapma; sadece küçük bir toast göster: “Bağlantı yakında hazır olacak.”
+
+Tıklama (ileride, URL girildiğinde):
+
+POST JSON gönder:
+
+{
+  "event": "findy_launcher_click",
+  "source": "findy-launcher",
+  "timestamp": "<ISO>",
+  "sessionId": "<uuid>"
+}
+
+
+Yanıt 200/OK ise success durumunu göster (kısa onay).
+
+Hata/timeout’ta error durumunu göster; tekrar dene düğmesi sun.
+
+UI Ayrıntıları
+
+Buton stili: Daire/oval, gölgeli, sağ-alt 20px içerden. Metin: “Findy”.
+
+Hover: %5 koyulaşma. Focus ring görünür.
+
+Toast: Sağ-alta yakın, 2–3 sn’de kaybolsun; success=yeşil, error=amber/kırmızı, info=gri.
+
+Kod/Dosya Yapısı (üret)
+
+index.html — butonun HTML’i (gömülü kullanılabilir).
+
+styles.css — CSS değişkenleri: --findy-accent:#ED1C24.
+
+main.js — WEBHOOK_URL, tıklama handler’ı, toast ve durum yönetimi.
+
+Kodu tek HTML’de inline de sunabilirsin; ancak proje içinde değişkeni kolay değiştirebileceğim şekilde açıkça belirt.
+
+Kabul Kriterleri (Done)
+
+Sağ-alt kırmızı (#ED1C24) Findy butonu görünür; hover/focus çalışır.
+
+Tıklayınca WEBHOOK_URL === null ise “Bağlantı yakında hazır olacak.” tostu çıkar.
+
+WEBHOOK_URL değer verdiğimde tıklama POST atar ve success/error durumları görsel olarak belirginleşir.
+
+Mobilde buton ekran dışına taşmaz (güvenli alan).
+
+Konsolda hata yok; kod sade, yorumlu ve değişkenler başta.
+
+Notlar (gelecek entegrasyon için)
+
+n8n’de Webhook node kurduktan sonra WEBHOOK_URL’i bu node’un URL’siyle değiştirince ekstra kod yazmadan çalışmalı.
+
+Gerekirse debounce (600ms) ve retry (max 1) ekle; ama varsayılan tek deneme yeterli.
