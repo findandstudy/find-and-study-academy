@@ -15,8 +15,8 @@ export function AuthCard({ children, title, description }: AuthCardProps) {
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       <Card className="w-full max-w-md backdrop-blur-sm bg-background/95">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mb-8">
+        <CardHeader className="space-y-1 text-center pt-4 pb-2">
+          <div className="mb-2">
             <img 
               src={logoImage} 
               alt="Find & Study Logo" 
