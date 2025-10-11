@@ -15,7 +15,7 @@ export function AuthCard({ children, title, description }: AuthCardProps) {
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       <Card className="w-full max-w-md backdrop-blur-sm bg-background/95">
-        <CardHeader className="space-y-1 text-center pt-4 pb-2">
+        <CardHeader className="space-y-0 text-center pt-3 pb-1">
           <div className="mb-2">
             <img 
               src={logoImage} 
@@ -25,7 +25,7 @@ export function AuthCard({ children, title, description }: AuthCardProps) {
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>
           {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <p className="text-muted-foreground text-sm mt-1">{description}</p>
           )}
         </CardHeader>
         <CardContent>
