@@ -15,7 +15,8 @@ import {
   Bell,
   LogOut,
   Menu,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
   { name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
   { name: 'Profile', href: '/agent/profile', icon: User },
+  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', icon: Search, external: true, iconColor: '#ed1c24' },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
@@ -81,18 +83,39 @@ export function AgentLayout({ children }: AgentLayoutProps) {
           <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.map((item) => {
               const isActive = location === item.href;
+              const content = (
+                <div className={`
+                  flex items-center px-3 py-2 text-sm font-medium rounded-md hover-elevate transition-colors
+                  ${isActive 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                  }
+                `}>
+                  <item.icon 
+                    className="mr-3 h-5 w-5" 
+                    style={(item as any).iconColor ? { color: (item as any).iconColor, stroke: (item as any).iconColor } : undefined}
+                  />
+                  {item.name}
+                </div>
+              );
+              
+              if ((item as any).external) {
+                return (
+                  <a 
+                    key={item.name} 
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {content}
+                  </a>
+                );
+              }
+              
               return (
                 <Link key={item.name} href={item.href}>
-                  <div className={`
-                    flex items-center px-3 py-2 text-sm font-medium rounded-md hover-elevate transition-colors
-                    ${isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                    }
-                  `}>
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
-                  </div>
+                  {content}
                 </Link>
               );
             })}
