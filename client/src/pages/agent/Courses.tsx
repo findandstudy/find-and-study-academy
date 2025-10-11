@@ -14,12 +14,18 @@ export default function AgentCourses() {
   // Fetch countries and contents from public APIs (no auth required)
   const { data: countries = [] } = useQuery({
     queryKey: ['/api/public/countries'],
-    select: (data: any) => data.countries as Country[]
+    select: (data: any) => {
+      console.log('🌍 Public countries API response:', data);
+      return data.countries as Country[];
+    }
   });
 
   const { data: contents = [] } = useQuery({
     queryKey: ['/api/public/contents'],
-    select: (data: any) => data.contents as Array<Content & { countryName?: string }>
+    select: (data: any) => {
+      console.log('📚 Public contents API response:', data);
+      return data.contents as Array<Content & { countryName?: string }>;
+    }
   });
 
   // Get active countries that have published content
