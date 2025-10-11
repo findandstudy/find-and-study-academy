@@ -19,6 +19,7 @@ import {
   Search
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
+import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
 
 interface AgentLayoutProps {
   children: React.ReactNode;
@@ -32,7 +33,7 @@ const navigation = [
   { name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
   { name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
   { name: 'Profile', href: '/agent/profile', icon: User },
-  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', icon: Search, external: true, iconColor: '#ed1c24' },
+  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
@@ -91,14 +92,22 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                     : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                   }
                 `}>
-                  <item.icon 
-                    className="mr-3 h-5 w-5" 
-                    style={(item as any).iconColor ? { 
-                      color: (item as any).iconColor, 
-                      stroke: (item as any).iconColor,
-                      transform: 'rotate(90deg)'
-                    } : undefined}
-                  />
+                  {(item as any).customIcon ? (
+                    <img 
+                      src={(item as any).customIcon} 
+                      alt={`${item.name} icon`}
+                      className="mr-3 h-5 w-5 object-contain"
+                    />
+                  ) : item.icon ? (
+                    <item.icon 
+                      className="mr-3 h-5 w-5" 
+                      style={(item as any).iconColor ? { 
+                        color: (item as any).iconColor, 
+                        stroke: (item as any).iconColor,
+                        transform: 'rotate(90deg)'
+                      } : undefined}
+                    />
+                  ) : null}
                   {item.name}
                 </div>
               );
