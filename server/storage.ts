@@ -327,6 +327,7 @@ export class DatabaseStorage implements IStorage {
         countryId: contents.countryId,
         courseId: contents.courseId,
         content: contents.content,
+        section: contents.section,
         status: contents.status,
         order: contents.order,
         createdAt: contents.createdAt,
