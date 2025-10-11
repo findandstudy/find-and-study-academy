@@ -130,26 +130,32 @@ export default function AgentCourses() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Courses</h1>
-        <p className="text-muted-foreground mt-1">
-          Complete your agent training and earn certificates.
-        </p>
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 border border-primary/10">
+        <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Courses
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Complete your agent training and earn certificates.
+          </p>
+        </div>
       </div>
 
       <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
         <div className="relative">
-          <TabsList className="inline-flex w-auto gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-hide">
+          <TabsList className="inline-flex w-auto gap-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl overflow-x-auto scrollbar-hide border border-border/50 shadow-sm">
             {activeCountries.map((country) => (
               <TabsTrigger 
                 key={country.id} 
                 value={country.code.toLowerCase()}
-                className="flex items-center gap-2 whitespace-nowrap"
+                className="group relative flex items-center gap-3 whitespace-nowrap px-6 py-3 transition-all duration-300 hover:-translate-y-0.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
                 data-testid={`tab-country-${country.code.toLowerCase()}`}
               >
-                <span>{country.flag}</span>
-                <span>{country.name}</span>
+                <span className="text-2xl transition-transform duration-300 group-hover:scale-110">{country.flag || '🌍'}</span>
+                <span className="font-medium">{country.name}</span>
               </TabsTrigger>
             ))}
           </TabsList>
