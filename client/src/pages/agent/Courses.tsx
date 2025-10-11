@@ -139,19 +139,21 @@ export default function AgentCourses() {
       </div>
 
       <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
-        <TabsList className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full">
-          {activeCountries.map((country) => (
-            <TabsTrigger 
-              key={country.id} 
-              value={country.code.toLowerCase()}
-              className="flex items-center gap-2"
-              data-testid={`tab-country-${country.code.toLowerCase()}`}
-            >
-              <span>{country.flag}</span>
-              <span>{country.name}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="relative">
+          <TabsList className="inline-flex w-auto gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-hide">
+            {activeCountries.map((country) => (
+              <TabsTrigger 
+                key={country.id} 
+                value={country.code.toLowerCase()}
+                className="flex items-center gap-2 whitespace-nowrap"
+                data-testid={`tab-country-${country.code.toLowerCase()}`}
+              >
+                <span>{country.flag}</span>
+                <span>{country.name}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {activeCountries.map((country) => (
           <TabsContent 
