@@ -29,7 +29,7 @@ export default function Login() {
     } else {
       toast({
         title: 'Login Failed',
-        description: 'Invalid email or password. Try admin@findandstudy.com/admin123 or john@agency.com/agent123',
+        description: 'Invalid email or password. Please try again.',
         variant: 'destructive'
       });
     }
@@ -96,13 +96,6 @@ export default function Login() {
             </span>
           </Link>
         </p>
-
-        {/* Demo credentials */}
-        <div className="mt-6 p-3 bg-muted rounded-md">
-          <p className="text-xs text-muted-foreground mb-2">Demo Accounts:</p>
-          <p className="text-xs">Admin: admin@findandstudy.com / admin123</p>
-          <p className="text-xs">Agent: john@agency.com / agent123</p>
-        </div>
       </div>
     </AuthCard>
   );
