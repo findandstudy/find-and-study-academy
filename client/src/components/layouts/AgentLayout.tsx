@@ -123,7 +123,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               variant="outline"
               size="sm"
               onClick={logout}
-              className="w-full"
+              className="w-full hover:bg-[#ed1c24] hover:text-[#ffffff] hover:border-[#ed1c24]"
               data-testid="button-logout"
             >
               <LogOut className="mr-2 h-4 w-4" />
