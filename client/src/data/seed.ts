@@ -286,7 +286,7 @@ export const SEED_PAYMENT_CONFIG: PaymentConfig = {
 export const SEED_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-1',
-    title: 'Welcome to Find And Study Agents Portal',
+    title: 'Welcome to Find And Study',
     content: 'Complete your agent training to unlock full platform access and start helping students achieve their dreams.',
     active: true,
     createdAt: new Date().toISOString()
