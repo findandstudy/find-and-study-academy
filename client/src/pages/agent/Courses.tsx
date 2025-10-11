@@ -14,6 +14,9 @@ export default function AgentCourses() {
   // Fetch countries and contents from public APIs (no auth required)
   const { data: countries = [] } = useQuery({
     queryKey: ['/api/public/countries'],
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     select: (data: any) => {
       console.log('🌍 Public countries API response:', data);
       return data.countries as Country[];
@@ -22,6 +25,9 @@ export default function AgentCourses() {
 
   const { data: contents = [] } = useQuery({
     queryKey: ['/api/public/contents'],
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     select: (data: any) => {
       console.log('📚 Public contents API response:', data);
       return data.contents as Array<Content & { countryName?: string }>;
