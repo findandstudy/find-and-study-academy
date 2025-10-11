@@ -27,10 +27,10 @@ const navigation = [
   { name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
   { name: 'Courses', href: '/agent/courses', icon: BookOpen },
   { name: 'Certificates', href: '/agent/certificates', icon: Award },
-  { name: 'Profile', href: '/agent/profile', icon: User },
   { name: 'My Agency', href: '/agent/agency', icon: Building },
   { name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
   { name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+  { name: 'Profile', href: '/agent/profile', icon: User },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
