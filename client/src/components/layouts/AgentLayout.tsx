@@ -148,7 +148,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
           </Button>
           
           <h1 className="text-lg font-semibold text-foreground">
-            Find And Study - Agents Portal
+            Find And Study Academy
           </h1>
           
           <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
