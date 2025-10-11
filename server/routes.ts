@@ -1,6 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 import { 
   insertCertificateSchema, 
   insertAgencySchema, 
@@ -1212,68 +1214,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Profile picture upload endpoint
-  app.post('/api/upload-profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
+  // Object Storage: Get presigned URL for profile picture upload
+  app.post('/api/profile-picture/upload-url', requireAuth, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Error getting upload URL:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get upload URL'
+      });
+    }
+  });
+
+  // Object Storage: Update profile picture after upload
+  app.put('/api/profile-picture', requireAuth, async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
-      const file = req.file;
-      
-      if (!file) {
+      const { profilePictureURL } = req.body;
+
+      if (!profilePictureURL) {
         return res.status(400).json({
           success: false,
-          message: 'No file uploaded'
+          message: 'profilePictureURL is required'
         });
       }
 
-      // Generate unique filename
-      const fileExtension = path.extname(file.originalname);
-      const filename = `profile_${authenticatedUser.id}_${Date.now()}${fileExtension}`;
+      const objectStorageService = new ObjectStorageService();
       
-      // Use local uploads directory for demo
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
-      
-      // Ensure directory exists
-      try {
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
+      // Set ACL policy for the uploaded profile picture (public visibility)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        profilePictureURL,
+        {
+          owner: authenticatedUser.id,
+          visibility: "public", // Profile pictures are public
         }
-      } catch (mkdirError) {
-        console.error('Failed to create uploads directory:', mkdirError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to prepare upload directory'
-        });
-      }
-      
-      const filePath = path.join(uploadsDir, filename);
-      
-      // Write file
-      try {
-        fs.writeFileSync(filePath, file.buffer);
-      } catch (writeError) {
-        console.error('Failed to write file:', writeError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to save uploaded file'
-        });
-      }
-      
-      // Generate public URL (for demo purposes)
-      const publicUrl = `/api/profile-picture/${filename}`;
-      
+      );
+
       // Update user profile picture in database
-      await storage.updateUser(authenticatedUser.id, { profilePicture: publicUrl });
-      
+      await storage.updateUser(authenticatedUser.id, { profilePicture: objectPath });
+
       res.json({
         success: true,
-        url: publicUrl
+        url: objectPath
       });
-      
     } catch (error) {
-      console.error('Profile picture upload error:', error);
+      console.error('Error updating profile picture:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error during upload'
+        message: 'Failed to update profile picture'
+      });
+    }
+  });
+
+  // Object Storage: Serve profile pictures and other private objects  
+  app.get('/objects/:objectPath(*)', async (req, res) => {
+    try {
+      // Try to get authenticated user (optional for public objects)
+      let userId: string | undefined;
+      try {
+        const token = req.headers['x-user-id'] as string;
+        if (token) {
+          const users = await storage.getUsers();
+          const user = users.find(u => u.id === token);
+          if (user) {
+            userId = user.id;
+          }
+        }
+      } catch (authError) {
+        // Auth failed, userId remains undefined (ok for public objects)
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // Check ACL permissions (public objects don't need auth)
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+
+      if (!canAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied'
+        });
+      }
+
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error('Error serving object:', error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({
+          success: false,
+          message: 'Object not found'
+        });
+      }
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error'
       });
     }
   });
@@ -1307,30 +1349,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Error fetching user data'
-      });
-    }
-  });
-
-  // Serve profile pictures
-  app.get('/api/profile-picture/:filename', (req, res) => {
-    try {
-      const { filename } = req.params;
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'profiles');
-      const filePath = path.join(uploadsDir, filename);
-      
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({
-          success: false,
-          message: 'Image not found'
-        });
-      }
-      
-      res.sendFile(path.resolve(filePath));
-    } catch (error) {
-      console.error('Profile picture serve error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error serving image'
       });
     }
   });
