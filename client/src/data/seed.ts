@@ -288,8 +288,43 @@ export const SEED_ANNOUNCEMENTS: Announcement[] = [
     id: 'ann-1',
     title: 'Welcome to Find And Study',
     content: 'Complete your agent training to unlock full platform access and start helping students achieve their dreams.',
-    active: true,
-    createdAt: new Date().toISOString()
+    type: 'info',
+    priority: 'high',
+    targetAudience: 'all',
+    status: 'published',
+    publishedAt: new Date().toISOString(),
+    expiresAt: null,
+    createdBy: 'admin-1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'ann-2',
+    title: 'New Turkey Course Materials Available',
+    content: 'Updated content and quiz questions for Turkey country course have been published. Please review the changes.',
+    type: 'success',
+    priority: 'medium',
+    targetAudience: 'agents',
+    status: 'published',
+    publishedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(), // 7 days from now
+    createdBy: 'admin-1',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString()
+  },
+  {
+    id: 'ann-3',
+    title: 'Maintenance Scheduled',
+    content: 'System maintenance is scheduled for this weekend. Some features may be temporarily unavailable.',
+    type: 'warning',
+    priority: 'urgent',
+    targetAudience: 'all',
+    status: 'published',
+    publishedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3 * 86400000).toISOString(), // 3 days from now
+    createdBy: 'admin-1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 

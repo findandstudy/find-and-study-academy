@@ -147,8 +147,15 @@ export interface Announcement {
   id: string;
   title: string;
   content: string;
-  active: boolean;
+  type: 'info' | 'warning' | 'success' | 'error';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  targetAudience: 'all' | 'admins' | 'agents';
+  status: 'draft' | 'published' | 'archived';
+  publishedAt: string | null;
+  expiresAt: string | null;
+  createdBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface SubscriptionPreferences {

@@ -10,7 +10,10 @@ export default function AdminDashboard() {
   const { users, certificates, agencies, announcements } = useDataStore();
 
   const agents = users.filter(u => u.role === 'agent');
-  const activeAnnouncements = announcements.filter(a => a.active);
+  const activeAnnouncements = announcements.filter(a => 
+    a.status === 'published' && 
+    (!a.expiresAt || new Date(a.expiresAt) > new Date())
+  );
 
   const stats = [
     {

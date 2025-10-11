@@ -22,12 +22,13 @@ import {
   Trash2, 
   Search,
   Calendar,
-  User,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  AlertTriangle
+  User
 } from 'lucide-react';
+import { 
+  announcementTypeStyles, 
+  announcementPriorityVariants, 
+  announcementStatusVariants 
+} from '@/lib/announcement-helpers';
 
 // Types
 interface Announcement {
@@ -62,36 +63,22 @@ type AnnouncementFormData = z.infer<typeof announcementFormSchema>;
 
 // Type icons
 const getTypeIcon = (type: string) => {
-  switch (type) {
-    case 'info': return <Info className="w-4 h-4 text-blue-500" />;
-    case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
-    case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-    case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
-    default: return <Info className="w-4 h-4" />;
-  }
+  const style = announcementTypeStyles[type as keyof typeof announcementTypeStyles];
+  if (!style) return null;
+  const IconComponent = style.icon;
+  return <IconComponent className={`w-4 h-4 ${style.iconColorSmall}`} />;
 };
 
 // Priority badges
 const getPriorityBadge = (priority: string) => {
-  const variants = {
-    low: 'secondary',
-    medium: 'default',
-    high: 'destructive',
-    urgent: 'destructive'
-  } as const;
-  
-  return <Badge variant={variants[priority as keyof typeof variants] || 'default'}>{priority}</Badge>;
+  const variant = announcementPriorityVariants[priority as keyof typeof announcementPriorityVariants] || 'default';
+  return <Badge variant={variant as any}>{priority}</Badge>;
 };
 
 // Status badges
 const getStatusBadge = (status: string) => {
-  const variants = {
-    draft: 'secondary',
-    published: 'default',
-    archived: 'outline'
-  } as const;
-  
-  return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
+  const variant = announcementStatusVariants[status as keyof typeof announcementStatusVariants] || 'default';
+  return <Badge variant={variant as any}>{status}</Badge>;
 };
 
 export default function AdminAnnouncements() {

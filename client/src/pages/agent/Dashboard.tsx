@@ -5,9 +5,10 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
-import { BookOpen, Award, Users, TrendingUp } from 'lucide-react';
+import { BookOpen, Award, Users, TrendingUp, Bell } from 'lucide-react';
 import { Link } from 'wouter';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
+import { announcementTypeStyles, announcementPriorityVariants } from '@/lib/announcement-helpers';
 
 export default function AgentDashboard() {
   const { user } = useAuthStore();
@@ -16,7 +17,14 @@ export default function AgentDashboard() {
   // Calculate user progress
   const userProgress = progresses.filter(p => p.userId === user?.id);
   const userCertificates = certificates.filter(c => c.userId === user?.id);
-  const activeAnnouncements = announcements.filter(a => a.active);
+  
+  // Filter announcements: published, for agents or all, and not expired
+  const activeAnnouncements = announcements.filter(a => {
+    const isPublished = a.status === 'published';
+    const isTargeted = a.targetAudience === 'all' || a.targetAudience === 'agents';
+    const notExpired = !a.expiresAt || new Date(a.expiresAt) > new Date();
+    return isPublished && isTargeted && notExpired;
+  });
 
   // Mock stats for demo //todo: remove mock functionality
   const stats = [
@@ -68,19 +76,48 @@ export default function AgentDashboard() {
 
       {/* Announcements */}
       {activeAnnouncements.length > 0 && (
-        <div className="space-y-4">
-          {activeAnnouncements.map(announcement => (
-            <Card key={announcement.id} className="border-primary/20 bg-primary/5">
-              <CardContent className="pt-6">
-                <h3 className="font-semibold text-primary mb-2">
-                  {announcement.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {announcement.content}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-3" data-testid="section-announcements">
+          <div className="flex items-center gap-2 mb-2">
+            <Bell className="w-5 h-5 text-primary" data-testid="icon-announcements" />
+            <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">Announcements</h2>
+          </div>
+          {activeAnnouncements.map(announcement => {
+            const style = announcementTypeStyles[announcement.type];
+            const IconComponent = style.icon;
+            
+            return (
+              <Card 
+                key={announcement.id} 
+                className={`${style.bg} border ${style.border}`}
+                data-testid={`card-announcement-${announcement.id}`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 ${style.iconColor}`} data-testid={`icon-announcement-type-${announcement.type}`}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-foreground" data-testid={`text-announcement-title-${announcement.id}`}>
+                          {announcement.title}
+                        </h3>
+                        <Badge 
+                          variant={announcementPriorityVariants[announcement.priority] as any} 
+                          className="text-xs"
+                          data-testid={`badge-announcement-priority-${announcement.id}`}
+                        >
+                          {announcement.priority.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground" data-testid={`text-announcement-content-${announcement.id}`}>
+                        {announcement.content}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
