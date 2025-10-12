@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { 
@@ -38,6 +39,7 @@ const navigation = [
 
 export function AgentLayout({ children }: AgentLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
   const { agencies } = useDataStore();
@@ -56,23 +58,36 @@ export function AgentLayout({ children }: AgentLayoutProps) {
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-transform duration-300 ease-in-out lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between h-24 px-6 border-b border-card-border">
+          <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative">
             <Link href="/agent/dashboard" className="flex-1 flex justify-center">
+              {/* Mobile: always show full logo */}
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className="w-36 h-36 rounded object-contain hover-elevate cursor-pointer"
+                className="w-28 h-28 rounded object-contain hover-elevate cursor-pointer lg:hidden"
+              />
+              {/* Desktop: show full logo when expanded, small icon when collapsed */}
+              <img 
+                src={logoImage} 
+                alt="Find & Study Logo" 
+                className={`rounded object-contain hover-elevate cursor-pointer hidden lg:block ${sidebarCollapsed ? 'lg:hidden' : 'w-28 h-28'}`}
+              />
+              <img 
+                src={portalIcon} 
+                alt="Find & Study" 
+                className={`w-10 h-10 rounded object-contain hover-elevate cursor-pointer hidden ${sidebarCollapsed ? 'lg:block' : ''}`}
               />
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden absolute right-6"
+              className="lg:hidden absolute right-2"
               onClick={() => setSidebarOpen(false)}
               data-testid="button-close-sidebar"
             >
@@ -87,6 +102,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               const content = (
                 <div className={`
                   flex items-center px-3 py-2 text-sm font-medium rounded-md hover-elevate transition-colors
+                  ${sidebarCollapsed ? 'lg:justify-center' : ''}
                   ${isActive 
                     ? 'bg-primary text-primary-foreground' 
                     : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -96,11 +112,11 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                     <img 
                       src={(item as any).customIcon} 
                       alt={`${item.name} icon`}
-                      className="mr-3 h-5 w-5 object-contain"
+                      className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
                     />
                   ) : item.icon ? (
                     <item.icon 
-                      className="mr-3 h-5 w-5" 
+                      className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
                       style={(item as any).iconColor ? { 
                         color: (item as any).iconColor, 
                         stroke: (item as any).iconColor,
@@ -108,12 +124,30 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                       } : undefined}
                     />
                   ) : null}
-                  {item.name}
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
                 </div>
               );
-              
+
+              // Wrap in tooltip only on desktop when collapsed
               if ((item as any).external) {
-                return (
+                return sidebarCollapsed ? (
+                  <Tooltip key={item.name}>
+                    <TooltipTrigger asChild>
+                      <a 
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        className="hidden lg:block"
+                      >
+                        {content}
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {item.name}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
                   <a 
                     key={item.name} 
                     href={item.href}
@@ -126,7 +160,18 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 );
               }
               
-              return (
+              return sidebarCollapsed ? (
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>
+                    <Link href={item.href} className="hidden lg:block">
+                      {content}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {item.name}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
                 <Link key={item.name} href={item.href}>
                   {content}
                 </Link>
@@ -136,56 +181,102 @@ export function AgentLayout({ children }: AgentLayoutProps) {
 
           {/* User section */}
           <div className="p-4 border-t border-card-border">
-            <div className="flex items-center space-x-3 mb-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
-                <AvatarFallback className="text-sm font-medium">
-                  {user?.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {user?.name}
-                </p>
-                <Badge variant="secondary" className="text-xs">Agent</Badge>
+            {/* Mobile & Desktop expanded: full user info */}
+            <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
+              <div className="flex items-center space-x-3 mb-2">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                  <AvatarFallback className="text-sm font-medium">
+                    {user?.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {user?.name}
+                  </p>
+                  <Badge variant="secondary" className="text-xs">Agent</Badge>
+                </div>
               </div>
+              {userAgency && (
+                <p className="text-xs text-muted-foreground mb-4 px-2">
+                  {userAgency.name}
+                </p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="w-full hover:bg-[#ed1c24] hover:text-[#ffffff] hover:border-[#ed1c24]"
+                data-testid="button-logout"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </Button>
             </div>
-            {userAgency && (
-              <p className="text-xs text-muted-foreground mb-4 px-2">
-                {userAgency.name}
-              </p>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              className="w-full hover:bg-[#ed1c24] hover:text-[#ffffff] hover:border-[#ed1c24]"
-              data-testid="button-logout"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
-            </Button>
+            
+            {/* Desktop collapsed: icon only */}
+            <div className={`flex-col items-center space-y-3 ${sidebarCollapsed ? 'hidden lg:flex' : 'hidden'}`}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                    <AvatarFallback className="text-sm font-medium">
+                      {user?.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {user?.name}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={logout}
+                    className="hover:bg-[#ed1c24] hover:text-[#ffffff]"
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Sign out
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         {/* Top bar */}
         <div className="sticky top-0 z-30 flex h-16 items-center justify-between bg-background border-b border-border px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-            data-testid="button-open-sidebar"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          
-          <h1 className="text-lg font-semibold text-foreground">
-            Find And Study Academy
-          </h1>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+              data-testid="button-open-sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:flex"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              data-testid="button-toggle-sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold text-foreground">
+              Find And Study Academy
+            </h1>
+          </div>
           
           <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
         </div>
