@@ -38,7 +38,7 @@ export default function AdminDashboard() {
       title: 'Total Agents',
       value: totalAgents,
       icon: Users,
-      change: `${activeAgencies} active agencies`,
+      change: `${agencies.length} agencies registered`,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
@@ -95,8 +95,8 @@ export default function AdminDashboard() {
   
   const scoreDistributionData = scoreRanges.filter(r => r.count > 0);
   
-  // Agent progress overview
-  const agentProgressData = agents.slice(0, 10).map(agent => {
+  // Agent progress overview - calculate for all agents, then sort and slice
+  const agentProgressData = agents.map(agent => {
     const agentProgress = progresses.filter(p => p.userId === agent.id);
     const avgProgress = agentProgress.length > 0
       ? Math.round(agentProgress.reduce((sum, p) => sum + p.percent, 0) / agentProgress.length)
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
       certificates: agentCerts.length,
       enrolled: agentProgress.length
     };
-  }).sort((a, b) => b.progress - a.progress);
+  }).sort((a, b) => b.progress - a.progress).slice(0, 10); // Sort first, then take top 10
 
   return (
     <div className="space-y-6">
@@ -282,8 +282,8 @@ export default function AdminDashboard() {
               <Badge variant="secondary">{totalEnrollments}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Active Agencies</span>
-              <Badge variant="secondary">{activeAgencies} / {agencies.length}</Badge>
+              <span>Total Agencies</span>
+              <Badge variant="secondary">{agencies.length}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span>Completion Rate</span>
