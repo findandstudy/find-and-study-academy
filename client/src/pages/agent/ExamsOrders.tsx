@@ -8,11 +8,19 @@ import { ShoppingCart, CreditCard, AlertCircle } from 'lucide-react';
 
 const statusColors = {
   unpaid: 'destructive',
-  pending: 'warning',
-  paid: 'success',
+  pending: 'secondary',
+  paid: 'default',
   failed: 'destructive',
   refunded: 'secondary'
 } as const;
+
+const statusColorClasses = {
+  unpaid: '',
+  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  paid: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  failed: '',
+  refunded: ''
+};
 
 export default function AgentExamsOrders() {
   const { user } = useAuthStore();
@@ -21,12 +29,18 @@ export default function AgentExamsOrders() {
   const userOrders = orders.filter(o => o.userId === user?.id);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Exams & Orders</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your exam registrations and payment history.
-        </p>
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 border border-primary/10">
+        <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Exams & Orders
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Manage your exam registrations and payment history.
+          </p>
+        </div>
       </div>
 
       {/* Payment Status Banner */}
@@ -70,7 +84,7 @@ export default function AgentExamsOrders() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-medium">{order.title}</h3>
-                      <Badge variant={statusColors[order.status]}>
+                      <Badge variant={statusColors[order.status]} className={statusColorClasses[order.status]}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </Badge>
                     </div>

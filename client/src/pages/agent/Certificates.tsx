@@ -89,7 +89,7 @@ export default function AgentCertificates() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <Award className="w-8 h-8 text-primary" />
-                      <Badge variant="success">Certified</Badge>
+                      <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Certified</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
