@@ -12,6 +12,10 @@ export const users = pgTable("users", {
   role: text("role").notNull().default('agent'), // 'admin' | 'agent'
   agencyId: varchar("agency_id"),
   profilePicture: text("profile_picture"), // URL to profile picture
+  emailNotifications: boolean("email_notifications").notNull().default(true), // Email notification preference
+  courseCompletionNotif: boolean("course_completion_notif").notNull().default(true),
+  certificateNotif: boolean("certificate_notif").notNull().default(true),
+  announcementNotif: boolean("announcement_notif").notNull().default(true),
 });
 
 // Certificates table for secure server-side verification
@@ -58,6 +62,8 @@ export const contents = pgTable("contents", {
   countryId: varchar("country_id"), // Optional - content can be country-specific
   courseId: varchar("course_id"), // Link to courses if needed
   content: text("content"), // Main content body (HTML, markdown, etc.)
+  videoUrl: text("video_url"), // YouTube, Vimeo, or Object Storage video URL
+  videoDuration: integer("video_duration"), // Video duration in seconds
   section: text("section"), // Section/category name (e.g., "A1 Destination Countries", "A2 Advanced Level")
   status: text("status").notNull().default('draft'), // 'draft' | 'published' | 'archived'
   order: integer("order").default(0), // For sorting content within a course/country
@@ -114,6 +120,31 @@ export const announcements = pgTable("announcements", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Email logs table for tracking sent emails
+export const emailLogs = pgTable("email_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  recipientEmail: text("recipient_email").notNull(),
+  subject: text("subject").notNull(),
+  templateType: text("template_type").notNull(), // 'course_completion' | 'certificate' | 'announcement' | 'welcome'
+  status: text("status").notNull().default('pending'), // 'pending' | 'sent' | 'failed' | 'bounced'
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Analytics metrics table for tracking user progress and engagement
+export const analyticsMetrics = pgTable("analytics_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  metricType: text("metric_type").notNull(), // 'course_start' | 'course_complete' | 'quiz_attempt' | 'lesson_view' | 'login'
+  metricValue: text("metric_value"), // JSON data for additional context
+  courseId: varchar("course_id"),
+  contentId: varchar("content_id"),
+  quizId: varchar("quiz_id"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -150,6 +181,16 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertEmailLogSchema = createInsertSchema(emailLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalyticsMetricSchema = createInsertSchema(analyticsMetrics).omit({
+  id: true,
+  timestamp: true,
 });
 
 // System settings table - stores configuration values
@@ -270,6 +311,10 @@ export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type InsertPaymentConfig = z.infer<typeof insertPaymentConfigSchema>;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
+export type EmailLog = typeof emailLogs.$inferSelect;
+export type InsertEmailLog = z.infer<typeof insertEmailLogSchema>;
+export type AnalyticsMetric = typeof analyticsMetrics.$inferSelect;
+export type InsertAnalyticsMetric = z.infer<typeof insertAnalyticsMetricSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [

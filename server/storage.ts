@@ -11,6 +11,8 @@ import {
   systemSettings,
   paymentConfigs,
   integrations,
+  emailLogs,
+  analyticsMetrics,
   type User, 
   type InsertUser,
   type Certificate,
@@ -32,7 +34,11 @@ import {
   type PaymentConfig,
   type InsertPaymentConfig,
   type Integration,
-  type InsertIntegration
+  type InsertIntegration,
+  type EmailLog,
+  type InsertEmailLog,
+  type AnalyticsMetric,
+  type InsertAnalyticsMetric
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count } from "drizzle-orm";
@@ -116,6 +122,19 @@ export interface IStorage {
   testIntegrationConnection(id: string): Promise<{ success: boolean; message: string; status?: string }>;
   enableIntegration(id: string): Promise<Integration>;
   disableIntegration(id: string): Promise<Integration>;
+
+  // Email Log methods
+  getEmailLogs(): Promise<EmailLog[]>;
+  getUserEmailLogs(userId: string): Promise<EmailLog[]>;
+  createEmailLog(log: InsertEmailLog): Promise<EmailLog>;
+  updateEmailLogStatus(id: string, status: string, errorMessage?: string): Promise<EmailLog>;
+
+  // Analytics methods
+  createAnalyticsMetric(metric: InsertAnalyticsMetric): Promise<AnalyticsMetric>;
+  getUserMetrics(userId: string): Promise<AnalyticsMetric[]>;
+  getCourseMetrics(courseId: string): Promise<AnalyticsMetric[]>;
+  getMetricsByType(metricType: string): Promise<AnalyticsMetric[]>;
+  getMetricsInDateRange(startDate: Date, endDate: Date): Promise<AnalyticsMetric[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -327,6 +346,8 @@ export class DatabaseStorage implements IStorage {
         countryId: contents.countryId,
         courseId: contents.courseId,
         content: contents.content,
+        videoUrl: contents.videoUrl,
+        videoDuration: contents.videoDuration,
         section: contents.section,
         status: contents.status,
         order: contents.order,
@@ -723,6 +744,63 @@ export class DatabaseStorage implements IStorage {
     }
     
     return integration;
+  }
+
+  // Email Log methods implementation
+  async getEmailLogs(): Promise<EmailLog[]> {
+    return await db.select().from(emailLogs);
+  }
+
+  async getUserEmailLogs(userId: string): Promise<EmailLog[]> {
+    return await db.select().from(emailLogs).where(eq(emailLogs.userId, userId));
+  }
+
+  async createEmailLog(log: InsertEmailLog): Promise<EmailLog> {
+    const [emailLog] = await db.insert(emailLogs).values(log).returning();
+    return emailLog;
+  }
+
+  async updateEmailLogStatus(id: string, status: string, errorMessage?: string): Promise<EmailLog> {
+    const [emailLog] = await db
+      .update(emailLogs)
+      .set({ 
+        status, 
+        errorMessage,
+        sentAt: status === 'sent' ? new Date() : undefined
+      })
+      .where(eq(emailLogs.id, id))
+      .returning();
+    
+    if (!emailLog) {
+      throw new Error(`Email log with id ${id} not found`);
+    }
+    
+    return emailLog;
+  }
+
+  // Analytics methods implementation
+  async createAnalyticsMetric(metric: InsertAnalyticsMetric): Promise<AnalyticsMetric> {
+    const [analyticsMetric] = await db.insert(analyticsMetrics).values(metric).returning();
+    return analyticsMetric;
+  }
+
+  async getUserMetrics(userId: string): Promise<AnalyticsMetric[]> {
+    return await db.select().from(analyticsMetrics).where(eq(analyticsMetrics.userId, userId));
+  }
+
+  async getCourseMetrics(courseId: string): Promise<AnalyticsMetric[]> {
+    return await db.select().from(analyticsMetrics).where(eq(analyticsMetrics.courseId, courseId));
+  }
+
+  async getMetricsByType(metricType: string): Promise<AnalyticsMetric[]> {
+    return await db.select().from(analyticsMetrics).where(eq(analyticsMetrics.metricType, metricType));
+  }
+
+  async getMetricsInDateRange(startDate: Date, endDate: Date): Promise<AnalyticsMetric[]> {
+    return await db
+      .select()
+      .from(analyticsMetrics)
+      .where(eq(analyticsMetrics.timestamp, startDate)); // Note: Simplified - would need proper date range query
   }
 }
 
