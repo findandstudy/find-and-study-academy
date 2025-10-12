@@ -33,12 +33,26 @@ export const agencies = pgTable("agencies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   logoUrl: text("logo_url"), // Agency logo URL from Object Storage
-  country: text("country").notNull(),
-  city: text("city").notNull(),
-  contactEmail: text("contact_email").notNull(),
-  contactPhone: text("contact_phone").notNull(),
+  
+  // Admin fields (legacy - keep for backward compatibility)
+  country: text("country"),
+  city: text("city"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
   status: text("status").notNull().default('pending'), // 'active' | 'inactive' | 'pending'
   description: text("description"),
+  
+  // Agent self-service fields
+  address: text("address"),
+  googleMapUrl: text("google_map_url"),
+  yandexMapUrl: text("yandex_map_url"),
+  staffSize: integer("staff_size"),
+  annualStudents: integer("annual_students"),
+  website: text("website"),
+  phone: text("phone"),
+  primaryContactName: text("primary_contact_name"),
+  primaryContactEmail: text("primary_contact_email"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
