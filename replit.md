@@ -107,6 +107,11 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Session management with unique session IDs for future conversation tracking
 - **Interface language: English**
 
+### Courses Page Default Selection (2024-10-12)
+- Turkey (Türkiye) tab automatically selected by default when navigating to Courses page
+- Smart fallback logic: displays admin content when available, default course when not
+- Correctly handles both placeholder Turkey (id='turkey') and real admin Turkey (UUID id)
+
 ## External Dependencies
 
 ### UI and Styling Framework
