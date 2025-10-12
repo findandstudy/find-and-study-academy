@@ -24,6 +24,7 @@ import AgentProfile from './pages/agent/Profile';
 import AgentAgency from './pages/agent/Agency';
 import AgentExamsOrders from './pages/agent/ExamsOrders';
 import AgentSubscriptions from './pages/agent/Subscriptions';
+import AgentLeaderboard from './pages/agent/Leaderboard';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -213,6 +214,14 @@ function Router() {
         <ProtectedRoute requiredRole="agent">
           <AgentLayout>
             <AgentCertificates />
+          </AgentLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/agent/leaderboard">
+        <ProtectedRoute requiredRole="agent">
+          <AgentLayout>
+            <AgentLeaderboard />
           </AgentLayout>
         </ProtectedRoute>
       </Route>

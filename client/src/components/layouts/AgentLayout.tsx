@@ -17,7 +17,8 @@ import {
   LogOut,
   Menu,
   X,
-  Search
+  Search,
+  Trophy
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
   { name: 'Courses', href: '/agent/courses', icon: BookOpen },
   { name: 'Certificates', href: '/agent/certificates', icon: Award },
+  { name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
   { name: 'My Agency', href: '/agent/agency', icon: Building },
   { name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
   { name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
