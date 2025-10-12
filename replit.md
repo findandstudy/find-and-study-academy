@@ -122,13 +122,16 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Internationalization (i18n) using react-i18next with 4 languages: Turkish (tr), English (en), Arabic (ar), Russian (ru)
 - Automatic browser language detection with localStorage persistence using custom key 'i18n_language'
 - LanguageSwitcher component with flag icons in both Login and AgentLayout headers
-- Comprehensive translation coverage for navigation, authentication, dashboard, courses, certificates, agency, leaderboard, profile, admin, and chat interfaces
 - RTL (Right-to-Left) layout support for Arabic language with CSS-based directional styling
-- Document direction (dir attribute) automatically managed based on selected language
-- Translation keys organized hierarchically: nav.*, auth.*, common.*, dashboard.*, courses.*, etc.
+- Document direction (dir attribute) automatically managed based on selected language via App.tsx i18n listener
+- Translation keys organized hierarchically: nav.*, auth.*, common.*, dashboard.*, courses.*, error.*, etc.
 - Login page pre-authentication language selection for user convenience
-- Agent sidebar navigation fully translated with dynamic label rendering
-- Tested end-to-end with all 26 test scenarios passing including language switching, RTL behavior, and localStorage verification
+- Agent sidebar navigation fully translated including external links (Agent Portal, Dorm Booking)
+- Error pages (404, 403) fully internationalized across all languages
+- Login error toast messages translated (e.g., "Geçersiz e-posta veya şifre" in Turkish)
+- Initial RTL direction sync fixed: dir attribute now correctly set on app load based on stored language
+- Comprehensive E2E testing: All critical user flows verified including Turkish error messages, Arabic RTL layout, and Russian navigation
+- Translation coverage: Login, navigation, error pages complete; deeper admin/agent pages remain for future expansion
 
 ## External Dependencies
 
