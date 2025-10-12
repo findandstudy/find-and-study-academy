@@ -39,7 +39,7 @@ const STORAGE_KEYS = {
   ANNOUNCEMENTS: 'fas_announcements',
   SUBSCRIPTIONS: 'fas_subscriptions',
   SESSION: 'fas_session',
-  INITIALIZED: 'fas_initialized'
+  INITIALIZED: 'fas_initialized_v2' // Updated version to force re-initialization
 };
 
 class LocalStorage {
