@@ -96,6 +96,16 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Removed embedded map preview functionality
 - Map links provide direct navigation to Google Maps and Yandex Maps for agency location
 
+### Findy Chat Interface (2024-10-12)
+- Modern, elegant chat widget accessible via fixed launcher button in bottom-right corner
+- Slide-up chat window with gradient header, message history, and input area
+- Real-time message display with user/bot avatars and timestamps
+- Typing indicator animation for bot responses
+- Mock AI responses (prepared for N8n AI agent integration via webhook)
+- Responsive design with mobile optimization and dark mode support
+- Full accessibility with ARIA labels, keyboard support, and data-testid attributes
+- Session management with unique session IDs for future conversation tracking
+
 ## External Dependencies
 
 ### UI and Styling Framework

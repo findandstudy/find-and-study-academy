@@ -19,12 +19,78 @@
         id="findy-button" 
         class="findy-launcher-btn"
         aria-label="Chat with Findy"
-        type="button">
+        type="button"
+        data-testid="button-findy-launcher">
         <svg class="findy-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
         </svg>
         <span class="findy-text">Findy</span>
       </button>
+      
+      <!-- Chat Window -->
+      <div id="findy-chat" class="findy-chat" style="display: none;" data-testid="chat-window">
+        <div class="findy-chat-header">
+          <div class="findy-chat-header-content">
+            <div class="findy-avatar">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="findy-chat-title">
+              <h3 data-testid="text-chat-title">Findy Asistan</h3>
+              <p class="findy-status" data-testid="text-status">
+                <span class="findy-status-dot"></span>
+                Online
+              </p>
+            </div>
+          </div>
+          <button id="findy-close" class="findy-close-btn" aria-label="Close chat" type="button" data-testid="button-close-chat">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="findy-chat-messages" id="findy-messages" data-testid="chat-messages">
+          <div class="findy-welcome-message" data-testid="chat-welcome">
+            <div class="findy-welcome-avatar">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="findy-welcome-text">
+              <h4>Merhaba!</h4>
+              <p>Ben Findy, Find And Study asistanınızım. Size nasıl yardımcı olabilirim?</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="findy-chat-input-wrapper">
+          <div class="findy-chat-input-container">
+            <textarea 
+              id="findy-input" 
+              class="findy-input" 
+              placeholder="Mesajınızı yazın..."
+              rows="1"
+              aria-label="Type your message"
+              data-testid="input-chat-message"
+            ></textarea>
+            <button 
+              id="findy-send" 
+              class="findy-send-btn" 
+              aria-label="Send message"
+              type="button"
+              disabled
+              data-testid="button-send-message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+          <p class="findy-footer-text">AI tarafından desteklenmektedir</p>
+        </div>
+      </div>
+      
       <div id="findy-toast" class="findy-toast" role="alert" aria-live="polite"></div>
     </div>
 
@@ -36,6 +102,14 @@
         --findy-success: #10b981;
         --findy-error: #ef4444;
         --findy-info: #6b7280;
+        --findy-bg-light: #ffffff;
+        --findy-bg-dark: #1f2937;
+        --findy-text-light: #1f2937;
+        --findy-text-dark: #f9fafb;
+        --findy-border-light: #e5e7eb;
+        --findy-border-dark: #374151;
+        --findy-message-user-bg: #ED1C24;
+        --findy-message-bot-bg: #f3f4f6;
       }
 
       #findy-launcher {
@@ -161,6 +235,405 @@
       .findy-launcher-btn.loading .findy-icon {
         animation: findy-pulse 1.5s ease-in-out infinite;
       }
+
+      /* Chat Window Styles */
+      .findy-chat {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 400px;
+        height: 600px;
+        max-height: calc(100vh - 120px);
+        background: var(--findy-bg-light);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 9998;
+        animation: findy-chat-slide-up 0.3s ease-out;
+      }
+
+      @keyframes findy-chat-slide-up {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .findy-chat-header {
+        background: linear-gradient(135deg, var(--findy-accent) 0%, #c41820 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+
+      .findy-chat-header-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .findy-avatar {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .findy-chat-title h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .findy-status {
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        opacity: 0.95;
+      }
+
+      .findy-status-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: findy-pulse-dot 2s ease-in-out infinite;
+      }
+
+      @keyframes findy-pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .findy-close-btn {
+        background: rgba(255, 255, 255, 0.15);
+        border: none;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .findy-close-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+      }
+
+      .findy-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        scroll-behavior: smooth;
+      }
+
+      .findy-chat-messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .findy-chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .findy-chat-messages::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+      }
+
+      .findy-chat-messages::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
+
+      .findy-welcome-message {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+
+      .findy-welcome-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--findy-accent);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .findy-welcome-text h4 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--findy-text-light);
+      }
+
+      .findy-welcome-text p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #6b7280;
+      }
+
+      .findy-message {
+        display: flex;
+        gap: 12px;
+        max-width: 85%;
+        animation: findy-message-appear 0.3s ease-out;
+      }
+
+      @keyframes findy-message-appear {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .findy-message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+      }
+
+      .findy-message.bot {
+        align-self: flex-start;
+      }
+
+      .findy-message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .findy-message.bot .findy-message-avatar {
+        background: var(--findy-accent);
+        color: white;
+      }
+
+      .findy-message.user .findy-message-avatar {
+        background: #e5e7eb;
+        color: #6b7280;
+      }
+
+      .findy-message-content {
+        background: var(--findy-message-bot-bg);
+        color: var(--findy-text-light);
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+      }
+
+      .findy-message.user .findy-message-content {
+        background: var(--findy-message-user-bg);
+        color: white;
+      }
+
+      .findy-message-time {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 4px;
+      }
+
+      .findy-typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 12px 16px;
+        background: var(--findy-message-bot-bg);
+        border-radius: 12px;
+        width: fit-content;
+      }
+
+      .findy-typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: #9ca3af;
+        border-radius: 50%;
+        animation: findy-typing 1.4s ease-in-out infinite;
+      }
+
+      .findy-typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .findy-typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes findy-typing {
+        0%, 60%, 100% {
+          transform: translateY(0);
+          opacity: 0.7;
+        }
+        30% {
+          transform: translateY(-10px);
+          opacity: 1;
+        }
+      }
+
+      .findy-chat-input-wrapper {
+        border-top: 1px solid var(--findy-border-light);
+        background: var(--findy-bg-light);
+        padding: 16px;
+        flex-shrink: 0;
+      }
+
+      .findy-chat-input-container {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        background: #f9fafb;
+        border: 1px solid var(--findy-border-light);
+        border-radius: 12px;
+        padding: 8px 12px;
+        transition: all 0.2s;
+      }
+
+      .findy-chat-input-container:focus-within {
+        border-color: var(--findy-accent);
+        box-shadow: 0 0 0 3px rgba(237, 28, 36, 0.1);
+      }
+
+      .findy-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: none;
+        outline: none;
+        max-height: 100px;
+        font-family: inherit;
+        color: var(--findy-text-light);
+      }
+
+      .findy-input::placeholder {
+        color: #9ca3af;
+      }
+
+      .findy-send-btn {
+        background: var(--findy-accent);
+        color: white;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .findy-send-btn:hover:not(:disabled) {
+        background: var(--findy-accent-hover);
+        transform: scale(1.05);
+      }
+
+      .findy-send-btn:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .findy-footer-text {
+        margin: 8px 0 0 0;
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: center;
+      }
+
+      /* Mobile Responsive */
+      @media (max-width: 640px) {
+        .findy-chat {
+          bottom: 80px;
+          right: 16px;
+          left: 16px;
+          width: auto;
+          height: calc(100vh - 100px);
+          max-height: calc(100vh - 100px);
+        }
+      }
+
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        .findy-chat {
+          background: var(--findy-bg-dark);
+        }
+
+        .findy-chat-input-wrapper {
+          background: var(--findy-bg-dark);
+          border-top-color: var(--findy-border-dark);
+        }
+
+        .findy-chat-input-container {
+          background: #111827;
+          border-color: var(--findy-border-dark);
+        }
+
+        .findy-input {
+          color: var(--findy-text-dark);
+        }
+
+        .findy-message-content {
+          background: #374151;
+          color: var(--findy-text-dark);
+        }
+
+        .findy-message.user .findy-message-content {
+          background: var(--findy-message-user-bg);
+          color: white;
+        }
+
+        .findy-welcome-message {
+          background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+        }
+
+        .findy-welcome-text h4 {
+          color: var(--findy-text-dark);
+        }
+
+        .findy-welcome-text p {
+          color: #9ca3af;
+        }
+      }
     </style>
 
     <script>
@@ -168,9 +641,17 @@
         // Configuration - Change this when n8n webhook is ready
         const WEBHOOK_URL = null; // Set to your n8n webhook URL later
 
+        // DOM Elements
         const button = document.getElementById('findy-button');
+        const chatWindow = document.getElementById('findy-chat');
+        const closeBtn = document.getElementById('findy-close');
+        const messagesContainer = document.getElementById('findy-messages');
+        const input = document.getElementById('findy-input');
+        const sendBtn = document.getElementById('findy-send');
         const toastEl = document.getElementById('findy-toast');
+        
         let sessionId = generateSessionId();
+        let isChatOpen = false;
 
         // Generate unique session ID
         function generateSessionId() {
@@ -191,66 +672,196 @@
           }, 3000);
         }
 
-        // Handle button click
-        async function handleClick() {
-          if (WEBHOOK_URL === null) {
-            showToast('Bağlantı yakında hazır olacak.', 'info');
-            return;
-          }
-
-          // Set loading state
-          button.classList.add('loading');
-          button.disabled = true;
-
-          const payload = {
-            event: 'findy_launcher_click',
-            source: 'findy-launcher',
-            timestamp: new Date().toISOString(),
-            sessionId: sessionId
-          };
-
-          try {
-            const response = await fetch(WEBHOOK_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(10000) // 10 second timeout
-            });
-
-            if (response.ok) {
-              showToast('Bağlantı başarılı!', 'success');
-            } else {
-              throw new Error('Request failed');
-            }
-          } catch (error) {
-            console.error('Findy webhook error:', error);
-            showToast('Bağlantı hatası. Lütfen tekrar deneyin.', 'error');
-          } finally {
-            button.classList.remove('loading');
-            button.disabled = false;
+        // Toggle chat window
+        function toggleChat() {
+          isChatOpen = !isChatOpen;
+          chatWindow.style.display = isChatOpen ? 'flex' : 'none';
+          
+          if (isChatOpen) {
+            input.focus();
+            scrollToBottom();
           }
         }
 
-        // Event listeners
-        button.addEventListener('click', handleClick);
+        // Scroll to bottom of messages
+        function scrollToBottom() {
+          setTimeout(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }, 100);
+        }
 
-        // Keyboard support
-        button.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+        // Format time
+        function formatTime() {
+          const now = new Date();
+          return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Add message to chat
+        function addMessage(text, isUser = false) {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `findy-message ${isUser ? 'user' : 'bot'}`;
+          
+          const avatarDiv = document.createElement('div');
+          avatarDiv.className = 'findy-message-avatar';
+          
+          if (!isUser) {
+            avatarDiv.innerHTML = `
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
+              </svg>
+            `;
+          } else {
+            avatarDiv.innerHTML = `
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="currentColor"/>
+              </svg>
+            `;
+          }
+          
+          const contentWrapper = document.createElement('div');
+          const contentDiv = document.createElement('div');
+          contentDiv.className = 'findy-message-content';
+          contentDiv.textContent = text;
+          
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'findy-message-time';
+          timeDiv.textContent = formatTime();
+          
+          contentWrapper.appendChild(contentDiv);
+          contentWrapper.appendChild(timeDiv);
+          
+          messageDiv.appendChild(avatarDiv);
+          messageDiv.appendChild(contentWrapper);
+          
+          messagesContainer.appendChild(messageDiv);
+          scrollToBottom();
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+          const typingDiv = document.createElement('div');
+          typingDiv.className = 'findy-message bot';
+          typingDiv.id = 'findy-typing';
+          
+          typingDiv.innerHTML = `
+            <div class="findy-message-avatar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="findy-typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          `;
+          
+          messagesContainer.appendChild(typingDiv);
+          scrollToBottom();
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator() {
+          const typingEl = document.getElementById('findy-typing');
+          if (typingEl) {
+            typingEl.remove();
+          }
+        }
+
+        // Send message
+        async function sendMessage() {
+          const message = input.value.trim();
+          if (!message) return;
+
+          // Add user message
+          addMessage(message, true);
+          input.value = '';
+          sendBtn.disabled = true;
+          autoResizeTextarea();
+
+          // If webhook is configured, send to N8n
+          if (WEBHOOK_URL !== null) {
+            showTypingIndicator();
+
+            const payload = {
+              event: 'findy_message',
+              message: message,
+              sessionId: sessionId,
+              timestamp: new Date().toISOString()
+            };
+
+            try {
+              const response = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(30000) // 30 second timeout
+              });
+
+              removeTypingIndicator();
+
+              if (response.ok) {
+                const data = await response.json();
+                // Expecting { message: "AI response here" } from N8n
+                addMessage(data.message || 'Yanıt alınamadı', false);
+              } else {
+                throw new Error('Request failed');
+              }
+            } catch (error) {
+              removeTypingIndicator();
+              console.error('Findy message error:', error);
+              addMessage('Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.', false);
+            }
+          } else {
+            // Mock response when webhook is not configured
+            showTypingIndicator();
+            
+            setTimeout(() => {
+              removeTypingIndicator();
+              addMessage('Merhaba! Ben Findy asistan. Şu anda N8n AI entegrasyonu yapılandırılıyor. Yakında size yardımcı olabileceğim!', false);
+            }, 1500);
+          }
+        }
+
+        // Auto resize textarea
+        function autoResizeTextarea() {
+          input.style.height = 'auto';
+          input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+        }
+
+        // Update send button state
+        function updateSendButton() {
+          sendBtn.disabled = !input.value.trim();
+        }
+
+        // Event Listeners
+        button.addEventListener('click', toggleChat);
+        closeBtn.addEventListener('click', toggleChat);
+        
+        sendBtn.addEventListener('click', sendMessage);
+        
+        input.addEventListener('input', () => {
+          autoResizeTextarea();
+          updateSendButton();
+        });
+        
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleClick();
+            if (input.value.trim()) {
+              sendMessage();
+            }
           }
         });
 
-        // Debounce to prevent double clicks
-        let clickTimeout;
-        button.addEventListener('click', () => {
-          if (clickTimeout) return;
-          clickTimeout = setTimeout(() => {
-            clickTimeout = null;
-          }, 600);
+        // Keyboard support for button
+        button.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleChat();
+          }
         });
       })();
     </script>
