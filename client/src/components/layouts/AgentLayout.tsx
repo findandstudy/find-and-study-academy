@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -329,7 +330,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
             </h1>
           </div>
           
-          <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
+          <LanguageSwitcher />
         </div>
 
         {/* Page content */}
