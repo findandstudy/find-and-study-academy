@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { queryClient } from './lib/queryClient';
 import { useAuthStore } from './store/auth';
 import { useDataStore } from './store/data';
+import './i18n'; // Initialize i18n
 
 // Layouts
 import { AdminLayout } from './components/layouts/AdminLayout';
