@@ -112,6 +112,12 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Smart fallback logic: displays admin content when available, default course when not
 - Correctly handles both placeholder Turkey (id='turkey') and real admin Turkey (UUID id)
 
+### Dorm Booking Integration (2024-10-12)
+- Dorm Booking logo added to agent sidebar below Agent Portal
+- Logo-only link (no text) opens https://dormbooking.com/ in new tab
+- Same size and styling as Agent Portal for visual consistency
+- Works correctly in both collapsed and expanded sidebar states
+
 ## External Dependencies
 
 ### UI and Styling Framework
