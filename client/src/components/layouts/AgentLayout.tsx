@@ -104,19 +104,19 @@ export function AgentLayout({ children }: AgentLayoutProps) {
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative">
+          <div className="flex items-center justify-center h-20 px-4 border-b border-card-border relative">
             <Link href="/agent/dashboard" className="flex-1 flex justify-center">
               {/* Mobile: always show full logo */}
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className="w-28 h-28 rounded object-contain hover-elevate cursor-pointer lg:hidden"
+                className="w-36 h-32 rounded object-contain hover-elevate cursor-pointer lg:hidden"
               />
               {/* Desktop: show full logo when expanded, small icon when collapsed */}
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className={`rounded object-contain hover-elevate cursor-pointer hidden lg:block ${sidebarCollapsed ? 'lg:hidden' : 'w-28 h-28'}`}
+                className={`rounded object-contain hover-elevate cursor-pointer hidden lg:block ${sidebarCollapsed ? 'lg:hidden' : 'w-36 h-32'}`}
               />
               <img 
                 src={portalIcon} 
