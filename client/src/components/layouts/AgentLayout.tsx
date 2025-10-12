@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
-import dormBookingLogo from '@assets/db_1760296388215.png';
+import dormBookingLogo from '@assets/dorm_1760296627173.png';
 
 interface AgentLayoutProps {
   children: React.ReactNode;
