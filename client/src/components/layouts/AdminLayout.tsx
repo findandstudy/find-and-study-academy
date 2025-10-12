@@ -18,7 +18,8 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  ListTree
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -39,6 +40,7 @@ const navigation = [
   { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
   { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings },
   { name: 'Integrations', href: '/admin/integrations', icon: Plug },
+  { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
