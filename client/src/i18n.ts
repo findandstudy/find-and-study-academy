@@ -566,6 +566,7 @@ i18n
       // Order of language detection
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
+      lookupLocalStorage: 'i18n_language', // Custom localStorage key
     },
     
     interpolation: {

@@ -28,8 +28,8 @@ export function LanguageSwitcher() {
       document.documentElement.dir = 'ltr';
     }
     
-    // Save to localStorage
-    localStorage.setItem('language', langCode);
+    // Save to localStorage (using custom i18n key)
+    localStorage.setItem('i18n_language', langCode);
   };
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];

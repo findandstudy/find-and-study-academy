@@ -21,7 +21,7 @@ export const SEED_USERS: User[] = [
   {
     id: 'agent-1',
     name: 'John Smith',
-    email: 'john@agency.com',
+    email: 'agent@findandstudy.com',
     role: 'agent',
     agencyId: 'agency-1',
     password: 'agent123'
@@ -46,7 +46,7 @@ export const SEED_AGENCIES: Agency[] = [
     website: 'https://globaledu.com',
     phone: '+90 212 555 0123',
     primaryContactName: 'John Smith',
-    primaryContactEmail: 'john@agency.com'
+    primaryContactEmail: 'agent@findandstudy.com'
   },
   {
     id: 'agency-2',

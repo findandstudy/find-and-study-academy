@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/layouts/AuthCard';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/hooks/use-toast';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -38,67 +39,72 @@ export default function Login() {
   };
 
   return (
-    <AuthCard
-      title={t('auth.welcome')}
-      description={t('auth.signInDescription')}
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">{t('auth.email')}</Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('auth.email')}
-            required
-            autoComplete="email"
-            data-testid="input-email"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="password">{t('auth.password')}</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t('auth.password')}
-            required
-            autoComplete="current-password"
-            data-testid="input-password"
-          />
-        </div>
-
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-          data-testid="button-submit"
-        >
-          {isLoading ? t('common.loading') : t('auth.login')}
-        </Button>
-      </form>
-
-      <div className="mt-6 text-center space-y-2">
-        <p className="text-sm text-muted-foreground">
-          {t('auth.noAccount')}{' '}
-          <Link href="/signup">
-            <span className="text-primary hover:underline cursor-pointer">
-              {t('auth.signup')}
-            </span>
-          </Link>
-        </p>
-        
-        <p className="text-sm text-muted-foreground">
-          <Link href="/forgot-password">
-            <span className="text-primary hover:underline cursor-pointer">
-              {t('auth.forgotPassword')}
-            </span>
-          </Link>
-        </p>
+    <div className="relative min-h-screen">
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
       </div>
-    </AuthCard>
+      <AuthCard
+        title={t('auth.welcome')}
+        description={t('auth.signInDescription')}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">{t('auth.email')}</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth.email')}
+              required
+              autoComplete="email"
+              data-testid="input-email"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="password">{t('auth.password')}</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.password')}
+              required
+              autoComplete="current-password"
+              data-testid="input-password"
+            />
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading}
+            data-testid="button-submit"
+          >
+            {isLoading ? t('common.loading') : t('auth.login')}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {t('auth.noAccount')}{' '}
+            <Link href="/signup">
+              <span className="text-primary hover:underline cursor-pointer">
+                {t('auth.signup')}
+              </span>
+            </Link>
+          </p>
+          
+          <p className="text-sm text-muted-foreground">
+            <Link href="/forgot-password">
+              <span className="text-primary hover:underline cursor-pointer">
+                {t('auth.forgotPassword')}
+              </span>
+            </Link>
+          </p>
+        </div>
+      </AuthCard>
+    </div>
   );
 }
