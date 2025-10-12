@@ -128,53 +128,64 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 </div>
               );
 
-              // Wrap in tooltip only on desktop when collapsed
+              // External links
               if ((item as any).external) {
-                return sidebarCollapsed ? (
-                  <Tooltip key={item.name}>
-                    <TooltipTrigger asChild>
-                      <a 
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                        className="hidden lg:block"
-                      >
-                        {content}
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {item.name}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <a 
-                    key={item.name} 
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    {content}
-                  </a>
+                return (
+                  <div key={item.name}>
+                    {/* Desktop with tooltip when collapsed */}
+                    {sidebarCollapsed && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a 
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="hidden lg:block"
+                          >
+                            {content}
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          {item.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {/* Mobile and desktop expanded - always visible */}
+                    <a 
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      className={sidebarCollapsed ? 'lg:hidden' : ''}
+                    >
+                      {content}
+                    </a>
+                  </div>
                 );
               }
               
-              return sidebarCollapsed ? (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>
-                    <Link href={item.href} className="hidden lg:block">
-                      {content}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {item.name}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Link key={item.name} href={item.href}>
-                  {content}
-                </Link>
+              // Internal links
+              return (
+                <div key={item.name}>
+                  {/* Desktop with tooltip when collapsed */}
+                  {sidebarCollapsed && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link href={item.href} className="hidden lg:block">
+                          {content}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {item.name}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* Mobile and desktop expanded - always visible */}
+                  <Link href={item.href} className={sidebarCollapsed ? 'lg:hidden' : ''}>
+                    {content}
+                  </Link>
+                </div>
               );
             })}
           </nav>
