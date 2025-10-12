@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Camera, Upload } from 'lucide-react';
+import { User, Lock, Camera, Upload, Bell } from 'lucide-react';
 
 export default function AgentProfile() {
   const { user, updateUser: updateAuthUser } = useAuthStore();
@@ -20,15 +21,29 @@ export default function AgentProfile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [uploading, setUploading] = useState(false);
+  
+  // Notification preferences
+  const [emailNotifications, setEmailNotifications] = useState((user as any)?.emailNotifications ?? true);
+  const [courseCompletionNotif, setCourseCompletionNotif] = useState((user as any)?.courseCompletionNotif ?? true);
+  const [certificateNotif, setCertificateNotif] = useState((user as any)?.certificateNotif ?? true);
+  const [announcementNotif, setAnnouncementNotif] = useState((user as any)?.announcementNotif ?? true);
 
   const handleUpdateProfile = () => {
     if (!user) return;
     
-    updateDataUser(user.id, { name });
-    updateAuthUser({ name });
+    const updates = {
+      name,
+      emailNotifications,
+      courseCompletionNotif,
+      certificateNotif,
+      announcementNotif
+    };
+    
+    updateDataUser(user.id, updates as any);
+    updateAuthUser(updates as any);
     toast({
       title: 'Profile Updated',
-      description: 'Your profile has been updated successfully.'
+      description: 'Your profile and notification preferences have been updated successfully.'
     });
   };
 
@@ -318,6 +333,88 @@ export default function AgentProfile() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Notification Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Email Notification Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="emailNotifications" className="text-base font-medium">
+                Email Notifications
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Receive email notifications about your activities
+              </p>
+            </div>
+            <Switch
+              id="emailNotifications"
+              checked={emailNotifications}
+              onCheckedChange={setEmailNotifications}
+              data-testid="switch-email-notifications"
+            />
+          </div>
+
+          <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
+            <div className="space-y-0.5">
+              <Label htmlFor="courseCompletionNotif" className="text-base font-medium">
+                Course Completion
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Get notified when you complete a course
+              </p>
+            </div>
+            <Switch
+              id="courseCompletionNotif"
+              checked={courseCompletionNotif}
+              onCheckedChange={setCourseCompletionNotif}
+              disabled={!emailNotifications}
+              data-testid="switch-course-completion"
+            />
+          </div>
+
+          <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
+            <div className="space-y-0.5">
+              <Label htmlFor="certificateNotif" className="text-base font-medium">
+                Certificate Earned
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Get notified when you earn a certificate
+              </p>
+            </div>
+            <Switch
+              id="certificateNotif"
+              checked={certificateNotif}
+              onCheckedChange={setCertificateNotif}
+              disabled={!emailNotifications}
+              data-testid="switch-certificate"
+            />
+          </div>
+
+          <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
+            <div className="space-y-0.5">
+              <Label htmlFor="announcementNotif" className="text-base font-medium">
+                Announcements
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Get notified about important announcements
+              </p>
+            </div>
+            <Switch
+              id="announcementNotif"
+              checked={announcementNotif}
+              onCheckedChange={setAnnouncementNotif}
+              disabled={!emailNotifications}
+              data-testid="switch-announcements"
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

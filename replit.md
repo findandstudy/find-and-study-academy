@@ -31,6 +31,25 @@ Modular course structure with sections containing lessons and embedded quizzes. 
 ### UI Component Architecture
 Built on shadcn/ui component library providing consistent design patterns. Custom layout components for different user roles (AdminLayout, AgentLayout, AuthCard). Responsive design with mobile-first approach and proper accessibility considerations. Toast notifications for user feedback and modal dialogs for complex interactions.
 
+## Recent Features Added
+
+### Email Notification System (2024-10-12)
+- Email service infrastructure with template system for course completion, certificates, and announcements
+- Email logs table for tracking sent emails with status monitoring
+- User notification preferences (email notifications, course completion, certificate, announcements)
+- Email templates built with responsive HTML design
+- Note: Resend integration (connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V) dismissed by user - infrastructure ready for future API key configuration
+
+### Analytics System (2024-10-12)
+- Analytics metrics table for tracking user engagement and progress
+- Metric types: course_start, course_complete, quiz_attempt, lesson_view, login
+- Support for course-specific and user-specific analytics queries
+- Date range querying capability for reporting
+
+### Video Support Schema (2024-10-12)
+- Content table extended with videoUrl and videoDuration fields
+- Support for YouTube, Vimeo, or Object Storage video URLs
+
 ## External Dependencies
 
 ### UI and Styling Framework
