@@ -32,6 +32,7 @@ export const certificates = pgTable("certificates", {
 export const agencies = pgTable("agencies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  logoUrl: text("logo_url"), // Agency logo URL from Object Storage
   country: text("country").notNull(),
   city: text("city").notNull(),
   contactEmail: text("contact_email").notNull(),

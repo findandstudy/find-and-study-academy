@@ -36,17 +36,102 @@ export default function AgentAgency() {
     }
   }, [userAgency]);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setAgencyData(prev => ({
-          ...prev,
-          logoUrl: reader.result as string
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user || !userAgency) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid File Type',
+        description: 'Please select an image file.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File Too Large',
+        description: 'Please select an image smaller than 5MB.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      // Step 1: Get presigned upload URL from backend
+      const urlResponse = await fetch('/api/agency-logo/upload-url', {
+        method: 'POST',
+        headers: {
+          'x-user-id': user.id,
+          'x-user-role': user.role,
+        },
+      });
+
+      if (!urlResponse.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadURL } = await urlResponse.json();
+
+      // Step 2: Upload file directly to object storage using presigned URL
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      // Step 3: Update backend with the uploaded file URL
+      const updateResponse = await fetch('/api/agency-logo', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+          'x-user-role': user.role,
+        },
+        body: JSON.stringify({
+          agencyId: userAgency.id,
+          logoUrl: uploadURL.split('?')[0], // Remove query params
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update agency logo');
+      }
+
+      const result = await updateResponse.json();
+      
+      // Update local state
+      setAgencyData(prev => ({
+        ...prev,
+        logoUrl: result.url
+      }));
+
+      toast({
+        title: 'Logo Uploaded',
+        description: 'Agency logo has been updated successfully.'
+      });
+    } catch (error) {
+      console.error('Logo upload failed:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'Failed to upload logo. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -126,12 +211,13 @@ export default function AgentAgency() {
                     onChange={handleLogoUpload}
                     className="hidden"
                     data-testid="input-logo-upload"
+                    disabled={uploadingLogo}
                   />
                   <Label htmlFor="logo" className="cursor-pointer">
-                    <Button type="button" variant="outline" size="sm" asChild>
+                    <Button type="button" variant="outline" size="sm" asChild disabled={uploadingLogo}>
                       <span>
                         <Upload className="w-4 h-4 mr-2" />
-                        Upload Logo
+                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
                       </span>
                     </Button>
                   </Label>

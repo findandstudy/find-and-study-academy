@@ -1275,6 +1275,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Object Storage: Get presigned URL for agency logo upload
+  app.post('/api/agency-logo/upload-url', requireAuth, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Error getting upload URL:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get upload URL'
+      });
+    }
+  });
+
+  // Object Storage: Update agency logo after upload
+  app.put('/api/agency-logo', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { agencyId, logoUrl } = req.body;
+
+      if (!logoUrl || !agencyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'logoUrl and agencyId are required'
+        });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL policy for the uploaded logo (public visibility)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        logoUrl,
+        {
+          owner: authenticatedUser.id,
+          visibility: "public", // Agency logos are public
+        }
+      );
+
+      // Update agency logo in database
+      const updatedAgency = await storage.updateAgency(agencyId, { logoUrl: objectPath });
+
+      console.log('[AGENCY LOGO UPDATE] Success:', {
+        agencyId,
+        logoUrl: objectPath,
+        updatedAgencyLogoUrl: updatedAgency?.logoUrl
+      });
+
+      res.json({
+        success: true,
+        url: objectPath
+      });
+    } catch (error) {
+      console.error('Error updating agency logo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update agency logo'
+      });
+    }
+  });
+
   // Object Storage: Serve profile pictures and other private objects  
   app.get('/objects/:objectPath(*)', async (req, res) => {
     try {
