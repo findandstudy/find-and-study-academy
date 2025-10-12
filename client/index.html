@@ -37,7 +37,7 @@
               </svg>
             </div>
             <div class="findy-chat-title">
-              <h3 data-testid="text-chat-title">Findy Asistan</h3>
+              <h3 data-testid="text-chat-title">Findy Assistant</h3>
               <p class="findy-status" data-testid="text-status">
                 <span class="findy-status-dot"></span>
                 Online
@@ -59,8 +59,8 @@
               </svg>
             </div>
             <div class="findy-welcome-text">
-              <h4>Merhaba!</h4>
-              <p>Ben Findy, Find And Study asistanınızım. Size nasıl yardımcı olabilirim?</p>
+              <h4>Hello!</h4>
+              <p>I'm Findy, your Find And Study assistant. How can I help you today?</p>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@
             <textarea 
               id="findy-input" 
               class="findy-input" 
-              placeholder="Mesajınızı yazın..."
+              placeholder="Type your message..."
               rows="1"
               aria-label="Type your message"
               data-testid="input-chat-message"
@@ -87,7 +87,7 @@
               </svg>
             </button>
           </div>
-          <p class="findy-footer-text">AI tarafından desteklenmektedir</p>
+          <p class="findy-footer-text">Powered by AI</p>
         </div>
       </div>
       
@@ -805,14 +805,14 @@
               if (response.ok) {
                 const data = await response.json();
                 // Expecting { message: "AI response here" } from N8n
-                addMessage(data.message || 'Yanıt alınamadı', false);
+                addMessage(data.message || 'No response received', false);
               } else {
                 throw new Error('Request failed');
               }
             } catch (error) {
               removeTypingIndicator();
               console.error('Findy message error:', error);
-              addMessage('Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.', false);
+              addMessage('Sorry, I cannot respond right now. Please try again later.', false);
             }
           } else {
             // Mock response when webhook is not configured
@@ -820,7 +820,7 @@
             
             setTimeout(() => {
               removeTypingIndicator();
-              addMessage('Merhaba! Ben Findy asistan. Şu anda N8n AI entegrasyonu yapılandırılıyor. Yakında size yardımcı olabileceğim!', false);
+              addMessage('Hello! I\'m Findy assistant. The N8n AI integration is currently being configured. I\'ll be able to help you soon!', false);
             }, 1500);
           }
         }

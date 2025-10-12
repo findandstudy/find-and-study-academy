@@ -105,6 +105,7 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Responsive design with mobile optimization and dark mode support
 - Full accessibility with ARIA labels, keyboard support, and data-testid attributes
 - Session management with unique session IDs for future conversation tracking
+- **Interface language: English**
 
 ## External Dependencies
 
