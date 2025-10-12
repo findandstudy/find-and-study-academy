@@ -20,8 +20,8 @@ export default function AgentAgency() {
     name: '',
     logoUrl: '',
     address: '',
-    lat: undefined,
-    lng: undefined,
+    googleMapUrl: '',
+    yandexMapUrl: '',
     staffSize: undefined,
     annualStudents: undefined,
     website: '',
@@ -155,10 +155,6 @@ export default function AgentAgency() {
     }));
   };
 
-  const hasCoordinates = agencyData.lat && agencyData.lng;
-  const mapUrl = hasCoordinates 
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${agencyData.lng! - 0.01}%2C${agencyData.lat! - 0.01}%2C${agencyData.lng! + 0.01}%2C${agencyData.lat! + 0.01}&amp;layer=mapnik&amp;marker=${agencyData.lat}%2C${agencyData.lng}`
-    : null;
 
   return (
     <div className="space-y-8">
@@ -334,51 +330,36 @@ export default function AgentAgency() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="lat">Latitude</Label>
+                <Label htmlFor="googleMapUrl" className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  Google Map Link
+                </Label>
                 <Input
-                  id="lat"
-                  type="number"
-                  step="any"
-                  value={agencyData.lat || ''}
-                  onChange={(e) => updateField('lat', parseFloat(e.target.value) || 0)}
-                  placeholder="41.0082"
-                  data-testid="input-latitude"
+                  id="googleMapUrl"
+                  type="url"
+                  value={agencyData.googleMapUrl || ''}
+                  onChange={(e) => updateField('googleMapUrl', e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  data-testid="input-google-map-url"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lng">Longitude</Label>
+                <Label htmlFor="yandexMapUrl" className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  Yandex Map Link
+                </Label>
                 <Input
-                  id="lng"
-                  type="number"
-                  step="any"
-                  value={agencyData.lng || ''}
-                  onChange={(e) => updateField('lng', parseFloat(e.target.value) || 0)}
-                  placeholder="28.9784"
-                  data-testid="input-longitude"
+                  id="yandexMapUrl"
+                  type="url"
+                  value={agencyData.yandexMapUrl || ''}
+                  onChange={(e) => updateField('yandexMapUrl', e.target.value)}
+                  placeholder="https://yandex.com/maps/..."
+                  data-testid="input-yandex-map-url"
                 />
               </div>
             </div>
-
-            {/* Map Display */}
-            {mapUrl && (
-              <div className="space-y-2">
-                <Label>Location Preview</Label>
-                <div className="h-64 rounded-md overflow-hidden border">
-                  <iframe
-                    src={mapUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    title="Agency Location"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Coordinates: {agencyData.lat}, {agencyData.lng}
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>

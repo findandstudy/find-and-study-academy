@@ -90,6 +90,12 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - API endpoints: GET/PUT /api/menu-visibility for reading and updating settings
 - Supports granular control over Dashboard, Courses, Certificates, Leaderboard, My Agency, Exams/Orders, Subscriptions, and Profile menu items
 
+### Agency Location Updates (2024-10-12)
+- Replaced Latitude/Longitude fields with Google Map and Yandex Map link fields in My Agency page
+- Agency type updated to use googleMapUrl and yandexMapUrl instead of lat/lng
+- Removed embedded map preview functionality
+- Map links provide direct navigation to Google Maps and Yandex Maps for agency location
+
 ## External Dependencies
 
 ### UI and Styling Framework

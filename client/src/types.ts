@@ -14,8 +14,8 @@ export interface Agency {
   name: string;
   logoUrl?: string;
   address?: string;
-  lat?: number;
-  lng?: number;
+  googleMapUrl?: string;
+  yandexMapUrl?: string;
   staffSize?: number;
   annualStudents?: number;
   website?: string;
