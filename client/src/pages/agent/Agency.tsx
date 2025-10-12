@@ -119,6 +119,9 @@ export default function AgentAgency() {
         logoUrl: result.url
       }));
 
+      // Update agency in store (localStorage persistence)
+      updateAgency(userAgency.id, { logoUrl: result.url });
+
       toast({
         title: 'Logo Uploaded',
         description: 'Agency logo has been updated successfully.'
