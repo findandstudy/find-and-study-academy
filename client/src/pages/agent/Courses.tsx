@@ -9,7 +9,7 @@ import type { Content, Country } from '@shared/schema';
 
 export default function AgentCourses() {
   const { courses } = useDataStore();
-  const [selectedCountry, setSelectedCountry] = useState<string>('turkey');
+  const [selectedCountry, setSelectedCountry] = useState<string>('tr');
 
   // Fetch countries and contents from public APIs (no auth required)
   const { data: countries = [] } = useQuery({
@@ -67,22 +67,20 @@ export default function AgentCourses() {
   );
 
   const countryContents = useMemo(() => {
-    if (selectedCountry === 'turkey' && !contents.some(c => c.countryId === 'turkey')) {
-      // Return default Turkey course if no admin content exists
-      return [];
-    }
-    
-    return contents.filter(content => 
+    // Filter contents for selected country
+    const filtered = contents.filter(content => 
       content.countryId === selectedCountryData?.id && 
       content.status === 'published'
     );
-  }, [contents, selectedCountryData?.id, selectedCountry]);
+    
+    return filtered;
+  }, [contents, selectedCountryData?.id]);
 
   // Create dynamic course or use default
   const dynamicCourse = useMemo(() => {
-    if (selectedCountry === 'turkey' && countryContents.length === 0) {
-      // Return default Turkey course
-      return courses[0];
+    // If fallback Turkey (id='turkey') is selected with no content, use default course
+    if (selectedCountryData?.id === 'turkey' && countryContents.length === 0) {
+      return courses[0]; // Default Turkey course from store
     }
 
     if (!selectedCountryData) return null;
