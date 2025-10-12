@@ -118,6 +118,18 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Same size and styling as Agent Portal for visual consistency
 - Works correctly in both collapsed and expanded sidebar states
 
+### Multi-Language Support (2024-10-12)
+- Internationalization (i18n) using react-i18next with 4 languages: Turkish (tr), English (en), Arabic (ar), Russian (ru)
+- Automatic browser language detection with localStorage persistence using custom key 'i18n_language'
+- LanguageSwitcher component with flag icons in both Login and AgentLayout headers
+- Comprehensive translation coverage for navigation, authentication, dashboard, courses, certificates, agency, leaderboard, profile, admin, and chat interfaces
+- RTL (Right-to-Left) layout support for Arabic language with CSS-based directional styling
+- Document direction (dir attribute) automatically managed based on selected language
+- Translation keys organized hierarchically: nav.*, auth.*, common.*, dashboard.*, courses.*, etc.
+- Login page pre-authentication language selection for user convenience
+- Agent sidebar navigation fully translated with dynamic label rendering
+- Tested end-to-end with all 26 test scenarios passing including language switching, RTL behavior, and localStorage verification
+
 ## External Dependencies
 
 ### UI and Styling Framework
@@ -152,3 +164,8 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - **UUID**: Unique identifier generation
 - **clsx/tailwind-merge**: Conditional CSS class management
 - **Wouter**: Lightweight client-side routing
+
+### Internationalization (i18n)
+- **react-i18next**: React bindings for i18next internationalization framework
+- **i18next**: Core i18n framework with plugin architecture
+- **i18next-browser-languagedetector**: Automatic browser language detection plugin
