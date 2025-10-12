@@ -50,6 +50,32 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Content table extended with videoUrl and videoDuration fields
 - Support for YouTube, Vimeo, or Object Storage video URLs
 
+### Advanced Agent Dashboard (2024-10-12)
+- Interactive progress charts using recharts library showing course completion over time
+- Weekly activity timeline with lesson views, quiz attempts, and course completions
+- Learning statistics cards displaying total courses, certificates, and average quiz score
+- Recent achievements section highlighting completed courses and earned certificates
+
+### Admin Analytics Dashboard (2024-10-12)
+- Comprehensive analytics dashboard with enrollment trends and certificate distribution charts
+- Real-time metrics for active agents, course completions, and certificate issuance
+- Top performers ranking system with completion rates and progress tracking
+- Data visualization using recharts for agent activity and quiz performance analysis
+
+### Export Features (2024-10-12)
+- PDF export functionality for admin reports using jsPDF library
+- Comprehensive PDF reports including statistics, course enrollment data, score distribution, and top performers
+- CSV export for agent data including names, emails, progress, certificates, and course completion
+- Download functionality with date-stamped filenames for record keeping
+
+### Competitive Leaderboard System (2024-10-12)
+- Point-based ranking system: 100 points per certificate + progress percentage
+- Achievement badges for top 3 performers (gold, silver, bronze medals)
+- Real-time leaderboard showing all agents ranked by points
+- Current user position highlighted with special styling
+- Points breakdown explanation visible on dashboard
+- Dedicated leaderboard page accessible from agent navigation menu
+
 ## External Dependencies
 
 ### UI and Styling Framework

@@ -25,6 +25,14 @@ export const SEED_USERS: User[] = [
     role: 'agent',
     agencyId: 'agency-1',
     password: 'agent123'
+  },
+  {
+    id: 'agent-2',
+    name: 'Sarah Wilson',
+    email: 'sarah@example.com',
+    role: 'agent',
+    agencyId: 'agency-2',
+    password: 'password123'
   }
 ];
 
@@ -39,6 +47,17 @@ export const SEED_AGENCIES: Agency[] = [
     phone: '+90 212 555 0123',
     primaryContactName: 'John Smith',
     primaryContactEmail: 'john@agency.com'
+  },
+  {
+    id: 'agency-2',
+    name: 'Wilson Educational Services',
+    address: 'London, UK',
+    staffSize: 15,
+    annualStudents: 300,
+    website: 'https://wilsonedu.com',
+    phone: '+44 20 7946 0958',
+    primaryContactName: 'Sarah Wilson',
+    primaryContactEmail: 'sarah@example.com'
   }
 ];
 
