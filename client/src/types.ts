@@ -42,6 +42,8 @@ export interface Lesson {
   title: string;
   html: string;
   quizId?: string;
+  videoUrl?: string;
+  videoDuration?: number;
 }
 
 export interface Quiz {

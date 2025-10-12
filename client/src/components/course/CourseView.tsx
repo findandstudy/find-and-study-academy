@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { QuizModal } from './QuizModal';
+import { VideoPlayer } from '@/components/VideoPlayer';
 import { BookOpen, CheckCircle, PlayCircle, Award } from 'lucide-react';
 import type { Course, Lesson, Quiz, Progress as ProgressType } from '../../types';
 
