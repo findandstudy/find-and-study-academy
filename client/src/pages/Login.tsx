@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +30,7 @@ export default function Login() {
       }
     } else {
       toast({
-        title: 'Login Failed',
+        title: t('common.error'),
         description: 'Invalid email or password. Please try again.',
         variant: 'destructive'
       });
@@ -37,18 +39,18 @@ export default function Login() {
 
   return (
     <AuthCard
-      title="Welcome Back"
-      description="Sign in to your Find And Study account"
+      title={t('auth.welcome')}
+      description={t('auth.signInDescription')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('auth.email')}</Label>
           <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
+            placeholder={t('auth.email')}
             required
             autoComplete="email"
             data-testid="input-email"
@@ -56,13 +58,13 @@ export default function Login() {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder={t('auth.password')}
             required
             autoComplete="current-password"
             data-testid="input-password"
@@ -75,16 +77,16 @@ export default function Login() {
           disabled={isLoading}
           data-testid="button-submit"
         >
-          {isLoading ? 'Signing in...' : 'Sign In'}
+          {isLoading ? t('common.loading') : t('auth.login')}
         </Button>
       </form>
 
       <div className="mt-6 text-center space-y-2">
         <p className="text-sm text-muted-foreground">
-          New agent?{' '}
+          {t('auth.noAccount')}{' '}
           <Link href="/signup">
             <span className="text-primary hover:underline cursor-pointer">
-              Sign Up
+              {t('auth.signup')}
             </span>
           </Link>
         </p>
@@ -92,7 +94,7 @@ export default function Login() {
         <p className="text-sm text-muted-foreground">
           <Link href="/forgot-password">
             <span className="text-primary hover:underline cursor-pointer">
-              Forgot password?
+              {t('auth.forgotPassword')}
             </span>
           </Link>
         </p>
