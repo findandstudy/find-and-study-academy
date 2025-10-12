@@ -39,8 +39,8 @@ const allNavigation = [
   { id: 'exams-orders', key: 'nav.examsOrders', href: '/agent/exams-orders', icon: ShoppingCart },
   { id: 'subscriptions', key: 'nav.subscriptions', href: '/agent/subscriptions', icon: Bell },
   { id: 'profile', key: 'nav.profile', href: '/agent/profile', icon: User },
-  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
-  { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
+  { name: 'Agent Portal', key: 'nav.agentPortal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
+  { name: 'Dorm Booking', key: 'nav.dormBooking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {

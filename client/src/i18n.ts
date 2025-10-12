@@ -27,6 +27,8 @@ const resources = {
       'nav.examsOrders': 'Exams/Orders',
       'nav.subscriptions': 'Subscriptions',
       'nav.profile': 'Profile',
+      'nav.agentPortal': 'Agent Portal',
+      'nav.dormBooking': 'Dorm Booking',
       'nav.signOut': 'Sign out',
       
       // Auth
@@ -157,7 +159,7 @@ const resources = {
       'common.confirm': 'Onayla',
       
       // Navigasyon
-      'nav.dashboard': 'Kontrol Paneli',
+      'nav.dashboard': 'Gösterge Paneli',
       'nav.courses': 'Kurslar',
       'nav.certificates': 'Sertifikalar',
       'nav.leaderboard': 'Lider Tablosu',
@@ -165,6 +167,8 @@ const resources = {
       'nav.examsOrders': 'Sınavlar/Siparişler',
       'nav.subscriptions': 'Abonelikler',
       'nav.profile': 'Profil',
+      'nav.agentPortal': 'Acente Portalı',
+      'nav.dormBooking': 'Yurt Rezervasyonu',
       'nav.signOut': 'Çıkış Yap',
       
       // Kimlik Doğrulama
@@ -303,6 +307,8 @@ const resources = {
       'nav.examsOrders': 'الامتحانات/الطلبات',
       'nav.subscriptions': 'الاشتراكات',
       'nav.profile': 'الملف الشخصي',
+      'nav.agentPortal': 'بوابة الوكيل',
+      'nav.dormBooking': 'حجز السكن',
       'nav.signOut': 'تسجيل الخروج',
       
       // المصادقة
@@ -441,6 +447,8 @@ const resources = {
       'nav.examsOrders': 'Экзамены/Заказы',
       'nav.subscriptions': 'Подписки',
       'nav.profile': 'Профиль',
+      'nav.agentPortal': 'Портал агента',
+      'nav.dormBooking': 'Бронирование общежития',
       'nav.signOut': 'Выйти',
       
       // Авторизация
