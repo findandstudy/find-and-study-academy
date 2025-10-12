@@ -42,6 +42,7 @@ const resources = {
       'auth.welcome': 'Welcome to Find And Study Academy',
       'auth.signInDescription': 'Sign in to access your courses and certificates',
       'auth.signUpDescription': 'Create your agent account to get started',
+      'auth.invalidCredentials': 'Invalid email or password. Please try again.',
       
       // Dashboard
       'dashboard.welcome': 'Welcome back',
@@ -179,6 +180,7 @@ const resources = {
       'auth.welcome': 'Find And Study Academy\'ye Hoş Geldiniz',
       'auth.signInDescription': 'Kurslarınıza ve sertifikalarınıza erişmek için giriş yapın',
       'auth.signUpDescription': 'Başlamak için acente hesabınızı oluşturun',
+      'auth.invalidCredentials': 'Geçersiz e-posta veya şifre. Lütfen tekrar deneyin.',
       
       // Kontrol Paneli
       'dashboard.welcome': 'Tekrar hoş geldiniz',
@@ -316,6 +318,7 @@ const resources = {
       'auth.welcome': 'مرحباً بك في أكاديمية Find And Study',
       'auth.signInDescription': 'قم بتسجيل الدخول للوصول إلى دوراتك وشهاداتك',
       'auth.signUpDescription': 'أنشئ حساب وكيل للبدء',
+      'auth.invalidCredentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة. حاول مرة أخرى.',
       
       // لوحة التحكم
       'dashboard.welcome': 'مرحباً بعودتك',
@@ -453,6 +456,7 @@ const resources = {
       'auth.welcome': 'Добро пожаловать в Find And Study Academy',
       'auth.signInDescription': 'Войдите, чтобы получить доступ к курсам и сертификатам',
       'auth.signUpDescription': 'Создайте учетную запись агента, чтобы начать',
+      'auth.invalidCredentials': 'Неверный email или пароль. Попробуйте еще раз.',
       
       // Панель управления
       'dashboard.welcome': 'С возвращением',

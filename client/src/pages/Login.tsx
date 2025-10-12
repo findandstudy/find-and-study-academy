@@ -32,7 +32,7 @@ export default function Login() {
     } else {
       toast({
         title: t('common.error'),
-        description: 'Invalid email or password. Please try again.',
+        description: t('auth.invalidCredentials'),
         variant: 'destructive'
       });
     }
