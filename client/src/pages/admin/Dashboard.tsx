@@ -1,46 +1,115 @@
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useDataStore } from '@/store/data';
 import { useAuthStore } from '@/store/auth';
-import { Users, Award, Building, Megaphone } from 'lucide-react';
+import { Users, Award, Building, Megaphone, TrendingUp, BookOpen, Target } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
+import dayjs from 'dayjs';
 
 export default function AdminDashboard() {
   const { user } = useAuthStore();
-  const { users, certificates, agencies, announcements } = useDataStore();
+  const { users, certificates, agencies, announcements, progresses, courses } = useDataStore();
 
   const agents = users.filter(u => u.role === 'agent');
   const activeAnnouncements = announcements.filter(a => 
     a.status === 'published' && 
     (!a.expiresAt || new Date(a.expiresAt) > new Date())
   );
+  
+  // Analytics calculations
+  const totalAgents = agents.length;
+  const totalCertificates = certificates.length;
+  const activeAgencies = agencies.length; // All agencies are considered active in frontend type
+  
+  // Course completion rate
+  const totalEnrollments = progresses.length;
+  const completedCourses = progresses.filter(p => p.percent === 100).length;
+  const completionRate = totalEnrollments > 0 ? Math.round((completedCourses / totalEnrollments) * 100) : 0;
+  
+  // Average score across all certificates
+  const avgCertificateScore = totalCertificates > 0
+    ? Math.round(certificates.reduce((sum, c) => sum + c.scorePercent, 0) / totalCertificates)
+    : 0;
 
   const stats = [
     {
       title: 'Total Agents',
-      value: agents.length,
+      value: totalAgents,
       icon: Users,
-      change: '+2 this month'
+      change: `${activeAgencies} active agencies`,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10'
     },
     {
       title: 'Certificates Issued',
-      value: certificates.length,
+      value: totalCertificates,
       icon: Award,
-      change: '+5 this week'
+      change: `Avg score: ${avgCertificateScore}%`,
+      color: 'text-yellow-500',
+      bgColor: 'bg-yellow-500/10'
     },
     {
-      title: 'Active Agencies',
-      value: agencies.length,
-      icon: Building,
-      change: 'All verified'
+      title: 'Course Completion Rate',
+      value: `${completionRate}%`,
+      icon: Target,
+      change: `${completedCourses}/${totalEnrollments} completed`,
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10'
     },
     {
       title: 'Active Announcements',
       value: activeAnnouncements.length,
       icon: Megaphone,
-      change: 'Currently active'
+      change: 'Currently active',
+      color: 'text-purple-500',
+      bgColor: 'bg-purple-500/10'
     }
   ];
+  
+  // Course enrollment data for charts
+  const courseEnrollmentData = courses.map(course => {
+    const enrollments = progresses.filter(p => p.courseId === course.id);
+    const completed = enrollments.filter(p => p.percent === 100).length;
+    return {
+      name: course.title.length > 20 ? course.title.substring(0, 20) + '...' : course.title,
+      enrolled: enrollments.length,
+      completed: completed,
+      inProgress: enrollments.length - completed
+    };
+  }).filter(d => d.enrolled > 0); // Only show courses with enrollments
+  
+  // Certificate distribution by score
+  const scoreRanges = [
+    { range: '90-100%', min: 90, max: 100, count: 0, color: '#10b981' },
+    { range: '80-89%', min: 80, max: 89, count: 0, color: '#3b82f6' },
+    { range: '70-79%', min: 70, max: 79, count: 0, color: '#f59e0b' },
+    { range: '<70%', min: 0, max: 69, count: 0, color: '#ef4444' }
+  ];
+  
+  certificates.forEach(cert => {
+    const range = scoreRanges.find(r => cert.scorePercent >= r.min && cert.scorePercent <= r.max);
+    if (range) range.count++;
+  });
+  
+  const scoreDistributionData = scoreRanges.filter(r => r.count > 0);
+  
+  // Agent progress overview
+  const agentProgressData = agents.slice(0, 10).map(agent => {
+    const agentProgress = progresses.filter(p => p.userId === agent.id);
+    const avgProgress = agentProgress.length > 0
+      ? Math.round(agentProgress.reduce((sum, p) => sum + p.percent, 0) / agentProgress.length)
+      : 0;
+    const agentCerts = certificates.filter(c => c.userId === agent.id);
+    
+    return {
+      name: agent.name.length > 15 ? agent.name.substring(0, 15) + '...' : agent.name,
+      progress: avgProgress,
+      certificates: agentCerts.length,
+      enrolled: agentProgress.length
+    };
+  }).sort((a, b) => b.progress - a.progress);
 
   return (
     <div className="space-y-6">
@@ -64,15 +133,17 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="hover-elevate">
+          <Card key={stat.title} className="hover-elevate" data-testid={`card-admin-stat-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid={`text-admin-stat-value-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    {stat.value}
+                  </p>
                 </div>
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <stat.icon className="w-6 h-6 text-primary" />
+                <div className={`w-12 h-12 ${stat.bgColor} rounded-full flex items-center justify-center`}>
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">{stat.change}</p>
@@ -81,36 +152,120 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Course Enrollment Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Agent Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              Course Enrollment & Completion
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {courseEnrollmentData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={courseEnrollmentData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name="Completed" />
+                  <Bar dataKey="inProgress" stackId="a" fill="hsl(var(--chart-2))" name="In Progress" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No enrollment data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Certificate Score Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              Certificate Score Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {scoreDistributionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={scoreDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ range, count }) => `${range}: ${count}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {scoreDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No certificate data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Performers & System Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Performing Agents */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Top Performing Agents
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {agents.slice(0, 5).map(agent => (
-                <div key={agent.id} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+              {agentProgressData.slice(0, 5).map((agent, index) => (
+                <div key={agent.name} className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-primary-foreground text-sm font-medium">
-                        {agent.name.charAt(0)}
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary text-sm font-bold">
+                        #{index + 1}
                       </span>
                     </div>
                     <div>
                       <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {agent.enrolled} courses • {agent.certificates} certificates
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Active</p>
-                  </div>
+                  <Badge variant="default">{agent.progress}%</Badge>
                 </div>
               ))}
+              {agentProgressData.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No agent activity yet
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* System Status */}
         <Card>
           <CardHeader>
             <CardTitle>System Status</CardTitle>
@@ -118,27 +273,29 @@ export default function AdminDashboard() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span>Platform Status</span>
-              <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+              <Badge variant="default" className="bg-green-500 hover:bg-green-600">
                 Operational
-              </span>
+              </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Database</span>
-              <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
-                Healthy
-              </span>
+              <span>Total Enrollments</span>
+              <Badge variant="secondary">{totalEnrollments}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Integrations</span>
-              <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">
-                Pending Setup
-              </span>
+              <span>Active Agencies</span>
+              <Badge variant="secondary">{activeAgencies} / {agencies.length}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Payments</span>
-              <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">
-                Disabled
-              </span>
+              <span>Completion Rate</span>
+              <Badge variant={completionRate >= 70 ? 'default' : 'secondary'}>
+                {completionRate}%
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Avg Certificate Score</span>
+              <Badge variant={avgCertificateScore >= 80 ? 'default' : 'secondary'}>
+                {avgCertificateScore}%
+              </Badge>
             </div>
           </CardContent>
         </Card>
