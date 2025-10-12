@@ -138,14 +138,42 @@ export default function AgentAgency() {
     }
   };
 
-  const handleSave = () => {
-    if (!userAgency) return;
+  const handleSave = async () => {
+    if (!userAgency || !user) return;
 
-    updateAgency(userAgency.id, agencyData);
-    toast({
-      title: 'Agency Updated',
-      description: 'Your agency information has been saved successfully.'
-    });
+    try {
+      // Send update request to backend
+      const response = await fetch('/api/agency', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+          'x-user-role': user.role,
+        },
+        body: JSON.stringify(agencyData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update agency');
+      }
+
+      const result = await response.json();
+
+      // Update local store with backend response
+      updateAgency(userAgency.id, result.agency);
+
+      toast({
+        title: 'Agency Updated',
+        description: 'Your agency information has been saved successfully.'
+      });
+    } catch (error) {
+      console.error('Error updating agency:', error);
+      toast({
+        title: 'Update Failed',
+        description: 'Failed to save agency information. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const updateField = (field: keyof Agency, value: string | number) => {

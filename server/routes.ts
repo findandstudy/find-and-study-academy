@@ -71,6 +71,8 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     const users = await storage.getUsers();
     const user = users.find(u => u.id === userId);
     
+    console.log('[AUTH] User lookup:', { userId, found: !!user, agencyId: user?.agencyId });
+    
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -82,7 +84,8 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     (req as any).user = { 
       id: user.id, 
       role: user.role,  // Use actual role from storage, not client-provided
-      email: user.email 
+      email: user.email,
+      agencyId: user.agencyId  // Include agencyId for agents
     };
     next();
   } catch (error) {
@@ -1332,6 +1335,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Failed to update agency logo'
+      });
+    }
+  });
+
+  // Agent: Update own agency information
+  app.put('/api/agency', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      console.log('[AGENCY UPDATE] Request from user:', { id: authenticatedUser.id, role: authenticatedUser.role, agencyId: authenticatedUser.agencyId });
+      
+      // Only agents can update their own agency
+      if (authenticatedUser.role !== 'agent') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only agents can update their agency'
+        });
+      }
+
+      const agencyId = authenticatedUser.agencyId;
+      if (!agencyId) {
+        console.log('[AGENCY UPDATE] ERROR: No agencyId found for user:', authenticatedUser);
+        return res.status(400).json({
+          success: false,
+          message: 'Agent does not have an associated agency'
+        });
+      }
+
+      // Validate agency data (partial update)
+      const validation = insertAgencySchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid agency data',
+          errors: validation.error.errors
+        });
+      }
+
+      // Update agency in database
+      const updatedAgency = await storage.updateAgency(agencyId, validation.data);
+
+      if (!updatedAgency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        agency: updatedAgency
+      });
+    } catch (error) {
+      console.error('Update agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update agency'
       });
     }
   });
