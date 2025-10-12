@@ -142,6 +142,15 @@ const resources = {
       'chat.askQuestion': 'Ask me anything...',
       'chat.send': 'Send',
       'chat.typing': 'Findy is typing...',
+      
+      // Error Pages
+      'error.404.title': 'Page Not Found',
+      'error.404.message': "Sorry, we couldn't find the page you're looking for.",
+      'error.404.goHome': 'Go Home',
+      'error.404.signIn': 'Sign In',
+      'error.403.title': 'Access Forbidden',
+      'error.403.message': "You don't have permission to access this page.",
+      'error.403.goToPanel': 'Go to My Panel',
     }
   },
   tr: {
@@ -282,6 +291,15 @@ const resources = {
       'chat.askQuestion': 'Bana bir şey sor...',
       'chat.send': 'Gönder',
       'chat.typing': 'Findy yazıyor...',
+      
+      // Hata Sayfaları
+      'error.404.title': 'Sayfa Bulunamadı',
+      'error.404.message': 'Üzgünüz, aradığınız sayfa bulunamadı.',
+      'error.404.goHome': 'Ana Sayfaya Dön',
+      'error.404.signIn': 'Giriş Yap',
+      'error.403.title': 'Erişim Engellendi',
+      'error.403.message': 'Bu sayfaya erişim izniniz yok.',
+      'error.403.goToPanel': 'Panelime Git',
     }
   },
   ar: {
@@ -422,6 +440,15 @@ const resources = {
       'chat.askQuestion': 'اسألني أي شيء...',
       'chat.send': 'إرسال',
       'chat.typing': 'Findy يكتب...',
+      
+      // صفحات الخطأ
+      'error.404.title': 'الصفحة غير موجودة',
+      'error.404.message': 'عذراً، لم نتمكن من العثور على الصفحة التي تبحث عنها.',
+      'error.404.goHome': 'الذهاب للرئيسية',
+      'error.404.signIn': 'تسجيل الدخول',
+      'error.403.title': 'الوصول محظور',
+      'error.403.message': 'ليس لديك إذن للوصول إلى هذه الصفحة.',
+      'error.403.goToPanel': 'الذهاب إلى لوحتي',
     }
   },
   ru: {
@@ -562,6 +589,15 @@ const resources = {
       'chat.askQuestion': 'Спросите меня о чем-нибудь...',
       'chat.send': 'Отправить',
       'chat.typing': 'Findy печатает...',
+      
+      // Страницы ошибок
+      'error.404.title': 'Страница не найдена',
+      'error.404.message': 'Извините, мы не смогли найти страницу, которую вы ищете.',
+      'error.404.goHome': 'На главную',
+      'error.404.signIn': 'Войти',
+      'error.403.title': 'Доступ запрещен',
+      'error.403.message': 'У вас нет разрешения на доступ к этой странице.',
+      'error.403.goToPanel': 'Перейти в мою панель',
     }
   }
 };

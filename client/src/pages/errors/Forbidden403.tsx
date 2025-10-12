@@ -1,10 +1,12 @@
 import { Link } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
 import { Shield, Home, ArrowLeft } from 'lucide-react';
 
 export default function Forbidden403() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
 
   return (
@@ -13,9 +15,9 @@ export default function Forbidden403() {
         <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <div className="text-6xl font-bold text-destructive">403</div>
-            <h1 className="text-2xl font-semibold text-foreground">Access Forbidden</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{t('error.403.title')}</h1>
             <p className="text-muted-foreground">
-              You don't have permission to access this page.
+              {t('error.403.message')}
             </p>
           </div>
 
@@ -28,14 +30,14 @@ export default function Forbidden403() {
               <Link href={user.role === 'admin' ? '/admin/dashboard' : '/agent/dashboard'}>
                 <Button className="w-full" data-testid="button-go-dashboard">
                   <Home className="w-4 h-4 mr-2" />
-                  Go to My Panel
+                  {t('error.403.goToPanel')}
                 </Button>
               </Link>
             ) : (
               <Link href="/login">
                 <Button className="w-full" data-testid="button-sign-in">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Sign In
+                  {t('error.404.signIn')}
                 </Button>
               </Link>
             )}
