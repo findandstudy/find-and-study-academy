@@ -336,4 +336,48 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* RTL Support for Arabic */
+  [dir="rtl"] {
+    direction: rtl;
+  }
+
+  [dir="rtl"] .text-left {
+    text-align: right;
+  }
+
+  [dir="rtl"] .text-right {
+    text-align: left;
+  }
+
+  [dir="rtl"] .ml-auto {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  [dir="rtl"] .mr-auto {
+    margin-right: 0;
+    margin-left: auto;
+  }
+
+  /* Flip icons and elements for RTL */
+  [dir="rtl"] .lucide {
+    transform: scaleX(-1);
+  }
+
+  /* Sidebar positioning for RTL */
+  [dir="rtl"] .fixed.left-0 {
+    left: auto;
+    right: 0;
+  }
+
+  [dir="rtl"] .lg\:pl-64 {
+    padding-left: 0;
+    padding-right: 16rem;
+  }
+
+  [dir="rtl"] .lg\:pl-20 {
+    padding-left: 0;
+    padding-right: 5rem;
+  }
 }
