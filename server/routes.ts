@@ -2176,6 +2176,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Menu Visibility Management
+  app.get('/api/menu-visibility', requireAuth, async (req, res) => {
+    try {
+      const setting = await storage.getSystemSettingByKey('agent_menu_visibility');
+      
+      if (setting && setting.value) {
+        const visibility = JSON.parse(setting.value);
+        res.json(visibility);
+      } else {
+        // Default: all visible
+        res.json({
+          dashboard: true,
+          courses: true,
+          certificates: true,
+          leaderboard: true,
+          agency: true,
+          'exams-orders': true,
+          subscriptions: true,
+          profile: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error getting menu visibility:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get menu visibility settings'
+      });
+    }
+  });
+
+  app.put('/api/menu-visibility', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const visibility = req.body;
+
+      // Check if setting exists
+      const existingSetting = await storage.getSystemSettingByKey('agent_menu_visibility');
+
+      if (existingSetting) {
+        // Update existing setting
+        await storage.updateSystemSetting('agent_menu_visibility', {
+          value: JSON.stringify(visibility),
+          updatedBy: authenticatedUser.id,
+        });
+      } else {
+        // Create new setting
+        await storage.createSystemSetting({
+          key: 'agent_menu_visibility',
+          value: JSON.stringify(visibility),
+          category: 'appearance',
+          type: 'json',
+          description: 'Agent sidebar menu visibility settings',
+          isPublic: true,
+          updatedBy: authenticatedUser.id,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Menu visibility settings updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating menu visibility:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update menu visibility settings'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
