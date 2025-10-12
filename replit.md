@@ -76,6 +76,20 @@ Built on shadcn/ui component library providing consistent design patterns. Custo
 - Points breakdown explanation visible on dashboard
 - Dedicated leaderboard page accessible from agent navigation menu
 
+### Object Storage Integration (2024-10-12)
+- Profile picture upload functionality with Object Storage persistence
+- Agency logo upload with presigned URLs and ACL policies
+- Public visibility for uploaded images
+- URL storage in database for persistent access across sessions
+
+### Agent Menu Management System (2024-10-12)
+- Admin-controlled agent sidebar menu visibility
+- Menu Management page in admin panel for toggling menu items on/off
+- Real-time menu filtering for agent users based on admin settings
+- Settings stored in systemSettings table as JSON
+- API endpoints: GET/PUT /api/menu-visibility for reading and updating settings
+- Supports granular control over Dashboard, Courses, Certificates, Leaderboard, My Agency, Exams/Orders, Subscriptions, and Profile menu items
+
 ## External Dependencies
 
 ### UI and Styling Framework

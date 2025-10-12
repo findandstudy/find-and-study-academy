@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,26 +27,62 @@ interface AgentLayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
-  { name: 'Courses', href: '/agent/courses', icon: BookOpen },
-  { name: 'Certificates', href: '/agent/certificates', icon: Award },
-  { name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
-  { name: 'My Agency', href: '/agent/agency', icon: Building },
-  { name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
-  { name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
-  { name: 'Profile', href: '/agent/profile', icon: User },
+const allNavigation = [
+  { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
+  { id: 'courses', name: 'Courses', href: '/agent/courses', icon: BookOpen },
+  { id: 'certificates', name: 'Certificates', href: '/agent/certificates', icon: Award },
+  { id: 'leaderboard', name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
+  { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
+  { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
+  { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+  { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
   { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>({});
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
   const { agencies } = useDataStore();
   
   const userAgency = agencies.find(a => a.id === user?.agencyId);
+
+  // Load menu visibility settings
+  useEffect(() => {
+    const loadMenuVisibility = async () => {
+      try {
+        const response = await fetch('/api/menu-visibility', {
+          headers: {
+            'x-user-id': user?.id || '',
+            'x-user-role': user?.role || '',
+          },
+        });
+
+        if (response.ok) {
+          const visibility = await response.json();
+          setMenuVisibility(visibility);
+        }
+      } catch (error) {
+        console.error('Error loading menu visibility:', error);
+      }
+    };
+
+    if (user) {
+      loadMenuVisibility();
+    }
+  }, [user]);
+
+  // Filter navigation based on visibility settings
+  const navigation = allNavigation.filter(item => {
+    // Always show Agent Portal (external link)
+    if (item.external) return true;
+    
+    // Check visibility for other items
+    const itemId = (item as any).id;
+    return menuVisibility[itemId] !== false; // Show if not explicitly hidden
+  });
 
   return (
     <div className="min-h-screen bg-background">

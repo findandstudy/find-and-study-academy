@@ -38,6 +38,7 @@ import AdminReports from './pages/admin/Reports';
 import AdminAnnouncements from './pages/admin/Announcements';
 import AdminSettingsPayments from './pages/admin/SettingsPayments';
 import AdminIntegrations from './pages/admin/Integrations';
+import AdminMenuManagement from './pages/admin/MenuManagement';
 
 // Public Pages
 import VerifyCertificate from './pages/VerifyCertificate';
@@ -189,6 +190,14 @@ function Router() {
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
             <AdminIntegrations />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/menu-management">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminMenuManagement />
           </AdminLayout>
         </ProtectedRoute>
       </Route>
