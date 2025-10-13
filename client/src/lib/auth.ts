@@ -20,46 +20,65 @@ export interface Session {
 }
 
 export const login = async (credentials: LoginCredentials): Promise<Session | null> => {
-  const users = storage.getUsers();
-  const user = users.find(u => u.email === credentials.email && u.password === credentials.password);
-  
-  if (!user) {
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success && data.user) {
+      const session: Session = { user: data.user, role: data.user.role };
+      storage.setSession(session);
+      return session;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Login error:', error);
     return null;
   }
-
-  const session: Session = { user, role: user.role };
-  storage.setSession(session);
-  return session;
 };
 
 export const signupAgent = async (data: SignupData): Promise<Session> => {
-  const userId = `agent-${Date.now()}`;
-  const agencyId = `agency-${Date.now()}`;
-  
-  // Create agency
-  const newAgency = {
-    id: agencyId,
-    name: data.agencyName,
-    primaryContactName: data.name,
-    primaryContactEmail: data.email
-  };
-  
-  // Create user
-  const newUser: User = {
-    id: userId,
-    name: data.name,
-    email: data.email,
-    role: 'agent' as Role,
-    agencyId,
-    password: data.password
-  };
+  try {
+    const response = await fetch('/api/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        agencyName: data.agencyName
+      }),
+    });
 
-  storage.addAgency(newAgency);
-  storage.addUser(newUser);
-  
-  const session: Session = { user: newUser, role: newUser.role };
-  storage.setSession(session);
-  return session;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Signup failed');
+    }
+
+    const result = await response.json();
+    if (result.success && result.user) {
+      const session: Session = { user: result.user, role: result.user.role };
+      storage.setSession(session);
+      return session;
+    }
+
+    throw new Error('Signup failed');
+  } catch (error) {
+    console.error('Signup error:', error);
+    throw error;
+  }
 };
 
 export const getSession = (): Session | null => {

@@ -187,6 +187,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Login endpoint - authenticate user and return user data
+  app.post('/api/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email and password are required'
+        });
+      }
+
+      const users = await storage.getUsers();
+      const user = users.find(u => u.email === email && u.password === password);
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          agencyId: user.agencyId,
+          profilePicture: user.profilePicture
+        }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Login failed'
+      });
+    }
+  });
+
+  // Signup endpoint - create new agent user and agency
+  app.post('/api/signup', async (req, res) => {
+    try {
+      const { name, email, password, agencyName } = req.body;
+
+      if (!name || !email || !password || !agencyName) {
+        return res.status(400).json({
+          success: false,
+          message: 'All fields are required'
+        });
+      }
+
+      // Check if email already exists
+      const users = await storage.getUsers();
+      const existingUser = users.find(u => u.email === email);
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email already registered'
+        });
+      }
+
+      const userId = `agent-${Date.now()}`;
+      const agencyId = `agency-${Date.now()}`;
+
+      // Create agency
+      const newAgency = {
+        id: agencyId,
+        name: agencyName,
+        status: 'active' as const,
+        primaryContactName: name,
+        primaryContactEmail: email
+      };
+
+      // Create user
+      const newUser = {
+        id: userId,
+        username: email,
+        password: password,
+        name: name,
+        email: email,
+        role: 'agent' as const,
+        agencyId: agencyId,
+        emailNotifications: true,
+        courseCompletionNotif: true,
+        certificateNotif: true,
+        announcementNotif: true
+      };
+
+      await storage.createAgency(newAgency);
+      await storage.createUser(newUser);
+
+      res.status(201).json({
+        success: true,
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          agencyId: newUser.agencyId
+        }
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Signup failed'
+      });
+    }
+  });
+
   // Session validation endpoint - validates user exists in database
   app.get('/api/me', requireAuth, async (req, res) => {
     try {
