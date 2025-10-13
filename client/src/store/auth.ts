@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User, Role } from '../types';
-import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, SignupData, LoginCredentials, Session } from '../lib/auth';
+import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session } from '../lib/auth';
 import { storage } from '../lib/storage';
 
 interface AuthState {
@@ -10,7 +10,7 @@ interface AuthState {
   login: (credentials: LoginCredentials) => Promise<boolean>;
   signup: (data: SignupData) => Promise<boolean>;
   logout: () => void;
-  initialize: () => void;
+  initialize: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -54,10 +54,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, role: null });
   },
 
-  initialize: () => {
+  initialize: async () => {
     const session = getSession();
     if (session) {
-      set({ user: session.user, role: session.role });
+      // Validate session against backend
+      const isValid = await validateSession();
+      if (isValid) {
+        set({ user: session.user, role: session.role });
+      } else {
+        // Session was invalid and cleared by validateSession
+        set({ user: null, role: null });
+      }
     }
   },
 

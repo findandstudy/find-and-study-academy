@@ -187,6 +187,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Session validation endpoint - validates user exists in database
+  app.get('/api/me', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      res.json({
+        success: true,
+        user: {
+          id: authenticatedUser.id,
+          email: authenticatedUser.email,
+          role: authenticatedUser.role,
+          agencyId: authenticatedUser.agencyId
+        }
+      });
+    } catch (error) {
+      console.error('Session validation error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to validate session'
+      });
+    }
+  });
+
   // Quiz attempt submission endpoint (required for certificate validation)
   app.post('/api/attempts', requireAuth, async (req, res) => {
     try {
@@ -682,7 +705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Agency distribution by country
       const countryStats = agencies.reduce((acc: any, agency) => {
-        acc[agency.country] = (acc[agency.country] || 0) + 1;
+        const country = agency.country || 'Unknown';
+        acc[country] = (acc[country] || 0) + 1;
         return acc;
       }, {});
       
