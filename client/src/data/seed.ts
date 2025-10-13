@@ -14,7 +14,7 @@ export const SEED_USERS: User[] = [
   {
     id: 'admin-1',
     name: 'System Admin',
-    email: 'admin@findandstudy.com',
+    email: 'en@findandstudy.com',
     role: 'admin',
     password: 'admin123'
   },
