@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -238,7 +237,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </h1>
           </div>
           
-          <LanguageSwitcher />
+          <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
         </div>
 
         {/* Page content */}

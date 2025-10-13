@@ -6,7 +6,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { queryClient } from './lib/queryClient';
 import { useAuthStore } from './store/auth';
 import { useDataStore } from './store/data';
-import i18n from './i18n'; // Initialize i18n
 
 // Layouts
 import { AdminLayout } from './components/layouts/AdminLayout';
@@ -290,24 +289,6 @@ export default function App() {
     initializeAuth();
     initializeData();
   }, [initializeAuth, initializeData]);
-
-  useEffect(() => {
-    // Set initial direction based on language
-    const setDirection = (lang: string) => {
-      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    };
-
-    // Set initial direction
-    setDirection(i18n.language);
-
-    // Listen for language changes
-    i18n.on('languageChanged', setDirection);
-
-    // Cleanup
-    return () => {
-      i18n.off('languageChanged', setDirection);
-    };
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

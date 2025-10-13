@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -31,20 +29,19 @@ interface AgentLayoutProps {
 }
 
 const allNavigation = [
-  { id: 'dashboard', key: 'nav.dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
-  { id: 'courses', key: 'nav.courses', href: '/agent/courses', icon: BookOpen },
-  { id: 'certificates', key: 'nav.certificates', href: '/agent/certificates', icon: Award },
-  { id: 'leaderboard', key: 'nav.leaderboard', href: '/agent/leaderboard', icon: Trophy },
-  { id: 'agency', key: 'nav.myAgency', href: '/agent/agency', icon: Building },
-  { id: 'exams-orders', key: 'nav.examsOrders', href: '/agent/exams-orders', icon: ShoppingCart },
-  { id: 'subscriptions', key: 'nav.subscriptions', href: '/agent/subscriptions', icon: Bell },
-  { id: 'profile', key: 'nav.profile', href: '/agent/profile', icon: User },
-  { name: 'Agent Portal', key: 'nav.agentPortal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
-  { name: 'Dorm Booking', key: 'nav.dormBooking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
+  { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
+  { id: 'courses', name: 'Courses', href: '/agent/courses', icon: BookOpen },
+  { id: 'certificates', name: 'Certificates', href: '/agent/certificates', icon: Award },
+  { id: 'leaderboard', name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
+  { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
+  { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
+  { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+  { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
+  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
+  { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
-  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>({});
@@ -141,7 +138,6 @@ export function AgentLayout({ children }: AgentLayoutProps) {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.map((item) => {
-              const displayName = (item as any).key ? t((item as any).key) : item.name;
               const isActive = location === item.href;
               const content = (
                 <div className={`
@@ -155,7 +151,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                   {(item as any).customIcon ? (
                     <img 
                       src={(item as any).customIcon} 
-                      alt={`${displayName} icon`}
+                      alt={`${item.name} icon`}
                       className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
                     />
                   ) : item.icon ? (
@@ -168,7 +164,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                       } : undefined}
                     />
                   ) : null}
-                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{displayName}</span>
+                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
                 </div>
               );
 
@@ -191,7 +187,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                           </a>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          {displayName}
+                          {item.name}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -221,7 +217,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                         </Link>
                       </TooltipTrigger>
                       <TooltipContent side="right">
-                        {displayName}
+                        {item.name}
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -265,7 +261,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 data-testid="button-logout"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                {t('nav.signOut')}
+                Sign out
               </Button>
             </div>
             
@@ -297,7 +293,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  {t('nav.signOut')}
+                  Sign out
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -333,7 +329,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
             </h1>
           </div>
           
-          <LanguageSwitcher />
+          <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
         </div>
 
         {/* Page content */}
