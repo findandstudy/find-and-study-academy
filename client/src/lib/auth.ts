@@ -71,6 +71,12 @@ export const signupAgent = async (data: SignupData): Promise<Session> => {
     if (result.success && result.user) {
       const session: Session = { user: result.user, role: result.user.role };
       storage.setSession(session);
+      
+      // Add agency to localStorage if returned from backend
+      if (result.agency) {
+        storage.addAgency(result.agency);
+      }
+      
       return session;
     }
 

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/layouts/AuthCard';
 import { useAuthStore } from '@/store/auth';
+import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
@@ -17,6 +18,7 @@ export default function Signup() {
     country: ''
   });
   const { signup, isLoading } = useAuthStore();
+  const { initialize: initializeData } = useDataStore();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,6 +26,9 @@ export default function Signup() {
     
     const success = await signup(formData);
     if (success) {
+      // Reload data store to include newly created agency
+      initializeData();
+      
       toast({
         title: 'Account Created',
         description: 'Welcome to Find And Study! Redirecting to your dashboard...'

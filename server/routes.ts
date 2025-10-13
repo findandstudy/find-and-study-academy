@@ -278,18 +278,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         announcementNotif: true
       };
 
-      await storage.createAgency(newAgency);
-      await storage.createUser(newUser);
+      const createdAgency = await storage.createAgency(newAgency);
+      const createdUser = await storage.createUser(newUser);
 
       res.status(201).json({
         success: true,
         user: {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-          agencyId: newUser.agencyId
-        }
+          id: createdUser.id,
+          name: createdUser.name,
+          email: createdUser.email,
+          role: createdUser.role,
+          agencyId: createdUser.agencyId
+        },
+        agency: createdAgency
       });
     } catch (error) {
       console.error('Signup error:', error);
