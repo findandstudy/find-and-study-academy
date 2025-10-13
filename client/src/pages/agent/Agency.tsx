@@ -393,7 +393,7 @@ export default function AgentAgency() {
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-start">
         <Button onClick={handleSave} data-testid="button-save-agency">
           Save Changes
         </Button>
