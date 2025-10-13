@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { generateCertificatePDF } from '@/lib/pdf';
 import { 
   Award, 
   Search, 
@@ -91,14 +92,49 @@ export default function AdminCertificates() {
     setSelectedCertificate(certificate);
   };
 
-  const downloadCertificate = async (certificateCode: string) => {
+  const downloadCertificate = async (certificate: AdminCertificate) => {
     try {
-      // In a real implementation, this would generate and download the certificate
+      if (!certificate.user || !certificate.course) {
+        toast({
+          title: 'Download Failed',
+          description: 'Certificate data is incomplete.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Convert AdminCertificate to types expected by generateCertificatePDF
+      await generateCertificatePDF(
+        {
+          id: certificate.id,
+          code: certificate.code,
+          scorePercent: certificate.scorePercent,
+          issuedAt: certificate.issuedAt,
+          userId: certificate.user.id,
+          courseId: certificate.course.id
+        },
+        {
+          id: certificate.user.id,
+          name: certificate.user.name,
+          email: certificate.user.email,
+          role: certificate.user.role as 'agent' | 'admin',
+          agencyId: undefined
+        },
+        {
+          id: certificate.course.id,
+          title: certificate.course.title,
+          slug: certificate.course.slug,
+          sections: []
+        },
+        null // agency - not available in admin view
+      );
+
       toast({
-        title: 'Certificate Download',
-        description: `Certificate ${certificateCode} download initiated.`
+        title: 'Certificate Downloaded',
+        description: `Certificate ${certificate.code} downloaded successfully.`
       });
     } catch (error) {
+      console.error('Certificate download error:', error);
       toast({
         title: 'Download Failed',
         description: 'Failed to download certificate.',
@@ -332,7 +368,7 @@ export default function AdminCertificates() {
                                 </div>
                                 
                                 <Button 
-                                  onClick={() => downloadCertificate(selectedCertificate.code)}
+                                  onClick={() => downloadCertificate(selectedCertificate)}
                                   className="w-full"
                                   data-testid="button-download-certificate"
                                 >
