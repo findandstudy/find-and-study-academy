@@ -142,6 +142,11 @@ export default function AgentAgency() {
     if (!userAgency || !user) return;
 
     try {
+      // Prepare update payload - exclude id and createdAt
+      const { id, createdAt, ...updatePayload } = agencyData as Agency;
+      
+      console.log('[AGENCY SAVE] Sending update:', updatePayload);
+
       // Send update request to backend
       const response = await fetch('/api/agency', {
         method: 'PUT',
@@ -150,14 +155,17 @@ export default function AgentAgency() {
           'x-user-id': user.id,
           'x-user-role': user.role,
         },
-        body: JSON.stringify(agencyData),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update agency');
+        const errorData = await response.json();
+        console.error('[AGENCY SAVE] Error response:', errorData);
+        throw new Error(errorData.message || 'Failed to update agency');
       }
 
       const result = await response.json();
+      console.log('[AGENCY SAVE] Success:', result);
 
       // Update local store with backend response
       updateAgency(userAgency.id, result.agency);
@@ -170,7 +178,7 @@ export default function AgentAgency() {
       console.error('Error updating agency:', error);
       toast({
         title: 'Update Failed',
-        description: 'Failed to save agency information. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to save agency information. Please try again.',
         variant: 'destructive'
       });
     }
