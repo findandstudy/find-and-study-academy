@@ -9,6 +9,7 @@ import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
 import { Building, Upload, MapPin, Globe, Phone, User } from 'lucide-react';
 import type { Agency } from '../../types';
+import type { InsertAgency } from '@shared/schema';
 
 export default function AgentAgency() {
   const { user } = useAuthStore();
@@ -142,8 +143,27 @@ export default function AgentAgency() {
     if (!userAgency || !user) return;
 
     try {
-      // Prepare update payload - exclude id and createdAt
-      const { id, createdAt, ...updatePayload } = agencyData as Agency;
+      // Type-safe: Build payload matching InsertAgency schema
+      // Exclude id and createdAt (auto-generated), include all editable fields
+      const updatePayload: Partial<InsertAgency> = {
+        name: agencyData.name,
+        logoUrl: agencyData.logoUrl,
+        country: (agencyData as any).country,
+        city: (agencyData as any).city,
+        contactEmail: (agencyData as any).contactEmail,
+        contactPhone: (agencyData as any).contactPhone,
+        status: (agencyData as any).status,
+        description: (agencyData as any).description,
+        address: agencyData.address,
+        googleMapUrl: agencyData.googleMapUrl,
+        yandexMapUrl: agencyData.yandexMapUrl,
+        staffSize: agencyData.staffSize,
+        annualStudents: agencyData.annualStudents,
+        website: agencyData.website,
+        phone: agencyData.phone,
+        primaryContactName: agencyData.primaryContactName,
+        primaryContactEmail: agencyData.primaryContactEmail,
+      };
       
       console.log('[AGENCY SAVE] Sending update:', updatePayload);
 
