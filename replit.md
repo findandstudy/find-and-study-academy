@@ -31,6 +31,22 @@ Modular course structure with sections containing lessons and embedded quizzes. 
 ### UI Component Architecture
 Built on shadcn/ui component library providing consistent design patterns. Custom layout components for different user roles (AdminLayout, AgentLayout, AuthCard). Responsive design with mobile-first approach and proper accessibility considerations. Toast notifications for user feedback and modal dialogs for complex interactions.
 
+## Deployment Configuration (2024-10-14)
+
+### Auto-Seeding System
+Backend automatically seeds essential data on first startup:
+- **Admin User:** email: en@findandstudy.com, password: admin123
+- **Default Countries:** Türkiye, Germany, U.S.A, Latvia, Belarus, China (all active)
+- **Menu Settings:** All agent menu items enabled by default
+
+Auto-seed logic in `server/index.ts` runs on every startup and only creates data if missing, ensuring production deployments have required initial data without manual setup.
+
+### Production Deployment
+- URL: https://findandstudy-academy.replit.app
+- Uses separate production database (different from development)
+- Auto-seed ensures admin and countries are available on first deploy
+- Custom domain support available via DNS configuration
+
 ## Recent Features Added
 
 ### Email Notification System (2024-10-12)

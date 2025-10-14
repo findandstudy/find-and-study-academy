@@ -37,14 +37,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Auto-seed default admin user if none exists
-async function seedDefaultAdmin() {
+// Auto-seed essential data on first deployment
+async function seedEssentialData() {
   try {
+    // 1. Seed default admin if none exists
     const users = await storage.getUsers();
     const adminExists = users.some(u => u.role === 'admin');
     
     if (!adminExists) {
-      log('No admin user found. Creating default admin...');
+      log('Seeding default admin user...');
       await storage.createUser({
         username: 'admin',
         name: 'System Admin',
@@ -52,18 +53,68 @@ async function seedDefaultAdmin() {
         password: 'admin123',
         role: 'admin'
       });
-      log('✓ Default admin created: en@findandstudy.com / admin123');
+      log('✓ Admin created: en@findandstudy.com / admin123');
     }
+
+    // 2. Seed essential countries if empty
+    const countries = await storage.getCountries();
+    
+    if (countries.length === 0) {
+      log('Seeding default countries...');
+      
+      const defaultCountries = [
+        { name: 'Türkiye', code: 'TR', flag: '🇹🇷', description: 'Turkey - Study opportunities in a vibrant crossroad of cultures' },
+        { name: 'Germany', code: 'DE', flag: '🇩🇪', description: 'Germany - Excellence in engineering and research' },
+        { name: 'U.S.A', code: 'US', flag: '🇺🇸', description: 'United States - World-class universities and research institutions' },
+        { name: 'Latvia', code: 'LV', flag: '🇱🇻', description: 'Latvia - Quality education in the heart of Europe' },
+        { name: 'Belarus', code: 'BY', flag: '🇧🇾', description: 'Belarus - Affordable education with strong academic programs' },
+        { name: 'China', code: 'CN', flag: '🇨🇳', description: 'China - Ancient wisdom meets cutting-edge innovation' },
+      ];
+
+      for (const country of defaultCountries) {
+        await storage.createCountry({
+          name: country.name,
+          code: country.code,
+          flag: country.flag,
+          status: 'active',
+          description: country.description
+        });
+      }
+      
+      log(`✓ Seeded ${defaultCountries.length} countries`);
+    }
+
+    // 3. Seed default menu visibility settings if not exists
+    const menuSettings = await storage.getSystemSettingByKey('menuVisibility');
+    if (!menuSettings) {
+      log('Seeding default menu settings...');
+      await storage.createSystemSetting({
+        key: 'menuVisibility',
+        value: JSON.stringify({
+          dashboard: true,
+          courses: true,
+          certificates: true,
+          leaderboard: true,
+          myAgency: true,
+          examsOrders: true,
+          subscriptions: true,
+          profile: true
+        }),
+        description: 'Agent menu visibility settings'
+      });
+      log('✓ Menu settings created');
+    }
+    
   } catch (error: any) {
-    log('Admin seed error:', error?.message || error);
+    log('Seed error:', error?.message || error);
   }
 }
 
 (async () => {
   const server = await registerRoutes(app);
   
-  // Seed default admin on startup
-  await seedDefaultAdmin();
+  // Seed essential data on startup (admin, countries, settings)
+  await seedEssentialData();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
