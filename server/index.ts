@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -36,8 +37,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Auto-seed default admin user if none exists
+async function seedDefaultAdmin() {
+  try {
+    const users = await storage.getUsers();
+    const adminExists = users.some(u => u.role === 'admin');
+    
+    if (!adminExists) {
+      log('No admin user found. Creating default admin...');
+      await storage.createUser({
+        username: 'admin',
+        name: 'System Admin',
+        email: 'en@findandstudy.com',
+        password: 'admin123',
+        role: 'admin'
+      });
+      log('✓ Default admin created: en@findandstudy.com / admin123');
+    }
+  } catch (error: any) {
+    log('Admin seed error:', error?.message || error);
+  }
+}
+
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Seed default admin on startup
+  await seedDefaultAdmin();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
