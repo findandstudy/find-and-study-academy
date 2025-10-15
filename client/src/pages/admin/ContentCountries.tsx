@@ -73,7 +73,7 @@ export default function AdminContentCountries() {
       countryId: 'none',
       courseId: 'none',
       content: '',
-      status: 'draft',
+      status: 'published',
       order: 0
     }
   });
