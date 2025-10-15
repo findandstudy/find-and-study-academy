@@ -1005,6 +1005,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent announcements endpoint - public announcements for agents
+  app.get('/api/announcements', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      const announcements = await storage.getAnnouncements();
+      
+      const activeAnnouncements = announcements.filter(a => {
+        const isPublished = a.status === 'published';
+        const isTargeted = a.targetAudience === 'all' || 
+                          (authenticatedUser.role === 'agent' && a.targetAudience === 'agents') ||
+                          (authenticatedUser.role === 'admin' && a.targetAudience === 'admins');
+        const notExpired = !a.expiresAt || new Date(a.expiresAt) > new Date();
+        return isPublished && isTargeted && notExpired;
+      });
+
+      res.json({
+        success: true,
+        announcements: activeAnnouncements
+      });
+    } catch (error) {
+      console.error('Agent announcements retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve announcements'
+      });
+    }
+  });
+
   // System Settings endpoints
   app.get('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
     try {
