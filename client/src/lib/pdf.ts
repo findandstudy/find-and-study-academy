@@ -62,16 +62,16 @@ export const generateCertificatePDF = async (
   doc.text(`Certificate Code: ${certificate.code}`, 148.5, 170, { align: 'center' });
   doc.text(`Date of Issue: ${new Date(certificate.issuedAt).toLocaleDateString()}`, 148.5, 180, { align: 'center' });
 
-  // Signature
+  // Signature (2cm yukarı kaldırıldı)
   doc.setFontSize(12);
-  doc.text('Dr. Eymen Namazcı', 60, 190);
+  doc.text('Dr. Eymen Namazcı', 60, 170);
   doc.setFontSize(10);
-  doc.text('Program Director', 60, 197);
+  doc.text('Program Director', 60, 177);
 
-  // Add QR code
-  doc.addImage(qrDataUrl, 'PNG', 225, 175, 25, 25);
+  // Add QR code (2cm yukarı kaldırıldı)
+  doc.addImage(qrDataUrl, 'PNG', 225, 155, 25, 25);
   doc.setFontSize(8);
-  doc.text('Scan to verify', 237.5, 205, { align: 'center' });
+  doc.text('Scan to verify', 237.5, 185, { align: 'center' });
 
   // Save the PDF
   const fileName = `FAS_Certificate_${user.name.replace(/\s+/g, '_')}_${course.title.replace(/\s+/g, '_')}.pdf`;
