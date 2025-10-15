@@ -1511,10 +1511,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authenticatedUser = (req as any).user;
       
-      console.log('[AGENCY UPDATE] Request from user:', { id: authenticatedUser.id, role: authenticatedUser.role, agencyId: authenticatedUser.agencyId });
+      console.log('[AGENCY UPDATE] Request from user:', { 
+        id: authenticatedUser.id, 
+        role: authenticatedUser.role, 
+        agencyId: authenticatedUser.agencyId,
+        requestBody: req.body
+      });
       
       // Only agents can update their own agency
       if (authenticatedUser.role !== 'agent') {
+        console.log('[AGENCY UPDATE] Forbidden: User is not an agent');
         return res.status(403).json({
           success: false,
           message: 'Only agents can update their agency'
@@ -1534,6 +1540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validation = insertAgencySchema.partial().safeParse(req.body);
       
       if (!validation.success) {
+        console.log('[AGENCY UPDATE] Validation failed:', validation.error.errors);
         return res.status(400).json({
           success: false,
           message: 'Invalid agency data',
@@ -1541,22 +1548,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log('[AGENCY UPDATE] Validated data:', validation.data);
+
       // Update agency in database
       const updatedAgency = await storage.updateAgency(agencyId, validation.data);
 
       if (!updatedAgency) {
+        console.log('[AGENCY UPDATE] ERROR: Agency not found with ID:', agencyId);
         return res.status(404).json({
           success: false,
           message: 'Agency not found'
         });
       }
 
+      console.log('[AGENCY UPDATE] Success:', { agencyId, updatedFields: Object.keys(validation.data) });
+
       res.json({
         success: true,
         agency: updatedAgency
       });
     } catch (error) {
-      console.error('Update agency error:', error);
+      console.error('[AGENCY UPDATE] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update agency'

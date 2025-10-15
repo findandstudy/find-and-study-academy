@@ -143,17 +143,10 @@ export default function AgentAgency() {
     if (!userAgency || !user) return;
 
     try {
-      // Type-safe: Build payload matching InsertAgency schema
-      // Exclude id and createdAt (auto-generated), include all editable fields
+      // Build update payload from current state
       const updatePayload: Partial<InsertAgency> = {
         name: agencyData.name,
         logoUrl: agencyData.logoUrl,
-        country: (agencyData as any).country,
-        city: (agencyData as any).city,
-        contactEmail: (agencyData as any).contactEmail,
-        contactPhone: (agencyData as any).contactPhone,
-        status: (agencyData as any).status,
-        description: (agencyData as any).description,
         address: agencyData.address,
         googleMapUrl: agencyData.googleMapUrl,
         yandexMapUrl: agencyData.yandexMapUrl,
@@ -165,7 +158,9 @@ export default function AgentAgency() {
         primaryContactEmail: agencyData.primaryContactEmail,
       };
       
-      console.log('[AGENCY SAVE] Sending update:', updatePayload);
+      console.log('[AGENCY SAVE] Current agencyData state:', agencyData);
+      console.log('[AGENCY SAVE] Sending update payload:', updatePayload);
+      console.log('[AGENCY SAVE] User agencyId:', user.agencyId);
 
       // Send update request to backend
       const response = await fetch('/api/agency', {
