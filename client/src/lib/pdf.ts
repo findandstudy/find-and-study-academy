@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import type { Certificate, User, Course, Agency } from '../types';
+import certificateBackground from '@assets/train_1760536930109.png';
 
 export const generateCertificatePDF = async (
   certificate: Certificate,
@@ -19,61 +20,58 @@ export const generateCertificatePDF = async (
     color: { dark: '#143591' }
   });
 
-  // Add certificate content
-  doc.setFillColor(20, 53, 145); // Navy background for header
-  doc.rect(0, 0, 297, 30, 'F');
+  // Add background image
+  doc.addImage(certificateBackground, 'PNG', 0, 0, 297, 210);
   
   // Title
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(20, 53, 145); // Navy blue color matching the border
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('CERTIFICATE OF COMPLETION', 148.5, 20, { align: 'center' });
-
-  // Reset text color
-  doc.setTextColor(0, 0, 0);
+  doc.text('CERTIFICATE OF COMPLETION', 148.5, 40, { align: 'center' });
   
   // Main content
+  doc.setTextColor(20, 53, 145); // Navy blue
   doc.setFontSize(16);
   doc.setFont('helvetica', 'normal');
-  doc.text('This is to certify that', 148.5, 50, { align: 'center' });
+  doc.text('This is to certify that', 148.5, 65, { align: 'center' });
   
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(user.name.toUpperCase(), 148.5, 65, { align: 'center' });
+  doc.text(user.name.toUpperCase(), 148.5, 80, { align: 'center' });
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
-  doc.text('representing', 148.5, 80, { align: 'center' });
+  doc.text('representing', 148.5, 95, { align: 'center' });
   
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(agency?.name || 'Independent Agent', 148.5, 95, { align: 'center' });
+  doc.text(agency?.name || 'Independent Agent', 148.5, 110, { align: 'center' });
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
-  doc.text('has successfully completed the', 148.5, 110, { align: 'center' });
+  doc.text('has successfully completed the', 148.5, 125, { align: 'center' });
   
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(course.title, 148.5, 125, { align: 'center' });
+  doc.text(course.title, 148.5, 140, { align: 'center' });
   
   // Score and details
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Final Score: ${certificate.scorePercent}%`, 148.5, 145, { align: 'center' });
-  doc.text(`Certificate Code: ${certificate.code}`, 148.5, 155, { align: 'center' });
-  doc.text(`Date of Issue: ${new Date(certificate.issuedAt).toLocaleDateString()}`, 148.5, 165, { align: 'center' });
+  doc.text(`Final Score: ${certificate.scorePercent}%`, 148.5, 160, { align: 'center' });
+  doc.text(`Certificate Code: ${certificate.code}`, 148.5, 170, { align: 'center' });
+  doc.text(`Date of Issue: ${new Date(certificate.issuedAt).toLocaleDateString()}`, 148.5, 180, { align: 'center' });
 
   // Signature
-  doc.text('Dr. Eymen Namazcı', 60, 180);
+  doc.setFontSize(12);
+  doc.text('Dr. Eymen Namazcı', 60, 190);
   doc.setFontSize(10);
-  doc.text('Program Director', 60, 188);
-  doc.text('Find And Study', 60, 195);
+  doc.text('Program Director', 60, 197);
 
   // Add QR code
-  doc.addImage(qrDataUrl, 'PNG', 220, 170, 30, 30);
+  doc.addImage(qrDataUrl, 'PNG', 225, 175, 25, 25);
   doc.setFontSize(8);
-  doc.text('Scan to verify', 235, 208, { align: 'center' });
+  doc.text('Scan to verify', 237.5, 205, { align: 'center' });
 
   // Save the PDF
   const fileName = `FAS_Certificate_${user.name.replace(/\s+/g, '_')}_${course.title.replace(/\s+/g, '_')}.pdf`;
