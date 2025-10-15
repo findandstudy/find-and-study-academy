@@ -183,7 +183,7 @@ export const insertContentSchema = createInsertSchema(contents).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  content: z.string().min(10, 'Content body must be at least 10 characters'),
+  content: z.string().trim().min(10, 'Content body must be at least 10 characters'),
 });
 
 export const insertCertificateSchema = createInsertSchema(certificates);
