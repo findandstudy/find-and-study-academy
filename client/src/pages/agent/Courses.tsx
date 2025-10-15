@@ -102,7 +102,7 @@ export default function AgentCourses() {
       lessons: sectionContents.map(content => ({
         id: content.id,
         title: content.title,
-        html: content.content || `<h2>${content.title}</h2><p>${content.description}</p>`,
+        html: content.content || `<h2>${content.title}</h2><p>${content.description || 'This lesson content is being prepared. Please check back later or contact your administrator.'}</p>`,
         quizId: content.type === 'quiz' ? content.id : undefined
       }))
     }));

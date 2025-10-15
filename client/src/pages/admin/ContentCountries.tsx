@@ -241,6 +241,7 @@ export default function AdminContentCountries() {
       setEditingContent(content);
       contentForm.reset({
         ...content,
+        content: content.content || '', // Convert null to empty string
         countryId: content.countryId || 'none',
         courseId: content.courseId || 'none',
         section: content.section || '' // Empty string for text input
