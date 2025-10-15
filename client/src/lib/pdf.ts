@@ -24,7 +24,7 @@ export const generateCertificatePDF = async (
   doc.addImage(certificateBackground, 'PNG', 0, 0, 297, 210);
   
   // Title (1cm aşağı kaydırıldı)
-  doc.setTextColor(20, 53, 145); // Navy blue color matching the border
+  doc.setTextColor(237, 28, 36); // #ed1c24 kırmızı renk
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
   doc.text('CERTIFICATE OF COMPLETION', 148.5, 50, { align: 'center' });
