@@ -23,11 +23,11 @@ export const generateCertificatePDF = async (
   // Add background image
   doc.addImage(certificateBackground, 'PNG', 0, 0, 297, 210);
   
-  // Title
+  // Title (1cm aşağı kaydırıldı)
   doc.setTextColor(20, 53, 145); // Navy blue color matching the border
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('CERTIFICATE OF COMPLETION', 148.5, 40, { align: 'center' });
+  doc.text('CERTIFICATE OF COMPLETION', 148.5, 50, { align: 'center' });
   
   // Main content
   doc.setTextColor(20, 53, 145); // Navy blue
@@ -64,9 +64,9 @@ export const generateCertificatePDF = async (
 
   // Signature (2cm yukarı kaldırıldı)
   doc.setFontSize(12);
-  doc.text('Dr. Eymen Namazcı', 60, 170);
+  doc.text('Dr. Eymen NAMAZCI', 60, 170);
   doc.setFontSize(10);
-  doc.text('Program Director', 60, 177);
+  doc.text('CEO of Find And Study', 60, 177);
 
   // Add QR code (2cm yukarı kaldırıldı)
   doc.addImage(qrDataUrl, 'PNG', 225, 155, 25, 25);
