@@ -11,22 +11,27 @@ import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import { announcementTypeStyles, announcementPriorityVariants } from '@/lib/announcement-helpers';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import dayjs from 'dayjs';
+import { useQuery } from '@tanstack/react-query';
+import type { Announcement } from '@/types';
 
 export default function AgentDashboard() {
   const { user } = useAuthStore();
-  const { courses, progresses, certificates, announcements } = useDataStore();
+  const { courses, progresses, certificates } = useDataStore();
+  
+  // Fetch announcements from backend
+  const { data: announcementsData } = useQuery<{ success: boolean; announcements: Announcement[] }>({
+    queryKey: ['/api/announcements'],
+    enabled: !!user,
+  });
+  
+  const announcements = announcementsData?.announcements || [];
 
   // Calculate user progress
   const userProgress = progresses.filter(p => p.userId === user?.id);
   const userCertificates = certificates.filter(c => c.userId === user?.id);
   
-  // Filter announcements: published, for agents or all, and not expired
-  const activeAnnouncements = announcements.filter(a => {
-    const isPublished = a.status === 'published';
-    const isTargeted = a.targetAudience === 'all' || a.targetAudience === 'agents';
-    const notExpired = !a.expiresAt || new Date(a.expiresAt) > new Date();
-    return isPublished && isTargeted && notExpired;
-  });
+  // Backend already filters announcements (published, targeted, not expired)
+  const activeAnnouncements = announcements;
 
   // Calculate real statistics
   const enrolledCourses = userProgress.length;
