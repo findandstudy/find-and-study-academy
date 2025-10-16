@@ -99,12 +99,24 @@ export default function AgentCourses() {
     const sections = Object.entries(contentsBySection).map(([sectionName, sectionContents]) => ({
       id: `section-${sectionName.toLowerCase().replace(/\s+/g, '-')}`,
       title: sectionName,
-      lessons: sectionContents.map(content => ({
-        id: content.id,
-        title: content.title,
-        html: content.content || `<h2>${content.title}</h2><p>${content.description || 'This lesson content is being prepared. Please check back later or contact your administrator.'}</p>`,
-        quizId: content.type === 'quiz' ? content.id : undefined
-      }))
+      lessons: sectionContents.map(content => {
+        // Check if content is actually empty (null, undefined, or only whitespace)
+        const hasContent = content.content && content.content.trim().length > 0;
+        
+        return {
+          id: content.id,
+          title: content.title,
+          html: hasContent 
+            ? content.content! 
+            : `<div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
+                <h2 class="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-3">${content.title}</h2>
+                <p class="text-yellow-700 dark:text-yellow-300">
+                  ${content.description || 'This lesson content is being prepared. Please check back later or contact your administrator.'}
+                </p>
+              </div>`,
+          quizId: content.type === 'quiz' ? content.id : undefined
+        };
+      })
     }));
 
     // Create dynamic course from admin contents
