@@ -34,6 +34,17 @@ export default function AgentCourses() {
     }
   });
 
+  const { data: quizzes = [] } = useQuery({
+    queryKey: ['/api/public/quizzes'],
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    select: (data: any) => {
+      console.log('📝 Public quizzes API response:', data);
+      return data.quizzes;
+    }
+  });
+
   // Get active countries that have published content
   const activeCountries = useMemo(() => {
     const countriesWithContent = countries.filter(country => {
@@ -178,7 +189,7 @@ export default function AgentCourses() {
             className="space-y-6"
           >
             {dynamicCourse ? (
-              <CourseView course={dynamicCourse} />
+              <CourseView course={dynamicCourse} quizzes={quizzes} />
             ) : (
               <Card className="h-64 flex items-center justify-center">
                 <div className="text-center">

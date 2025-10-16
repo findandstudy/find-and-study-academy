@@ -16,7 +16,25 @@ interface QuizModalProps {
   onComplete: (passed: boolean) => void;
 }
 
-export function QuizModal({ quiz, onClose, onComplete }: QuizModalProps) {
+export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProps) {
+  // Normalize quiz.questions - parse if string, ensure array
+  const quiz = {
+    ...quizProp,
+    questions: (() => {
+      if (!quizProp.questions) return [];
+      if (Array.isArray(quizProp.questions)) return quizProp.questions;
+      if (typeof quizProp.questions === 'string') {
+        try {
+          return JSON.parse(quizProp.questions);
+        } catch (e) {
+          console.error('Failed to parse quiz questions:', e);
+          return [];
+        }
+      }
+      return [];
+    })()
+  };
+  
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: string]: boolean | number }>({});
   const [showResults, setShowResults] = useState(false);

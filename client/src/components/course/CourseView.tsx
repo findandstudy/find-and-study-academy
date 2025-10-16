@@ -11,13 +11,17 @@ import type { Course, Lesson, Quiz, Progress as ProgressType } from '../../types
 
 interface CourseViewProps {
   course: Course;
+  quizzes?: Quiz[];
 }
 
-export function CourseView({ course }: CourseViewProps) {
+export function CourseView({ course, quizzes: quizzesProp }: CourseViewProps) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const { user } = useAuthStore();
-  const { progresses, quizzes, updateProgress, certificates } = useDataStore();
+  const { progresses, quizzes: storeQuizzes, updateProgress, certificates } = useDataStore();
+  
+  // Use prop quizzes if provided, otherwise fallback to store quizzes
+  const quizzes = quizzesProp || storeQuizzes;
 
   // Get user progress for this course
   const userProgress = progresses.find(p => p.userId === user?.id && p.courseId === course.id);

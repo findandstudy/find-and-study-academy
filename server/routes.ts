@@ -187,6 +187,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all quizzes for agent access
+  app.get('/api/public/quizzes', async (req, res) => {
+    try {
+      const quizzes = await storage.getQuizzes();
+      
+      // Parse questions JSON string to array for each quiz
+      const parsedQuizzes = quizzes.map(quiz => {
+        let questions = [];
+        if (quiz.questions) {
+          try {
+            questions = typeof quiz.questions === 'string' 
+              ? JSON.parse(quiz.questions) 
+              : quiz.questions;
+          } catch (e) {
+            console.error(`Failed to parse questions for quiz ${quiz.id}:`, e);
+            questions = [];
+          }
+        }
+        return {
+          ...quiz,
+          questions
+        };
+      });
+      
+      res.json({
+        success: true,
+        quizzes: parsedQuizzes
+      });
+    } catch (error) {
+      console.error('Public quizzes error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch quizzes'
+      });
+    }
+  });
+
   // Login endpoint - authenticate user and return user data
   app.post('/api/login', async (req, res) => {
     try {
