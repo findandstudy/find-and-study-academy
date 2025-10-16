@@ -76,6 +76,7 @@ export const contents = pgTable("contents", {
   type: text("type").notNull().default('lesson'), // 'lesson' | 'video' | 'document' | 'quiz'
   countryId: varchar("country_id"), // Optional - content can be country-specific
   courseId: varchar("course_id"), // Link to courses if needed
+  quizId: varchar("quiz_id"), // Optional - link to quiz if this content has an embedded quiz
   content: text("content"), // Main content body (HTML, markdown, etc.)
   videoUrl: text("video_url"), // YouTube, Vimeo, or Object Storage video URL
   videoDuration: integer("video_duration"), // Video duration in seconds
