@@ -134,6 +134,17 @@ Auto-seed logic in `server/index.ts` runs on every startup and only creates data
 - Same size and styling as Agent Portal for visual consistency
 - Works correctly in both collapsed and expanded sidebar states
 
+### Quiz-to-Content Linking System (2024-10-16)
+- **Database Schema**: Added quizId field (nullable varchar) to contents table for linking lessons to quizzes
+- **Admin Interface**: Quiz dropdown in Content & Countries form allows admins to associate quizzes with specific lessons
+- **Backend API**: New /api/public/quizzes endpoint fetches all quizzes with automatic JSON parsing of questions field
+- **Agent Experience**: "Start Quiz" button appears on lessons with linked quizzes, opens QuizModal with quiz content
+- **Data Flow**: Admin selects quiz → quizId saves to content.quiz_id → API returns quizId → Agent sees quiz button
+- **Storage Layer Fix**: getContents() now includes quizId in SELECT query (was missing, causing API to not return quiz associations)
+- **Defensive Parsing**: QuizModal normalizes questions field to handle both JSON string and array formats
+- **End-to-End Testing**: Verified quiz button visibility, modal opening, question display, and completion with progress tracking
+- **Known Limitation**: Quiz data fetched from API - works with database-stored quizzes, not mock data
+
 ## External Dependencies
 
 ### UI and Styling Framework
