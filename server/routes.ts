@@ -1506,6 +1506,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent: Get own agency information
+  app.get('/api/agency', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      // Only agents can access their agency
+      if (authenticatedUser.role !== 'agent') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only agents can access agency information'
+        });
+      }
+
+      const agencyId = authenticatedUser.agencyId;
+      if (!agencyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Agent does not have an associated agency'
+        });
+      }
+
+      const agencies = await storage.getAgencies();
+      const agency = agencies.find(a => a.id === agencyId);
+
+      if (!agency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        agency
+      });
+    } catch (error) {
+      console.error('[AGENCY GET] Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch agency information'
+      });
+    }
+  });
+
   // Agent: Update own agency information
   app.put('/api/agency', requireAuth, async (req, res) => {
     try {

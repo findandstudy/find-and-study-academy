@@ -7,16 +7,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
-import { Building, Upload, MapPin, Globe, Phone, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
+import { Building, Upload, MapPin, Globe, Phone, User, Loader2 } from 'lucide-react';
 import type { Agency } from '../../types';
 import type { InsertAgency } from '@shared/schema';
 
 export default function AgentAgency() {
   const { user } = useAuthStore();
-  const { agencies, updateAgency } = useDataStore();
+  const { updateAgency } = useDataStore();
   const { toast } = useToast();
 
-  const userAgency = agencies.find(a => a.id === user?.agencyId);
+  // Fetch agency data from backend
+  const { data: agencyResponse, isLoading } = useQuery<{ success: boolean; agency: Agency }>({
+    queryKey: ['/api/agency'],
+    enabled: !!user && user.role === 'agent',
+  });
+
+  const userAgency = agencyResponse?.agency;
+  
   const [agencyData, setAgencyData] = useState<Partial<Agency>>({
     name: '',
     logoUrl: '',
@@ -31,6 +40,7 @@ export default function AgentAgency() {
     primaryContactEmail: ''
   });
 
+  // Update form when agency data is fetched
   useEffect(() => {
     if (userAgency) {
       setAgencyData(userAgency);
@@ -123,6 +133,9 @@ export default function AgentAgency() {
       // Update agency in store (localStorage persistence)
       updateAgency(userAgency.id, { logoUrl: result.url });
 
+      // Invalidate query to refetch agency data
+      queryClient.invalidateQueries({ queryKey: ['/api/agency'] });
+
       toast({
         title: 'Logo Uploaded',
         description: 'Agency logo has been updated successfully.'
@@ -185,6 +198,9 @@ export default function AgentAgency() {
       // Update local store with backend response
       updateAgency(userAgency.id, result.agency);
 
+      // Invalidate query to refetch agency data
+      queryClient.invalidateQueries({ queryKey: ['/api/agency'] });
+
       toast({
         title: 'Agency Updated',
         description: 'Your agency information has been saved successfully.'
@@ -206,6 +222,15 @@ export default function AgentAgency() {
     }));
   };
 
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
