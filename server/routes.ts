@@ -1960,9 +1960,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/contents', requireAuth, requireAdmin, async (req, res) => {
     try {
+      console.log('[CREATE CONTENT] Request body:', JSON.stringify(req.body, null, 2));
+      
       const validation = insertContentSchema.safeParse(req.body);
       
       if (!validation.success) {
+        console.log('[CREATE CONTENT] Validation failed:', validation.error.errors);
         return res.status(400).json({
           success: false,
           message: 'Invalid content data',
@@ -1970,7 +1973,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log('[CREATE CONTENT] Validated data:', JSON.stringify(validation.data, null, 2));
+      
       const content = await storage.createContent(validation.data);
+      
+      console.log('[CREATE CONTENT] Created content:', JSON.stringify(content, null, 2));
       
       res.status(201).json({
         success: true,

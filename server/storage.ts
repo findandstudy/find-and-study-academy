@@ -345,6 +345,7 @@ export class DatabaseStorage implements IStorage {
         type: contents.type,
         countryId: contents.countryId,
         courseId: contents.courseId,
+        quizId: contents.quizId,
         content: contents.content,
         videoUrl: contents.videoUrl,
         videoDuration: contents.videoDuration,
