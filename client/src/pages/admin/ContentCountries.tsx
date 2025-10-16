@@ -50,6 +50,12 @@ export default function AdminContentCountries() {
     select: (data: any) => data.contents as Array<Content & { countryName?: string }>
   });
 
+  // Quizzes query - for linking quizzes to content
+  const { data: quizzes = [] } = useQuery({
+    queryKey: ['/api/admin/quizzes'],
+    select: (data: any) => data.quizzes as Array<{ id: string; title: string; description?: string }>
+  });
+
   // Country form
   const countryForm = useForm<InsertCountry>({
     resolver: zodResolver(insertCountrySchema),
@@ -72,6 +78,7 @@ export default function AdminContentCountries() {
       type: 'lesson',
       countryId: 'none',
       courseId: 'none',
+      quizId: 'none',
       content: '',
       status: 'published',
       order: 0
@@ -215,6 +222,7 @@ export default function AdminContentCountries() {
       ...data,
       countryId: data.countryId === 'none' ? null : data.countryId,
       courseId: data.courseId === 'none' ? null : data.courseId,
+      quizId: data.quizId === 'none' ? null : data.quizId,
       section: data.section?.trim() || null // Convert empty/whitespace to null
     };
     
@@ -244,6 +252,7 @@ export default function AdminContentCountries() {
         content: content.content || '', // Convert null to empty string
         countryId: content.countryId || 'none',
         courseId: content.courseId || 'none',
+        quizId: content.quizId || 'none',
         section: content.section || '' // Empty string for text input
       });
     } else {
@@ -666,6 +675,33 @@ export default function AdminContentCountries() {
                               </FormItem>
                             )}
                           />
+                          <FormField
+                            control={contentForm.control}
+                            name="quizId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Linked Quiz (Optional)</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value || 'none'}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-content-quiz">
+                                      <SelectValue placeholder="Select quiz" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="none">No quiz</SelectItem>
+                                    {quizzes.map((quiz) => (
+                                      <SelectItem key={quiz.id} value={quiz.id}>
+                                        {quiz.title}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="order"
