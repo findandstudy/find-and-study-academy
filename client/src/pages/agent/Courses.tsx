@@ -114,7 +114,7 @@ export default function AgentCourses() {
                   ${content.description || 'This lesson content is being prepared. Please check back later or contact your administrator.'}
                 </p>
               </div>`,
-          quizId: content.type === 'quiz' ? content.id : undefined
+          quizId: content.quizId || undefined
         };
       })
     }));
