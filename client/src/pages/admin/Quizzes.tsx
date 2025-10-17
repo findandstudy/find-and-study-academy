@@ -52,7 +52,12 @@ export default function AdminQuizzes() {
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizDTO | null>(null);
 
-  // Queries  
+  // Queries
+  const { data: countries = [] } = useQuery({
+    queryKey: ['/api/public/countries'],
+    select: (data) => data.countries || []
+  });
+  
   const { data: quizzes = [], isLoading: quizzesLoading } = useQuery({
     queryKey: ['/api/admin/quizzes'],
     select: (data) => {
@@ -71,6 +76,7 @@ export default function AdminQuizzes() {
       id: '',
       title: '',
       courseId: 'course-1',
+      countryId: undefined,
       isFinal: false,
       passPercent: 70,
       description: '',
@@ -190,6 +196,7 @@ export default function AdminQuizzes() {
         id: quiz.id || '',
         title: quiz.title || '',
         courseId: quiz.courseId || 'course-1',
+        countryId: quiz.countryId || undefined,
         isFinal: quiz.isFinal || false,
         passPercent: quiz.passPercent || 70,
         description: quiz.description || '',
@@ -203,6 +210,7 @@ export default function AdminQuizzes() {
         id: '',
         title: '',
         courseId: 'course-1',
+        countryId: undefined,
         isFinal: false,
         passPercent: 70,
         description: '',
@@ -347,7 +355,7 @@ export default function AdminQuizzes() {
                       )}
                     />
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={quizForm.control}
                         name="passPercent"
@@ -391,6 +399,9 @@ export default function AdminQuizzes() {
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={quizForm.control}
                         name="isFinal"
@@ -408,6 +419,38 @@ export default function AdminQuizzes() {
                                 <SelectItem value="true">Final Exam</SelectItem>
                               </SelectContent>
                             </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={quizForm.control}
+                        name="countryId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Country {quizForm.watch('isFinal') && <span className="text-destructive">*</span>}
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-quiz-country">
+                                  <SelectValue placeholder="Select country (optional)" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="">None</SelectItem>
+                                {countries.map((country: any) => (
+                                  <SelectItem key={country.id} value={country.id}>
+                                    {country.flag} {country.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {quizForm.watch('isFinal') && (
+                              <p className="text-xs text-muted-foreground">
+                                Required for Final Exams - specifies which country this exam is for
+                              </p>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
