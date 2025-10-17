@@ -77,7 +77,19 @@ const quizUpdateSchema = insertQuizSchema.extend({
       return false;
     }
   }, 'Invalid questions format - must be valid JSON array of question objects').optional()
-}).partial();
+}).partial().refine(
+  (data) => {
+    // If quiz is being set as final exam, countryId must be provided
+    if (data.isFinal === true && !data.countryId) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Country is required for Final Exams',
+    path: ['countryId']
+  }
+);
 
 // Authentication middleware - verify user session with server-side validation
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
