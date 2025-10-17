@@ -431,14 +431,13 @@ export default function AdminQuizzes() {
                             <FormLabel>
                               Country {quizForm.watch('isFinal') && <span className="text-destructive">*</span>}
                             </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <Select onValueChange={field.onChange} value={field.value || undefined}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-quiz-country">
                                   <SelectValue placeholder="Select country (optional)" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
                                 {countries.map((country: any) => (
                                   <SelectItem key={country.id} value={country.id}>
                                     {country.flag} {country.name}
