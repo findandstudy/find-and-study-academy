@@ -92,7 +92,7 @@ export default function AdminQuizzes() {
       isFinal: false,
       passPercent: 70,
       description: '',
-      status: 'draft',
+      status: 'active',
       order: 0,
       questions: [
         {
@@ -187,10 +187,18 @@ export default function AdminQuizzes() {
 
   // Form handlers
   const onSubmit = (data: QuizFormData) => {
+    // For Final Exams, automatically set courseId based on countryId
+    const submissionData = {
+      ...data,
+      courseId: data.isFinal && data.countryId 
+        ? `course-${data.countryId}` 
+        : data.courseId
+    };
+    
     if (editingQuiz) {
-      updateQuizMutation.mutate({ id: editingQuiz.id, data });
+      updateQuizMutation.mutate({ id: editingQuiz.id, data: submissionData });
     } else {
-      createQuizMutation.mutate(data);
+      createQuizMutation.mutate(submissionData);
     }
   };
 
@@ -226,7 +234,7 @@ export default function AdminQuizzes() {
         isFinal: false,
         passPercent: 70,
         description: '',
-        status: 'draft',
+        status: 'active',
         order: 0,
         questions: [
           {
@@ -395,7 +403,7 @@ export default function AdminQuizzes() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-quiz-status">
                                   <SelectValue placeholder="Select status" />

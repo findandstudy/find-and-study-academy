@@ -37,12 +37,30 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
 
   // Get final quiz - filter by courseId and countryId if provided
   const finalQuiz = quizzes.find(q => {
+    console.log('🔍 Checking quiz for Final Exam:', {
+      quizId: q.id,
+      title: q.title,
+      isFinal: q.isFinal,
+      quizCourseId: q.courseId,
+      currentCourseId: course.id,
+      quizCountryId: q.countryId,
+      selectedCountryId: countryId,
+      status: q.status
+    });
     if (!q.isFinal) return false;
     // Must match this specific course
     if (q.courseId !== course.id) return false;
     // If countryId is provided, only show final exam for this specific country
     if (countryId && q.countryId && q.countryId !== countryId) return false;
     return true;
+  });
+  
+  console.log('✅ Final Quiz Result:', {
+    found: !!finalQuiz,
+    quiz: finalQuiz,
+    totalQuizzes: quizzes.length,
+    courseId: course.id,
+    countryId: countryId
   });
 
   useEffect(() => {

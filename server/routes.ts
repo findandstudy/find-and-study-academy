@@ -229,8 +229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const quizzes = await storage.getQuizzes();
       
+      // Filter only active quizzes for agent access
+      const activeQuizzes = quizzes.filter(q => q.status === 'active');
+      
       // Parse questions JSON string to array for each quiz
-      const parsedQuizzes = quizzes.map(quiz => {
+      const parsedQuizzes = activeQuizzes.map(quiz => {
         let questions = [];
         if (quiz.questions) {
           try {

@@ -145,6 +145,23 @@ Auto-seed logic in `server/index.ts` runs on every startup and only creates data
 - **End-to-End Testing**: Verified quiz button visibility, modal opening, question display, and completion with progress tracking
 - **Known Limitation**: Quiz data fetched from API - works with database-stored quizzes, not mock data
 
+### Country-based Final Exam System (2024-10-17)
+- **Database Schema**: Added countryId field (nullable varchar) to quizzes table for country-specific Final Exams
+- **Admin Interface**: Country dropdown in Quiz form - required when Quiz Type is "Final Exam"
+- **Multi-layer Validation**: 
+  - Frontend: Zod refine validation enforces countryId selection for Final Exams
+  - Backend CREATE: quizValidationSchema enforces countryId when isFinal is true
+  - Backend UPDATE: Merged quiz validation prevents removing country from existing Final Exams or creating Final Exams without country
+- **Agent Experience**: Final Exam appears only when agent completes 100% of country course AND quiz matches both courseId and countryId
+- **CourseView Filtering**: Final quiz filtered by `isFinal && courseId === course.id && countryId === selectedCountry`
+- **Edge Cases Handled**:
+  - Creating Final Exam without country → Blocked (frontend + backend)
+  - Updating Final Exam to remove country → Blocked (merged validation)
+  - Updating Regular Quiz to Final Exam without country → Blocked
+  - Wrong course's Final Exam appearing → Prevented by courseId + countryId dual filter
+- **Validation Strategy**: Backend PATCH endpoint merges existing quiz with update data before validating final state - ensures Final Exams always have country assignment
+- **Architect Reviewed**: All validation layers verified, no security issues, no regressions
+
 ## External Dependencies
 
 ### UI and Styling Framework
