@@ -176,16 +176,47 @@ export default function AdminQuizzes() {
     }
   };
 
-  const openQuizDialog = (quiz?: Quiz) => {
+  const openQuizDialog = (quiz?: QuizDTO) => {
     if (quiz) {
       setEditingQuiz(quiz);
+      // Ensure questions are properly formatted - they should already be an array from backend
+      const questionsArray = Array.isArray(quiz.questions) 
+        ? quiz.questions 
+        : (typeof quiz.questions === 'string' 
+          ? JSON.parse(quiz.questions) 
+          : []);
+      
       quizForm.reset({
-        ...quiz,
-        questions: quiz.questions || []
+        id: quiz.id || '',
+        title: quiz.title || '',
+        courseId: quiz.courseId || 'course-1',
+        isFinal: quiz.isFinal || false,
+        passPercent: quiz.passPercent || 70,
+        description: quiz.description || '',
+        status: quiz.status || 'draft',
+        order: quiz.order || 0,
+        questions: questionsArray
       });
     } else {
       setEditingQuiz(null);
-      quizForm.reset();
+      quizForm.reset({
+        id: '',
+        title: '',
+        courseId: 'course-1',
+        isFinal: false,
+        passPercent: 70,
+        description: '',
+        status: 'draft',
+        order: 0,
+        questions: [
+          {
+            id: 'q1',
+            type: 'boolean',
+            text: '',
+            answer: true
+          }
+        ]
+      });
     }
     setIsQuizDialogOpen(true);
   };

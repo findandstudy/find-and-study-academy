@@ -256,8 +256,8 @@ export function CourseView({ course, quizzes: quizzesProp }: CourseViewProps) {
                 </div>
               )}
 
-              {/* Completion Status */}
-              {!completedLessons.includes(selectedLesson.id) && !selectedLesson.quizId && (
+              {/* Mark Complete Button - Show for all lessons that aren't completed yet */}
+              {!completedLessons.includes(selectedLesson.id) && (
                 <div className="border-t pt-6">
                   <Button
                     onClick={() => handleLessonComplete(selectedLesson.id)}
