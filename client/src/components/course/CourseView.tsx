@@ -12,9 +12,10 @@ import type { Course, Lesson, Quiz, Progress as ProgressType } from '../../types
 interface CourseViewProps {
   course: Course;
   quizzes?: Quiz[];
+  countryId?: string; // Optional country ID for filtering final exams
 }
 
-export function CourseView({ course, quizzes: quizzesProp }: CourseViewProps) {
+export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseViewProps) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const { user } = useAuthStore();
@@ -34,8 +35,13 @@ export function CourseView({ course, quizzes: quizzesProp }: CourseViewProps) {
   // Check if user has certificate for this course
   const hasCertificate = certificates.some(c => c.userId === user?.id && c.courseId === course.id);
 
-  // Get final quiz
-  const finalQuiz = quizzes.find(q => q.isFinal);
+  // Get final quiz - filter by countryId if provided
+  const finalQuiz = quizzes.find(q => {
+    if (!q.isFinal) return false;
+    // If countryId is provided, only show final exam for this specific country
+    if (countryId && q.countryId && q.countryId !== countryId) return false;
+    return true;
+  });
 
   useEffect(() => {
     // Auto-select first lesson if none selected

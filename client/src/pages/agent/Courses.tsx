@@ -189,7 +189,7 @@ export default function AgentCourses() {
             className="space-y-6"
           >
             {dynamicCourse ? (
-              <CourseView course={dynamicCourse} quizzes={quizzes} />
+              <CourseView course={dynamicCourse} quizzes={quizzes} countryId={country.id} />
             ) : (
               <Card className="h-64 flex items-center justify-center">
                 <div className="text-center">
