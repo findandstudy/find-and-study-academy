@@ -52,7 +52,32 @@ const quizValidationSchema = insertQuizSchema.extend({
       return false;
     }
   }, 'Invalid questions format - must be valid JSON array of question objects')
-});
+}).refine(
+  (data) => {
+    // If quiz is a final exam, countryId is required
+    if (data.isFinal && !data.countryId) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Country is required for Final Exams',
+    path: ['countryId']
+  }
+);
+
+// Separate schema for updates (allows partial)
+const quizUpdateSchema = insertQuizSchema.extend({
+  questions: z.string().refine((val) => {
+    try {
+      const parsed = JSON.parse(val);
+      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid questions format - must be valid JSON array of question objects').optional()
+}).partial();
 
 // Authentication middleware - verify user session with server-side validation
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -2158,7 +2183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/quizzes/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const validation = quizValidationSchema.partial().safeParse(req.body);
+      const validation = quizUpdateSchema.safeParse(req.body);
       
       if (!validation.success) {
         return res.status(400).json({

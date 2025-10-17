@@ -41,7 +41,19 @@ import { z } from 'zod';
 
 const quizFormSchema = insertQuizSchema.extend({
   questions: z.array(frontendQuestionSchema).min(1, 'At least 1 question required')
-});
+}).refine(
+  (data) => {
+    // If quiz is a final exam, countryId is required
+    if (data.isFinal && !data.countryId) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Country is required for Final Exams',
+    path: ['countryId']
+  }
+);
 
 type QuizFormData = z.infer<typeof quizFormSchema>;
 type Question = FrontendQuestion;

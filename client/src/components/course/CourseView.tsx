@@ -35,9 +35,11 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   // Check if user has certificate for this course
   const hasCertificate = certificates.some(c => c.userId === user?.id && c.courseId === course.id);
 
-  // Get final quiz - filter by countryId if provided
+  // Get final quiz - filter by courseId and countryId if provided
   const finalQuiz = quizzes.find(q => {
     if (!q.isFinal) return false;
+    // Must match this specific course
+    if (q.courseId !== course.id) return false;
     // If countryId is provided, only show final exam for this specific country
     if (countryId && q.countryId && q.countryId !== countryId) return false;
     return true;
