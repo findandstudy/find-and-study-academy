@@ -99,6 +99,7 @@ export const quizzes = pgTable("quizzes", {
   id: varchar("id").primaryKey(),
   title: text("title").notNull(),
   courseId: varchar("course_id").notNull(),
+  countryId: varchar("country_id"), // Optional - for final exams, specifies which country the quiz is for
   isFinal: boolean("is_final").notNull().default(false),
   passPercent: integer("pass_percent").notNull().default(70),
   questions: text("questions"), // JSON string of questions array (nullable for now)
