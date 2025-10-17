@@ -2213,6 +2213,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Merge existing quiz with update data to validate final state
+      const mergedQuiz = {
+        ...existingQuiz,
+        ...validation.data
+      };
+
+      // Validate: Final Exams must have a country
+      if (mergedQuiz.isFinal && !mergedQuiz.countryId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Country is required for Final Exams',
+          errors: [{
+            path: ['countryId'],
+            message: 'Country is required for Final Exams'
+          }]
+        });
+      }
+
       // Convert questions array to JSON string if provided
       const updateData = {
         ...validation.data,
