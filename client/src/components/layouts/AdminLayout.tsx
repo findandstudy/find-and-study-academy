@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,9 +45,18 @@ const navigation = [
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Read initial sidebar collapsed state from localStorage to prevent flash
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('admin-sidebar-collapsed');
+    return saved === 'true';
+  });
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
+  
+  // Save sidebar collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem('admin-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   return (
     <div className="min-h-screen bg-background">

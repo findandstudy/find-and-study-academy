@@ -52,6 +52,9 @@ export interface Quiz {
   questions: Question[];
   passPercent: number;
   isFinal?: boolean;
+  courseId?: string;
+  countryId?: string;
+  status?: 'draft' | 'active' | 'archived';
 }
 
 export type Question = MCQ | BooleanQ;

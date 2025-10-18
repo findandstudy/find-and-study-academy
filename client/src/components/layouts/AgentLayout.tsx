@@ -43,13 +43,32 @@ const allNavigation = [
 
 export function AgentLayout({ children }: AgentLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>({});
+  // Read initial sidebar collapsed state from localStorage to prevent flash
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('agent-sidebar-collapsed');
+    return saved === 'true';
+  });
+  // Initialize with all menu items visible to prevent flash
+  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>({
+    dashboard: true,
+    courses: true,
+    certificates: true,
+    leaderboard: true,
+    agency: true,
+    'exams-orders': true,
+    subscriptions: true,
+    profile: true,
+  });
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
   const { agencies } = useDataStore();
   
   const userAgency = agencies.find(a => a.id === user?.agencyId);
+
+  // Save sidebar collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem('agent-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   // Load menu visibility settings
   useEffect(() => {
