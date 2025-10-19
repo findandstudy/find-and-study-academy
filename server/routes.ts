@@ -446,13 +446,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save to database
       const savedAttempt = await storage.addAttempt(attempt);
 
+      // Auto-generate certificate if this is a passing Final Exam attempt
+      let generatedCertificate = null;
+      let certificateAlreadyIssued = false;
+      
+      try {
+        // Get quiz details to check if it's a final exam
+        const quiz = await storage.getQuizById(quizId);
+        
+        if (quiz && quiz.isFinal && scorePercent >= quiz.passPercent) {
+          // Check if certificate already exists for this user/course (fresh query)
+          const existingCertificates = await storage.getCertificates();
+          const existingCert = existingCertificates.find(c => 
+            c.userId === authenticatedUser.id && c.courseId === quiz.courseId
+          );
+          
+          if (!existingCert) {
+            // Generate secure certificate code with retry mechanism and fresh uniqueness checks
+            let attempts_count = 0;
+            let certificateCode: string;
+            
+            do {
+              certificateCode = generateSecureCertificateCode();
+              attempts_count++;
+              
+              // Fresh check for uniqueness on each attempt to avoid race conditions
+              const allCerts = await storage.getCertificates();
+              const codeExists = allCerts.some(c => c.code === certificateCode);
+              if (!codeExists) break;
+              
+              if (attempts_count >= 10) {
+                throw new Error('Failed to generate unique certificate code');
+              }
+            } while (attempts_count < 10);
+
+            // Create certificate in database with retry on code collision
+            let certCreated = false;
+            let certRetries = 0;
+            
+            while (!certCreated && certRetries < 5) {
+              try {
+                generatedCertificate = await storage.addCertificate({
+                  userId: authenticatedUser.id,
+                  courseId: quiz.courseId,
+                  scorePercent: parseInt(scorePercent),
+                  code: certificateCode
+                });
+                
+                certCreated = true;
+                console.log(`✅ Auto-generated certificate ${certificateCode} for user ${authenticatedUser.id} on Final Exam ${quizId}`);
+              } catch (dbError: any) {
+                const is23505 = dbError?.code === '23505';
+                const hasUniqueError = dbError?.message?.toLowerCase().includes('unique') || dbError?.message?.toLowerCase().includes('duplicate');
+                
+                if (is23505 || hasUniqueError) {
+                  // Check if it's user/course duplicate (already issued) or code collision
+                  const errorDetail = dbError?.message || dbError?.detail || '';
+                  
+                  if (errorDetail.includes('user_course_unique') || errorDetail.includes('user_id') || errorDetail.includes('course_id')) {
+                    // User/course duplicate - certificate already exists from concurrent request
+                    console.log(`⚠️ Duplicate user/course certificate detected for user ${authenticatedUser.id} on course ${quiz.courseId}`);
+                    const allCerts = await storage.getCertificates();
+                    const existing = allCerts.find(c => 
+                      c.userId === authenticatedUser.id && c.courseId === quiz.courseId
+                    );
+                    if (existing) {
+                      certificateAlreadyIssued = true;
+                      generatedCertificate = existing;
+                      certCreated = true; // Exit loop
+                    }
+                    break;
+                  } else {
+                    // Code collision - generate new code and retry
+                    console.log(`⚠️ Certificate code collision detected (${certificateCode}), generating new code...`);
+                    certificateCode = generateSecureCertificateCode();
+                    certRetries++;
+                  }
+                } else {
+                  // Re-throw non-duplicate errors
+                  throw dbError;
+                }
+              }
+            }
+            
+            if (!certCreated && !generatedCertificate) {
+              console.error(`❌ Failed to create certificate after ${certRetries} retries`);
+            }
+          } else {
+            certificateAlreadyIssued = true;
+            generatedCertificate = existingCert;
+            console.log(`ℹ️ Certificate already exists for user ${authenticatedUser.id} on course ${quiz.courseId} - code: ${existingCert.code}`);
+          }
+        }
+      } catch (certError) {
+        // Log certificate generation error but don't fail the attempt submission
+        console.error('Certificate auto-generation error:', certError);
+      }
+
       res.status(201).json({
         success: true,
         attempt: {
           id: savedAttempt.id,
           scorePercent: savedAttempt.scorePercent,
           date: savedAttempt.date
-        }
+        },
+        certificate: generatedCertificate ? {
+          id: generatedCertificate.id,
+          code: generatedCertificate.code,
+          scorePercent: generatedCertificate.scorePercent,
+          issuedAt: generatedCertificate.issuedAt,
+          alreadyIssued: certificateAlreadyIssued
+        } : undefined
       });
     } catch (error) {
       console.error('Attempt submission error:', error);

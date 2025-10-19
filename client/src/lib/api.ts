@@ -54,13 +54,24 @@ export interface CertificateIssuanceResponse {
   };
 }
 
-// Submit quiz attempt to server
+// Submit quiz attempt to server (auto-generates certificate for passing Final Exam)
 export async function submitAttempt(attemptData: {
   quizId: string;
   scorePercent: number;
   correct: number;
   incorrect: number;
-}): Promise<{ success: boolean; message?: string; attempt?: any }> {
+}): Promise<{ 
+  success: boolean; 
+  message?: string; 
+  attempt?: any;
+  certificate?: {
+    id: string;
+    code: string;
+    scorePercent: number;
+    issuedAt: string;
+    alreadyIssued?: boolean;
+  };
+}> {
   try {
     const session = getSession();
     if (!session) {

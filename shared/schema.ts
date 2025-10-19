@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -27,7 +27,10 @@ export const certificates = pgTable("certificates", {
   scorePercent: integer("score_percent").notNull(),
   code: varchar("code").notNull().unique(), // FAS-XXXXXX format
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  // Prevent duplicate certificates for same user/course (handles concurrent requests)
+  userCourseUnique: unique("user_course_unique").on(table.userId, table.courseId),
+}));
 
 // Agencies table  
 export const agencies = pgTable("agencies", {
