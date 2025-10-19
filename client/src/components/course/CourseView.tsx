@@ -18,6 +18,7 @@ interface CourseViewProps {
 export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseViewProps) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render after quiz completion
   const { user } = useAuthStore();
   const { progresses, quizzes: storeQuizzes, updateProgress, certificates, attempts } = useDataStore();
   
@@ -110,6 +111,8 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
 
   const closeQuiz = () => {
     setActiveQuiz(null);
+    // Force re-render to update quiz completion status
+    setTimeout(() => setRefreshKey(prev => prev + 1), 100);
   };
 
   return (
@@ -295,18 +298,39 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
               )}
 
               {/* Mark Complete Button - Show for all lessons that aren't completed yet */}
-              {!completedLessons.includes(selectedLesson.id) && (
-                <div className="border-t pt-6">
-                  <Button
-                    onClick={() => handleLessonComplete(selectedLesson.id)}
-                    className="w-full bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/20"
-                    data-testid={`button-complete-lesson-${selectedLesson.id}`}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Mark as Complete
-                  </Button>
-                </div>
-              )}
+              {!completedLessons.includes(selectedLesson.id) && (() => {
+                // Check if this lesson has a quiz
+                const lessonQuiz = selectedLesson.quizId ? quizzes.find(q => q.id === selectedLesson.quizId) : null;
+                
+                // If lesson has a quiz, check if user passed it
+                let quizPassed = true; // Default to true if no quiz
+                if (lessonQuiz && user) {
+                  const quizAttempts = attempts.filter(a => a.userId === user.id && a.quizId === lessonQuiz.id);
+                  if (quizAttempts.length === 0) {
+                    quizPassed = false;
+                  } else {
+                    const bestAttempt = quizAttempts.reduce((best, current) => 
+                      current.scorePercent > best.scorePercent ? current : best
+                    );
+                    quizPassed = bestAttempt.scorePercent >= lessonQuiz.passPercent;
+                  }
+                }
+                
+                return (
+                  <div className="border-t pt-6">
+                    <Button
+                      onClick={() => handleLessonComplete(selectedLesson.id)}
+                      className="w-full bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/20"
+                      disabled={!quizPassed}
+                      data-testid={`button-complete-lesson-${selectedLesson.id}`}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Mark as Complete
+                      {lessonQuiz && !quizPassed && ' (Complete quiz first)'}
+                    </Button>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         ) : (
