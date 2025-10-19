@@ -20,24 +20,19 @@ export const generateCertificatePDF = async (
   });
 
   // Convert background image URL to data URL for jsPDF
-  const bgDataUrl = await new Promise<string>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => reject(new Error('Failed to load background image'));
-    img.src = certificateBackground;
-  });
+  // Using fetch to avoid CORS issues in production
+  const bgDataUrl = await fetch(certificateBackground)
+    .then(res => res.blob())
+    .then(blob => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to convert image to data URL'));
+      reader.readAsDataURL(blob);
+    }))
+    .catch(err => {
+      console.error('Background image loading error:', err);
+      throw new Error('Failed to load certificate background image');
+    });
 
   // Add background image
   doc.addImage(bgDataUrl, 'PNG', 0, 0, 297, 210);
