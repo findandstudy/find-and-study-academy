@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   role: text("role").notNull().default('agent'), // 'admin' | 'agent'
+  status: text("status").notNull().default('active'), // 'active' | 'inactive'
   agencyId: varchar("agency_id"),
   profilePicture: text("profile_picture"), // URL to profile picture
   emailNotifications: boolean("email_notifications").notNull().default(true), // Email notification preference

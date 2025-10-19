@@ -823,6 +823,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new user (admin only)
+  app.post('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { username, password, name, email, role, status } = req.body;
+
+      // Validate required fields
+      if (!username || !password || !name || !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username, password, name, and email are required'
+        });
+      }
+
+      // Validate role
+      if (role && !['admin', 'agent'].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role. Must be admin or agent.'
+        });
+      }
+
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already exists'
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
+      const newUser = await storage.createUser({
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role: role || 'agent',
+        status: status || 'active'
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+
+      res.json({
+        success: true,
+        user: userWithoutPassword
+      });
+    } catch (error: any) {
+      console.error('Create user error:', error);
+      if (error.code === '23505') { // Unique violation
+        return res.status(400).json({
+          success: false,
+          message: 'Email already exists'
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create user'
+      });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if user exists
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Prevent deleting yourself
+      if (id === req.user?.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete your own account'
+        });
+      }
+
+      await storage.deleteUser(id);
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete user error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete user'
+      });
+    }
+  });
+
+  // Bulk update user status (admin only)
+  app.post('/api/admin/users/bulk-status', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { userIds, status } = req.body;
+
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'userIds must be a non-empty array'
+        });
+      }
+
+      if (!['active', 'inactive'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Must be active or inactive.'
+        });
+      }
+
+      // Update each user
+      const updatePromises = userIds.map(id => storage.updateUser(id, { status }));
+      await Promise.all(updatePromises);
+
+      res.json({
+        success: true,
+        message: `${userIds.length} user(s) status updated to ${status}`
+      });
+    } catch (error) {
+      console.error('Bulk status update error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update user statuses'
+      });
+    }
+  });
+
+  // Bulk delete users (admin only)
+  app.post('/api/admin/users/bulk-delete', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { userIds } = req.body;
+
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'userIds must be a non-empty array'
+        });
+      }
+
+      // Prevent deleting yourself
+      if (userIds.includes(req.user?.id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete your own account'
+        });
+      }
+
+      // Delete each user
+      const deletePromises = userIds.map(id => storage.deleteUser(id));
+      await Promise.all(deletePromises);
+
+      res.json({
+        success: true,
+        message: `${userIds.length} user(s) deleted successfully`
+      });
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete users'
+      });
+    }
+  });
+
   // Admin analytics endpoints
   app.get('/api/admin/analytics/overview', requireAuth, requireAdmin, async (req, res) => {
     try {
