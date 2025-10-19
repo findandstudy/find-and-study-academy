@@ -66,7 +66,7 @@ export default function AdminQuizzes() {
 
   // Queries
   const { data: countries = [] } = useQuery({
-    queryKey: ['/api/public/countries?includeAll=true'],
+    queryKey: ['/api/public/countries'],
     select: (data) => data.countries || []
   });
   
