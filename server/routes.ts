@@ -2096,6 +2096,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk update agency status (admin only)
+  app.post('/api/admin/agencies/bulk-status', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { agencyIds, status } = req.body;
+
+      if (!Array.isArray(agencyIds) || agencyIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'agencyIds must be a non-empty array'
+        });
+      }
+
+      if (!['active', 'inactive', 'pending'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Must be active, inactive, or pending.'
+        });
+      }
+
+      // Update each agency
+      const updatePromises = agencyIds.map(id => storage.updateAgency(id, { status }));
+      await Promise.all(updatePromises);
+
+      res.json({
+        success: true,
+        message: `${agencyIds.length} agency(ies) status updated to ${status}`
+      });
+    } catch (error) {
+      console.error('Bulk status update error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update agency statuses'
+      });
+    }
+  });
+
+  // Bulk delete agencies (admin only)
+  app.post('/api/admin/agencies/bulk-delete', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { agencyIds } = req.body;
+
+      if (!Array.isArray(agencyIds) || agencyIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'agencyIds must be a non-empty array'
+        });
+      }
+
+      // Delete each agency
+      const deletePromises = agencyIds.map(id => storage.deleteAgency(id));
+      await Promise.all(deletePromises);
+
+      res.json({
+        success: true,
+        message: `${agencyIds.length} agency(ies) deleted successfully`
+      });
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete agencies'
+      });
+    }
+  });
+
   // Countries management routes (admin only)
   app.get('/api/admin/countries', requireAuth, requireAdmin, async (req, res) => {
     try {
