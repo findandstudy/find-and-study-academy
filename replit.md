@@ -1,198 +1,84 @@
 # Find And Study - Agents Portal
 
 ## Overview
-
-Find And Study is an educational platform designed specifically for study abroad agents. The application serves as a comprehensive training and certification system where agents can complete courses about different countries, take quizzes, earn certificates, and manage their agency information. The platform features role-based access with separate interfaces for agents and administrators, course management with interactive content, quiz systems with certification generation, and agency management capabilities.
+Find And Study is an educational platform designed for study abroad agents, offering a comprehensive training and certification system. Agents can complete courses, take quizzes, earn certificates, and manage agency information. The platform features role-based access for agents and administrators, interactive course content, a robust quiz system with certificate generation, and agency management capabilities. The long-term vision is to establish a leading platform for agent training in the study abroad sector, improving agent proficiency and streamlining the application process.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Frontend Architecture
-The application is built as a single-page application using React with TypeScript and Vite as the build tool. The frontend follows a component-based architecture with clear separation of concerns through dedicated directories for pages, components, stores, and utilities. The UI is built using shadcn/ui components with Tailwind CSS for styling, following a design system with consistent color schemes, typography (Inter font), and spacing patterns.
+The application is a single-page application built with React, TypeScript, and Vite. It follows a component-based architecture using `shadcn/ui` and Tailwind CSS for a consistent design system, including responsive design and accessibility.
 
 ### State Management
-The application uses Zustand for client-side state management, separated into two main stores: authentication state (useAuthStore) for managing user sessions and roles, and data state (useDataStore) for managing all application data including users, agencies, courses, quizzes, progress tracking, and certificates. This provides a clean separation between authentication concerns and business data.
+Zustand manages client-side state, separating authentication concerns (`useAuthStore`) from application data (`useDataStore`), which includes users, agencies, courses, quizzes, and progress.
 
 ### Routing and Navigation
-The application implements client-side routing using Wouter, with role-based route protection ensuring users can only access appropriate sections. The routing structure separates public routes (login, signup, certificate verification), agent routes (dashboard, courses, certificates, profile), and admin routes (dashboard, content management, user management, reports).
+Wouter handles client-side routing with role-based protection for public, agent, and admin routes.
 
 ### Data Storage Strategy
-Currently configured for mock/demo mode using localStorage for data persistence through a custom storage utility. The application is architected to easily transition to a real backend, with database schemas defined using Drizzle ORM and PostgreSQL configuration ready for production deployment. The storage layer abstracts data operations making the transition seamless.
+Currently uses `localStorage` for mock data persistence, but is architected for a seamless transition to a real backend using Drizzle ORM and PostgreSQL.
 
 ### Authentication System
-Mock authentication system with role-based access control supporting two user types: agents (primary users who take courses) and admins (manage content and users). Session management uses localStorage with automatic session restoration on app initialization. The auth system includes signup flows for new agents with automatic agency creation.
+A mock authentication system provides role-based access control for agents and administrators, with session management via `localStorage` and automatic session restoration. It includes signup flows and automatic agency creation.
 
 ### Course and Assessment System
-Modular course structure with sections containing lessons and embedded quizzes. Progress tracking system records lesson completion and quiz attempts. Certificate generation using jsPDF and html2canvas for PDF creation with QR codes for verification. Quiz system supports multiple question types with automatic scoring and pass/fail determination.
+Features a modular course structure with lessons and embedded quizzes. It tracks progress, generates certificates using `jsPDF` and `html2canvas` with QR codes for verification, and supports various quiz question types with automatic scoring. Final Exams are country-specific and require 100% course completion and all mini-quizzes passed before activation.
 
 ### UI Component Architecture
-Built on shadcn/ui component library providing consistent design patterns. Custom layout components for different user roles (AdminLayout, AgentLayout, AuthCard). Responsive design with mobile-first approach and proper accessibility considerations. Toast notifications for user feedback and modal dialogs for complex interactions.
+Built on `shadcn/ui` for consistent design, featuring custom layouts for different roles, responsive design, toast notifications, and modal dialogs.
 
-## Deployment Configuration (2024-10-14)
+### Deployment Configuration
+Includes an auto-seeding system for initial data (admin user, default countries, menu settings) on first startup, ensuring production readiness.
 
-### Auto-Seeding System
-Backend automatically seeds essential data on first startup:
-- **Admin User:** email: en@findandstudy.com, password: admin123
-- **Default Countries:** Türkiye, Germany, U.S.A, Latvia, Belarus, China (all active)
-- **Menu Settings:** All agent menu items enabled by default
-
-Auto-seed logic in `server/index.ts` runs on every startup and only creates data if missing, ensuring production deployments have required initial data without manual setup.
-
-### Production Deployment
-- URL: https://findandstudy-academy.replit.app
-- Uses separate production database (different from development)
-- Auto-seed ensures admin and countries are available on first deploy
-- Custom domain support available via DNS configuration
-
-## Recent Features Added
-
-### Email Notification System (2024-10-12)
-- Email service infrastructure with template system for course completion, certificates, and announcements
-- Email logs table for tracking sent emails with status monitoring
-- User notification preferences (email notifications, course completion, certificate, announcements)
-- Email templates built with responsive HTML design
-- Note: Resend integration (connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V) dismissed by user - infrastructure ready for future API key configuration
-
-### Analytics System (2024-10-12)
-- Analytics metrics table for tracking user engagement and progress
-- Metric types: course_start, course_complete, quiz_attempt, lesson_view, login
-- Support for course-specific and user-specific analytics queries
-- Date range querying capability for reporting
-
-### Video Support Schema (2024-10-12)
-- Content table extended with videoUrl and videoDuration fields
-- Support for YouTube, Vimeo, or Object Storage video URLs
-
-### Advanced Agent Dashboard (2024-10-12)
-- Interactive progress charts using recharts library showing course completion over time
-- Weekly activity timeline with lesson views, quiz attempts, and course completions
-- Learning statistics cards displaying total courses, certificates, and average quiz score
-- Recent achievements section highlighting completed courses and earned certificates
-
-### Admin Analytics Dashboard (2024-10-12)
-- Comprehensive analytics dashboard with enrollment trends and certificate distribution charts
-- Real-time metrics for active agents, course completions, and certificate issuance
-- Top performers ranking system with completion rates and progress tracking
-- Data visualization using recharts for agent activity and quiz performance analysis
-
-### Export Features (2024-10-12)
-- PDF export functionality for admin reports using jsPDF library
-- Comprehensive PDF reports including statistics, course enrollment data, score distribution, and top performers
-- CSV export for agent data including names, emails, progress, certificates, and course completion
-- Download functionality with date-stamped filenames for record keeping
-
-### Competitive Leaderboard System (2024-10-12)
-- Point-based ranking system: 100 points per certificate + progress percentage
-- Achievement badges for top 3 performers (gold, silver, bronze medals)
-- Real-time leaderboard showing all agents ranked by points
-- Current user position highlighted with special styling
-- Points breakdown explanation visible on dashboard
-- Dedicated leaderboard page accessible from agent navigation menu
-
-### Object Storage Integration (2024-10-12)
-- Profile picture upload functionality with Object Storage persistence
-- Agency logo upload with presigned URLs and ACL policies
-- Public visibility for uploaded images
-- URL storage in database for persistent access across sessions
-
-### Agent Menu Management System (2024-10-12)
-- Admin-controlled agent sidebar menu visibility
-- Menu Management page in admin panel for toggling menu items on/off
-- Real-time menu filtering for agent users based on admin settings
-- Settings stored in systemSettings table as JSON
-- API endpoints: GET/PUT /api/menu-visibility for reading and updating settings
-- Supports granular control over Dashboard, Courses, Certificates, Leaderboard, My Agency, Exams/Orders, Subscriptions, and Profile menu items
-
-### Agency Location Updates (2024-10-12)
-- Replaced Latitude/Longitude fields with Google Map and Yandex Map link fields in My Agency page
-- Agency type updated to use googleMapUrl and yandexMapUrl instead of lat/lng
-- Removed embedded map preview functionality
-- Map links provide direct navigation to Google Maps and Yandex Maps for agency location
-
-### Findy Chat Interface (2024-10-12)
-- Modern, elegant chat widget accessible via fixed launcher button in bottom-right corner
-- Slide-up chat window with gradient header, message history, and input area
-- Real-time message display with user/bot avatars and timestamps
-- Typing indicator animation for bot responses
-- Mock AI responses (prepared for N8n AI agent integration via webhook)
-- Responsive design with mobile optimization and dark mode support
-- Full accessibility with ARIA labels, keyboard support, and data-testid attributes
-- Session management with unique session IDs for future conversation tracking
-- **Interface language: English**
-
-### Courses Page Default Selection (2024-10-12)
-- Turkey (Türkiye) tab automatically selected by default when navigating to Courses page
-- Smart fallback logic: displays admin content when available, default course when not
-- Correctly handles both placeholder Turkey (id='turkey') and real admin Turkey (UUID id)
-
-### Dorm Booking Integration (2024-10-12)
-- Dorm Booking logo added to agent sidebar below Agent Portal
-- Logo-only link (no text) opens https://dormbooking.com/ in new tab
-- Same size and styling as Agent Portal for visual consistency
-- Works correctly in both collapsed and expanded sidebar states
-
-### Quiz-to-Content Linking System (2024-10-16)
-- **Database Schema**: Added quizId field (nullable varchar) to contents table for linking lessons to quizzes
-- **Admin Interface**: Quiz dropdown in Content & Countries form allows admins to associate quizzes with specific lessons
-- **Backend API**: New /api/public/quizzes endpoint fetches all quizzes with automatic JSON parsing of questions field
-- **Agent Experience**: "Start Quiz" button appears on lessons with linked quizzes, opens QuizModal with quiz content
-- **Data Flow**: Admin selects quiz → quizId saves to content.quiz_id → API returns quizId → Agent sees quiz button
-- **Storage Layer Fix**: getContents() now includes quizId in SELECT query (was missing, causing API to not return quiz associations)
-- **Defensive Parsing**: QuizModal normalizes questions field to handle both JSON string and array formats
-- **End-to-End Testing**: Verified quiz button visibility, modal opening, question display, and completion with progress tracking
-- **Known Limitation**: Quiz data fetched from API - works with database-stored quizzes, not mock data
-
-### Country-based Final Exam System (2024-10-17)
-- **Database Schema**: Added countryId field (nullable varchar) to quizzes table for country-specific Final Exams
-- **Admin Interface**: Country dropdown in Quiz form - required when Quiz Type is "Final Exam"
-- **Multi-layer Validation**: 
-  - Frontend: Zod refine validation enforces countryId selection for Final Exams
-  - Backend CREATE: quizValidationSchema enforces countryId when isFinal is true
-  - Backend UPDATE: Merged quiz validation prevents removing country from existing Final Exams or creating Final Exams without country
-- **Agent Experience**: Final Exam appears only when agent completes 100% of country course AND quiz matches both courseId and countryId
-- **CourseView Filtering**: Final quiz filtered by `isFinal && courseId === course.id && countryId === selectedCountry`
-- **Edge Cases Handled**:
-  - Creating Final Exam without country → Blocked (frontend + backend)
-  - Updating Final Exam to remove country → Blocked (merged validation)
-  - Updating Regular Quiz to Final Exam without country → Blocked
-  - Wrong course's Final Exam appearing → Prevented by courseId + countryId dual filter
-- **Validation Strategy**: Backend PATCH endpoint merges existing quiz with update data before validating final state - ensures Final Exams always have country assignment
-- **Architect Reviewed**: All validation layers verified, no security issues, no regressions
+### Features
+-   **Email Notification System:** Infrastructure for email services with templates (course completion, certificates, announcements).
+-   **Analytics System:** Tracks user engagement (course_start, course_complete, quiz_attempt, lesson_view, login) with reporting capabilities.
+-   **Video Support:** Content table extended to support video URLs.
+-   **Dashboards:** Advanced Agent Dashboard with progress charts, activity timelines, and learning statistics; Admin Analytics Dashboard with enrollment trends, certificate distribution, and top performer rankings.
+-   **Export Features:** PDF export for admin reports and CSV export for agent data.
+-   **Competitive Leaderboard System:** Point-based ranking with achievement badges for top performers.
+-   **Object Storage Integration:** For profile pictures and agency logos using presigned URLs.
+-   **Agent Menu Management System:** Admin control over agent sidebar menu visibility.
+-   **Agency Location Updates:** Replaced Latitude/Longitude with Google Map and Yandex Map link fields.
+-   **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, prepared for AI integration via webhook.
+-   **Courses Page Default Selection:** Türkiye tab is automatically selected by default.
+-   **Dorm Booking Integration:** Link to Dorm Booking website in the agent sidebar.
+-   **Quiz-to-Content Linking System:** Allows admins to associate quizzes with specific lessons, making "Start Quiz" buttons appear on lessons with linked quizzes for agents.
+-   **Country-based Final Exam System:** Final exams are linked to specific countries and courses, with rigorous validation to ensure correct association and availability only after 100% course and mini-quiz completion.
 
 ## External Dependencies
 
 ### UI and Styling Framework
-- **Tailwind CSS**: Primary styling framework with custom design tokens
-- **shadcn/ui**: Pre-built component library based on Radix UI primitives
-- **Radix UI**: Accessible component primitives for complex UI elements
-- **Lucide React**: Icon system for consistent iconography
+-   **Tailwind CSS**: Styling framework.
+-   **shadcn/ui**: Component library.
+-   **Radix UI**: Accessible component primitives.
+-   **Lucide React**: Icon system.
 
 ### Development and Build Tools
-- **Vite**: Modern build tool and development server
-- **TypeScript**: Type safety and enhanced developer experience
-- **React**: Core frontend framework with hooks and context
+-   **Vite**: Build tool.
+-   **TypeScript**: Language.
+-   **React**: Frontend framework.
 
 ### State and Data Management
-- **Zustand**: Lightweight state management for client-side state
-- **TanStack Query**: Server state management and caching (configured but not actively used in mock mode)
-- **React Hook Form**: Form handling with validation
-- **Zod**: Schema validation for form inputs and data structures
+-   **Zustand**: Client-side state management.
+-   **TanStack Query**: Server state management (configured).
+-   **React Hook Form**: Form handling.
+-   **Zod**: Schema validation.
 
-### Database and Backend (Configured)
-- **Drizzle ORM**: Type-safe database toolkit with PostgreSQL support
-- **Neon Database**: PostgreSQL hosting service (configured via connection string)
-- **Express.js**: Backend server framework (minimal implementation present)
+### Database and Backend
+-   **Drizzle ORM**: Type-safe database toolkit.
+-   **Neon Database**: PostgreSQL hosting.
+-   **Express.js**: Backend framework.
 
 ### Document and Certificate Generation
-- **jsPDF**: PDF generation for certificates
-- **html2canvas**: HTML to canvas conversion for certificate rendering
-- **QRCode**: QR code generation for certificate verification
+-   **jsPDF**: PDF generation.
+-   **html2canvas**: HTML to canvas conversion.
+-   **QRCode**: QR code generation.
 
 ### Utility Libraries
-- **Day.js**: Date manipulation and formatting
-- **UUID**: Unique identifier generation
-- **clsx/tailwind-merge**: Conditional CSS class management
-- **Wouter**: Lightweight client-side routing
+-   **Day.js**: Date manipulation.
+-   **UUID**: Unique identifier generation.
+-   **clsx/tailwind-merge**: CSS class management.
+-   **Wouter**: Client-side routing.
