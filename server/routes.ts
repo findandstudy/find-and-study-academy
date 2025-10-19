@@ -165,14 +165,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const countries = await storage.getCountries();
       const contents = await storage.getContents();
       
-      // Filter to only active countries that have published content
-      const activeCountriesWithContent = countries.filter(country => {
-        if (country.status !== 'active') return false;
-        return contents.some(content => 
-          content.countryId === country.id && 
-          content.status === 'published'
-        );
-      });
+      // If includeAll query param is set, return all active countries (for admin use)
+      const includeAll = req.query.includeAll === 'true';
+      
+      let activeCountriesWithContent;
+      if (includeAll) {
+        // Admin needs all active countries, even without content
+        activeCountriesWithContent = countries.filter(country => country.status === 'active');
+      } else {
+        // Filter to only active countries that have published content
+        activeCountriesWithContent = countries.filter(country => {
+          if (country.status !== 'active') return false;
+          return contents.some(content => 
+            content.countryId === country.id && 
+            content.status === 'published'
+          );
+        });
+      }
       
       res.json({
         success: true,
