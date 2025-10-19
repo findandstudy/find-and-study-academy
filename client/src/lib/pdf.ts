@@ -22,16 +22,28 @@ export const generateCertificatePDF = async (
   // Convert background image URL to data URL for jsPDF
   // Using fetch to avoid CORS issues in production
   const bgDataUrl = await fetch(certificateBackground)
-    .then(res => res.blob())
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`Failed to fetch background image: ${res.status} ${res.statusText}`);
+      }
+      return res.blob();
+    })
     .then(blob => new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
+      reader.onloadend = () => {
+        if (reader.result) {
+          resolve(reader.result as string);
+        } else {
+          reject(new Error('FileReader result is null'));
+        }
+      };
       reader.onerror = () => reject(new Error('Failed to convert image to data URL'));
       reader.readAsDataURL(blob);
     }))
     .catch(err => {
       console.error('Background image loading error:', err);
-      throw new Error('Failed to load certificate background image');
+      console.error('Background image path:', certificateBackground);
+      throw new Error(`Failed to load certificate background: ${err.message}`);
     });
 
   // Add background image
