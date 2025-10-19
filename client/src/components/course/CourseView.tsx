@@ -19,7 +19,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const { user } = useAuthStore();
-  const { progresses, quizzes: storeQuizzes, updateProgress, certificates } = useDataStore();
+  const { progresses, quizzes: storeQuizzes, updateProgress, certificates, attempts } = useDataStore();
   
   // Use prop quizzes if provided, otherwise fallback to store quizzes
   const quizzes = quizzesProp || storeQuizzes;
@@ -43,6 +43,27 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
     // If countryId is provided, only show final exam for this specific country
     if (countryId && q.countryId && q.countryId !== countryId) return false;
     return true;
+  });
+
+  // Get all lesson-level (mini) quizzes for this course
+  const miniQuizzes = course.sections.flatMap(section => 
+    section.lessons
+      .filter(lesson => lesson.quizId)
+      .map(lesson => quizzes.find(q => q.id === lesson.quizId))
+      .filter((q): q is Quiz => q !== undefined)
+  );
+
+  // Check if all mini quizzes have been successfully completed
+  const allMiniQuizzesCompleted = miniQuizzes.length > 0 && miniQuizzes.every(quiz => {
+    if (!user) return false;
+    // Find the best attempt for this quiz
+    const quizAttempts = attempts.filter(a => a.userId === user.id && a.quizId === quiz.id);
+    if (quizAttempts.length === 0) return false;
+    // Check if any attempt passed the quiz
+    const bestAttempt = quizAttempts.reduce((best, current) => 
+      current.scorePercent > best.scorePercent ? current : best
+    );
+    return bestAttempt.scorePercent >= quiz.passPercent;
   });
 
   useEffect(() => {
@@ -192,12 +213,13 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                   variant="outline"
                   size="sm"
                   className="w-full bg-gradient-to-r from-primary/5 to-primary/10 border-primary/30"
-                  disabled={progressPercent < 100}
+                  disabled={progressPercent < 100 || (miniQuizzes.length > 0 && !allMiniQuizzesCompleted)}
                   data-testid="button-final-quiz"
                 >
                   <Award className="w-4 h-4 mr-2" />
                   Final Exam
                   {progressPercent < 100 && ' (Complete all lessons)'}
+                  {progressPercent >= 100 && miniQuizzes.length > 0 && !allMiniQuizzesCompleted && ' (Complete all quizzes)'}
                 </Button>
               </div>
             )}
