@@ -5,13 +5,24 @@ import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { generateCertificatePDF, generateBadgePNG } from '@/lib/pdf';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { Award, Download, FileDown, Calendar, TrendingUp } from 'lucide-react';
 
 export default function AgentCertificates() {
   const { user } = useAuthStore();
-  const { certificates, courses, agencies } = useDataStore();
+  const { certificates: localCertificates, courses, agencies } = useDataStore();
   const { toast } = useToast();
 
+  // Fetch certificates from backend
+  const { data: certificatesResponse, isLoading } = useQuery<{ success: boolean; certificates: any[] }>({
+    queryKey: ['/api/certificates'],
+    enabled: !!user
+  });
+
+  // Use backend certificates if available, fallback to localStorage
+  const backendCertificates = certificatesResponse?.certificates || [];
+  const certificates = backendCertificates.length > 0 ? backendCertificates : localCertificates;
+  
   const userCertificates = certificates.filter(c => c.userId === user?.id);
   const userAgency = agencies.find(a => a.id === user?.agencyId);
 
@@ -70,7 +81,14 @@ export default function AgentCertificates() {
         </div>
       </div>
 
-      {userCertificates.length === 0 ? (
+      {isLoading ? (
+        <Card className="h-64 flex items-center justify-center">
+          <div className="text-center">
+            <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
+            <p className="text-muted-foreground">Loading certificates...</p>
+          </div>
+        </Card>
+      ) : userCertificates.length === 0 ? (
         <Card className="h-64 flex items-center justify-center">
           <div className="text-center">
             <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

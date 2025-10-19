@@ -124,16 +124,22 @@ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProp
         );
 
         if (course) {
-          // Add to localStorage for immediate UI feedback (skip if already issued)
-          if (!result.certificate.alreadyIssued) {
-            const certificate = {
-              id: result.certificate.id,
-              userId: user.id,
-              courseId: course.id,
-              scorePercent: result.certificate.scorePercent,
-              code: result.certificate.code,
-              issuedAt: result.certificate.issuedAt
-            };
+          // Add to localStorage for immediate UI feedback (always, even if already issued)
+          const certificate = {
+            id: result.certificate.id,
+            userId: user.id,
+            courseId: course.id,
+            scorePercent: result.certificate.scorePercent,
+            code: result.certificate.code,
+            issuedAt: result.certificate.issuedAt
+          };
+          
+          // Check if already exists in localStorage to avoid duplicates
+          const existingCerts = localStorage.getItem('certificates');
+          const certs = existingCerts ? JSON.parse(existingCerts) : [];
+          const alreadyInStore = certs.some((c: any) => c.id === certificate.id);
+          
+          if (!alreadyInStore) {
             addCertificate(certificate);
           }
 
