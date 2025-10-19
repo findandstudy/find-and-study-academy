@@ -145,8 +145,9 @@ export default function AdminUsers() {
     mutationFn: async (data: CreateUserForm) => {
       return apiRequest('POST', '/api/admin/users', data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User created successfully' });
       setIsCreateDialogOpen(false);
       setCreateForm({
@@ -172,8 +173,9 @@ export default function AdminUsers() {
     mutationFn: async (data: { id: string; updates: Partial<UserEditForm> }) => {
       return apiRequest('PATCH', `/api/admin/users/${data.id}`, data.updates);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User updated successfully' });
       setIsEditDialogOpen(false);
       setEditingUser(null);
@@ -192,8 +194,9 @@ export default function AdminUsers() {
     mutationFn: async (userId: string) => {
       return apiRequest('DELETE', `/api/admin/users/${userId}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User deleted successfully' });
       setDeleteUserId(null);
     },
@@ -211,8 +214,9 @@ export default function AdminUsers() {
     mutationFn: async (data: { userIds: string[]; status: 'active' | 'inactive' }) => {
       return apiRequest('POST', '/api/admin/users/bulk-status', data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'User statuses updated successfully' });
       setSelectedUsers(new Set());
     },
@@ -230,8 +234,9 @@ export default function AdminUsers() {
     mutationFn: async (userIds: string[]) => {
       return apiRequest('POST', '/api/admin/users/bulk-delete', { userIds });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
       toast({ title: 'Success', description: 'Users deleted successfully' });
       setSelectedUsers(new Set());
       setShowBulkDeleteConfirm(false);

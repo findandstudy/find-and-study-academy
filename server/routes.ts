@@ -23,6 +23,7 @@ import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
 
 // Server-side questions validation schema (matches frontend)
 const questionSchema = z.discriminatedUnion('type', [
