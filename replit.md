@@ -82,3 +82,24 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 -   **UUID**: Unique identifier generation.
 -   **clsx/tailwind-merge**: CSS class management.
 -   **Wouter**: Client-side routing.
+## Development History
+
+### Auto-Certificate Generation for Final Exams (2024-10-19)
+- **Feature**: Certificates automatically generated when agents pass Final Exams (score >= passPercent)
+- **Backend Implementation** (/api/attempts endpoint):
+  - Checks quiz.isFinal && scorePercent >= passPercent after attempt submission
+  - Generates secure certificate code (FAS-XXXXXXXXXXXX format using crypto.randomBytes)
+  - Database unique constraint on (user_id, course_id) prevents duplicates
+  - Concurrent request safety: Handles both code collisions and user/course duplicates
+  - Code collision: Regenerates new code and retries (up to 5 attempts)
+  - User/course duplicate: Returns existing certificate with alreadyIssued=true flag
+- **Frontend Integration**:
+  - submitAttempt response includes optional certificate object
+  - QuizModal displays toast notification with certificate code
+  - Different messages for new vs already-issued certificates
+  - Certificate added to localStorage for immediate UI visibility
+- **Database Schema**:
+  - Unique constraint: user_course_unique on (user_id, course_id)
+  - Code field: Unique constraint for certificate code
+  - PostgreSQL error code 23505 handled gracefully
+- **Error Handling**: Robust retry logic, duplicate detection, and user feedback
