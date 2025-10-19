@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,26 +8,51 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2 } from 'lucide-react';
+import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { insertAgencySchema, type Agency, type InsertAgency } from '@shared/schema';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 type AgencyWithCount = Agency & { agentCount: number };
 
 type AgencyForm = InsertAgency;
 
+type ViewMode = 'grid' | 'list';
+
 export default function AdminAgencies() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgency, setEditingAgency] = useState<AgencyWithCount | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [agencyToDelete, setAgencyToDelete] = useState<AgencyWithCount | null>(null);
   const { toast } = useToast();
+
+  // Load view mode from localStorage
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem('agenciesViewMode') as ViewMode;
+    if (savedViewMode === 'grid' || savedViewMode === 'list') {
+      setViewMode(savedViewMode);
+    }
+  }, []);
+
+  // Save view mode to localStorage
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('agenciesViewMode', mode);
+  };
 
   const { data: agenciesResponse, isLoading } = useQuery({
     queryKey: ['/api/admin/agencies'],
@@ -57,8 +82,9 @@ export default function AdminAgencies() {
       const response = await apiRequest('POST', '/api/admin/agencies', data);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: "Success", description: "Agency created successfully" });
       setDialogOpen(false);
       setEditingAgency(null);
@@ -74,8 +100,9 @@ export default function AdminAgencies() {
       const response = await apiRequest('PATCH', `/api/admin/agencies/${id}`, data);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: "Success", description: "Agency updated successfully" });
       setDialogOpen(false);
       setEditingAgency(null);
@@ -91,8 +118,9 @@ export default function AdminAgencies() {
       const response = await apiRequest('DELETE', `/api/admin/agencies/${id}`);
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: "Success", description: "Agency deleted successfully" });
       setDeleteDialogOpen(false);
       setAgencyToDelete(null);
@@ -318,7 +346,7 @@ export default function AdminAgencies() {
         </Dialog>
       </div>
 
-      {/* Filters */}
+      {/* Filters and View Toggle */}
       <div className="flex gap-4 items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -342,83 +370,197 @@ export default function AdminAgencies() {
             <SelectItem value="pending">Pending</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* View Mode Toggle */}
+        <div className="flex gap-1 border rounded-lg p-1">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => handleViewModeChange('grid')}
+            data-testid="button-view-grid"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => handleViewModeChange('list')}
+            data-testid="button-view-list"
+          >
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Agency Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredAgencies.map((agency: AgencyWithCount) => {
-          const statusBadge = getStatusBadge(agency.status);
-          return (
-            <Card key={agency.id} className="hover-elevate" data-testid={`card-agency-${agency.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Building className="w-5 h-5 text-primary" />
-                    {agency.name}
-                  </CardTitle>
-                  <Badge variant={statusBadge.variant as any}>
-                    {statusBadge.label}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  {agency.city}, {agency.country}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-medium">Email:</span>
-                    <br />
-                    <span className="text-muted-foreground">{agency.contactEmail}</span>
+      {/* Grid View */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAgencies.map((agency: AgencyWithCount) => {
+            const statusBadge = getStatusBadge(agency.status);
+            return (
+              <Card key={agency.id} className="hover-elevate" data-testid={`card-agency-${agency.id}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Building className="w-5 h-5 text-primary" />
+                      {agency.name}
+                    </CardTitle>
+                    <Badge variant={statusBadge.variant as any}>
+                      {statusBadge.label}
+                    </Badge>
                   </div>
-                  <div>
-                    <span className="font-medium">Phone:</span>
-                    <br />
-                    <span className="text-muted-foreground">{agency.contactPhone}</span>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    {agency.city}, {agency.country}
                   </div>
-                  {agency.description && (
-                    <div>
-                      <span className="font-medium">Description:</span>
-                      <br />
-                      <span className="text-muted-foreground text-xs">{agency.description}</span>
-                    </div>
-                  )}
-                </div>
+                </CardHeader>
                 
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{agency.agentCount} agents</span>
-                    <Calendar className="w-4 h-4 ml-2" />
-                    <span>Since {new Date(agency.createdAt).toLocaleDateString()}</span>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="font-medium">Email:</span>
+                      <br />
+                      <span className="text-muted-foreground">{agency.contactEmail}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Phone:</span>
+                      <br />
+                      <span className="text-muted-foreground">{agency.contactPhone}</span>
+                    </div>
+                    {agency.description && (
+                      <div>
+                        <span className="font-medium">Description:</span>
+                        <br />
+                        <span className="text-muted-foreground text-xs">{agency.description}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="flex gap-1">
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => handleEditAgency(agency)}
-                      data-testid={`button-edit-${agency.id}`}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => handleDeleteAgency(agency)}
-                      data-testid={`button-delete-${agency.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>{agency.agentCount} agents</span>
+                      <Calendar className="w-4 h-4 ml-2" />
+                      <span>Since {new Date(agency.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEditAgency(agency)}
+                        data-testid={`button-edit-${agency.id}`}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleDeleteAgency(agency)}
+                        data-testid={`button-delete-${agency.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === 'list' && filteredAgencies.length > 0 && (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agency</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Agents</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Since</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAgencies.map((agency: AgencyWithCount) => {
+                  const statusBadge = getStatusBadge(agency.status);
+                  return (
+                    <TableRow key={agency.id} className="hover-elevate" data-testid={`row-agency-${agency.id}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4 text-primary flex-shrink-0" />
+                          <div>
+                            <div className="font-medium">{agency.name}</div>
+                            {agency.description && (
+                              <div className="text-xs text-muted-foreground line-clamp-1">
+                                {agency.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
+                          <span>{agency.city}, {agency.country}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm space-y-1">
+                          <div className="text-muted-foreground">{agency.contactEmail}</div>
+                          <div className="text-muted-foreground">{agency.contactPhone}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Users className="w-3 h-3 text-muted-foreground" />
+                          <span>{agency.agentCount}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusBadge.variant as any}>
+                          {statusBadge.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(agency.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => handleEditAgency(agency)}
+                            data-testid={`button-edit-${agency.id}`}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => handleDeleteAgency(agency)}
+                            data-testid={`button-delete-${agency.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
