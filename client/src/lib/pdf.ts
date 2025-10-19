@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import type { Certificate, User, Course, Agency } from '../types';
 import certificateBackground from '@assets/train_1760536930109.png';
@@ -20,8 +19,28 @@ export const generateCertificatePDF = async (
     color: { dark: '#143591' }
   });
 
+  // Convert background image URL to data URL for jsPDF
+  const bgDataUrl = await new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load background image'));
+    img.src = certificateBackground;
+  });
+
   // Add background image
-  doc.addImage(certificateBackground, 'PNG', 0, 0, 297, 210);
+  doc.addImage(bgDataUrl, 'PNG', 0, 0, 297, 210);
   
   // Title (1cm aşağı kaydırıldı)
   doc.setTextColor(20, 53, 145); // Navy blue color matching the border

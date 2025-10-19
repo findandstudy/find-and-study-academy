@@ -40,9 +40,10 @@ export default function AgentCertificates() {
         description: 'Your certificate has been downloaded successfully.'
       });
     } catch (error) {
+      console.error('Certificate PDF generation error:', error);
       toast({
         title: 'Download Failed',
-        description: 'There was an error downloading your certificate.',
+        description: error instanceof Error ? error.message : 'There was an error downloading your certificate.',
         variant: 'destructive'
       });
     }
