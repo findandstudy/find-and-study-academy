@@ -4,11 +4,12 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List } from 'lucide-react';
+import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -34,10 +35,12 @@ export default function AdminAgencies() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [selectedAgencies, setSelectedAgencies] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAgency, setEditingAgency] = useState<AgencyWithCount | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [agencyToDelete, setAgencyToDelete] = useState<AgencyWithCount | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const { toast } = useToast();
 
   // Load view mode from localStorage
@@ -130,21 +133,84 @@ export default function AdminAgencies() {
     }
   });
 
+  // Bulk status update mutation
+  const bulkStatusMutation = useMutation({
+    mutationFn: async (data: { agencyIds: string[]; status: 'active' | 'inactive' | 'pending' }) => {
+      return apiRequest('POST', '/api/admin/agencies/bulk-status', data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
+      toast({ title: 'Success', description: 'Agency statuses updated successfully' });
+      setSelectedAgencies(new Set());
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to update agency statuses',
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (agencyIds: string[]) => {
+      return apiRequest('POST', '/api/admin/agencies/bulk-delete', { agencyIds });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
+      toast({ title: 'Success', description: 'Agencies deleted successfully' });
+      setSelectedAgencies(new Set());
+      setShowBulkDeleteConfirm(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to delete agencies',
+        variant: 'destructive' 
+      });
+    },
+  });
+
   const filteredAgencies = agencies.filter((agency: AgencyWithCount) => {
     const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         agency.city.toLowerCase().includes(searchTerm.toLowerCase());
+                         (agency.city || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || agency.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Selection handlers
+  const isAllSelected = filteredAgencies.length > 0 && filteredAgencies.every(a => selectedAgencies.has(a.id));
+  const isSomeSelected = filteredAgencies.some(a => selectedAgencies.has(a.id)) && !isAllSelected;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedAgencies(new Set());
+    } else {
+      setSelectedAgencies(new Set(filteredAgencies.map(a => a.id)));
+    }
+  };
+
+  const handleSelectAgency = (agencyId: string) => {
+    const newSelected = new Set(selectedAgencies);
+    if (newSelected.has(agencyId)) {
+      newSelected.delete(agencyId);
+    } else {
+      newSelected.add(agencyId);
+    }
+    setSelectedAgencies(newSelected);
+  };
 
   const handleEditAgency = (agency: AgencyWithCount) => {
     setEditingAgency(agency);
     form.reset({
       name: agency.name,
       country: agency.country,
-      city: agency.city,
-      contactEmail: agency.contactEmail,
-      contactPhone: agency.contactPhone,
+      city: agency.city || '',
+      contactEmail: agency.contactEmail || '',
+      contactPhone: agency.contactPhone || '',
       status: agency.status,
       description: agency.description || ''
     });
@@ -156,6 +222,20 @@ export default function AdminAgencies() {
     setDeleteDialogOpen(true);
   };
 
+  const handleBulkStatusChange = (status: 'active' | 'inactive' | 'pending') => {
+    const agencyIds = Array.from(selectedAgencies);
+    bulkStatusMutation.mutate({ agencyIds, status });
+  };
+
+  const handleBulkDelete = () => {
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const agencyIds = Array.from(selectedAgencies);
+    bulkDeleteMutation.mutate(agencyIds);
+  };
+
   const onSubmit = (data: AgencyForm) => {
     if (editingAgency) {
       updateAgencyMutation.mutate({ id: editingAgency.id, data });
@@ -165,13 +245,15 @@ export default function AdminAgencies() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: string; label: string }> = {
-      active: { variant: 'default', label: 'Active' },
-      inactive: { variant: 'secondary', label: 'Inactive' },
-      pending: { variant: 'outline', label: 'Pending' }
+    const variants: Record<string, { variant: string; label: string; icon: React.ReactNode }> = {
+      active: { variant: 'default', label: 'Active', icon: <CheckCircle2 className="w-3 h-3 mr-1" /> },
+      inactive: { variant: 'secondary', label: 'Inactive', icon: <XCircle className="w-3 h-3 mr-1" /> },
+      pending: { variant: 'outline', label: 'Pending', icon: null }
     };
-    return variants[status] || { variant: 'outline', label: status };
+    return variants[status] || { variant: 'outline', label: status, icon: null };
   };
+
+  const selectedCount = selectedAgencies.size;
 
   return (
     <div className="space-y-6">
@@ -247,7 +329,7 @@ export default function AdminAgencies() {
                       <FormItem>
                         <FormLabel>Country</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-country" />
+                          <Input {...field} value={field.value || ''} data-testid="input-country" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -261,7 +343,7 @@ export default function AdminAgencies() {
                       <FormItem>
                         <FormLabel>City</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-city" />
+                          <Input {...field} value={field.value || ''} data-testid="input-city" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -277,7 +359,7 @@ export default function AdminAgencies() {
                       <FormItem>
                         <FormLabel>Contact Email</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} data-testid="input-email" />
+                          <Input type="email" {...field} value={field.value || ''} data-testid="input-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -291,7 +373,7 @@ export default function AdminAgencies() {
                       <FormItem>
                         <FormLabel>Contact Phone</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-phone" />
+                          <Input {...field} value={field.value || ''} data-testid="input-phone" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -347,7 +429,7 @@ export default function AdminAgencies() {
       </div>
 
       {/* Filters and View Toggle */}
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
@@ -392,24 +474,86 @@ export default function AdminAgencies() {
         </div>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedCount > 0 && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={handleSelectAll}
+                  data-testid="checkbox-select-all-toolbar"
+                />
+                <span className="font-medium" data-testid="text-selected-count">
+                  {selectedCount} {selectedCount === 1 ? 'agency' : 'agencies'} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBulkStatusChange('active')}
+                  disabled={bulkStatusMutation.isPending}
+                  data-testid="button-bulk-active"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Set Active
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBulkStatusChange('inactive')}
+                  disabled={bulkStatusMutation.isPending}
+                  data-testid="button-bulk-inactive"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Set Inactive
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleteMutation.isPending}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Grid View */}
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAgencies.map((agency: AgencyWithCount) => {
             const statusBadge = getStatusBadge(agency.status);
+            const isSelected = selectedAgencies.has(agency.id);
             return (
               <Card key={agency.id} className="hover-elevate" data-testid={`card-agency-${agency.id}`}>
                 <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Building className="w-5 h-5 text-primary" />
-                      {agency.name}
-                    </CardTitle>
-                    <Badge variant={statusBadge.variant as any}>
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-start gap-2 flex-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => handleSelectAgency(agency.id)}
+                        data-testid={`checkbox-agency-${agency.id}`}
+                        className="mt-1"
+                      />
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Building className="w-5 h-5 text-primary flex-shrink-0" />
+                        <span className="line-clamp-1">{agency.name}</span>
+                      </CardTitle>
+                    </div>
+                    <Badge variant={statusBadge.variant as any} className="flex-shrink-0">
+                      {statusBadge.icon}
                       {statusBadge.label}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground ml-8">
                     <MapPin className="w-4 h-4" />
                     {agency.city}, {agency.country}
                   </div>
@@ -436,15 +580,19 @@ export default function AdminAgencies() {
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{agency.agentCount} agents</span>
-                      <Calendar className="w-4 h-4 ml-2" />
-                      <span>Since {new Date(agency.createdAt).toLocaleDateString()}</span>
+                  <div className="flex items-center justify-between pt-2 border-t gap-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        <span>{agency.agentCount} agents</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>Since {new Date(agency.createdAt).toLocaleDateString()}</span>
+                      </div>
                     </div>
                     
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button 
                         size="sm" 
                         variant="ghost"
@@ -477,6 +625,13 @@ export default function AdminAgencies() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>Agency</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
@@ -489,8 +644,16 @@ export default function AdminAgencies() {
               <TableBody>
                 {filteredAgencies.map((agency: AgencyWithCount) => {
                   const statusBadge = getStatusBadge(agency.status);
+                  const isSelected = selectedAgencies.has(agency.id);
                   return (
                     <TableRow key={agency.id} className="hover-elevate" data-testid={`row-agency-${agency.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleSelectAgency(agency.id)}
+                          data-testid={`checkbox-agency-${agency.id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building className="w-4 h-4 text-primary flex-shrink-0" />
@@ -524,6 +687,7 @@ export default function AdminAgencies() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusBadge.variant as any}>
+                          {statusBadge.icon}
                           {statusBadge.label}
                         </Badge>
                       </TableCell>
@@ -562,7 +726,7 @@ export default function AdminAgencies() {
         </Card>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Single Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -579,6 +743,28 @@ export default function AdminAgencies() {
               data-testid="button-confirm-delete"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Multiple Agencies</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedCount} {selectedCount === 1 ? 'agency' : 'agencies'}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-bulk-delete"
+            >
+              Delete {selectedCount} {selectedCount === 1 ? 'Agency' : 'Agencies'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
