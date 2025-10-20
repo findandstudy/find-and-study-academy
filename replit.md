@@ -129,7 +129,15 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 - **Result**: Progress now persists across browsers, devices, and sessions
   - Solves user's cross-device issue completely
   - Production-ready backend infrastructure
-  - Future: Add UI lesson tracking mutations + localStorage migration for existing users
+  - Future: localStorage migration for existing users
+- **Frontend Integration Completed** (2025-10-20):
+  - CourseView component refactored to use backend API
+  - Lesson completion now calls POST /api/progress mutation
+  - Progress fetched from GET /api/progress/:courseId (replaces localStorage)
+  - Cache invalidation ensures Dashboard and Courses stay synchronized
+  - E2E test verified: Lesson completion persists across browser contexts
+  - User feedback: Toast notifications for success/error states
+  - **Cross-browser persistence fully working**: Agent can switch devices/browsers and see same progress
 
 ### Certificate System Backend Enrichment & ARIA Fixes (2025-10-20)
 - **Issue**: Agent certificates couldn't download because course info was missing from backend response
