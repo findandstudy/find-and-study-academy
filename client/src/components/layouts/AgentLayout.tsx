@@ -48,17 +48,20 @@ export function AgentLayout({ children }: AgentLayoutProps) {
     const saved = localStorage.getItem('agent-sidebar-collapsed');
     return saved === 'true';
   });
-  // Initialize with all menu items visible to prevent flash
-  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>({
-    dashboard: true,
-    courses: true,
-    certificates: true,
-    leaderboard: true,
-    agency: true,
-    'exams-orders': true,
-    subscriptions: true,
-    profile: true,
+  // Read menu visibility from localStorage first to prevent flash
+  const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>(() => {
+    const cached = localStorage.getItem('agent-menu-visibility');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Failed to parse cached menu visibility:', e);
+      }
+    }
+    // Default: all hidden until loaded from API
+    return {};
   });
+  const [menuLoaded, setMenuLoaded] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
   const { agencies } = useDataStore();
@@ -84,9 +87,13 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         if (response.ok) {
           const visibility = await response.json();
           setMenuVisibility(visibility);
+          // Cache to localStorage to prevent flash on next load
+          localStorage.setItem('agent-menu-visibility', JSON.stringify(visibility));
+          setMenuLoaded(true);
         }
       } catch (error) {
         console.error('Error loading menu visibility:', error);
+        setMenuLoaded(true);
       }
     };
 
@@ -97,11 +104,17 @@ export function AgentLayout({ children }: AgentLayoutProps) {
 
   // Filter navigation based on visibility settings
   const navigation = allNavigation.filter(item => {
-    // Always show Agent Portal (external link)
+    // Always show external links
     if (item.external) return true;
     
     // Check visibility for other items
     const itemId = (item as any).id;
+    
+    // If menu settings not loaded yet and no cache, show nothing (prevents flash)
+    if (Object.keys(menuVisibility).length === 0) {
+      return false;
+    }
+    
     return menuVisibility[itemId] !== false; // Show if not explicitly hidden
   });
 
