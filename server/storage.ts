@@ -3,6 +3,7 @@ import {
   certificates, 
   courses, 
   attempts,
+  progresses,
   quizzes,
   agencies,
   countries,
@@ -18,6 +19,8 @@ import {
   type Certificate,
   type Course,
   type Attempt,
+  type Progress,
+  type InsertProgress,
   type Quiz,
   type InsertQuiz,
   type Agency,
@@ -41,7 +44,7 @@ import {
   type InsertAnalyticsMetric
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, count } from "drizzle-orm";
+import { eq, count, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -64,6 +67,12 @@ export interface IStorage {
   // Attempt methods
   addAttempt(attempt: Attempt): Promise<Attempt>;
   getAttempts(): Promise<Attempt[]>;
+  
+  // Progress methods for cross-device progress tracking
+  getProgresses(userId?: string): Promise<Progress[]>;
+  getProgressByUserAndCourse(userId: string, courseId: string): Promise<Progress | undefined>;
+  upsertProgress(data: Partial<InsertProgress> & { userId: string; courseId: string }): Promise<Progress>;
+  updateProgress(userId: string, courseId: string, updates: Partial<Omit<InsertProgress, 'userId' | 'courseId'>>): Promise<Progress>;
   
   // Quiz methods for validation
   getQuizById(quizId: string): Promise<Quiz | undefined>;
@@ -212,6 +221,86 @@ export class DatabaseStorage implements IStorage {
 
   async getAttempts(): Promise<Attempt[]> {
     return await db.select().from(attempts);
+  }
+
+  // Progress methods for cross-device progress tracking
+  async getProgresses(userId?: string): Promise<Progress[]> {
+    if (userId) {
+      return await db.select().from(progresses).where(eq(progresses.userId, userId));
+    }
+    return await db.select().from(progresses);
+  }
+
+  async getProgressByUserAndCourse(userId: string, courseId: string): Promise<Progress | undefined> {
+    const [progress] = await db
+      .select()
+      .from(progresses)
+      .where(and(
+        eq(progresses.userId, userId),
+        eq(progresses.courseId, courseId)
+      ));
+    return progress || undefined;
+  }
+
+  async upsertProgress(data: Partial<InsertProgress> & { userId: string; courseId: string }): Promise<Progress> {
+    // Try to find existing progress
+    const existing = await this.getProgressByUserAndCourse(data.userId, data.courseId);
+    
+    if (existing) {
+      // Update existing progress - merge with existing values
+      const [updated] = await db
+        .update(progresses)
+        .set({
+          lessonCompletedIds: data.lessonCompletedIds !== undefined ? data.lessonCompletedIds : existing.lessonCompletedIds,
+          percent: data.percent !== undefined ? data.percent : existing.percent,
+          currentLessonId: data.currentLessonId !== undefined ? data.currentLessonId : existing.currentLessonId,
+          lastLessonCompletedAt: data.lastLessonCompletedAt !== undefined ? data.lastLessonCompletedAt : existing.lastLessonCompletedAt,
+          lastAccessed: new Date(),
+        })
+        .where(and(
+          eq(progresses.userId, data.userId),
+          eq(progresses.courseId, data.courseId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Insert new progress with defaults
+      const [newProgress] = await db
+        .insert(progresses)
+        .values({
+          userId: data.userId,
+          courseId: data.courseId,
+          lessonCompletedIds: data.lessonCompletedIds || [],
+          percent: data.percent || 0,
+          currentLessonId: data.currentLessonId || null,
+          lastLessonCompletedAt: data.lastLessonCompletedAt || null,
+        })
+        .returning();
+      return newProgress;
+    }
+  }
+
+  async updateProgress(userId: string, courseId: string, updates: Partial<Omit<InsertProgress, 'userId' | 'courseId'>>): Promise<Progress> {
+    // Get existing progress
+    const existing = await this.getProgressByUserAndCourse(userId, courseId);
+    
+    if (!existing) {
+      throw new Error('Progress not found');
+    }
+
+    // Partial update - only update provided fields
+    const [updated] = await db
+      .update(progresses)
+      .set({
+        ...updates,
+        lastAccessed: new Date(),
+      })
+      .where(and(
+        eq(progresses.userId, userId),
+        eq(progresses.courseId, courseId)
+      ))
+      .returning();
+    return updated;
   }
 
   // Quiz methods for validation and admin management

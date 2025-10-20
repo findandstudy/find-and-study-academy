@@ -820,6 +820,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== Progress Tracking Endpoints ====================
+  
+  // Get user's progress for all courses
+  app.get('/api/progress', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      // Get all progresses for the authenticated user
+      const userProgresses = await storage.getProgresses(authenticatedUser.id);
+      
+      // Enrich with course information
+      const courses = await storage.getCourses();
+      const enrichedProgresses = userProgresses.map(progress => {
+        const course = courses.find(c => c.id === progress.courseId);
+        return {
+          ...progress,
+          course: course ? {
+            id: course.id,
+            title: course.title,
+            slug: course.slug
+          } : null
+        };
+      });
+
+      res.json({
+        success: true,
+        progresses: enrichedProgresses
+      });
+    } catch (error) {
+      console.error('Progress retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during progress retrieval'
+      });
+    }
+  });
+
+  // Get user's progress for specific course
+  app.get('/api/progress/:courseId', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { courseId } = req.params;
+
+      const progress = await storage.getProgressByUserAndCourse(authenticatedUser.id, courseId);
+
+      if (!progress) {
+        return res.status(404).json({
+          success: false,
+          message: 'Progress not found for this course'
+        });
+      }
+
+      // Enrich with course information
+      const courses = await storage.getCourses();
+      const course = courses.find(c => c.id === courseId);
+
+      res.json({
+        success: true,
+        progress: {
+          ...progress,
+          course: course ? {
+            id: course.id,
+            title: course.title,
+            slug: course.slug
+          } : null
+        }
+      });
+    } catch (error) {
+      console.error('Course progress retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during course progress retrieval'
+      });
+    }
+  });
+
+  // Upsert user's progress (create or update)
+  app.post('/api/progress', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { courseId, lessonCompletedIds, percent, currentLessonId } = req.body;
+
+      // Validate required fields
+      if (!courseId) {
+        return res.status(400).json({
+          success: false,
+          message: 'courseId is required'
+        });
+      }
+
+      // Upsert progress (creates or updates, merges with existing)
+      const progress = await storage.upsertProgress({
+        userId: authenticatedUser.id,
+        courseId,
+        lessonCompletedIds,
+        percent,
+        currentLessonId,
+        lastLessonCompletedAt: lessonCompletedIds && lessonCompletedIds.length > 0 ? new Date() : undefined,
+      });
+
+      res.status(200).json({
+        success: true,
+        progress
+      });
+    } catch (error) {
+      console.error('Progress upsert error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during progress update'
+      });
+    }
+  });
+
+  // Partial update user's progress for specific course
+  app.patch('/api/progress/:courseId', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { courseId } = req.params;
+      const { lessonCompletedIds, percent, currentLessonId, lastLessonCompletedAt } = req.body;
+
+      // Check if progress exists
+      const existing = await storage.getProgressByUserAndCourse(authenticatedUser.id, courseId);
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: 'Progress not found for this course. Use POST /api/progress to create it first.'
+        });
+      }
+
+      // Partial update - only update provided fields
+      const updates: any = {};
+      if (lessonCompletedIds !== undefined) updates.lessonCompletedIds = lessonCompletedIds;
+      if (percent !== undefined) updates.percent = percent;
+      if (currentLessonId !== undefined) updates.currentLessonId = currentLessonId;
+      if (lastLessonCompletedAt !== undefined) updates.lastLessonCompletedAt = lastLessonCompletedAt;
+
+      const progress = await storage.updateProgress(authenticatedUser.id, courseId, updates);
+
+      res.json({
+        success: true,
+        progress
+      });
+    } catch (error) {
+      console.error('Progress update error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during progress update'
+      });
+    }
+  });
+
   // Admin certificates endpoint - get all certificates for management
   app.get('/api/admin/certificates', requireAuth, requireAdmin, async (req, res) => {
     try {
@@ -987,9 +1138,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         name,
         email,
-        role: role || 'agent',
-        status: status || 'active'
+        role: role || 'agent'
       });
+      
+      // Update status if provided (status not in insertUserSchema but exists in User type)
+      if (status) {
+        await storage.updateUser(newUser.id, { status });
+      }
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
@@ -1028,7 +1183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent deleting yourself
-      if (id === req.user?.id) {
+      if (id === (req as any).user?.id) {
         return res.status(400).json({
           success: false,
           message: 'Cannot delete your own account'
@@ -1099,7 +1254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent deleting yourself
-      if (userIds.includes(req.user?.id)) {
+      if (userIds.includes((req as any).user?.id)) {
         return res.status(400).json({
           success: false,
           message: 'Cannot delete your own account'

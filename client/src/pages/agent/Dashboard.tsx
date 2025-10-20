@@ -17,12 +17,19 @@ import type { Announcement } from '@/types';
 
 export default function AgentDashboard() {
   const { user } = useAuthStore();
-  const { courses, progresses, certificates } = useDataStore();
+  const { courses } = useDataStore(); // Only get courses from localStorage (static data)
   
-  // Track certificates for re-render
-  useEffect(() => {
-    console.log('[DASHBOARD] Certificates updated:', certificates.length, certificates);
-  }, [certificates]);
+  // Fetch progress from backend API
+  const { data: progressData } = useQuery<{ success: boolean; progresses: any[] }>({
+    queryKey: ['/api/progress'],
+    enabled: !!user,
+  });
+  
+  // Fetch certificates from backend API
+  const { data: certificatesData } = useQuery<{ success: boolean; certificates: any[] }>({
+    queryKey: ['/api/certificates'],
+    enabled: !!user,
+  });
   
   // Fetch announcements from backend
   const { data: announcementsData } = useQuery<{ success: boolean; announcements: Announcement[] }>({
@@ -30,11 +37,18 @@ export default function AgentDashboard() {
     enabled: !!user,
   });
   
+  const progresses = progressData?.progresses || [];
+  const certificates = certificatesData?.certificates || [];
   const announcements = announcementsData?.announcements || [];
+  
+  // Track certificates for re-render (debugging)
+  useEffect(() => {
+    console.log('[DASHBOARD] Certificates from backend:', certificates.length, certificates);
+  }, [certificates]);
 
-  // Calculate user progress
-  const userProgress = progresses.filter(p => p.userId === user?.id);
-  const userCertificates = certificates.filter(c => c.userId === user?.id);
+  // Calculate user progress (no filter needed - backend already filters by user)
+  const userProgress = progresses;
+  const userCertificates = certificates;
   
   // Backend already filters announcements (published, targeted, not expired)
   const activeAnnouncements = announcements;

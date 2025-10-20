@@ -125,6 +125,22 @@ export const attempts = pgTable("attempts", {
   date: timestamp("date").notNull().defaultNow(),
 });
 
+// Course progress tracking for persistent cross-device progress
+export const progresses = pgTable("progresses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  courseId: varchar("course_id").notNull(),
+  lessonCompletedIds: text("lesson_completed_ids").array().default(sql`ARRAY[]::text[]`),
+  percent: integer("percent").notNull().default(0),
+  currentLessonId: varchar("current_lesson_id"),
+  lastAccessed: timestamp("last_accessed").notNull().defaultNow(),
+  lastLessonCompletedAt: timestamp("last_lesson_completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  // Prevent duplicate progress records for same user/course
+  userCourseUnique: unique("user_course_progress_unique").on(table.userId, table.courseId),
+}));
+
 // Announcements table
 export const announcements = pgTable("announcements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -195,6 +211,11 @@ export const insertContentSchema = createInsertSchema(contents).omit({
 export const insertCertificateSchema = createInsertSchema(certificates);
 export const insertCourseSchema = createInsertSchema(courses);
 export const insertAttemptSchema = createInsertSchema(attempts);
+export const insertProgressSchema = createInsertSchema(progresses).omit({
+  id: true,
+  createdAt: true,
+  lastAccessed: true,
+});
 export const insertQuizSchema = createInsertSchema(quizzes).omit({
   createdAt: true,
   updatedAt: true,
@@ -318,6 +339,7 @@ export type Content = typeof contents.$inferSelect;
 export type Certificate = typeof certificates.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type Attempt = typeof attempts.$inferSelect;
+export type Progress = typeof progresses.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
@@ -329,6 +351,7 @@ export type InsertContent = z.infer<typeof insertContentSchema>;
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
 export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
+export type InsertProgress = z.infer<typeof insertProgressSchema>;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
