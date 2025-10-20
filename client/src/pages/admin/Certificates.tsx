@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useDataStore } from '@/store/data';
 import { generateCertificatePDF } from '@/lib/pdf';
 import { 
   Award, 
@@ -43,6 +44,7 @@ interface AdminCertificate {
 
 export default function AdminCertificates() {
   const { toast } = useToast();
+  const { courses: localCourses, agencies: localAgencies } = useDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
   const [selectedCertificate, setSelectedCertificate] = useState<AdminCertificate | null>(null);
@@ -102,15 +104,51 @@ export default function AdminCertificates() {
         certificateCode: certificate.code
       });
       
-      if (!certificate.user || !certificate.course) {
-        console.error('[ADMIN CERT] Missing data - user:', certificate.user, 'course:', certificate.course);
+      if (!certificate.user) {
+        console.error('[ADMIN CERT] Missing user data');
         toast({
           title: 'Download Failed',
-          description: 'Certificate data is incomplete.',
+          description: 'User data is incomplete.',
           variant: 'destructive'
         });
         return;
       }
+
+      // Try to get course from backend data, fallback to localStorage
+      let courseData = certificate.course;
+      if (!courseData) {
+        console.log('[ADMIN CERT] Course not in backend response, trying localStorage...');
+        // Extract courseId from certificate if available
+        const cert = certificate as any;
+        const courseId = cert.courseId || cert.course?.id;
+        
+        if (courseId) {
+          const localCourse = localCourses.find(c => c.id === courseId);
+          if (localCourse) {
+            console.log('[ADMIN CERT] Found course in localStorage:', localCourse.title);
+            courseData = {
+              id: localCourse.id,
+              title: localCourse.title,
+              slug: localCourse.slug
+            };
+          }
+        }
+      }
+
+      if (!courseData) {
+        console.error('[ADMIN CERT] Course not found in backend or localStorage');
+        toast({
+          title: 'Download Failed',
+          description: 'Course information not found.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Try to get agency from localStorage
+      const cert = certificate as any;
+      const agencyId = cert.user?.agencyId || cert.agencyId;
+      const agency = agencyId ? localAgencies.find(a => a.id === agencyId) : null;
 
       // Convert AdminCertificate to types expected by generateCertificatePDF
       await generateCertificatePDF(
@@ -120,22 +158,22 @@ export default function AdminCertificates() {
           scorePercent: certificate.scorePercent,
           issuedAt: certificate.issuedAt,
           userId: certificate.user.id,
-          courseId: certificate.course.id
+          courseId: courseData.id
         },
         {
           id: certificate.user.id,
           name: certificate.user.name,
           email: certificate.user.email,
           role: certificate.user.role as 'agent' | 'admin',
-          agencyId: undefined
+          agencyId: agencyId
         },
         {
-          id: certificate.course.id,
-          title: certificate.course.title,
-          slug: certificate.course.slug,
+          id: courseData.id,
+          title: courseData.title,
+          slug: courseData.slug,
           sections: []
         },
-        null // agency - not available in admin view
+        agency || null
       );
 
       toast({
