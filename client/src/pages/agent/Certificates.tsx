@@ -28,29 +28,47 @@ export default function AgentCertificates() {
     const certificate = certificates.find(c => c.id === certificateId);
     if (!certificate || !user) return;
 
-    // Use course from backend (certificate.course) or fallback to localStorage
-    let course = certificate.course;
-    if (!course) {
-      const localCourse = courses.find(c => c.id === certificate.courseId);
-      if (localCourse) {
-        course = {
-          id: localCourse.id,
-          title: localCourse.title,
-          slug: localCourse.slug
-        };
-      }
-    }
-
-    if (!course) {
-      toast({
-        title: 'Download Failed',
-        description: 'Course information not found.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     try {
+      // Use course from backend (certificate.course) or fetch from API
+      let course = certificate.course;
+      
+      if (!course) {
+        // Try localStorage first
+        const localCourse = courses.find(c => c.id === certificate.courseId);
+        if (localCourse) {
+          course = {
+            id: localCourse.id,
+            title: localCourse.title,
+            slug: localCourse.slug
+          };
+        }
+      }
+
+      // If still no course, fetch from backend
+      if (!course) {
+        const response = await fetch('/api/courses');
+        const data = await response.json();
+        if (data.success && data.courses) {
+          const backendCourse = data.courses.find((c: any) => c.id === certificate.courseId);
+          if (backendCourse) {
+            course = {
+              id: backendCourse.id,
+              title: backendCourse.title,
+              slug: backendCourse.slug
+            };
+          }
+        }
+      }
+
+      if (!course) {
+        toast({
+          title: 'Download Failed',
+          description: 'Course information not found.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       // Convert to full course object for PDF generation
       await generateCertificatePDF(
         certificate, 
