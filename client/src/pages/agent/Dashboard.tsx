@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,11 @@ import type { Announcement } from '@/types';
 export default function AgentDashboard() {
   const { user } = useAuthStore();
   const { courses, progresses, certificates } = useDataStore();
+  
+  // Track certificates for re-render
+  useEffect(() => {
+    console.log('[DASHBOARD] Certificates updated:', certificates.length, certificates);
+  }, [certificates]);
   
   // Fetch announcements from backend
   const { data: announcementsData } = useQuery<{ success: boolean; announcements: Announcement[] }>({
