@@ -90,19 +90,28 @@ export default function AgentCertificates() {
     }
   };
 
-  const downloadBadge = (certificateCode: string) => {
-    if (!user) return;
+  const downloadBadge = (certificateCode?: string) => {
+    if (!user) {
+      toast({
+        title: 'Download Failed',
+        description: 'User information not found.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     try {
-      generateBadgePNG(user, certificateCode);
+      // Badge generation doesn't need course information, just user and code
+      generateBadgePNG(user, certificateCode || 'FAS-AGENT');
       toast({
         title: 'Badge Downloaded',
         description: 'Your agent badge has been downloaded successfully.'
       });
     } catch (error) {
+      console.error('Badge generation error:', error);
       toast({
         title: 'Download Failed',
-        description: 'There was an error downloading your badge.',
+        description: error instanceof Error ? error.message : 'There was an error downloading your badge.',
         variant: 'destructive'
       });
     }
