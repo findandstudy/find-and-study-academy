@@ -84,7 +84,22 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 -   **Wouter**: Client-side routing.
 ## Development History
 
-### Auto-Certificate Generation for Final Exams (2024-10-19)
+### Production Certificate PDF Download Fix (2025-10-20)
+- **Issue**: PDF certificate downloads worked in development but failed in production (deployed site)
+- **Root Cause**: Asset import path (`@assets/train_1760536930109.png`) transformed differently in production builds
+- **Solution**: Embedded certificate background image as base64 constant
+  - Converted background PNG to base64 data URL (~236KB)
+  - Removed external fetch() dependency
+  - Eliminates CORS and asset path issues
+  - Works identically in development and production
+- **Implementation**: client/src/lib/pdf.ts
+  - CERTIFICATE_BACKGROUND constant contains full base64 data URL
+  - Direct usage in jsPDF.addImage() without async fetch
+  - No external dependencies or network calls required
+- **Testing**: Verified on both agent and admin certificate pages
+- **Performance**: ~315KB added to bundle (acceptable for single utility)
+
+### Auto-Certificate Generation for Final Exams (2025-10-19)
 - **Feature**: Certificates automatically generated when agents pass Final Exams (score >= passPercent)
 - **Backend Implementation** (/api/attempts endpoint):
   - Checks quiz.isFinal && scorePercent >= passPercent after attempt submission
