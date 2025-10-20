@@ -15,17 +15,30 @@
 
     <!-- Findy Launcher Widget -->
     <div id="findy-launcher">
-      <button 
-        id="findy-button" 
-        class="findy-launcher-btn"
-        aria-label="Chat with Findy"
-        type="button"
-        data-testid="button-findy-launcher">
-        <svg class="findy-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
-        </svg>
-        <span class="findy-text">Findy</span>
-      </button>
+      <div class="findy-launcher-wrapper">
+        <button 
+          id="findy-minimize" 
+          class="findy-minimize-btn"
+          aria-label="Minimize Findy"
+          type="button"
+          data-testid="button-findy-minimize"
+          title="Minimize">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z" fill="currentColor"/>
+          </svg>
+        </button>
+        <button 
+          id="findy-button" 
+          class="findy-launcher-btn"
+          aria-label="Chat with Findy"
+          type="button"
+          data-testid="button-findy-launcher">
+          <svg class="findy-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16ZM7 9H9V11H7V9ZM11 9H13V11H11V9ZM15 9H17V11H15V9Z" fill="currentColor"/>
+          </svg>
+          <span class="findy-text">Findy</span>
+        </button>
+      </div>
       
       <!-- Chat Window -->
       <div id="findy-chat" class="findy-chat" style="display: none;" data-testid="chat-window">
@@ -120,6 +133,48 @@
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       }
 
+      .findy-launcher-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      .findy-minimize-btn {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 20px;
+        height: 20px;
+        background-color: white;
+        border: 2px solid var(--findy-accent);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        transition: all 0.2s ease;
+        padding: 0;
+      }
+
+      .findy-minimize-btn svg {
+        width: 10px;
+        height: 10px;
+        color: var(--findy-accent);
+      }
+
+      .findy-minimize-btn:hover {
+        background-color: var(--findy-accent);
+        transform: scale(1.1);
+      }
+
+      .findy-minimize-btn:hover svg {
+        color: white;
+      }
+
+      #findy-launcher.minimized .findy-minimize-btn {
+        display: none;
+      }
+
       .findy-launcher-btn {
         display: flex;
         align-items: center;
@@ -133,8 +188,17 @@
         font-weight: 600;
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(237, 28, 36, 0.3);
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         outline: none;
+      }
+
+      #findy-launcher.minimized .findy-launcher-btn {
+        padding: 10px;
+        border-radius: 50%;
+      }
+
+      #findy-launcher.minimized .findy-text {
+        display: none;
       }
 
       .findy-launcher-btn:hover {
@@ -642,7 +706,9 @@
         const WEBHOOK_URL = null; // Set to your n8n webhook URL later
 
         // DOM Elements
+        const launcher = document.getElementById('findy-launcher');
         const button = document.getElementById('findy-button');
+        const minimizeBtn = document.getElementById('findy-minimize');
         const chatWindow = document.getElementById('findy-chat');
         const closeBtn = document.getElementById('findy-close');
         const messagesContainer = document.getElementById('findy-messages');
@@ -652,6 +718,12 @@
         
         let sessionId = generateSessionId();
         let isChatOpen = false;
+        let isMinimized = localStorage.getItem('findy-minimized') === 'true';
+        
+        // Apply minimized state on load
+        if (isMinimized) {
+          launcher.classList.add('minimized');
+        }
 
         // Generate unique session ID
         function generateSessionId() {
@@ -680,6 +752,23 @@
           if (isChatOpen) {
             input.focus();
             scrollToBottom();
+          }
+        }
+        
+        // Toggle minimize/maximize
+        function toggleMinimize() {
+          isMinimized = !isMinimized;
+          
+          if (isMinimized) {
+            launcher.classList.add('minimized');
+            localStorage.setItem('findy-minimized', 'true');
+            // Close chat if open
+            if (isChatOpen) {
+              toggleChat();
+            }
+          } else {
+            launcher.classList.remove('minimized');
+            localStorage.setItem('findy-minimized', 'false');
           }
         }
 
@@ -837,8 +926,18 @@
         }
 
         // Event Listeners
-        button.addEventListener('click', toggleChat);
+        button.addEventListener('click', () => {
+          if (isMinimized) {
+            // If minimized, first maximize then toggle chat
+            toggleMinimize();
+          }
+          toggleChat();
+        });
         closeBtn.addEventListener('click', toggleChat);
+        minimizeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleMinimize();
+        });
         
         sendBtn.addEventListener('click', sendMessage);
         

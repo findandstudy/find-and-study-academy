@@ -10,7 +10,7 @@ import { Award, Download, FileDown, Calendar, TrendingUp } from 'lucide-react';
 
 export default function AgentCertificates() {
   const { user } = useAuthStore();
-  const { certificates: localCertificates, courses, agencies } = useDataStore();
+  const { courses, agencies } = useDataStore();
   const { toast } = useToast();
 
   // Fetch certificates from backend
@@ -19,10 +19,8 @@ export default function AgentCertificates() {
     enabled: !!user
   });
 
-  // Use backend certificates if available, fallback to localStorage
-  const backendCertificates = certificatesResponse?.certificates || [];
-  const certificates = backendCertificates.length > 0 ? backendCertificates : localCertificates;
-  
+  // Always use backend certificates (no localStorage fallback)
+  const certificates = certificatesResponse?.certificates || [];
   const userCertificates = certificates.filter(c => c.userId === user?.id);
   const userAgency = agencies.find(a => a.id === user?.agencyId);
 
