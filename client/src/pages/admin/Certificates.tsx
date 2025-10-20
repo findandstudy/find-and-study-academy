@@ -94,7 +94,16 @@ export default function AdminCertificates() {
 
   const downloadCertificate = async (certificate: AdminCertificate) => {
     try {
+      console.log('[ADMIN CERT] Download attempt:', {
+        hasUser: !!certificate.user,
+        hasCourse: !!certificate.course,
+        user: certificate.user,
+        course: certificate.course,
+        certificateCode: certificate.code
+      });
+      
       if (!certificate.user || !certificate.course) {
+        console.error('[ADMIN CERT] Missing data - user:', certificate.user, 'course:', certificate.course);
         toast({
           title: 'Download Failed',
           description: 'Certificate data is incomplete.',
