@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
@@ -411,6 +411,9 @@ export default function AdminCertificates() {
                           <DialogContent className="max-w-md">
                             <DialogHeader>
                               <DialogTitle>Certificate Details</DialogTitle>
+                              <DialogDescription>
+                                View and download certificate information
+                              </DialogDescription>
                             </DialogHeader>
                             {selectedCertificate && (
                               <div className="space-y-4">

@@ -84,6 +84,36 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 -   **Wouter**: Client-side routing.
 ## Development History
 
+### Certificate System Backend Enrichment & ARIA Fixes (2025-10-20)
+- **Issue**: Agent certificates couldn't download because course info was missing from backend response
+- **Secondary Issue**: Admin Certificate Details modal had ARIA accessibility warning (missing description)
+- **Root Cause**: `/api/certificates` endpoint returned raw certificate data without course information
+  - Frontend depended on localStorage for course data
+  - When localStorage was empty/stale, downloads failed with "Course not found" error
+- **Solution**: Backend course enrichment + ARIA compliance
+  - **Backend Fix** (server/routes.ts): `/api/certificates` now enriches response with course data
+    - Fetches courses from storage
+    - Maps each certificate with nested course object (id, title, slug)
+    - Returns: `{ id, code, scorePercent, issuedAt, userId, courseId, course: {...} }`
+  - **Frontend Fix** (client/src/pages/agent/Certificates.tsx):
+    - Primary: Uses `certificate.course` from backend
+    - Fallback: Tries localStorage `courses` array if backend course is null
+    - Proper error handling with toast notification
+  - **ARIA Fix** (client/src/pages/admin/Certificates.tsx):
+    - Added DialogDescription import
+    - Added description: "View and download certificate information"
+    - Eliminates accessibility warnings
+- **Implementation Details**:
+  - Backend enrichment pattern matches admin endpoint (`/api/admin/certificates`)
+  - Frontend gracefully handles both enriched and legacy certificate data
+  - Download functions verify course availability before PDF generation
+- **Testing**: Playwright e2e test verified
+  - Agent PDF/Badge downloads work without errors
+  - Admin PDF/Badge downloads work without errors
+  - No ARIA warnings in console
+  - Clean console throughout entire flow
+- **Result**: Certificates system now fully backend-powered with localStorage safety net
+
 ### Badge Logo Embedded Base64 Fix (2025-10-20)
 - **Issue**: Agent badge downloads showed "Failed to load Find and Study logo" error
 - **Root Cause**: Public folder path `/badge-logo.png` had CORS/timing issues in canvas image loading

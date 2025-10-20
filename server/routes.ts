@@ -738,9 +738,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cert.userId === authenticatedUser.id
       );
 
+      // Enrich certificates with course information
+      const courses = await storage.getCourses();
+      const enrichedCertificates = userCertificates.map(cert => {
+        const course = courses.find(c => c.id === cert.courseId);
+        
+        return {
+          id: cert.id,
+          code: cert.code,
+          scorePercent: cert.scorePercent,
+          issuedAt: cert.issuedAt,
+          userId: cert.userId,
+          courseId: cert.courseId,
+          course: course ? {
+            id: course.id,
+            title: course.title,
+            slug: course.slug
+          } : null
+        };
+      });
+
       res.json({
         success: true,
-        certificates: userCertificates
+        certificates: enrichedCertificates
       });
     } catch (error) {
       console.error('Certificates retrieval error:', error);

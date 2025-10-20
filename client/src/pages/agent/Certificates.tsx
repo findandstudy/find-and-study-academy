@@ -30,11 +30,36 @@ export default function AgentCertificates() {
     const certificate = certificates.find(c => c.id === certificateId);
     if (!certificate || !user) return;
 
-    const course = courses.find(c => c.id === certificate.courseId);
-    if (!course) return;
+    // Use course from backend (certificate.course) or fallback to localStorage
+    let course = certificate.course;
+    if (!course) {
+      const localCourse = courses.find(c => c.id === certificate.courseId);
+      if (localCourse) {
+        course = {
+          id: localCourse.id,
+          title: localCourse.title,
+          slug: localCourse.slug
+        };
+      }
+    }
+
+    if (!course) {
+      toast({
+        title: 'Download Failed',
+        description: 'Course information not found.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      await generateCertificatePDF(certificate, user, course, userAgency || null);
+      // Convert to full course object for PDF generation
+      await generateCertificatePDF(
+        certificate, 
+        user, 
+        { ...course, sections: [] } as any,
+        userAgency || null
+      );
       toast({
         title: 'Certificate Downloaded',
         description: 'Your certificate has been downloaded successfully.'
@@ -102,7 +127,8 @@ export default function AgentCertificates() {
           {/* Certificates Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userCertificates.map(certificate => {
-              const course = courses.find(c => c.id === certificate.courseId);
+              // Use course from backend or fallback to localStorage
+              const course = certificate.course || courses.find(c => c.id === certificate.courseId);
               return (
                 <Card key={certificate.id} className="hover-elevate">
                   <CardHeader className="pb-3">
@@ -113,7 +139,7 @@ export default function AgentCertificates() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <h3 className="font-semibold">{course?.title}</h3>
+                      <h3 className="font-semibold">{course?.title || 'Course Title'}</h3>
                       <p className="text-sm text-muted-foreground">
                         Certificate Code: {certificate.code}
                       </p>
