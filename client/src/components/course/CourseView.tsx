@@ -8,6 +8,9 @@ import { QuizModal } from './QuizModal';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { BookOpen, CheckCircle, PlayCircle, Award } from 'lucide-react';
 import type { Course, Lesson, Quiz, Progress as ProgressType } from '../../types';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface CourseViewProps {
   course: Course;
@@ -20,13 +23,20 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after quiz completion
   const { user } = useAuthStore();
-  const { progresses, quizzes: storeQuizzes, updateProgress, certificates, attempts } = useDataStore();
+  const { quizzes: storeQuizzes, certificates, attempts } = useDataStore();
+  const { toast } = useToast();
   
   // Use prop quizzes if provided, otherwise fallback to store quizzes
   const quizzes = quizzesProp || storeQuizzes;
 
+  // Fetch progress from backend
+  const { data: progressResponse } = useQuery<{ success: boolean; progress: any }>({
+    queryKey: ['/api/progress', course.id],
+    enabled: !!user
+  });
+
   // Get user progress for this course
-  const userProgress = progresses.find(p => p.userId === user?.id && p.courseId === course.id);
+  const userProgress = progressResponse?.progress;
   const completedLessons = userProgress?.lessonCompletedIds || [];
   
   // Calculate total lessons
@@ -75,6 +85,35 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
     return bestAttempt.scorePercent >= quiz.passPercent;
   });
 
+  // Mutation to save lesson completion to backend
+  const saveProgressMutation = useMutation({
+    mutationFn: async (data: { lessonCompletedIds: string[]; percent: number }) => {
+      const response = await apiRequest('POST', '/api/progress', {
+        courseId: course.id,
+        lessonCompletedIds: data.lessonCompletedIds,
+        percent: data.percent
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate queries to refetch progress
+      queryClient.invalidateQueries({ queryKey: ['/api/progress', course.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
+      
+      toast({
+        title: 'Lesson Completed',
+        description: 'Your progress has been saved.'
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Save Failed',
+        description: error instanceof Error ? error.message : 'Could not save your progress.',
+        variant: 'destructive'
+      });
+    }
+  });
+
   useEffect(() => {
     // Auto-select first lesson if none selected
     if (!selectedLesson && course.sections[0]?.lessons[0]) {
@@ -86,14 +125,13 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
     if (!user) return;
 
     const newCompletedIds = [...completedLessons, lessonId];
-    const newProgress: ProgressType = {
-      userId: user.id,
-      courseId: course.id,
-      percent: Math.round((newCompletedIds.length / totalLessons) * 100),
-      lessonCompletedIds: newCompletedIds
-    };
+    const newPercent = Math.round((newCompletedIds.length / totalLessons) * 100);
     
-    updateProgress(newProgress);
+    // Save to backend
+    saveProgressMutation.mutate({
+      lessonCompletedIds: newCompletedIds,
+      percent: newPercent
+    });
   };
 
   const startQuiz = (lesson: Lesson) => {
