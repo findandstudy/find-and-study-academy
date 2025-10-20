@@ -81,41 +81,73 @@ export const generateCertificatePDF = async (
   doc.save(fileName);
 };
 
-export const generateBadgePNG = (user: User): void => {
+export const generateBadgePNG = (user: User, certificateCode?: string): void => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  canvas.width = 200;
-  canvas.height = 200;
+  canvas.width = 400;
+  canvas.height = 400;
 
-  // Background circle
+  // Blue border circle
   ctx.fillStyle = '#143591';
   ctx.beginPath();
-  ctx.arc(100, 100, 90, 0, 2 * Math.PI);
+  ctx.arc(200, 200, 180, 0, 2 * Math.PI);
   ctx.fill();
 
   // White inner circle
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(100, 100, 75, 0, 2 * Math.PI);
+  ctx.arc(200, 200, 160, 0, 2 * Math.PI);
   ctx.fill();
 
-  // Initials
+  // Magnifying glass icon (Find and Study logo style)
+  ctx.strokeStyle = '#dc2626'; // Red color
+  ctx.fillStyle = '#dc2626';
+  ctx.lineWidth = 8;
+  
+  // Globe circle
+  ctx.beginPath();
+  ctx.arc(200, 110, 28, 0, 2 * Math.PI);
+  ctx.stroke();
+  
+  // Globe details (simplified world map)
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(200, 110, 15, 0, Math.PI); // Hemisphere
+  ctx.stroke();
+  
+  // Magnifying glass handle
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(220, 128);
+  ctx.lineTo(235, 143);
+  ctx.stroke();
+
+  // User's full name (instead of initials)
   ctx.fillStyle = '#143591';
   ctx.font = 'bold 32px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const initials = user.name.split(' ').map(n => n[0]).join('').substring(0, 2);
-  ctx.fillText(initials, 100, 90);
+  
+  // Split name if too long
+  const nameParts = user.name.split(' ');
+  if (nameParts.length > 1 && user.name.length > 15) {
+    ctx.fillText(nameParts.slice(0, -1).join(' '), 200, 190);
+    ctx.fillText(nameParts[nameParts.length - 1], 200, 220);
+  } else {
+    ctx.fillText(user.name, 200, 205);
+  }
 
-  // "CERTIFIED" text
-  ctx.font = 'bold 12px Arial';
-  ctx.fillText('CERTIFIED', 100, 130);
+  // "CERTIFIED AGENT" text
+  ctx.font = 'bold 18px Arial';
+  ctx.fillText('CERTIFIED AGENT', 200, nameParts.length > 1 && user.name.length > 15 ? 255 : 250);
 
-  // "AGENT" text
-  ctx.font = 'bold 10px Arial';
-  ctx.fillText('AGENT', 100, 145);
+  // Certificate code at the bottom
+  if (certificateCode) {
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(certificateCode, 200, nameParts.length > 1 && user.name.length > 15 ? 290 : 285);
+  }
 
   // Download
   canvas.toBlob((blob) => {
@@ -123,7 +155,7 @@ export const generateBadgePNG = (user: User): void => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `FAS_Badge_${user.name.replace(/\s+/g, '_')}.png`;
+      a.download = `FAS_Badge_${user.name.replace(/\s+/g, '_')}${certificateCode ? '_' + certificateCode : ''}.png`;
       a.click();
       URL.revokeObjectURL(url);
     }

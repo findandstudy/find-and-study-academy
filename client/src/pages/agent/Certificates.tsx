@@ -49,11 +49,11 @@ export default function AgentCertificates() {
     }
   };
 
-  const downloadBadge = () => {
+  const downloadBadge = (certificateCode: string) => {
     if (!user) return;
     
     try {
-      generateBadgePNG(user);
+      generateBadgePNG(user, certificateCode);
       toast({
         title: 'Badge Downloaded',
         description: 'Your agent badge has been downloaded successfully.'
@@ -142,8 +142,8 @@ export default function AgentCertificates() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={downloadBadge}
-                        data-testid="button-download-badge"
+                        onClick={() => downloadBadge(certificate.code)}
+                        data-testid={`button-download-badge-${certificate.id}`}
                       >
                         <FileDown className="w-4 h-4 mr-1" />
                         Badge
@@ -165,10 +165,13 @@ export default function AgentCertificates() {
                 <div>
                   <p className="font-medium">Certified Find And Study Agent</p>
                   <p className="text-sm text-muted-foreground">
-                    Use this badge to show your certification status
+                    Download your agent badge with your latest certificate code
                   </p>
                 </div>
-                <Button onClick={downloadBadge} data-testid="button-download-agent-badge">
+                <Button 
+                  onClick={() => downloadBadge(userCertificates[userCertificates.length - 1]?.code || 'FAS-AGENT')} 
+                  data-testid="button-download-agent-badge"
+                >
                   <FileDown className="w-4 h-4 mr-2" />
                   Download Badge
                 </Button>
