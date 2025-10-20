@@ -274,6 +274,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all courses - no auth required for certificate downloads
+  app.get('/api/courses', async (req, res) => {
+    try {
+      const courses = await storage.getCourses();
+      
+      res.json({
+        success: true,
+        courses: courses
+      });
+    } catch (error) {
+      console.error('Courses fetch error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch courses'
+      });
+    }
+  });
+
   // Login endpoint - authenticate user and return user data
   app.post('/api/login', async (req, res) => {
     try {
