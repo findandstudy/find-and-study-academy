@@ -60,20 +60,18 @@ export default function AgentCertificates() {
         }
       }
 
-      if (!course) {
-        toast({
-          title: 'Download Failed',
-          description: 'Course information not found.',
-          variant: 'destructive'
-        });
-        return;
-      }
+      // If course not found, use placeholder data to still generate certificate
+      const courseData = course || {
+        id: certificate.courseId,
+        title: 'Find And Study Agent Training',
+        slug: 'agent-training'
+      };
 
       // Convert to full course object for PDF generation
       await generateCertificatePDF(
         certificate, 
         user, 
-        { ...course, sections: [] } as any,
+        { ...courseData, sections: [] } as any,
         userAgency || null
       );
       toast({
