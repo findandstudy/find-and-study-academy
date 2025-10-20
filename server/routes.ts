@@ -305,9 +305,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const users = await storage.getUsers();
-      const user = users.find(u => u.email === email && u.password === password);
+      const user = users.find(u => u.email === email);
 
       if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      // Compare password with bcrypt hash
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      
+      if (!passwordMatch) {
         return res.status(401).json({
           success: false,
           message: 'Invalid email or password'
