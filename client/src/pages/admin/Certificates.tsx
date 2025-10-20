@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useDataStore } from '@/store/data';
-import { generateCertificatePDF } from '@/lib/pdf';
+import { generateCertificatePDF, generateBadgePNG } from '@/lib/pdf';
 import { 
   Award, 
   Search, 
@@ -185,6 +185,41 @@ export default function AdminCertificates() {
       toast({
         title: 'Download Failed',
         description: 'Failed to download certificate.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const downloadBadge = (certificate: AdminCertificate) => {
+    try {
+      if (!certificate.user) {
+        toast({
+          title: 'Download Failed',
+          description: 'User data is incomplete.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      generateBadgePNG(
+        {
+          id: certificate.user.id,
+          name: certificate.user.name,
+          email: certificate.user.email,
+          role: certificate.user.role as 'agent' | 'admin'
+        },
+        certificate.code
+      );
+
+      toast({
+        title: 'Badge Downloaded',
+        description: `Agent badge for ${certificate.user.name} downloaded successfully.`
+      });
+    } catch (error) {
+      console.error('Badge download error:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download badge.',
         variant: 'destructive'
       });
     }
@@ -414,14 +449,25 @@ export default function AdminCertificates() {
                                   </div>
                                 </div>
                                 
-                                <Button 
-                                  onClick={() => downloadCertificate(selectedCertificate)}
-                                  className="w-full"
-                                  data-testid="button-download-certificate"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Download Certificate
-                                </Button>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Button 
+                                    onClick={() => downloadCertificate(selectedCertificate)}
+                                    className="w-full"
+                                    data-testid="button-download-certificate"
+                                  >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    PDF
+                                  </Button>
+                                  <Button 
+                                    onClick={() => downloadBadge(selectedCertificate)}
+                                    variant="outline"
+                                    className="w-full"
+                                    data-testid={`button-download-badge-${selectedCertificate.id}`}
+                                  >
+                                    <Award className="w-4 h-4 mr-2" />
+                                    Badge
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </DialogContent>

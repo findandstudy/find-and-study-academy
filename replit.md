@@ -84,6 +84,21 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 -   **Wouter**: Client-side routing.
 ## Development History
 
+### Badge Logo Embedded Base64 Fix (2025-10-20)
+- **Issue**: Agent badge downloads showed "Failed to load Find and Study logo" error
+- **Root Cause**: Public folder path `/badge-logo.png` had CORS/timing issues in canvas image loading
+- **Solution**: Embedded Find and Study logo as base64 constant (same pattern as certificate background)
+  - Logo file: 78KB base64 embedded directly in pdf.ts
+  - Constant: BADGE_LOGO_BASE64 with full data URL
+  - Eliminates fetch/CORS/timing issues completely
+  - Instant loading from memory
+- **Implementation**: client/src/lib/pdf.ts
+  - generateBadgePNG uses BADGE_LOGO_BASE64 instead of public path
+  - No external network calls or file system dependencies
+  - Works identically in development and production
+- **Testing**: Playwright test verified - no console errors, clean badge downloads
+- **Performance**: ~78KB added to bundle (acceptable for badge generation utility)
+
 ### Production Certificate PDF Download Fix (2025-10-20)
 - **Issue**: PDF certificate downloads worked in development but failed in production (deployed site)
 - **Root Cause**: Asset import path (`@assets/train_1760536930109.png`) transformed differently in production builds
