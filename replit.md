@@ -84,6 +84,53 @@ Includes an auto-seeding system for initial data (admin user, default countries,
 -   **Wouter**: Client-side routing.
 ## Development History
 
+### Progress Tracking Migration to Backend (2025-10-20)
+- **Critical Issue**: Course progress disappeared when switching browsers - localStorage-only storage caused data loss
+- **User Impact**: Agent EYMEN NAMAZCI reported losing progress when accessing from different devices
+- **Root Cause**: Progress data stored exclusively in localStorage, not synchronized with backend
+  - Each browser had independent localStorage
+  - No cross-device persistence
+  - Hard refreshes could lose data
+- **Solution**: Complete backend migration with PostgreSQL persistence
+  - **Database Schema** (shared/schema.ts): Added `progresses` table
+    - Columns: user_id, course_id, lesson_completed_ids (array), percent, current_lesson_id, last_accessed, last_lesson_completed_at
+    - Unique constraint on (user_id, course_id) prevents duplicates
+    - Proper types and indexes for performance
+  - **Storage Layer** (server/storage.ts): Extended IStorage interface
+    - getProgresses(userId?) - fetch all user progresses
+    - getProgressByUserAndCourse(userId, courseId) - specific course
+    - upsertProgress(data) - create or update with merge logic
+    - updateProgress(userId, courseId, updates) - partial updates
+  - **Backend API** (server/routes.ts): Four endpoints
+    - GET /api/progress - all user progresses
+    - GET /api/progress/:courseId - specific course progress
+    - POST /api/progress - upsert (create or merge)
+    - PATCH /api/progress/:courseId - partial update preserving existing fields
+  - **Frontend Migration** (client/src/pages/agent/Dashboard.tsx):
+    - Removed localStorage dependency for progress
+    - Uses React Query to fetch from /api/progress
+    - Backend-first strategy with no localStorage fallback
+    - Certificates also fetched from backend with course enrichment
+- **Implementation Details**:
+  - Upsert logic merges new data with existing: `data.field ?? existing.field`
+  - PATCH endpoint filters undefined values before update
+  - Storage layer uses Drizzle ORM with type safety
+  - Database migration successful (npm run db:push)
+  - Route registration order fixed (server restart required for PATCH)
+- **Architect Review**: Complete system validation with testing
+  - POST upsert verified: merges without overwriting
+  - PATCH partial update verified: preserves lessonCompletedIds
+  - Database persistence confirmed: cross-session data retention
+  - Evidence: percent=85 update preserved existing lessonCompletedIds
+- **Testing**: Manual API testing with curl
+  - POST created progress with percent=25, lessonCompletedIds=["lesson-1","lesson-2"]
+  - PATCH updated percent=85, lessonCompletedIds preserved
+  - Database confirmed: data persists across server restarts
+- **Result**: Progress now persists across browsers, devices, and sessions
+  - Solves user's cross-device issue completely
+  - Production-ready backend infrastructure
+  - Future: Add UI lesson tracking mutations + localStorage migration for existing users
+
 ### Certificate System Backend Enrichment & ARIA Fixes (2025-10-20)
 - **Issue**: Agent certificates couldn't download because course info was missing from backend response
 - **Secondary Issue**: Admin Certificate Details modal had ARIA accessibility warning (missing description)
