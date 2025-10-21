@@ -3200,6 +3200,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email notification endpoints
+  app.post('/api/admin/send-test-email', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { to, type, data } = req.body;
+
+      if (!to) {
+        return res.status(400).json({
+          success: false,
+          message: 'Recipient email is required'
+        });
+      }
+
+      const { sendNotificationEmail } = await import('./emailService');
+      
+      const result = await sendNotificationEmail({
+        recipientEmail: to,
+        recipientName: data?.name || 'Test User',
+        type: type || 'welcome',
+        data
+      });
+
+      if (result) {
+        res.json({
+          success: true,
+          message: 'Test email sent successfully'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send test email'
+        });
+      }
+    } catch (error) {
+      console.error('Send test email error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send test email'
+      });
+    }
+  });
+
+  app.post('/api/send-certificate-email', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { userId, certificateId } = req.body;
+
+      if (!userId || !certificateId) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID and Certificate ID are required'
+        });
+      }
+
+      const users = await storage.getUsers();
+      const user = users.find(u => u.id === userId);
+
+      if (!user || !user.email) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found or email not available'
+        });
+      }
+
+      const certificates = await storage.getCertificates();
+      const certificate = certificates.find(c => c.id === certificateId);
+
+      if (!certificate) {
+        return res.status(404).json({
+          success: false,
+          message: 'Certificate not found'
+        });
+      }
+
+      // Get course information
+      const courses = await storage.getCourses();
+      const course = courses.find(c => c.id === certificate.courseId);
+      const courseName = course?.title || 'Course';
+
+      const { sendNotificationEmail } = await import('./emailService');
+      
+      const result = await sendNotificationEmail({
+        recipientEmail: user.email,
+        recipientName: user.name,
+        type: 'certificate',
+        data: {
+          courseName,
+          certificateUrl: `/certificates/${certificate.code}`
+        }
+      });
+
+      if (result) {
+        res.json({
+          success: true,
+          message: 'Certificate email sent successfully'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send certificate email'
+        });
+      }
+    } catch (error) {
+      console.error('Send certificate email error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send certificate email'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
