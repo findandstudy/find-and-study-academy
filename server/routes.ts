@@ -386,11 +386,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         primaryContactEmail: email
       };
 
+      // Hash password before storing
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       // Create user
       const newUser = {
         id: userId,
         username: email,
-        password: password,
+        password: hashedPassword,
         name: name,
         email: email,
         role: 'agent' as const,

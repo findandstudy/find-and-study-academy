@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 const app = express();
 app.use(express.json());
@@ -42,18 +43,19 @@ async function seedEssentialData() {
   try {
     // 1. Seed default admin if none exists
     const users = await storage.getUsers();
-    const adminExists = users.some(u => u.role === 'admin');
+    const defaultAdminExists = users.some(u => u.email === 'en@findandstudy.com');
     
-    if (!adminExists) {
+    if (!defaultAdminExists) {
       log('Seeding default admin user...');
+      const hashedPassword = await bcrypt.hash('admin123', 10);
       await storage.createUser({
         username: 'admin',
         name: 'System Admin',
         email: 'en@findandstudy.com',
-        password: 'admin123',
+        password: hashedPassword,
         role: 'admin'
       });
-      log('✓ Admin created: en@findandstudy.com / admin123');
+      log('✓ Admin created: en@findandstudy.com / admin123 (password hashed)');
     }
 
     // 2. Seed essential countries if empty
