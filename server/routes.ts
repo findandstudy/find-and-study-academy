@@ -123,7 +123,13 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
       id: user.id, 
       role: user.role,  // Use actual role from storage, not client-provided
       email: user.email,
-      agencyId: user.agencyId  // Include agencyId for agents
+      name: user.name,
+      agencyId: user.agencyId,  // Include agencyId for agents
+      // Include notification preferences for email triggers
+      emailNotifications: user.emailNotifications,
+      certificateNotif: user.certificateNotif,
+      courseCompletionNotif: user.courseCompletionNotif,
+      announcementNotif: user.announcementNotif
     };
     next();
   } catch (error) {
@@ -407,6 +413,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdAgency = await storage.createAgency(newAgency);
       const createdUser = await storage.createUser(newUser);
 
+      // Send welcome email (non-blocking)
+      if (createdUser.emailNotifications) {
+        (async () => {
+          try {
+            const { sendNotificationEmail } = await import('./emailService');
+            await sendNotificationEmail({
+              recipientEmail: createdUser.email,
+              recipientName: createdUser.name,
+              type: 'welcome',
+              data: {
+                agencyName: createdAgency.name
+              }
+            });
+          } catch (err) {
+            console.error('Welcome email error:', err);
+          }
+        })();
+      }
+
       res.status(201).json({
         success: true,
         user: {
@@ -534,6 +559,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 certCreated = true;
                 console.log(`✅ Auto-generated certificate ${certificateCode} for user ${authenticatedUser.id} on Final Exam ${quizId}`);
+                
+                // Send certificate email (non-blocking)
+                if (authenticatedUser.certificateNotif && authenticatedUser.emailNotifications) {
+                  const courses = await storage.getCourses();
+                  const course = courses.find(c => c.id === quiz.courseId);
+                  (async () => {
+                    try {
+                      const { sendNotificationEmail } = await import('./emailService');
+                      await sendNotificationEmail({
+                        recipientEmail: authenticatedUser.email,
+                        recipientName: authenticatedUser.name,
+                        type: 'certificate',
+                        data: {
+                          courseName: course?.title || 'Course',
+                          certificateUrl: `/certificates/${certificateCode}`
+                        }
+                      });
+                    } catch (err) {
+                      console.error('Certificate email error:', err);
+                    }
+                  })();
+                }
               } catch (dbError: any) {
                 const is23505 = dbError?.code === '23505';
                 const hasUniqueError = dbError?.message?.toLowerCase().includes('unique') || dbError?.message?.toLowerCase().includes('duplicate');
@@ -949,6 +996,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get existing progress to check if this is a new completion
+      const existingProgress = await storage.getProgressByUserAndCourse(authenticatedUser.id, courseId);
+      const wasNotCompleted = !existingProgress || existingProgress.percent < 100;
+      
       // Upsert progress (creates or updates, merges with existing)
       const progress = await storage.upsertProgress({
         userId: authenticatedUser.id,
@@ -958,6 +1009,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentLessonId,
         lastLessonCompletedAt: lessonCompletedIds && lessonCompletedIds.length > 0 ? new Date() : undefined,
       });
+
+      // Send course completion email (non-blocking) if just completed
+      if (percent === 100 && wasNotCompleted && authenticatedUser.courseCompletionNotif && authenticatedUser.emailNotifications) {
+        const courses = await storage.getCourses();
+        const course = courses.find(c => c.id === courseId);
+        if (course) {
+          (async () => {
+            try {
+              const { sendNotificationEmail } = await import('./emailService');
+              await sendNotificationEmail({
+                recipientEmail: authenticatedUser.email,
+                recipientName: authenticatedUser.name,
+                type: 'course_completion',
+                data: {
+                  courseName: course.title
+                }
+              });
+            } catch (err) {
+              console.error('Course completion email error:', err);
+            }
+          })();
+        }
+      }
 
       res.status(200).json({
         success: true,
@@ -1501,6 +1575,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const newAnnouncement = await storage.createAnnouncement(announcementData);
+
+      // Send announcement email to all users if published (non-blocking)
+      if (status === 'published') {
+        const users = await storage.getUsers();
+        const eligibleUsers = users.filter(u => {
+          // Check if user should receive this announcement based on targetAudience
+          if (targetAudience === 'admins' && u.role !== 'admin') return false;
+          if (targetAudience === 'agents' && u.role !== 'agent') return false;
+          // Check notification preferences
+          return u.announcementNotif && u.emailNotifications && u.email;
+        });
+
+        // Send emails to all eligible users
+        if (eligibleUsers.length > 0) {
+          (async () => {
+            try {
+              const { sendNotificationEmail } = await import('./emailService');
+              for (const user of eligibleUsers) {
+                try {
+                  await sendNotificationEmail({
+                    recipientEmail: user.email,
+                    recipientName: user.name,
+                    type: 'announcement',
+                    data: {
+                      title,
+                      content
+                    }
+                  });
+                } catch (err) {
+                  console.error(`Announcement email error for ${user.email}:`, err);
+                }
+              }
+            } catch (err) {
+              console.error('Failed to load emailService module:', err);
+            }
+          })();
+        }
+      }
 
       res.json({
         success: true,
