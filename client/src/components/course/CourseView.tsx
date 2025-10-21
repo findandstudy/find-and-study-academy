@@ -23,7 +23,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after quiz completion
   const { user } = useAuthStore();
-  const { quizzes: storeQuizzes, certificates, attempts } = useDataStore();
+  const { quizzes: storeQuizzes, certificates } = useDataStore();
   const { toast } = useToast();
   
   // Use prop quizzes if provided, otherwise fallback to store quizzes
@@ -34,6 +34,15 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
     queryKey: ['/api/progress', course.id],
     enabled: !!user
   });
+
+  // Fetch attempts from backend
+  const { data: attemptsResponse } = useQuery<{ success: boolean; attempts: any[] }>({
+    queryKey: ['/api/attempts'],
+    enabled: !!user
+  });
+
+  // Use backend attempts if available, otherwise fallback to empty array
+  const attempts = attemptsResponse?.attempts || [];
 
   // Get user progress for this course
   const userProgress = progressResponse?.progress;

@@ -151,9 +151,10 @@ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProp
             console.log('[QUIZ] Certificate added to Zustand store');
           }
 
-          // Invalidate certificates cache to force Dashboard refresh
+          // Invalidate certificates and attempts cache to force refresh
           queryClient.invalidateQueries({ queryKey: ['/api/certificates'] });
-          console.log('[QUIZ] Cache invalidated for /api/certificates');
+          queryClient.invalidateQueries({ queryKey: ['/api/attempts'] });
+          console.log('[QUIZ] Cache invalidated for /api/certificates and /api/attempts');
 
           toast({
             title: result.certificate.alreadyIssued ? 'Certificate Already Earned! 🎓' : 'Congratulations! 🎉',
