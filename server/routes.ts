@@ -314,8 +314,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Compare password with bcrypt hash
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      // Support both bcrypt hash and plain text passwords (for backward compatibility)
+      let passwordMatch = false;
+      
+      // Check if password is bcrypt hashed (starts with $2a$, $2b$, or $2y$)
+      if (user.password.startsWith('$2')) {
+        passwordMatch = await bcrypt.compare(password, user.password);
+      } else {
+        // Plain text password comparison
+        passwordMatch = password === user.password;
+      }
       
       if (!passwordMatch) {
         return res.status(401).json({
