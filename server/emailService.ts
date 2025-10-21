@@ -25,18 +25,18 @@ function generateCertificateEmail(name: string, courseName: string, certificateU
     <body>
       <div class="container">
         <div class="header">
-          <h1>🎓 Tebrikler!</h1>
+          <h1>Congratulations!</h1>
         </div>
         <div class="content">
-          <h2>Sayın ${name},</h2>
-          <p><strong>${courseName}</strong> kursunu başarıyla tamamladınız ve sertifikanız hazır!</p>
-          <p>Bu başarı, yurt dışı eğitim danışmanlığı alanındaki uzmanlığınızı bir adım daha ileriye taşıyor.</p>
-          ${certificateUrl ? `<a href="${certificateUrl}" class="button">Sertifikamı İndir</a>` : ''}
-          <p style="margin-top: 30px;">Platformumuzu kullanmaya devam ederek daha fazla bilgi ve sertifika kazanabilirsiniz.</p>
+          <h2>Dear ${name},</h2>
+          <p>You have successfully completed <strong>${courseName}</strong> and your certificate is ready!</p>
+          <p>This achievement takes your expertise in study abroad consulting to the next level.</p>
+          ${certificateUrl ? `<a href="${certificateUrl}" class="button">Download My Certificate</a>` : ''}
+          <p style="margin-top: 30px;">Continue using our platform to gain more knowledge and certifications.</p>
         </div>
         <div class="footer">
           <p>Find And Study - Agents Portal</p>
-          <p>Sorularınız için bizimle iletişime geçebilirsiniz.</p>
+          <p>Feel free to contact us if you have any questions.</p>
         </div>
       </div>
     </body>
@@ -61,13 +61,13 @@ function generateCourseCompletionEmail(name: string, courseName: string): string
     <body>
       <div class="container">
         <div class="header">
-          <h1>✅ Kurs Tamamlandı!</h1>
+          <h1>Course Completed!</h1>
         </div>
         <div class="content">
-          <h2>Sayın ${name},</h2>
-          <p><strong>${courseName}</strong> kursundaki tüm dersleri tamamladınız!</p>
-          <p>Şimdi sınavlarınızı yaparak sertifikanızı almaya bir adım daha yaklaşın.</p>
-          <p style="margin-top: 30px;">Başarılar dileriz!</p>
+          <h2>Dear ${name},</h2>
+          <p>You have completed all lessons in <strong>${courseName}</strong>!</p>
+          <p>Now take your exams to get one step closer to earning your certificate.</p>
+          <p style="margin-top: 30px;">Best of luck!</p>
         </div>
         <div class="footer">
           <p>Find And Study - Agents Portal</p>
@@ -95,10 +95,10 @@ function generateAnnouncementEmail(name: string, title: string, content: string)
     <body>
       <div class="container">
         <div class="header">
-          <h1>📢 Yeni Duyuru</h1>
+          <h1>New Announcement</h1>
         </div>
         <div class="content">
-          <h2>Sayın ${name},</h2>
+          <h2>Dear ${name},</h2>
           <h3>${title}</h3>
           <p>${content}</p>
         </div>
@@ -128,20 +128,20 @@ function generateWelcomeEmail(name: string, agencyName: string): string {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🎉 Hoş Geldiniz!</h1>
+          <h1>Welcome!</h1>
         </div>
         <div class="content">
-          <h2>Sayın ${name},</h2>
-          <p>Find And Study Agents Portal'a hoş geldiniz!</p>
-          <p><strong>${agencyName}</strong> ajansınız için hesabınız başarıyla oluşturuldu.</p>
-          <p>Platformumuzda:</p>
+          <h2>Dear ${name},</h2>
+          <p>Welcome to Find And Study Agents Portal!</p>
+          <p>Your account for <strong>${agencyName}</strong> has been successfully created.</p>
+          <p>On our platform you can:</p>
           <ul>
-            <li>📚 Eğitim kurslarına katılabilir</li>
-            <li>📝 Sınavlara girebilir</li>
-            <li>🎓 Sertifika kazanabilir</li>
-            <li>🏆 Liderlik tablosunda yarışabilirsiniz</li>
+            <li>Enroll in training courses</li>
+            <li>Take exams</li>
+            <li>Earn certificates</li>
+            <li>Compete on the leaderboard</li>
           </ul>
-          <p style="margin-top: 30px;">Başarılar dileriz!</p>
+          <p style="margin-top: 30px;">We wish you success!</p>
         </div>
         <div class="footer">
           <p>Find And Study - Agents Portal</p>
@@ -159,24 +159,24 @@ export async function sendNotificationEmail(options: EmailNotificationOptions): 
 
     switch (options.type) {
       case 'certificate':
-        subject = `🎓 Sertifikanız Hazır - ${options.data?.courseName || 'Kurs'}`;
+        subject = `Your Certificate is Ready - ${options.data?.courseName || 'Course'}`;
         html = generateCertificateEmail(
           options.recipientName,
-          options.data?.courseName || 'Kurs',
+          options.data?.courseName || 'Course',
           options.data?.certificateUrl
         );
         break;
 
       case 'course_completion':
-        subject = `✅ Kurs Tamamlandı - ${options.data?.courseName || 'Kurs'}`;
+        subject = `Course Completed - ${options.data?.courseName || 'Course'}`;
         html = generateCourseCompletionEmail(
           options.recipientName,
-          options.data?.courseName || 'Kurs'
+          options.data?.courseName || 'Course'
         );
         break;
 
       case 'announcement':
-        subject = `📢 Yeni Duyuru - ${options.data?.title || ''}`;
+        subject = `New Announcement - ${options.data?.title || ''}`;
         html = generateAnnouncementEmail(
           options.recipientName,
           options.data?.title || '',
@@ -185,10 +185,10 @@ export async function sendNotificationEmail(options: EmailNotificationOptions): 
         break;
 
       case 'welcome':
-        subject = '🎉 Find And Study Agents Portal\'a Hoş Geldiniz!';
+        subject = 'Welcome to Find And Study Agents Portal!';
         html = generateWelcomeEmail(
           options.recipientName,
-          options.data?.agencyName || 'Ajansınız'
+          options.data?.agencyName || 'Your Agency'
         );
         break;
 
