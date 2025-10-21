@@ -35,7 +35,7 @@ function generateCertificateEmail(name: string, courseName: string, certificateU
           <p style="margin-top: 30px;">Continue using our platform to gain more knowledge and certifications.</p>
         </div>
         <div class="footer">
-          <p>Find And Study - Agents Portal</p>
+          <p>Find And Study Academy</p>
           <p>Feel free to contact us if you have any questions.</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ function generateCourseCompletionEmail(name: string, courseName: string): string
           <p style="margin-top: 30px;">Best of luck!</p>
         </div>
         <div class="footer">
-          <p>Find And Study - Agents Portal</p>
+          <p>Find And Study Academy</p>
         </div>
       </div>
     </body>
@@ -103,7 +103,7 @@ function generateAnnouncementEmail(name: string, title: string, content: string)
           <p>${content}</p>
         </div>
         <div class="footer">
-          <p>Find And Study - Agents Portal</p>
+          <p>Find And Study Academy</p>
         </div>
       </div>
     </body>
@@ -132,7 +132,7 @@ function generateWelcomeEmail(name: string, agencyName: string): string {
         </div>
         <div class="content">
           <h2>Dear ${name},</h2>
-          <p>Welcome to Find And Study Agents Portal!</p>
+          <p>Welcome to Find And Study Academy!</p>
           <p>Your account for <strong>${agencyName}</strong> has been successfully created.</p>
           <p>On our platform you can:</p>
           <ul>
@@ -144,7 +144,7 @@ function generateWelcomeEmail(name: string, agencyName: string): string {
           <p style="margin-top: 30px;">We wish you success!</p>
         </div>
         <div class="footer">
-          <p>Find And Study - Agents Portal</p>
+          <p>Find And Study Academy</p>
         </div>
       </div>
     </body>
@@ -185,7 +185,7 @@ export async function sendNotificationEmail(options: EmailNotificationOptions): 
         break;
 
       case 'welcome':
-        subject = 'Welcome to Find And Study Agents Portal!';
+        subject = 'Welcome to Find And Study Academy!';
         html = generateWelcomeEmail(
           options.recipientName,
           options.data?.agencyName || 'Your Agency'
