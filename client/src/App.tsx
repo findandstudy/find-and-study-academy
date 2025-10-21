@@ -15,6 +15,7 @@ import { AgentLayout } from './components/layouts/AgentLayout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Agent Pages  
 import AgentDashboard from './pages/agent/Dashboard';
@@ -98,6 +99,12 @@ function Router() {
       <Route path="/forgot-password">
         <PublicRoute>
           <ForgotPassword />
+        </PublicRoute>
+      </Route>
+      
+      <Route path="/reset-password">
+        <PublicRoute>
+          <ResetPassword />
         </PublicRoute>
       </Route>
       
