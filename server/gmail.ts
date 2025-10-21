@@ -58,11 +58,14 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const gmail = await getUncachableGmailClient();
     
+    // Encode subject with UTF-8 for proper Turkish character support (RFC 2047)
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(options.subject).toString('base64')}?=`;
+    
     const emailContent = [
       'Content-Type: text/html; charset=utf-8',
       'MIME-Version: 1.0',
       `To: ${options.to}`,
-      `Subject: ${options.subject}`,
+      `Subject: ${encodedSubject}`,
       '',
       options.html
     ].join('\n');
