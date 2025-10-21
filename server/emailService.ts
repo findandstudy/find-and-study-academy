@@ -3,7 +3,7 @@ import { sendEmail } from './gmail';
 export interface EmailNotificationOptions {
   recipientEmail: string;
   recipientName: string;
-  type: 'certificate' | 'course_completion' | 'announcement' | 'welcome';
+  type: 'certificate' | 'course_completion' | 'announcement' | 'welcome' | 'password_reset';
   data?: any;
 }
 
@@ -152,6 +152,52 @@ function generateWelcomeEmail(name: string, agencyName: string): string {
   `;
 }
 
+function generatePasswordResetEmail(name: string, resetUrl: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .warning { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Password Reset Request</h1>
+        </div>
+        <div class="content">
+          <h2>Dear ${name},</h2>
+          <p>We received a request to reset your password for your Find And Study Academy account.</p>
+          <p>Click the button below to reset your password:</p>
+          <a href="${resetUrl}" class="button">Reset My Password</a>
+          <div class="warning">
+            <p><strong>⚠️ Security Notice:</strong></p>
+            <p>This link will expire in 1 hour for security reasons.</p>
+            <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+          </div>
+          <p style="margin-top: 20px; font-size: 14px; color: #666;">
+            If the button doesn't work, you can copy and paste this link into your browser:<br>
+            <a href="${resetUrl}">${resetUrl}</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Find And Study Academy</p>
+          <p>This is an automated message, please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 export async function sendNotificationEmail(options: EmailNotificationOptions): Promise<boolean> {
   try {
     let subject = '';
@@ -189,6 +235,14 @@ export async function sendNotificationEmail(options: EmailNotificationOptions): 
         html = generateWelcomeEmail(
           options.recipientName,
           options.data?.agencyName || 'Your Agency'
+        );
+        break;
+
+      case 'password_reset':
+        subject = 'Password Reset Request - Find And Study Academy';
+        html = generatePasswordResetEmail(
+          options.recipientName,
+          options.data?.resetUrl || ''
         );
         break;
 
