@@ -452,6 +452,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Forgot password endpoint - generate reset token and send email
+  app.post('/api/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success even if user not found (security best practice)
+      if (!user) {
+        return res.json({
+          success: true,
+          message: 'If an account with that email exists, a password reset link has been sent.'
+        });
+      }
+
+      // Generate secure reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      
+      // Token expires in 1 hour
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+      
+      // Save token to database
+      await storage.setResetToken(user.id, resetToken, resetTokenExpiry);
+      
+      // Build reset URL
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+      
+      // Send password reset email (non-blocking)
+      (async () => {
+        try {
+          const { sendNotificationEmail } = await import('./emailService');
+          await sendNotificationEmail({
+            recipientEmail: user.email,
+            recipientName: user.name,
+            type: 'password_reset',
+            data: {
+              resetUrl
+            }
+          });
+        } catch (err) {
+          console.error('Password reset email error:', err);
+        }
+      })();
+
+      res.json({
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.'
+      });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process password reset request'
+      });
+    }
+  });
+
+  // Reset password endpoint - validate token and update password
+  app.post('/api/reset-password', async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token and new password are required'
+        });
+      }
+
+      // Validate password length
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 6 characters long'
+        });
+      }
+
+      // Find user by reset token
+      const user = await storage.getUserByResetToken(token);
+      
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or expired reset token'
+        });
+      }
+
+      // Check if token is expired
+      if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+        // Clear expired token
+        await storage.clearResetToken(user.id);
+        return res.status(400).json({
+          success: false,
+          message: 'Reset token has expired'
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Update password
+      await storage.updateUser(user.id, { password: hashedPassword });
+      
+      // Clear reset token
+      await storage.clearResetToken(user.id);
+
+      res.json({
+        success: true,
+        message: 'Password has been reset successfully'
+      });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset password'
+      });
+    }
+  });
+
   // Session validation endpoint - validates user exists in database
   app.get('/api/me', requireAuth, async (req, res) => {
     try {
