@@ -5,15 +5,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/layouts/AuthCard';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock email submission
-    setIsSubmitted(true);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send reset email');
+      }
+
+      setIsSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to send reset email',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -29,15 +60,15 @@ export default function ForgotPassword() {
           
           <div>
             <p className="text-sm text-muted-foreground mb-4">
-              A password reset link has been sent to:
+              If an account with that email exists, a password reset link has been sent to:
             </p>
             <p className="font-medium">{email}</p>
           </div>
 
           <div className="bg-muted rounded-lg p-4 text-left">
             <p className="text-sm text-muted-foreground">
-              <strong>Demo Note:</strong> This is a demonstration. In a real application, 
-              you would receive an actual email with a secure reset link.
+              Please check your email inbox (and spam folder) for the reset link. 
+              The link will expire in 1 hour for security reasons.
             </p>
           </div>
 
@@ -58,6 +89,12 @@ export default function ForgotPassword() {
       description="Enter your email to receive a reset link"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm" data-testid="error-message">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="email">Email Address</Label>
           <Input
@@ -68,12 +105,18 @@ export default function ForgotPassword() {
             placeholder="Enter your email address"
             required
             autoComplete="email"
+            disabled={isLoading}
             data-testid="input-email"
           />
         </div>
 
-        <Button type="submit" className="w-full" data-testid="button-submit">
-          Send Reset Link
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+          data-testid="button-submit"
+        >
+          {isLoading ? 'Sending...' : 'Send Reset Link'}
         </Button>
       </form>
 
