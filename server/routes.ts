@@ -941,6 +941,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user certificates endpoint
+  // Get user's quiz attempts
+  app.get('/api/attempts', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      
+      // Get all attempts for the authenticated user
+      const allAttempts = await storage.getAttempts();
+      const userAttempts = allAttempts.filter(attempt => 
+        attempt.userId === authenticatedUser.id
+      );
+
+      res.json({
+        success: true,
+        attempts: userAttempts
+      });
+    } catch (error) {
+      console.error('Attempts retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve attempts'
+      });
+    }
+  });
+
   app.get('/api/certificates', requireAuth, async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
