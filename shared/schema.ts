@@ -17,6 +17,8 @@ export const users = pgTable("users", {
   courseCompletionNotif: boolean("course_completion_notif").notNull().default(true),
   certificateNotif: boolean("certificate_notif").notNull().default(true),
   announcementNotif: boolean("announcement_notif").notNull().default(true),
+  resetToken: varchar("reset_token"), // Password reset token (nullable)
+  resetTokenExpiry: timestamp("reset_token_expiry"), // Token expiry date (nullable)
 });
 
 // Certificates table for secure server-side verification
