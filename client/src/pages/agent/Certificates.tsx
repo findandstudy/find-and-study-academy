@@ -22,7 +22,6 @@ export default function AgentCertificates() {
   // Always use backend certificates (no localStorage fallback)
   const certificates = certificatesResponse?.certificates || [];
   const userCertificates = certificates.filter(c => c.userId === user?.id);
-  const userAgency = agencies.find(a => a.id === user?.agencyId);
 
   const downloadCertificate = async (certificateId: string) => {
     const certificate = certificates.find(c => c.id === certificateId);
@@ -68,11 +67,12 @@ export default function AgentCertificates() {
       };
 
       // Convert to full course object for PDF generation
+      // Use agency from backend certificate response
       await generateCertificatePDF(
         certificate, 
         user, 
         { ...courseData, sections: [] } as any,
-        userAgency || null
+        certificate.agency || null
       );
       toast({
         title: 'Certificate Downloaded',
