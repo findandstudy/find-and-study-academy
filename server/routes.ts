@@ -975,10 +975,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cert.userId === authenticatedUser.id
       );
 
-      // Enrich certificates with course information
+      // Enrich certificates with course and agency information
       const courses = await storage.getCourses();
+      const agencies = await storage.getAgencies();
+      const users = await storage.getUsers();
+      
       const enrichedCertificates = userCertificates.map(cert => {
         const course = courses.find(c => c.id === cert.courseId);
+        const user = users.find(u => u.id === cert.userId);
+        const agency = user?.agencyId ? agencies.find(a => a.id === user.agencyId) : null;
         
         return {
           id: cert.id,
@@ -991,6 +996,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: course.id,
             title: course.title,
             slug: course.slug
+          } : null,
+          agency: agency ? {
+            id: agency.id,
+            name: agency.name
           } : null
         };
       });
