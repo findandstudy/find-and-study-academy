@@ -1,0 +1,69 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli> npm install
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+
+added 682 packages, and audited 683 packages in 1m
+
+85 packages are looking for funding
+  run `npm fund` for details
+
+10 vulnerabilities (3 low, 7 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+PS C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli> npm run db:push -- --force
+npm warn using --force Recommended protections disabled.
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli\drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+PS C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli> npm install cross-env --save-dev
+
+added 2 packages, and audited 685 packages in 3s
+
+85 packages are looking for funding
+  run `npm fund` for details
+
+10 vulnerabilities (3 low, 7 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+PS C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli> npm run dev
+
+> rest-express@1.0.0 dev
+> cross-env NODE_ENV=development tsx server/index.ts
+
+C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli\server\db.ts:9
+  throw new Error(
+        ^
+
+
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+    at <anonymous> (C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli\server\db.ts:9:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:271:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:547:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:116:5)
+
+Node.js v22.12.0
+PS C:\Users\1660SUPER\OneDrive - ozyegin.edu.tr\Masaüstü\1\Acente-Egitim-Paneli\Acente-Egitim-Paneli>
