@@ -3620,12 +3620,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`n8n webhook returned ${response.status}`);
       }
 
-      const data = await response.json();
+      // n8n may return plain text or JSON
+      const contentType = response.headers.get('content-type');
+      let botResponse;
+      
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        botResponse = data.message || data.response || data.output || JSON.stringify(data);
+      } else {
+        // Plain text response
+        botResponse = await response.text();
+      }
       
       res.json({
         success: true,
-        message: data.message || data.response || 'Response received',
-        data
+        message: botResponse,
+        data: { message: botResponse }
       });
     } catch (error) {
       console.error('Chat API error:', error);
