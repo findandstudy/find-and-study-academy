@@ -702,8 +702,8 @@
 
     <script>
       (function() {
-        // Configuration - Change this when n8n webhook is ready
-        const WEBHOOK_URL = null; // Set to your n8n webhook URL later
+        // Configuration - Using backend API proxy
+        const API_ENDPOINT = '/api/chat';
 
         // DOM Elements
         const launcher = document.getElementById('findy-launcher');
@@ -868,49 +868,36 @@
           sendBtn.disabled = true;
           autoResizeTextarea();
 
-          // If webhook is configured, send to N8n
-          if (WEBHOOK_URL !== null) {
-            showTypingIndicator();
+          showTypingIndicator();
 
-            const payload = {
-              event: 'findy_message',
-              message: message,
-              sessionId: sessionId,
-              timestamp: new Date().toISOString()
-            };
+          try {
+            const response = await fetch(API_ENDPOINT, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: message,
+                sessionId: sessionId
+              }),
+              signal: AbortSignal.timeout(30000) // 30 second timeout
+            });
 
-            try {
-              const response = await fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(30000) // 30 second timeout
-              });
+            removeTypingIndicator();
 
-              removeTypingIndicator();
-
-              if (response.ok) {
-                const data = await response.json();
-                // Expecting { message: "AI response here" } from N8n
-                addMessage(data.message || 'No response received', false);
-              } else {
-                throw new Error('Request failed');
-              }
-            } catch (error) {
-              removeTypingIndicator();
-              console.error('Findy message error:', error);
-              addMessage('Sorry, I cannot respond right now. Please try again later.', false);
+            if (response.ok) {
+              const result = await response.json();
+              // Backend returns { success: true, message: "...", data: {...} }
+              const botMessage = result.data?.message || result.data?.response || result.message || 'No response received';
+              addMessage(botMessage, false);
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.message || 'Request failed');
             }
-          } else {
-            // Mock response when webhook is not configured
-            showTypingIndicator();
-            
-            setTimeout(() => {
-              removeTypingIndicator();
-              addMessage('Hello! I\'m Findy assistant. The N8n AI integration is currently being configured. I\'ll be able to help you soon!', false);
-            }, 1500);
+          } catch (error) {
+            removeTypingIndicator();
+            console.error('Findy message error:', error);
+            addMessage('Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.', false);
           }
         }
 

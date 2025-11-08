@@ -3581,6 +3581,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat API endpoint - Proxy to n8n webhook
+  app.post('/api/chat', async (req, res) => {
+    try {
+      const { message, sessionId } = req.body;
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Message is required'
+        });
+      }
+
+      const webhookUrl = process.env.N8N_WEBHOOK_URL;
+      
+      if (!webhookUrl) {
+        console.error('N8N_WEBHOOK_URL is not configured');
+        return res.status(500).json({
+          success: false,
+          message: 'Chat service is not configured'
+        });
+      }
+
+      // Forward message to n8n webhook
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          sessionId: sessionId || crypto.randomUUID(),
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`n8n webhook returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      res.json({
+        success: true,
+        message: data.message || data.response || 'Response received',
+        data
+      });
+    } catch (error) {
+      console.error('Chat API error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process chat message'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
