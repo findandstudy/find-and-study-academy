@@ -76,53 +76,25 @@ export default function AgentAgency() {
     setUploadingLogo(true);
 
     try {
-      // Step 1: Get presigned upload URL from backend
-      const urlResponse = await fetch('/api/agency-logo/upload-url', {
+      // Create FormData and upload file directly to backend
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('agencyId', userAgency.id);
+
+      const response = await fetch('/api/agency-logo/upload', {
         method: 'POST',
         headers: {
           'x-user-id': user.id,
           'x-user-role': user.role,
         },
+        body: formData,
       });
 
-      if (!urlResponse.ok) {
-        throw new Error('Failed to get upload URL');
+      if (!response.ok) {
+        throw new Error('Failed to upload agency logo');
       }
 
-      const { uploadURL } = await urlResponse.json();
-
-      // Step 2: Upload file directly to object storage using presigned URL
-      const uploadResponse = await fetch(uploadURL, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      // Step 3: Update backend with the uploaded file URL
-      const updateResponse = await fetch('/api/agency-logo', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.id,
-          'x-user-role': user.role,
-        },
-        body: JSON.stringify({
-          agencyId: userAgency.id,
-          logoUrl: uploadURL.split('?')[0], // Remove query params
-        }),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update agency logo');
-      }
-
-      const result = await updateResponse.json();
+      const result = await response.json();
       
       // Update local state
       setAgencyData(prev => ({

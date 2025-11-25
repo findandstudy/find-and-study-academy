@@ -1,8 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
 import { 
   insertCertificateSchema, 
   insertAgencySchema, 
@@ -148,19 +146,72 @@ function generateSecureCertificateCode(): string {
   return `FAS-${code}`;
 }
 
-// Configure multer for profile picture uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
+// Configure multer for local file uploads
+// Profile pictures upload configuration
+const profilePictureStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(process.cwd(), 'public', 'uploads', 'profiles');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'profile-' + uniqueSuffix + ext);
+  }
+});
+
+// Agency logos upload configuration
+const agencyLogoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(process.cwd(), 'public', 'uploads', 'logos');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'logo-' + uniqueSuffix + ext);
+  }
+});
+
+// Shared file filter for image uploads
+const imageFileFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+  
+  if (mimetype && extname) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'));
+  }
+};
+
+const profilePictureUpload = multer({
+  storage: profilePictureStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  }
+  fileFilter: imageFileFilter
+});
+
+const agencyLogoUpload = multer({
+  storage: agencyLogoStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: imageFileFilter
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -2236,124 +2287,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Object Storage: Get presigned URL for profile picture upload
-  app.post('/api/profile-picture/upload-url', requireAuth, async (req, res) => {
+  // Upload profile picture (local file system)
+  app.post('/api/profile-picture/upload', requireAuth, profilePictureUpload.single('file'), async (req, res) => {
     try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error('Error getting upload URL:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get upload URL'
-      });
-    }
-  });
-
-  // Object Storage: Update profile picture after upload
-  app.put('/api/profile-picture', requireAuth, async (req, res) => {
-    try {
-      const authenticatedUser = (req as any).user;
-      const { profilePictureURL } = req.body;
-
-      if (!profilePictureURL) {
+      const userId = (req as any).user.id;
+      
+      if (!req.file) {
         return res.status(400).json({
           success: false,
-          message: 'profilePictureURL is required'
+          message: 'No file uploaded'
         });
       }
-
-      const objectStorageService = new ObjectStorageService();
       
-      // Set ACL policy for the uploaded profile picture (public visibility)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        profilePictureURL,
-        {
-          owner: authenticatedUser.id,
-          visibility: "public", // Profile pictures are public
-        }
-      );
-
-      // Update user profile picture in database
-      const updatedUser = await storage.updateUser(authenticatedUser.id, { profilePicture: objectPath });
-
+      // File path relative to public folder
+      const fileUrl = `/uploads/profiles/${req.file.filename}`;
+      
+      // Update user profile picture URL in database
+      await storage.updateUser(userId, { profilePicture: fileUrl });
+      
       console.log('[PROFILE PICTURE UPDATE] Success:', {
-        userId: authenticatedUser.id,
-        profilePictureURL: objectPath,
-        updatedUserProfilePicture: updatedUser?.profilePicture
+        userId,
+        profilePictureURL: fileUrl
       });
-
+      
       res.json({
         success: true,
-        url: objectPath
+        url: fileUrl,
+        message: 'Profile picture uploaded successfully'
       });
     } catch (error) {
-      console.error('Error updating profile picture:', error);
+      console.error('Profile picture upload error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to update profile picture'
+        message: 'Failed to upload profile picture'
       });
     }
   });
 
-  // Object Storage: Get presigned URL for agency logo upload
-  app.post('/api/agency-logo/upload-url', requireAuth, async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error('Error getting upload URL:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get upload URL'
-      });
-    }
-  });
-
-  // Object Storage: Update agency logo after upload
-  app.put('/api/agency-logo', requireAuth, async (req, res) => {
+  // Upload agency logo (local file system)
+  app.post('/api/agency-logo/upload', requireAuth, agencyLogoUpload.single('file'), async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
-      const { agencyId, logoUrl } = req.body;
-
-      if (!logoUrl || !agencyId) {
+      const requestedAgencyId = req.body.agencyId;
+      
+      if (!req.file) {
         return res.status(400).json({
           success: false,
-          message: 'logoUrl and agencyId are required'
+          message: 'No file uploaded'
         });
       }
-
-      const objectStorageService = new ObjectStorageService();
       
-      // Set ACL policy for the uploaded logo (public visibility)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        logoUrl,
-        {
-          owner: authenticatedUser.id,
-          visibility: "public", // Agency logos are public
+      if (!requestedAgencyId) {
+        return res.status(400).json({
+          success: false,
+          message: 'agencyId is required'
+        });
+      }
+      
+      // Authorization: Verify the user owns this agency
+      // Agents can only upload logos for their own agency
+      // Admins can upload for any agency
+      if (authenticatedUser.role === 'agent') {
+        if (authenticatedUser.agencyId !== requestedAgencyId) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only upload logos for your own agency'
+          });
         }
-      );
-
-      // Update agency logo in database
-      const updatedAgency = await storage.updateAgency(agencyId, { logoUrl: objectPath });
-
+      }
+      // Admins can upload for any agency (no additional check needed)
+      
+      // File path relative to public folder
+      const logoUrl = `/uploads/logos/${req.file.filename}`;
+      
+      // Update agency logo URL in database
+      await storage.updateAgency(requestedAgencyId, { logoUrl: logoUrl });
+      
       console.log('[AGENCY LOGO UPDATE] Success:', {
-        agencyId,
-        logoUrl: objectPath,
-        updatedAgencyLogoUrl: updatedAgency?.logoUrl
+        agencyId: requestedAgencyId,
+        logoUrl,
+        uploadedBy: authenticatedUser.id
       });
-
+      
       res.json({
         success: true,
-        url: objectPath
+        url: logoUrl,
+        message: 'Agency logo uploaded successfully'
       });
     } catch (error) {
-      console.error('Error updating agency logo:', error);
+      console.error('Agency logo upload error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to update agency logo'
+        message: 'Failed to upload agency logo'
       });
     }
   });
@@ -2468,57 +2493,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Failed to update agency'
-      });
-    }
-  });
-
-  // Object Storage: Serve profile pictures and other private objects  
-  app.get('/objects/:objectPath(*)', async (req, res) => {
-    try {
-      // Try to get authenticated user (optional for public objects)
-      let userId: string | undefined;
-      try {
-        const token = req.headers['x-user-id'] as string;
-        if (token) {
-          const users = await storage.getUsers();
-          const user = users.find(u => u.id === token);
-          if (user) {
-            userId = user.id;
-          }
-        }
-      } catch (authError) {
-        // Auth failed, userId remains undefined (ok for public objects)
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      
-      // Check ACL permissions (public objects don't need auth)
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
-        userId,
-        requestedPermission: ObjectPermission.READ,
-      });
-
-      if (!canAccess) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied'
-        });
-      }
-
-      objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error('Error serving object:', error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.status(404).json({
-          success: false,
-          message: 'Object not found'
-        });
-      }
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error'
       });
     }
   });

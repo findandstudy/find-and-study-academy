@@ -86,52 +86,24 @@ export default function AdminProfile() {
     setUploading(true);
 
     try {
-      // Step 1: Get presigned upload URL from backend
-      const urlResponse = await fetch('/api/profile-picture/upload-url', {
+      // Create FormData and upload file directly to backend
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/profile-picture/upload', {
         method: 'POST',
         headers: {
           'x-user-id': user.id,
           'x-user-role': user.role,
         },
+        body: formData,
       });
 
-      if (!urlResponse.ok) {
-        throw new Error('Failed to get upload URL');
+      if (!response.ok) {
+        throw new Error('Failed to upload profile picture');
       }
 
-      const { uploadURL } = await urlResponse.json();
-
-      // Step 2: Upload file directly to object storage using presigned URL
-      const uploadResponse = await fetch(uploadURL, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      // Step 3: Update backend with the uploaded file URL
-      const updateResponse = await fetch('/api/profile-picture', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.id,
-          'x-user-role': user.role,
-        },
-        body: JSON.stringify({
-          profilePictureURL: uploadURL.split('?')[0], // Remove query params
-        }),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      const result = await updateResponse.json();
+      const result = await response.json();
       
       // Update user in both stores
       updateDataUser(user.id, { profilePicture: result.url } as any);
