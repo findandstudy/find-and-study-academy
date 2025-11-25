@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle } from 'lucide-react';
+import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Eye, Mail, Phone, Globe, User, Clock } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -41,7 +41,15 @@ export default function AdminAgencies() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [agencyToDelete, setAgencyToDelete] = useState<AgencyWithCount | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [viewAgency, setViewAgency] = useState<AgencyWithCount | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const { toast } = useToast();
+  
+  // Handle view agency details
+  const handleViewAgency = (agency: AgencyWithCount) => {
+    setViewAgency(agency);
+    setViewDialogOpen(true);
+  };
 
   // Load view mode from localStorage
   useEffect(() => {
@@ -596,6 +604,14 @@ export default function AdminAgencies() {
                       <Button 
                         size="sm" 
                         variant="ghost"
+                        onClick={() => handleViewAgency(agency)}
+                        data-testid={`button-view-${agency.id}`}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
                         onClick={() => handleEditAgency(agency)}
                         data-testid={`button-edit-${agency.id}`}
                       >
@@ -702,6 +718,14 @@ export default function AdminAgencies() {
                           <Button 
                             size="sm" 
                             variant="ghost"
+                            onClick={() => handleViewAgency(agency)}
+                            data-testid={`button-view-${agency.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
                             onClick={() => handleEditAgency(agency)}
                             data-testid={`button-edit-${agency.id}`}
                           >
@@ -787,6 +811,215 @@ export default function AdminAgencies() {
           </CardContent>
         </Card>
       )}
+
+      {/* View Agency Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="w-5 h-5 text-primary" />
+              Acente Detayları
+            </DialogTitle>
+          </DialogHeader>
+          
+          {viewAgency && (
+            <div className="space-y-6">
+              {/* Header with Logo and Status */}
+              <div className="flex items-start gap-4 pb-4 border-b">
+                {viewAgency.logoUrl ? (
+                  <img 
+                    src={viewAgency.logoUrl} 
+                    alt={viewAgency.name} 
+                    className="w-20 h-20 rounded-lg object-cover border"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
+                    <Building className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold">{viewAgency.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={getStatusBadge(viewAgency.status).variant as any}>
+                      {getStatusBadge(viewAgency.status).icon}
+                      {getStatusBadge(viewAgency.status).label}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {viewAgency.agentCount} acente
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Information */}
+              <div>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Temel Bilgiler
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Acente Adı:</span>
+                    <p className="font-medium">{viewAgency.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Durum:</span>
+                    <p className="font-medium capitalize">{viewAgency.status}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ülke:</span>
+                    <p className="font-medium">{viewAgency.country || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Şehir:</span>
+                    <p className="font-medium">{viewAgency.city || '-'}</p>
+                  </div>
+                  {viewAgency.address && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Adres:</span>
+                      <p className="font-medium">{viewAgency.address}</p>
+                    </div>
+                  )}
+                  {viewAgency.description && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Açıklama:</span>
+                      <p className="font-medium">{viewAgency.description}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  İletişim Bilgileri
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-muted-foreground">E-posta:</span>
+                      <p className="font-medium">{viewAgency.contactEmail || viewAgency.primaryContactEmail || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <span className="text-muted-foreground">Telefon:</span>
+                      <p className="font-medium">{viewAgency.contactPhone || viewAgency.phone || '-'}</p>
+                    </div>
+                  </div>
+                  {viewAgency.primaryContactName && (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-muted-foreground">Yetkili Kişi:</span>
+                        <p className="font-medium">{viewAgency.primaryContactName}</p>
+                      </div>
+                    </div>
+                  )}
+                  {viewAgency.website && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-muted-foreground">Web Sitesi:</span>
+                        <p className="font-medium">
+                          <a href={viewAgency.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            {viewAgency.website}
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Business Information */}
+              {(viewAgency.staffSize || viewAgency.annualStudents) && (
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    İşletme Bilgileri
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {viewAgency.staffSize && (
+                      <div>
+                        <span className="text-muted-foreground">Personel Sayısı:</span>
+                        <p className="font-medium">{viewAgency.staffSize}</p>
+                      </div>
+                    )}
+                    {viewAgency.annualStudents && (
+                      <div>
+                        <span className="text-muted-foreground">Yıllık Öğrenci:</span>
+                        <p className="font-medium">{viewAgency.annualStudents}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Map Links */}
+              {(viewAgency.googleMapUrl || viewAgency.yandexMapUrl) && (
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Harita Linkleri
+                  </h4>
+                  <div className="flex gap-2 flex-wrap">
+                    {viewAgency.googleMapUrl && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={viewAgency.googleMapUrl} target="_blank" rel="noopener noreferrer">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Google Haritalar
+                        </a>
+                      </Button>
+                    )}
+                    {viewAgency.yandexMapUrl && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={viewAgency.yandexMapUrl} target="_blank" rel="noopener noreferrer">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Yandex Haritalar
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Registration Date */}
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>Kayıt Tarihi: {new Date(viewAgency.createdAt).toLocaleDateString('tr-TR', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => {
+                  setViewDialogOpen(false);
+                  handleEditAgency(viewAgency);
+                }}>
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Düzenle
+                </Button>
+                <Button variant="destructive" onClick={() => {
+                  setViewDialogOpen(false);
+                  handleDeleteAgency(viewAgency);
+                }}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Sil
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
