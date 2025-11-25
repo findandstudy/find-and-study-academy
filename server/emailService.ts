@@ -1,4 +1,25 @@
-import { sendEmail } from './gmail';
+import { sendEmail as sendGmailEmail } from './gmail';
+import { sendSmtpEmail } from './smtp-email';
+
+// Detect which email method to use based on environment
+const isReplit = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
+const hasSmtpConfig = !!process.env.SMTP_HOST && !!process.env.SMTP_USER && !!process.env.SMTP_PASS;
+
+async function sendEmail(options: { to: string; subject: string; html: string }): Promise<boolean> {
+  // Priority: 1. SMTP (works everywhere), 2. Gmail (Replit only)
+  if (hasSmtpConfig) {
+    console.log('[Email] Using SMTP transport');
+    return sendSmtpEmail(options);
+  }
+  
+  if (isReplit) {
+    console.log('[Email] Using Gmail transport (Replit)');
+    return sendGmailEmail(options);
+  }
+  
+  console.log('[Email] No email transport configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS for email support.');
+  return false;
+}
 
 export interface EmailNotificationOptions {
   recipientEmail: string;

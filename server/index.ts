@@ -140,15 +140,23 @@ async function seedEssentialData() {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Default to 5000 if not specified.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  
+  // Detect environment for host binding
+  const isReplit = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
+  const isWindows = process.platform === 'win32';
+  
+  // Use 0.0.0.0 for Replit/VPS, 127.0.0.1 for Windows localhost
+  const host = isWindows ? '127.0.0.1' : '0.0.0.0';
+  
+  // reusePort is not supported on Windows
+  const listenOptions: any = { port, host };
+  if (!isWindows) {
+    listenOptions.reusePort = true;
+  }
+  
+  server.listen(listenOptions, () => {
+    log(`serving on ${host}:${port} (${isReplit ? 'Replit' : isWindows ? 'Windows' : 'Linux/VPS'})`);
   });
 })();

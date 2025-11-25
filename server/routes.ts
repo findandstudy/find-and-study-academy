@@ -464,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdAgency = await storage.createAgency(newAgency);
       const createdUser = await storage.createUser(newUser);
 
-      // Send welcome email (non-blocking)
+      // Send welcome email to new agent (non-blocking)
       if (createdUser.emailNotifications) {
         (async () => {
           try {
@@ -482,6 +482,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         })();
       }
+      
+      // Send notification to all admins about new registration (non-blocking)
+      (async () => {
+        try {
+          const { sendSmtpEmail, generateAdminNewRegistrationEmail } = await import('./smtp-email');
+          const users = await storage.getUsers();
+          const admins = users.filter(u => u.role === 'admin' && u.emailNotifications);
+          
+          for (const admin of admins) {
+            const emailContent = generateAdminNewRegistrationEmail(
+              createdUser.name,
+              createdUser.email,
+              createdAgency.name
+            );
+            await sendSmtpEmail({
+              to: admin.email,
+              subject: emailContent.subject,
+              html: emailContent.html
+            });
+          }
+        } catch (err) {
+          console.error('Admin notification email error:', err);
+        }
+      })();
 
       res.status(201).json({
         success: true,
@@ -738,10 +762,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 certCreated = true;
                 console.log(`✅ Auto-generated certificate ${certificateCode} for user ${authenticatedUser.id} on Final Exam ${quizId}`);
                 
-                // Send certificate email (non-blocking)
+                // Send certificate email to agent (non-blocking)
+                const courses = await storage.getCourses();
+                const course = courses.find(c => c.id === quiz.courseId);
+                const courseName = course?.title || 'Course';
+                
                 if (authenticatedUser.certificateNotif && authenticatedUser.emailNotifications) {
-                  const courses = await storage.getCourses();
-                  const course = courses.find(c => c.id === quiz.courseId);
                   (async () => {
                     try {
                       const { sendNotificationEmail } = await import('./emailService');
@@ -750,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         recipientName: authenticatedUser.name,
                         type: 'certificate',
                         data: {
-                          courseName: course?.title || 'Course',
+                          courseName,
                           certificateUrl: `/certificates/${certificateCode}`
                         }
                       });
@@ -759,6 +785,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     }
                   })();
                 }
+                
+                // Send notification to all admins about new certificate (non-blocking)
+                (async () => {
+                  try {
+                    const { sendSmtpEmail, generateAdminCertificateEmail } = await import('./smtp-email');
+                    const users = await storage.getUsers();
+                    const admins = users.filter(u => u.role === 'admin' && u.emailNotifications);
+                    
+                    for (const admin of admins) {
+                      const emailContent = generateAdminCertificateEmail(
+                        authenticatedUser.name,
+                        authenticatedUser.email,
+                        courseName,
+                        certificateCode
+                      );
+                      await sendSmtpEmail({
+                        to: admin.email,
+                        subject: emailContent.subject,
+                        html: emailContent.html
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Admin certificate notification error:', err);
+                  }
+                })();
               } catch (dbError: any) {
                 const is23505 = dbError?.code === '23505';
                 const hasUniqueError = dbError?.message?.toLowerCase().includes('unique') || dbError?.message?.toLowerCase().includes('duplicate');
