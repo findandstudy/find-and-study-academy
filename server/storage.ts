@@ -60,9 +60,15 @@ import {
   contentTranslations,
   type ContentTranslation,
   type InsertContentTranslation,
+  knowledgeSources,
+  knowledgeChunks,
+  type KnowledgeSource,
+  type InsertKnowledgeSource,
+  type KnowledgeChunk,
+  type InsertKnowledgeChunk,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, count, and, gte, lte, desc, sql as sqlExpr } from "drizzle-orm";
+import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -188,6 +194,19 @@ export interface IStorage {
   upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation>;
   deleteContentTranslation(contentId: string, language: string): Promise<void>;
   getAllTranslations(): Promise<ContentTranslation[]>;
+
+  // Knowledge Source methods (Findy AI RAG)
+  getKnowledgeSources(): Promise<KnowledgeSource[]>;
+  getKnowledgeSourceById(id: string): Promise<KnowledgeSource | undefined>;
+  createKnowledgeSource(data: InsertKnowledgeSource): Promise<KnowledgeSource>;
+  updateKnowledgeSource(id: string, updates: Partial<KnowledgeSource>): Promise<KnowledgeSource>;
+  deleteKnowledgeSource(id: string): Promise<void>;
+
+  // Knowledge Chunk methods
+  addKnowledgeChunks(chunks: InsertKnowledgeChunk[]): Promise<void>;
+  deleteChunksBySourceId(sourceId: string): Promise<void>;
+  searchKnowledgeChunks(query: string, limit?: number): Promise<KnowledgeChunk[]>;
+  getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1195,6 +1214,71 @@ export class DatabaseStorage implements IStorage {
   async getAllTranslations(): Promise<ContentTranslation[]> {
     return db.select().from(contentTranslations)
       .orderBy(contentTranslations.contentId, contentTranslations.language);
+  }
+
+  // ── Knowledge Source implementations ────────────────────────────────────────
+  async getKnowledgeSources(): Promise<KnowledgeSource[]> {
+    return db.select().from(knowledgeSources).orderBy(desc(knowledgeSources.createdAt));
+  }
+
+  async getKnowledgeSourceById(id: string): Promise<KnowledgeSource | undefined> {
+    const [src] = await db.select().from(knowledgeSources).where(eq(knowledgeSources.id, id));
+    return src || undefined;
+  }
+
+  async createKnowledgeSource(data: InsertKnowledgeSource): Promise<KnowledgeSource> {
+    const [created] = await db.insert(knowledgeSources).values(data).returning();
+    return created;
+  }
+
+  async updateKnowledgeSource(id: string, updates: Partial<KnowledgeSource>): Promise<KnowledgeSource> {
+    const [updated] = await db.update(knowledgeSources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(knowledgeSources.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteKnowledgeSource(id: string): Promise<void> {
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, id));
+    await db.delete(knowledgeSources).where(eq(knowledgeSources.id, id));
+  }
+
+  async addKnowledgeChunks(chunks: InsertKnowledgeChunk[]): Promise<void> {
+    if (chunks.length === 0) return;
+    const BATCH = 200;
+    for (let i = 0; i < chunks.length; i += BATCH) {
+      await db.insert(knowledgeChunks).values(chunks.slice(i, i + BATCH));
+    }
+  }
+
+  async deleteChunksBySourceId(sourceId: string): Promise<void> {
+    await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, sourceId));
+  }
+
+  async searchKnowledgeChunks(query: string, limit = 15): Promise<KnowledgeChunk[]> {
+    // Keyword-based full-text search using PostgreSQL ILIKE across content and keywords columns
+    const terms = query.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+    if (terms.length === 0) return [];
+
+    // Build OR conditions: each term checked against content and keywords
+    const conditions = terms.map(t =>
+      or(
+        ilike(knowledgeChunks.content, `%${t}%`),
+        ilike(knowledgeChunks.keywords, `%${t}%`)
+      )
+    );
+
+    return db.select()
+      .from(knowledgeChunks)
+      .where(or(...conditions))
+      .limit(limit);
+  }
+
+  async getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]> {
+    return db.select().from(knowledgeChunks)
+      .where(eq(knowledgeChunks.sourceId, sourceId))
+      .limit(10);
   }
 }
 

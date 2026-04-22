@@ -1836,9 +1836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         try {
           const hashedPassword = await bcrypt.hash(row.password, 10);
-          const userId = crypto.randomUUID();
           await storage.createUser({
-            id: userId,
             username: row.username.trim(),
             password: hashedPassword,
             name: row.name.trim(),
@@ -4152,67 +4150,299 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, config: configMap });
   });
 
+  // ── Knowledge Sources (Findy RAG) ────────────────────────────────────────────
+  // Multer for knowledge file uploads
+  const knowledgeUploadStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const p = path.join(process.cwd(), 'public', 'uploads', 'knowledge');
+      if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+      cb(null, p);
+    },
+    filename: (req, file, cb) => {
+      const suffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, 'kb-' + suffix + path.extname(file.originalname));
+    },
+  });
+  const knowledgeFileFilter = (req: any, file: any, cb: any) => {
+    const allowed = /xlsx|xls|csv|pdf|doc|docx/i;
+    if (allowed.test(path.extname(file.originalname))) cb(null, true);
+    else cb(new Error('Only Excel, PDF, or Word files are allowed'));
+  };
+  const knowledgeUpload = multer({ storage: knowledgeUploadStorage, limits: { fileSize: 50 * 1024 * 1024 }, fileFilter: knowledgeFileFilter });
+
+  // ── Helper: parse file into text chunks ──────────────────────────────────────
+  async function parseKnowledgeFile(filePath: string, ext: string): Promise<{ chunks: Array<{ content: string; keywords: string; metadata: any }>; rowCount: number }> {
+    const extLower = ext.toLowerCase().replace('.', '');
+
+    // ── Excel / CSV ─────────────────────────────────────────────────────────────
+    if (['xlsx', 'xls', 'csv'].includes(extLower)) {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.readFile(filePath);
+      const chunks: Array<{ content: string; keywords: string; metadata: any }> = [];
+      let totalRows = 0;
+      for (const sheetName of wb.SheetNames) {
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+        totalRows += rows.length;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          // Build readable content line
+          const parts = Object.entries(row)
+            .filter(([k, v]) => !k.startsWith('__EMPTY') && String(v).trim())
+            .map(([k, v]) => `${k}: ${v}`);
+          if (parts.length === 0) continue;
+          const content = parts.join(' | ');
+          const keywords = parts
+            .flatMap(p => p.split(/[\s|:,]+/))
+            .filter(w => w.length > 2)
+            .join(' ')
+            .toLowerCase();
+          chunks.push({ content, keywords, metadata: { sheet: sheetName, rowIndex: i + 2, ...row } });
+        }
+      }
+      return { chunks, rowCount: totalRows };
+    }
+
+    // ── PDF ─────────────────────────────────────────────────────────────────────
+    if (extLower === 'pdf') {
+      const pdfModule = await import('pdf-parse');
+      const pdfParse = (pdfModule as any).default ?? pdfModule;
+      const buffer = fs.readFileSync(filePath);
+      const pdfData = await pdfParse(buffer);
+      const fullText = pdfData.text;
+      const chunks = splitTextToChunks(fullText, 600).map((c, i) => ({
+        content: c,
+        keywords: c.toLowerCase().split(/\s+/).filter(w => w.length > 3).join(' '),
+        metadata: { page: i + 1 },
+      }));
+      return { chunks, rowCount: chunks.length };
+    }
+
+    // ── Word ─────────────────────────────────────────────────────────────────────
+    if (['doc', 'docx'].includes(extLower)) {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ path: filePath });
+      const fullText = result.value;
+      const chunks = splitTextToChunks(fullText, 600).map((c, i) => ({
+        content: c,
+        keywords: c.toLowerCase().split(/\s+/).filter(w => w.length > 3).join(' '),
+        metadata: { chunkIndex: i },
+      }));
+      return { chunks, rowCount: chunks.length };
+    }
+
+    return { chunks: [], rowCount: 0 };
+  }
+
+  function splitTextToChunks(text: string, wordsPerChunk: number): string[] {
+    const words = text.split(/\s+/).filter(Boolean);
+    const chunks: string[] = [];
+    for (let i = 0; i < words.length; i += wordsPerChunk) {
+      chunks.push(words.slice(i, i + wordsPerChunk).join(' '));
+    }
+    return chunks;
+  }
+
+  // GET /api/admin/findy/sources — list all knowledge sources
+  app.get('/api/admin/findy/sources', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const sources = await storage.getKnowledgeSources();
+      res.json({ success: true, sources });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch sources' });
+    }
+  });
+
+  // POST /api/admin/findy/sources/upload — upload file source
+  app.post('/api/admin/findy/sources/upload', requireAuth, requireAdminOrStaff, knowledgeUpload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+      const { file } = req;
+      const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+      const fileTypeMap: Record<string, string> = { xlsx: 'excel', xls: 'excel', csv: 'excel', pdf: 'pdf', doc: 'word', docx: 'word' };
+      const displayName = req.body.name?.trim() || file.originalname.replace(/\.[^.]+$/, '');
+      const userId = (req as any).user?.id;
+
+      // Create source record (processing)
+      const source = await storage.createKnowledgeSource({
+        name: displayName,
+        type: 'file',
+        fileType: fileTypeMap[ext] || ext,
+        originalName: file.originalname,
+        filePath: file.path,
+        status: 'processing',
+        uploadedBy: userId,
+      });
+
+      res.json({ success: true, source });
+
+      // Process in background (don't block HTTP response)
+      setImmediate(async () => {
+        try {
+          const { chunks, rowCount } = await parseKnowledgeFile(file.path, ext);
+          await storage.deleteChunksBySourceId(source.id);
+          await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: source.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+          await storage.updateKnowledgeSource(source.id, { status: 'active', rowCount, chunkCount: chunks.length });
+        } catch (err: any) {
+          await storage.updateKnowledgeSource(source.id, { status: 'error', errorMessage: err.message });
+        }
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message || 'Upload failed' });
+    }
+  });
+
+  // POST /api/admin/findy/sources/url — add URL source
+  app.post('/api/admin/findy/sources/url', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const { url, name } = req.body;
+      if (!url) return res.status(400).json({ success: false, message: 'URL is required' });
+      const displayName = name?.trim() || url;
+      const userId = (req as any).user?.id;
+
+      const source = await storage.createKnowledgeSource({
+        name: displayName,
+        type: 'url',
+        fileType: 'url',
+        url,
+        status: 'processing',
+        uploadedBy: userId,
+      });
+
+      res.json({ success: true, source });
+
+      setImmediate(async () => {
+        try {
+          const fetchRes = await fetch(url, { signal: AbortSignal.timeout(15000) });
+          const html = await fetchRes.text();
+          // Strip HTML tags
+          const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          const chunks = splitTextToChunks(text, 600).map((c, i) => ({
+            content: c,
+            keywords: c.toLowerCase().split(/\s+/).filter(w => w.length > 3).join(' '),
+            metadata: { url, chunkIndex: i },
+          }));
+          await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: source.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+          await storage.updateKnowledgeSource(source.id, { status: 'active', rowCount: chunks.length, chunkCount: chunks.length });
+        } catch (err: any) {
+          await storage.updateKnowledgeSource(source.id, { status: 'error', errorMessage: err.message });
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message || 'Failed to add URL source' });
+    }
+  });
+
+  // DELETE /api/admin/findy/sources/:id — delete source and its chunks
+  app.delete('/api/admin/findy/sources/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const src = await storage.getKnowledgeSourceById(req.params.id);
+      if (!src) return res.status(404).json({ success: false, message: 'Source not found' });
+      if (src.filePath && fs.existsSync(src.filePath)) {
+        try { fs.unlinkSync(src.filePath); } catch {}
+      }
+      await storage.deleteKnowledgeSource(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to delete source' });
+    }
+  });
+
+  // POST /api/admin/findy/sources/:id/reprocess — reparse the file
+  app.post('/api/admin/findy/sources/:id/reprocess', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const src = await storage.getKnowledgeSourceById(req.params.id);
+      if (!src) return res.status(404).json({ success: false, message: 'Source not found' });
+      await storage.updateKnowledgeSource(src.id, { status: 'processing', errorMessage: null });
+      res.json({ success: true, message: 'Reprocessing started' });
+      setImmediate(async () => {
+        try {
+          if (src.type === 'file' && src.filePath) {
+            const ext = path.extname(src.originalName || '').replace('.', '');
+            const { chunks, rowCount } = await parseKnowledgeFile(src.filePath, ext);
+            await storage.deleteChunksBySourceId(src.id);
+            await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: src.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+            await storage.updateKnowledgeSource(src.id, { status: 'active', rowCount, chunkCount: chunks.length });
+          } else if (src.type === 'url' && src.url) {
+            const fetchRes = await fetch(src.url, { signal: AbortSignal.timeout(15000) });
+            const html = await fetchRes.text();
+            const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            const chunks = splitTextToChunks(text, 600).map((c, i) => ({ content: c, keywords: c.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3).join(' '), metadata: { url: src.url, chunkIndex: i } }));
+            await storage.deleteChunksBySourceId(src.id);
+            await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: src.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+            await storage.updateKnowledgeSource(src.id, { status: 'active', rowCount: chunks.length, chunkCount: chunks.length });
+          }
+        } catch (err: any) {
+          await storage.updateKnowledgeSource(src.id, { status: 'error', errorMessage: err.message });
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Reprocess failed' });
+    }
+  });
+
+  // ── Chat endpoint with RAG ────────────────────────────────────────────────────
   app.post('/api/chat', async (req, res) => {
     try {
       const { message, sessionId } = req.body;
 
       if (!message || typeof message !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'Message is required'
-        });
+        return res.status(400).json({ success: false, message: 'Message is required' });
+      }
+
+      // ── Build RAG context from knowledge base ─────────────────────────────────
+      let ragContext = '';
+      try {
+        const chunks = await storage.searchKnowledgeChunks(message, 15);
+        if (chunks.length > 0) {
+          ragContext = '\n\n---\nKNOWLEDGE BASE (use this data to answer accurately):\n' +
+            chunks.map(c => c.content).join('\n') + '\n---\n';
+        }
+      } catch (err) {
+        console.warn('RAG search failed (non-fatal):', err);
       }
 
       const webhookUrl = process.env.N8N_WEBHOOK_URL;
       
       if (!webhookUrl) {
-        console.error('N8N_WEBHOOK_URL is not configured');
-        return res.status(500).json({
-          success: false,
-          message: 'Chat service is not configured'
-        });
+        // If no webhook, return a direct answer from RAG if available
+        if (ragContext) {
+          return res.json({
+            success: true,
+            message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
+            data: { message: ragContext, hasContext: true }
+          });
+        }
+        return res.status(500).json({ success: false, message: 'Chat service is not configured' });
       }
 
-      // Forward message to n8n webhook
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
+          context: ragContext, // Inject knowledge context
           sessionId: sessionId || crypto.randomUUID(),
-          timestamp: new Date().toISOString()
-        })
+          timestamp: new Date().toISOString(),
+        }),
+        signal: AbortSignal.timeout(30000),
       });
 
-      if (!response.ok) {
-        throw new Error(`n8n webhook returned ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
 
-      // n8n may return plain text or JSON
       const contentType = response.headers.get('content-type');
-      let botResponse;
-      
-      if (contentType && contentType.includes('application/json')) {
+      let botResponse: string;
+      if (contentType?.includes('application/json')) {
         const data = await response.json();
         botResponse = data.message || data.response || data.output || JSON.stringify(data);
       } else {
-        // Plain text response
         botResponse = await response.text();
       }
-      
-      res.json({
-        success: true,
-        message: botResponse,
-        data: { message: botResponse }
-      });
+
+      res.json({ success: true, message: botResponse, data: { message: botResponse } });
     } catch (error) {
       console.error('Chat API error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to process chat message'
-      });
+      res.status(500).json({ success: false, message: 'Failed to process chat message' });
     }
   });
 

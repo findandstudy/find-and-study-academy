@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, unique, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -415,6 +415,42 @@ export const contentTranslations = pgTable("content_translations", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// ── Knowledge Sources — files/URLs uploaded for Findy AI RAG ────────────────
+export const knowledgeSources = pgTable("knowledge_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),                       // Display name
+  type: text("type").notNull(),                       // 'file' | 'url'
+  fileType: text("file_type"),                        // 'excel' | 'pdf' | 'word' | 'url'
+  originalName: text("original_name"),                // Original filename
+  filePath: text("file_path"),                        // Server path (files only)
+  url: text("url"),                                   // URL sources
+  status: text("status").notNull().default('processing'), // 'processing'|'active'|'error'
+  rowCount: integer("row_count").default(0),          // For Excel: number of data rows
+  chunkCount: integer("chunk_count").default(0),      // Number of text chunks stored
+  errorMessage: text("error_message"),
+  uploadedBy: varchar("uploaded_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ── Knowledge Chunks — parsed text chunks from sources ───────────────────────
+export const knowledgeChunks = pgTable("knowledge_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: varchar("source_id").notNull(),           // FK → knowledge_sources.id
+  content: text("content").notNull(),                 // Plain text chunk for search
+  metadata: jsonb("metadata"),                        // Extra fields (row index, sheet, url, etc.)
+  keywords: text("keywords"),                         // Space-separated searchable keywords
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertKnowledgeSourceSchema = createInsertSchema(knowledgeSources).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertKnowledgeChunkSchema = createInsertSchema(knowledgeChunks).omit({ id: true, createdAt: true });
+
+export type KnowledgeSource = typeof knowledgeSources.$inferSelect;
+export type InsertKnowledgeSource = z.infer<typeof insertKnowledgeSourceSchema>;
+export type KnowledgeChunk = typeof knowledgeChunks.$inferSelect;
+export type InsertKnowledgeChunk = z.infer<typeof insertKnowledgeChunkSchema>;
 
 export const insertFindyConversationSchema = createInsertSchema(findyConversations).omit({ id: true, startedAt: true, lastMessageAt: true });
 export const insertFindyMessageSchema = createInsertSchema(findyMessages).omit({ id: true, createdAt: true });

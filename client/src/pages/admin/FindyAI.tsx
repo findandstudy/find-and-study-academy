@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,8 @@ import {
   Eye, EyeOff, RefreshCw, Save, AlertCircle, CheckCircle,
   TrendingUp, Clock, ThumbsUp, ThumbsDown, ChevronRight,
   BookOpen, Code2, Webhook, Upload, FileText, Trash2, Plus,
-  Copy, Globe, Shield, Key, Link, ExternalLink
+  Copy, Globe, Shield, Key, Link, ExternalLink,
+  Download, Database, FileSpreadsheet, FileQuestion, RotateCcw, X
 } from 'lucide-react';
 import dayjs from 'dayjs';
 
@@ -132,6 +133,9 @@ export default function AdminFindyAI() {
           </TabsTrigger>
           <TabsTrigger value="persona" data-testid="tab-findy-persona">
             <Bot className="w-4 h-4 mr-1" /> Persona & Prompt
+          </TabsTrigger>
+          <TabsTrigger value="sources" data-testid="tab-findy-sources">
+            <BookOpen className="w-4 h-4 mr-1" /> Sources
           </TabsTrigger>
           <TabsTrigger value="conversations" data-testid="tab-findy-conversations">
             <MessageSquare className="w-4 h-4 mr-1" /> Conversations
@@ -258,6 +262,11 @@ export default function AdminFindyAI() {
         {/* PERSONA & PROMPT */}
         <TabsContent value="persona" className="space-y-4">
           <PersonaTab config={config} onSave={(configs) => bulkSaveMutation.mutate(configs)} saving={bulkSaveMutation.isPending} />
+        </TabsContent>
+
+        {/* SOURCES */}
+        <TabsContent value="sources" className="space-y-4">
+          <SourcesTab />
         </TabsContent>
 
         {/* CONVERSATIONS */}
@@ -1296,6 +1305,306 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
           {saving ? 'Saving...' : 'Save API & Webhook Settings'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ── SOURCES TAB ──────────────────────────────────────────────────────────────
+interface KnowledgeSource {
+  id: string;
+  name: string;
+  type: string;
+  fileType: string | null;
+  originalName: string | null;
+  url: string | null;
+  status: string;
+  rowCount: number | null;
+  chunkCount: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function SourcesTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
+  const [urlForm, setUrlForm] = useState({ url: '', name: '' });
+  const [uploadName, setUploadName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const { data, isLoading, refetch } = useQuery<{ success: boolean; sources: KnowledgeSource[] }>({
+    queryKey: ['/api/admin/findy/sources'],
+    refetchInterval: (query) => {
+      const sources = query.state.data?.sources || [];
+      return sources.some(s => s.status === 'processing') ? 3000 : false;
+    },
+  });
+
+  const sources = data?.sources || [];
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const session = JSON.parse(sessionStorage.getItem('fas_session') || '{}');
+      const res = await fetch('/api/admin/findy/sources/upload', {
+        method: 'POST',
+        headers: { 'x-user-id': session.id || '' },
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      return json;
+    },
+    onSuccess: () => {
+      toast({ title: 'Uploaded', description: 'Source is being processed...' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
+      setSelectedFile(null);
+      setUploadName('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    onError: (e: any) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const urlMutation = useMutation({
+    mutationFn: async (data: { url: string; name: string }) =>
+      apiRequest('POST', '/api/admin/findy/sources/url', data) as Promise<any>,
+    onSuccess: () => {
+      toast({ title: 'URL added', description: 'Source is being processed...' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
+      setIsUrlDialogOpen(false);
+      setUrlForm({ url: '', name: '' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest('DELETE', `/api/admin/findy/sources/${id}`) as Promise<any>,
+    onSuccess: () => {
+      toast({ title: 'Deleted' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const reprocessMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest('POST', `/api/admin/findy/sources/${id}/reprocess`) as Promise<any>,
+    onSuccess: () => {
+      toast({ title: 'Reprocessing started' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setSelectedFile(f);
+    if (!uploadName) setUploadName(f.name.replace(/\.[^.]+$/, ''));
+  };
+
+  const handleUploadSubmit = () => {
+    if (!selectedFile) return;
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+    fd.append('name', uploadName || selectedFile.name);
+    uploadMutation.mutate(fd);
+  };
+
+  const getFileIcon = (fileType: string | null) => {
+    if (fileType === 'excel') return <FileSpreadsheet className="w-4 h-4 text-green-600" />;
+    if (fileType === 'pdf') return <FileText className="w-4 h-4 text-red-500" />;
+    if (fileType === 'word') return <FileText className="w-4 h-4 text-blue-500" />;
+    if (fileType === 'url') return <Globe className="w-4 h-4 text-primary" />;
+    return <FileQuestion className="w-4 h-4 text-muted-foreground" />;
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'active') return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
+    if (status === 'processing') return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Processing</Badge>;
+    return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Error</Badge>;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5" />Knowledge Sources</CardTitle>
+          <CardDescription>
+            Upload files or add URLs as knowledge sources. Findy AI will search these sources to answer agent questions accurately with minimal token usage.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* How it works */}
+          <div className="rounded-md border p-4 bg-muted/30 space-y-2">
+            <p className="text-sm font-medium">How it works (Token-efficient RAG)</p>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Each file is parsed and split into searchable chunks stored in the database</li>
+              <li>When an agent asks a question, only the <strong>top 15 most relevant</strong> chunks are sent to the AI</li>
+              <li>Excel rows each become individual searchable chunks — ideal for university/program data</li>
+              <li>You can update a source by deleting it and re-uploading the new version</li>
+            </ul>
+          </div>
+
+          {/* Upload area */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* File upload */}
+            <div className="border rounded-md p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2"><Upload className="w-4 h-4" />Upload File</p>
+              <p className="text-xs text-muted-foreground">Supports Excel (.xlsx, .xls, .csv), PDF, and Word (.docx, .doc)</p>
+              <div
+                className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover-elevate"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {selectedFile ? (
+                  <div className="space-y-1">
+                    <FileSpreadsheet className="w-6 h-6 mx-auto text-primary" />
+                    <p className="text-sm font-medium">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Click to choose file</p>
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx" className="hidden" onChange={handleFileChange} data-testid="input-knowledge-file" />
+              </div>
+              {selectedFile && (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Source display name"
+                    value={uploadName}
+                    onChange={e => setUploadName(e.target.value)}
+                    data-testid="input-knowledge-name"
+                  />
+                  <div className="flex gap-2">
+                    <Button className="flex-1" onClick={handleUploadSubmit} disabled={uploadMutation.isPending} data-testid="button-upload-knowledge">
+                      {uploadMutation.isPending ? 'Uploading...' : 'Upload & Process'}
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setSelectedFile(null); setUploadName(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* URL source */}
+            <div className="border rounded-md p-4 space-y-3">
+              <p className="text-sm font-medium flex items-center gap-2"><Globe className="w-4 h-4" />Add URL Source</p>
+              <p className="text-xs text-muted-foreground">Add a web page URL — Findy will fetch and index its content</p>
+              <div className="space-y-2">
+                <Input
+                  placeholder="https://example.com/page"
+                  value={urlForm.url}
+                  onChange={e => setUrlForm(f => ({ ...f, url: e.target.value }))}
+                  data-testid="input-knowledge-url"
+                />
+                <Input
+                  placeholder="Source name (optional)"
+                  value={urlForm.name}
+                  onChange={e => setUrlForm(f => ({ ...f, name: e.target.value }))}
+                />
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => urlMutation.mutate(urlForm)}
+                  disabled={!urlForm.url || urlMutation.isPending}
+                  data-testid="button-add-url-knowledge"
+                >
+                  <Link className="w-4 h-4 mr-2" />
+                  {urlMutation.isPending ? 'Adding...' : 'Add URL Source'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sources list */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Uploaded Sources ({sources.length})
+          </CardTitle>
+          <Button size="sm" variant="ghost" onClick={() => refetch()}>
+            <RotateCcw className="w-3 h-3 mr-1" />Refresh
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground text-center py-8">Loading sources...</div>
+          ) : sources.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <Database className="w-10 h-10 mx-auto text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">No knowledge sources yet</p>
+              <p className="text-xs text-muted-foreground">Upload an Excel file with university programs, PDFs, or add a URL</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Records</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Added</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sources.map(src => (
+                  <TableRow key={src.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(src.fileType)}
+                        <div>
+                          <p className="font-medium text-sm">{src.name}</p>
+                          {src.originalName && <p className="text-xs text-muted-foreground">{src.originalName}</p>}
+                          {src.url && <a href={src.url} target="_blank" rel="noreferrer" className="text-xs text-primary flex items-center gap-1 hover:underline"><ExternalLink className="w-3 h-3" />{src.url.slice(0, 40)}...</a>}
+                          {src.errorMessage && <p className="text-xs text-destructive mt-0.5">{src.errorMessage}</p>}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs capitalize">{src.fileType || src.type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {src.status === 'active' ? (
+                        <div>
+                          <span className="font-medium">{(src.rowCount || 0).toLocaleString()}</span>
+                          <span className="text-muted-foreground"> rows</span>
+                          <br />
+                          <span className="text-xs text-muted-foreground">{(src.chunkCount || 0).toLocaleString()} chunks</span>
+                        </div>
+                      ) : '—'}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(src.status)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{dayjs(src.createdAt).format('MMM D, YYYY')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {(src.status === 'error' || src.status === 'active') && (
+                          <Button size="icon" variant="ghost" onClick={() => reprocessMutation.mutate(src.id)} disabled={reprocessMutation.isPending} title="Reprocess">
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(src.id)} disabled={deleteMutation.isPending} className="text-destructive" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
