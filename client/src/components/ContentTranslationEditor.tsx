@@ -23,6 +23,10 @@ const SUPPORTED_LANGUAGES = [
   { code: "uz", label: "O'zbek", flag: "🇺🇿" },
   { code: "kk", label: "Қазақша", flag: "🇰🇿" },
   { code: "az", label: "Azərbaycan", flag: "🇦🇿" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
 ];
 
 function getAuthHeaders(): Record<string, string> {

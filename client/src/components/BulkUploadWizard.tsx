@@ -20,7 +20,7 @@ const COLUMNS = [
 const REQUIRED = ['title', 'slug', 'content_type'];
 const VALID_TYPES = ['lesson', 'video', 'image', 'document', 'quiz'];
 const VALID_STATUSES = ['draft', 'published', 'archived'];
-const VALID_LANGS = ['en', 'tr', 'ru', 'ar', 'az', 'fa'];
+const VALID_LANGS = ['en', 'tr', 'ru', 'ar', 'az', 'fa', 'uz', 'kk', 'zh', 'es', 'fr'];
 
 interface RowError { col: string; message: string }
 interface ParsedRow { data: Record<string, string>; errors: RowError[]; selected: boolean }
