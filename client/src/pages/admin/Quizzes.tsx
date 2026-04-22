@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,7 +25,10 @@ import {
   XCircle,
   GripVertical,
   Brain,
-  Target
+  Target,
+  ArrowUpDown,
+  SlidersHorizontal,
+  X
 } from 'lucide-react';
 import { 
   insertQuizSchema, 
@@ -63,6 +67,10 @@ export default function AdminQuizzes() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizDTO | null>(null);
+  const [filterType, setFilterType] = useState<'all' | 'final' | 'regular'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'title-asc' | 'title-desc' | 'questions-desc' | 'questions-asc' | 'pass-desc' | 'pass-asc'>('title-asc');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Queries
   const { data: countries = [] } = useQuery({
@@ -179,11 +187,81 @@ export default function AdminQuizzes() {
     }
   });
 
-  // Filter quizzes
-  const filteredQuizzes = quizzes.filter(quiz => 
-    quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    quiz.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id => apiRequest('DELETE', `/api/admin/quizzes/${id}`)));
+    },
+    onSuccess: () => {
+      toast({ title: 'Deleted', description: `${selectedIds.size} quiz deleted` });
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Bulk delete failed', variant: 'destructive' });
+    }
+  });
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: string }) => {
+      await Promise.all(ids.map(id => apiRequest('PATCH', `/api/admin/quizzes/${id}`, { status })));
+    },
+    onSuccess: (_d, vars) => {
+      toast({ title: 'Updated', description: `${selectedIds.size} quiz set to ${vars.status}` });
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Bulk update failed', variant: 'destructive' });
+    }
+  });
+
+  // Filter + sort quizzes
+  const filteredQuizzes = useMemo(() => {
+    let list = quizzes.filter(quiz => {
+      const matchSearch =
+        quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (quiz.description?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+      const matchType =
+        filterType === 'all' ||
+        (filterType === 'final' && quiz.isFinal) ||
+        (filterType === 'regular' && !quiz.isFinal);
+      const matchStatus = filterStatus === 'all' || quiz.status === filterStatus;
+      return matchSearch && matchType && matchStatus;
+    });
+
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'title-asc': return a.title.localeCompare(b.title);
+        case 'title-desc': return b.title.localeCompare(a.title);
+        case 'questions-desc': return (b.questions?.length || 0) - (a.questions?.length || 0);
+        case 'questions-asc': return (a.questions?.length || 0) - (b.questions?.length || 0);
+        case 'pass-desc': return (b.passPercent || 0) - (a.passPercent || 0);
+        case 'pass-asc': return (a.passPercent || 0) - (b.passPercent || 0);
+        default: return 0;
+      }
+    });
+    return list;
+  }, [quizzes, searchQuery, filterType, filterStatus, sortBy]);
+
+  // Selection helpers
+  const allVisibleSelected = filteredQuizzes.length > 0 && filteredQuizzes.every(q => selectedIds.has(q.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredQuizzes.map(q => q.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   // Form handlers
   const onSubmit = (data: QuizFormData) => {
@@ -673,48 +751,164 @@ export default function AdminQuizzes() {
               </DialogContent>
             </Dialog>
           </div>
-          <div className="flex items-center gap-2 mt-4">
-            <Search className="w-4 h-4" />
-            <Input
-              placeholder="Search quizzes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
-              data-testid="input-search-quizzes"
-            />
+          {/* Search + Filter + Sort row */}
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search quizzes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-quizzes"
+              />
+              {searchQuery && (
+                <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchQuery('')}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Select value={filterType} onValueChange={(v) => { setFilterType(v as any); setSelectedIds(new Set()); }}>
+              <SelectTrigger className="w-40" data-testid="select-filter-type">
+                <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="final">Final Exam</SelectItem>
+                <SelectItem value="regular">Regular Quiz</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v as any); setSelectedIds(new Set()); }}>
+              <SelectTrigger className="w-36" data-testid="select-filter-status">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <SelectTrigger className="w-44" data-testid="select-sort-by">
+                <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="title-asc">Title A→Z</SelectItem>
+                <SelectItem value="title-desc">Title Z→A</SelectItem>
+                <SelectItem value="questions-desc">Most Questions</SelectItem>
+                <SelectItem value="questions-asc">Fewest Questions</SelectItem>
+                <SelectItem value="pass-desc">Pass % High→Low</SelectItem>
+                <SelectItem value="pass-asc">Pass % Low→High</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {filteredQuizzes.length} of {quizzes.length}
+            </span>
           </div>
+
+          {/* Bulk actions bar */}
+          {someSelected && (
+            <div className="flex flex-wrap items-center gap-2 mt-3 px-3 py-2 bg-muted/50 border rounded-md">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <Separator orientation="vertical" className="h-4" />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkStatusMutation.mutate({ ids: Array.from(selectedIds), status: 'active' })}
+                disabled={bulkStatusMutation.isPending}
+                data-testid="button-bulk-activate"
+              >
+                <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                Set Active
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkStatusMutation.mutate({ ids: Array.from(selectedIds), status: 'draft' })}
+                disabled={bulkStatusMutation.isPending}
+                data-testid="button-bulk-draft"
+              >
+                Set Draft
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (window.confirm(`Delete ${selectedIds.size} selected quiz(zes)?`)) {
+                    bulkDeleteMutation.mutate(Array.from(selectedIds));
+                  }
+                }}
+                disabled={bulkDeleteMutation.isPending}
+                data-testid="button-bulk-delete"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                Delete
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto">
+                <X className="w-3.5 h-3.5 mr-1" />
+                Deselect All
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {quizzesLoading ? (
             <div className="text-center py-4">Loading quizzes...</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
+              {/* Select-all header */}
+              {filteredQuizzes.length > 0 && (
+                <div className="flex items-center gap-3 px-2 pb-1 border-b">
+                  <Checkbox
+                    checked={allVisibleSelected}
+                    onCheckedChange={toggleSelectAll}
+                    data-testid="checkbox-select-all"
+                  />
+                  <span className="text-xs text-muted-foreground">Select all ({filteredQuizzes.length})</span>
+                </div>
+              )}
+
               {filteredQuizzes.map((quiz) => (
-                <div key={quiz.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      {quiz.isFinal ? (
-                        <Target className="w-5 h-5 text-orange-600" />
-                      ) : (
-                        <Brain className="w-5 h-5 text-blue-600" />
-                      )}
-                      <Badge variant={quiz.isFinal ? 'destructive' : 'secondary'}>
-                        {quiz.isFinal ? 'Final Exam' : 'Regular Quiz'}
-                      </Badge>
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{quiz.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {quiz.questions?.length || 0} questions • Pass: {quiz.passPercent}% • {getStatusBadge(quiz.status)}
-                      </div>
-                      {quiz.description && (
-                        <div className="text-sm text-muted-foreground mt-1">{quiz.description}</div>
-                      )}
-                    </div>
+                <div
+                  key={quiz.id}
+                  className={`flex items-center gap-3 p-4 border rounded-lg hover-elevate transition-colors ${selectedIds.has(quiz.id) ? 'bg-muted/40 border-primary/30' : ''}`}
+                >
+                  <Checkbox
+                    checked={selectedIds.has(quiz.id)}
+                    onCheckedChange={() => toggleSelect(quiz.id)}
+                    data-testid={`checkbox-quiz-${quiz.id}`}
+                  />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {quiz.isFinal ? (
+                      <Target className="w-5 h-5 text-orange-600" />
+                    ) : (
+                      <Brain className="w-5 h-5 text-blue-600" />
+                    )}
+                    <Badge variant={quiz.isFinal ? 'destructive' : 'secondary'}>
+                      {quiz.isFinal ? 'Final Exam' : 'Regular Quiz'}
+                    </Badge>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{quiz.title}</div>
+                    <div className="text-sm text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                      <span>{quiz.questions?.length || 0} questions</span>
+                      <span>Pass: {quiz.passPercent}%</span>
+                      {getStatusBadge(quiz.status)}
+                    </div>
+                    {quiz.description && (
+                      <div className="text-sm text-muted-foreground mt-0.5 truncate">{quiz.description}</div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
                       onClick={() => openQuizDialog(quiz)}
                       data-testid={`button-edit-quiz-${quiz.id}`}
@@ -722,7 +916,7 @@ export default function AdminQuizzes() {
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="destructive"
                       onClick={() => handleDeleteQuiz(quiz.id)}
                       data-testid={`button-delete-quiz-${quiz.id}`}
@@ -734,7 +928,9 @@ export default function AdminQuizzes() {
               ))}
               {filteredQuizzes.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? 'No quizzes found matching your search.' : 'No quizzes created yet.'}
+                  {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+                    ? 'No quizzes match the current filters.'
+                    : 'No quizzes created yet.'}
                 </div>
               )}
             </div>
