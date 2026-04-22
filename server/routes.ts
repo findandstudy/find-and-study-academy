@@ -123,7 +123,6 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
       role: user.role,  // Use actual role from storage, not client-provided
       email: user.email,
       name: user.name,
-      agencyId: user.agencyId,  // Include agencyId for agents
       // Include notification preferences for email triggers
       emailNotifications: user.emailNotifications,
       certificateNotif: user.certificateNotif,
