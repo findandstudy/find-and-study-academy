@@ -79,28 +79,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative">
-            {/* Mobile: always show full header */}
-            <div className="flex items-center space-x-2 lg:hidden">
+            {/* Mobile: always show logo */}
+            <div className="flex items-center lg:hidden">
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className="w-8 h-8 rounded object-contain"
+                className="h-9 w-auto object-contain"
               />
-              <span className="font-semibold text-foreground">Admin Panel</span>
             </div>
-            {/* Desktop: adapt based on collapsed state */}
-            <div className={`items-center space-x-2 ${sidebarCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
+            {/* Desktop expanded: show full logo */}
+            <div className={`items-center ${sidebarCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
               <img 
                 src={logoImage} 
                 alt="Find & Study Logo" 
-                className="w-8 h-8 rounded object-contain"
+                className="h-9 w-auto object-contain"
               />
-              <span className="font-semibold text-foreground">Admin Panel</span>
             </div>
+            {/* Desktop collapsed: show icon only */}
             <img 
               src={portalIcon} 
               alt="Find & Study" 
-              className={`w-10 h-10 rounded object-contain ${sidebarCollapsed ? 'hidden lg:block' : 'hidden'}`}
+              className={`w-9 h-9 object-contain ${sidebarCollapsed ? 'hidden lg:block' : 'hidden'}`}
             />
             <Button
               variant="ghost"
