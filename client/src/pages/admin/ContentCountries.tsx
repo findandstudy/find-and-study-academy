@@ -27,7 +27,11 @@ import {
   Power,
   PowerOff,
   Upload,
-  Download
+  Download,
+  Link,
+  X,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { insertCountrySchema, insertContentSchema, type Country, type Content, type InsertCountry, type InsertContent } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
@@ -45,6 +49,45 @@ export default function AdminContentCountries() {
   const [editingContent, setEditingContent] = useState<(Content & { countryName?: string }) | null>(null);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [translatingContent, setTranslatingContent] = useState<Content | null>(null);
+
+  // Upload mode state for video and document fields
+  const [videoUploadMode, setVideoUploadMode] = useState<'url' | 'file'>('url');
+  const [docUploadMode, setDocUploadMode] = useState<'url' | 'file'>('url');
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
+  const [uploadedVideoName, setUploadedVideoName] = useState<string | null>(null);
+  const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
+
+  // Upload handler for content files (video / document)
+  const handleContentFileUpload = async (
+    file: File,
+    type: 'video' | 'document',
+    onSuccess: (url: string, name: string, size: string) => void
+  ) => {
+    const setUploading = type === 'video' ? setVideoUploading : setDocUploading;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const session = JSON.parse(localStorage.getItem('study_abroad_session') || '{}');
+      const res = await fetch('/api/uploads/content', {
+        method: 'POST',
+        headers: {
+          'x-user-id': session?.user?.id || '',
+          'x-user-role': session?.user?.role || '',
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
+      onSuccess(data.url, data.originalName, data.size);
+      toast({ title: 'Dosya yüklendi', description: data.originalName });
+    } catch (err: any) {
+      toast({ title: 'Yükleme hatası', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Countries query
   const { data: countries = [], isLoading: countriesLoading, refetch: refetchCountries } = useQuery({
@@ -79,7 +122,7 @@ export default function AdminContentCountries() {
       type: c.type,
       country: c.countryName || '',
       countryId: c.countryId || '',
-      duration: c.duration || '',
+      duration: (c as any).duration || '',
       status: c.status,
       description: c.description || '',
       videoUrl: (c as any).videoUrl || '',
@@ -332,6 +375,11 @@ export default function AdminContentCountries() {
       setEditingContent(null);
       contentForm.reset();
     }
+    // Reset upload states each time the dialog opens
+    setVideoUploadMode('url');
+    setDocUploadMode('url');
+    setUploadedVideoName(null);
+    setUploadedDocName(null);
     setIsContentDialogOpen(true);
   };
 
@@ -885,20 +933,88 @@ export default function AdminContentCountries() {
 
                         {watchedContentType === 'video' && (
                           <div className="space-y-4">
+                            {/* Video input mode toggle */}
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={videoUploadMode === 'url' ? 'default' : 'outline'}
+                                onClick={() => { setVideoUploadMode('url'); setUploadedVideoName(null); }}
+                              >
+                                <Link className="w-3 h-3 mr-1" />
+                                URL
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={videoUploadMode === 'file' ? 'default' : 'outline'}
+                                onClick={() => setVideoUploadMode('file')}
+                              >
+                                <Upload className="w-3 h-3 mr-1" />
+                                Dosya Yükle
+                              </Button>
+                            </div>
+
                             <FormField
                               control={contentForm.control}
                               name="videoUrl"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Video URL</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
-                                      {...field}
-                                      value={field.value || ''}
-                                      data-testid="input-content-video-url"
-                                    />
-                                  </FormControl>
+                                  <FormLabel>Video {videoUploadMode === 'url' ? 'URL' : 'Dosyası'}</FormLabel>
+                                  {videoUploadMode === 'url' ? (
+                                    <FormControl>
+                                      <Input
+                                        placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                                        {...field}
+                                        value={field.value || ''}
+                                        data-testid="input-content-video-url"
+                                      />
+                                    </FormControl>
+                                  ) : (
+                                    <FormControl>
+                                      <div className="space-y-2">
+                                        {uploadedVideoName ? (
+                                          <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/40">
+                                            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                            <span className="text-sm truncate flex-1">{uploadedVideoName}</span>
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="ghost"
+                                              onClick={() => { field.onChange(''); setUploadedVideoName(null); }}
+                                            >
+                                              <X className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-md cursor-pointer hover-elevate transition-colors">
+                                            {videoUploading ? (
+                                              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                            ) : (
+                                              <Upload className="w-6 h-6 text-muted-foreground" />
+                                            )}
+                                            <span className="text-sm text-muted-foreground">
+                                              {videoUploading ? 'Yükleniyor...' : 'MP4 veya WebM seçin (maks. 50MB)'}
+                                            </span>
+                                            <input
+                                              type="file"
+                                              className="hidden"
+                                              accept="video/mp4,video/webm"
+                                              disabled={videoUploading}
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                handleContentFileUpload(file, 'video', (url, name, size) => {
+                                                  field.onChange(url);
+                                                  setUploadedVideoName(name);
+                                                });
+                                              }}
+                                            />
+                                          </label>
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                  )}
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -947,20 +1063,91 @@ export default function AdminContentCountries() {
 
                         {watchedContentType === 'document' && (
                           <div className="space-y-4">
+                            {/* Document input mode toggle */}
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={docUploadMode === 'url' ? 'default' : 'outline'}
+                                onClick={() => { setDocUploadMode('url'); setUploadedDocName(null); }}
+                              >
+                                <Link className="w-3 h-3 mr-1" />
+                                URL
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={docUploadMode === 'file' ? 'default' : 'outline'}
+                                onClick={() => setDocUploadMode('file')}
+                              >
+                                <Upload className="w-3 h-3 mr-1" />
+                                Dosya Yükle
+                              </Button>
+                            </div>
+
                             <FormField
                               control={contentForm.control}
                               name="documentUrl"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Document URL</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="https://... (PDF, DOCX, etc.)"
-                                      {...field}
-                                      value={field.value || ''}
-                                      data-testid="input-content-document-url"
-                                    />
-                                  </FormControl>
+                                  <FormLabel>Doküman {docUploadMode === 'url' ? 'URL' : 'Dosyası'}</FormLabel>
+                                  {docUploadMode === 'url' ? (
+                                    <FormControl>
+                                      <Input
+                                        placeholder="https://... (PDF, DOCX, etc.)"
+                                        {...field}
+                                        value={field.value || ''}
+                                        data-testid="input-content-document-url"
+                                      />
+                                    </FormControl>
+                                  ) : (
+                                    <FormControl>
+                                      <div className="space-y-2">
+                                        {uploadedDocName ? (
+                                          <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/40">
+                                            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                            <span className="text-sm truncate flex-1">{uploadedDocName}</span>
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="ghost"
+                                              onClick={() => { field.onChange(''); setUploadedDocName(null); }}
+                                            >
+                                              <X className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-md cursor-pointer hover-elevate transition-colors">
+                                            {docUploading ? (
+                                              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                            ) : (
+                                              <Upload className="w-6 h-6 text-muted-foreground" />
+                                            )}
+                                            <span className="text-sm text-muted-foreground">
+                                              {docUploading ? 'Yükleniyor...' : 'PDF, DOCX, XLSX veya PPT seçin (maks. 50MB)'}
+                                            </span>
+                                            <input
+                                              type="file"
+                                              className="hidden"
+                                              accept=".pdf,.doc,.docx,.xlsx,.ppt,.pptx"
+                                              disabled={docUploading}
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                handleContentFileUpload(file, 'document', (url, name, size) => {
+                                                  field.onChange(url);
+                                                  setUploadedDocName(name);
+                                                  // Auto-fill display name and file size
+                                                  contentForm.setValue('displayName', name.replace(/\.[^/.]+$/, ''));
+                                                  contentForm.setValue('fileSize', size);
+                                                });
+                                              }}
+                                            />
+                                          </label>
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                  )}
                                   <FormMessage />
                                 </FormItem>
                               )}
@@ -971,7 +1158,7 @@ export default function AdminContentCountries() {
                                 name="displayName"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>Display Name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                    <FormLabel>Görünen Ad <span className="text-muted-foreground text-xs">(opsiyonel)</span></FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="e.g. Application Guide 2025"
@@ -989,7 +1176,7 @@ export default function AdminContentCountries() {
                                 name="fileSize"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>File Size <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                    <FormLabel>Dosya Boyutu <span className="text-muted-foreground text-xs">(opsiyonel)</span></FormLabel>
                                     <FormControl>
                                       <Input
                                         placeholder="e.g. 2.3 MB"

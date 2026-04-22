@@ -241,10 +241,13 @@ const agencyLogoUpload = multer({
   fileFilter: imageFileFilter
 });
 
-// Content uploads — images and documents for course content
+// Content uploads — images, documents and videos for course content
 const contentUploadStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const folder = file.mimetype.startsWith('image/') ? 'images' : 'documents';
+    let folder: string;
+    if (file.mimetype.startsWith('image/')) folder = 'images';
+    else if (file.mimetype.startsWith('video/')) folder = 'videos';
+    else folder = 'documents';
     const uploadPath = path.join(process.cwd(), 'public', 'uploads', 'content', folder);
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
@@ -4454,8 +4457,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
       const { file } = req;
-      const isImage = file.mimetype.startsWith('image/');
-      const folder = isImage ? 'images' : 'documents';
+      let fileCategory: string;
+      let folder: string;
+      if (file.mimetype.startsWith('image/')) { fileCategory = 'image'; folder = 'images'; }
+      else if (file.mimetype.startsWith('video/')) { fileCategory = 'video'; folder = 'videos'; }
+      else { fileCategory = 'document'; folder = 'documents'; }
       const publicUrl = `/uploads/content/${folder}/${file.filename}`;
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
       res.json({
@@ -4464,7 +4470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         originalName: file.originalname,
         mimeType: file.mimetype,
         size: fileSizeMB,
-        type: isImage ? 'image' : 'document',
+        type: fileCategory,
       });
     } catch (error: any) {
       res.status(400).json({ success: false, message: error.message || 'Upload failed' });
