@@ -3008,6 +3008,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk import agencies
+  app.post('/api/admin/agencies/bulk-import', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { agencies: rows } = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'agencies must be a non-empty array' });
+      }
+      const created: any[] = [];
+      const errors: { row: number; message: string }[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const validation = insertAgencySchema.safeParse({
+          name: row.name || row.Name || row['Agency Name'],
+          country: row.country || row.Country || null,
+          city: row.city || row.City || null,
+          contactEmail: row.contactEmail || row.email || row.Email || row['Contact Email'] || null,
+          contactPhone: row.contactPhone || row.phone || row.Phone || row['Contact Phone'] || null,
+          website: row.website || row.Website || null,
+          description: row.description || row.Description || null,
+          primaryContactName: row.primaryContactName || row['Primary Contact'] || null,
+          primaryContactEmail: row.primaryContactEmail || row['Primary Contact Email'] || null,
+          staffSize: row.staffSize ? parseInt(row.staffSize) : null,
+          annualStudents: row.annualStudents ? parseInt(row.annualStudents) : null,
+          status: (['active', 'inactive', 'pending'].includes(row.status || row.Status)) ? (row.status || row.Status) : 'pending',
+        });
+        if (!validation.success) {
+          errors.push({ row: i + 1, message: `Row ${i + 1}: ${validation.error.errors.map(e => e.message).join(', ')}` });
+          continue;
+        }
+        try {
+          const agency = await storage.createAgency(validation.data);
+          created.push(agency);
+        } catch (err: any) {
+          errors.push({ row: i + 1, message: `Row ${i + 1}: ${err.message}` });
+        }
+      }
+      res.json({ success: true, created: created.length, errors, message: `${created.length} agencies imported, ${errors.length} failed` });
+    } catch (error: any) {
+      console.error('Bulk import agencies error:', error);
+      res.status(500).json({ success: false, message: 'Failed to import agencies' });
+    }
+  });
+
   // Countries management routes (admin only)
   app.get('/api/admin/countries', requireAuth, requireAdmin, async (req, res) => {
     try {

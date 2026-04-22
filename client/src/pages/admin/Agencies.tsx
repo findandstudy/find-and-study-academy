@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Eye, Mail, Phone, Globe, User, Clock } from 'lucide-react';
+import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Eye, Mail, Phone, Globe, User, Clock, Download, Upload, FileSpreadsheet, AlertCircle, Loader2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -43,6 +44,10 @@ export default function AdminAgencies() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [viewAgency, setViewAgency] = useState<AgencyWithCount | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
   const { toast } = useToast();
   
   // Handle view agency details
@@ -72,6 +77,78 @@ export default function AdminAgencies() {
       return response.json();
     }
   });
+
+  // ── Export agencies to Excel ─────────────────────────────────────────────────
+  const exportAgencies = (agencyList: AgencyWithCount[]) => {
+    const rows = agencyList.map(a => ({
+      'Agency Name': a.name,
+      'Country': a.country || '',
+      'City': a.city || '',
+      'Contact Email': a.contactEmail || '',
+      'Contact Phone': a.contactPhone || '',
+      'Website': a.website || '',
+      'Primary Contact': a.primaryContactName || '',
+      'Primary Contact Email': a.primaryContactEmail || '',
+      'Staff Size': a.staffSize ?? '',
+      'Annual Students': a.annualStudents ?? '',
+      'Status': a.status,
+      'Description': a.description || '',
+      'Created At': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '',
+      'Agent Count': a.agentCount,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 18 },
+      { wch: 25 }, { wch: 25 }, { wch: 30 }, { wch: 12 }, { wch: 16 },
+      { wch: 10 }, { wch: 40 }, { wch: 14 }, { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Agencies');
+    XLSX.writeFile(wb, `agencies_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast({ title: 'Dışa Aktarıldı', description: `${agencyList.length} acente Excel dosyasına aktarıldı.` });
+  };
+
+  // ── Parse Excel/CSV for bulk import ─────────────────────────────────────────
+  const handleImportFile = (file: File) => {
+    setImportParsing(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        setImportRows(rows);
+      } catch {
+        toast({ title: 'Dosya Hatası', description: 'Dosya okunamadı. Excel veya CSV seçin.', variant: 'destructive' });
+      } finally {
+        setImportParsing(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // ── Run bulk import ──────────────────────────────────────────────────────────
+  const handleBulkImport = async () => {
+    if (!importRows.length) return;
+    setImportLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/admin/agencies/bulk-import', { agencies: importRows });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'İçe Aktarma Tamamlandı', description: data.message });
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+        setBulkImportOpen(false);
+        setImportRows([]);
+      } else {
+        toast({ title: 'Hata', description: data.message, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Hata', description: 'İçe aktarma başarısız.', variant: 'destructive' });
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   const agencies: AgencyWithCount[] = agenciesResponse?.agencies || [];
 
@@ -274,7 +351,121 @@ export default function AdminAgencies() {
           </p>
         </div>
         
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Export Button */}
+          <Button
+            variant="outline"
+            onClick={() => exportAgencies(agencies)}
+            disabled={agencies.length === 0}
+            data-testid="button-export-agencies"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Dışa Aktar
+          </Button>
+
+          {/* Bulk Import Button & Dialog */}
+          <Dialog open={bulkImportOpen} onOpenChange={(open) => { setBulkImportOpen(open); if (!open) setImportRows([]); }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-bulk-import-agencies">
+                <Upload className="w-4 h-4 mr-2" />
+                Toplu İçe Aktar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Toplu Acente İçe Aktarma</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {/* Format hint */}
+                <div className="bg-muted/50 rounded-md p-3 text-sm space-y-1">
+                  <p className="font-medium">Excel/CSV Formatı</p>
+                  <p className="text-muted-foreground">Sütunlar: <span className="font-mono text-xs">Agency Name, Country, City, Contact Email, Contact Phone, Website, Primary Contact, Status</span></p>
+                  <p className="text-muted-foreground text-xs">Status değerleri: active, inactive, pending (boş ise "pending" olarak eklenir)</p>
+                </div>
+
+                {/* Template download */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const template = [{ 'Agency Name': 'Örnek Acente', 'Country': 'Turkey', 'City': 'Istanbul', 'Contact Email': 'info@acente.com', 'Contact Phone': '+90 212 000 0000', 'Website': 'https://acente.com', 'Primary Contact': 'Ad Soyad', 'Status': 'active', 'Description': '' }];
+                    const ws = XLSX.utils.json_to_sheet(template);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Agencies');
+                    XLSX.writeFile(wb, 'agencies_template.xlsx');
+                  }}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Şablon İndir
+                </Button>
+
+                {/* File picker */}
+                {importRows.length === 0 ? (
+                  <label className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-md cursor-pointer hover-elevate">
+                    {importParsing ? (
+                      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    ) : (
+                      <FileSpreadsheet className="w-8 h-8 text-muted-foreground" />
+                    )}
+                    <div className="text-center">
+                      <p className="font-medium">{importParsing ? 'Okunuyor...' : 'Excel veya CSV dosyası seçin'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">.xlsx, .xls, .csv</p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".xlsx,.xls,.csv"
+                      disabled={importParsing}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }}
+                    />
+                  </label>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{importRows.length} satır bulundu</span>
+                      <Button variant="ghost" size="sm" onClick={() => setImportRows([])}>Temizle</Button>
+                    </div>
+                    {/* Preview table */}
+                    <div className="border rounded-md overflow-auto max-h-64">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            {Object.keys(importRows[0] || {}).slice(0, 6).map(k => (
+                              <TableHead key={k}>{k}</TableHead>
+                            ))}
+                            {Object.keys(importRows[0] || {}).length > 6 && <TableHead>...</TableHead>}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importRows.slice(0, 10).map((row, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
+                              {Object.values(row).slice(0, 6).map((val: any, j) => (
+                                <TableCell key={j} className="text-sm max-w-[150px] truncate">{String(val)}</TableCell>
+                              ))}
+                              {Object.values(row).length > 6 && <TableCell className="text-muted-foreground">…</TableCell>}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {importRows.length > 10 && (
+                      <p className="text-xs text-muted-foreground text-center">+ {importRows.length - 10} daha...</p>
+                    )}
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" onClick={() => setImportRows([])}>İptal</Button>
+                      <Button onClick={handleBulkImport} disabled={importLoading}>
+                        {importLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />İçe Aktarılıyor...</> : <><Upload className="w-4 h-4 mr-2" />{importRows.length} Acente Ekle</>}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-agency">
               <Plus className="w-4 h-4 mr-2" />
@@ -434,6 +625,7 @@ export default function AdminAgencies() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters and View Toggle */}
