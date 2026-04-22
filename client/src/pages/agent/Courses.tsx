@@ -3,13 +3,21 @@ import { useDataStore } from '@/store/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Content, Country } from '@shared/schema';
+import { CountryFlag } from '@/components/CountryFlag';
 
 export default function AgentCourses() {
   const { courses } = useDataStore();
-  const [selectedCountry, setSelectedCountry] = useState<string>('tr');
+  const [selectedCountry, setSelectedCountry] = useState<string>('');
+  const [defaultInitialized, setDefaultInitialized] = useState(false);
+
+  // Fetch global defaults from settings
+  const { data: defaultsData } = useQuery<{ success: boolean; defaults: { default_country_code: string | null } }>({
+    queryKey: ['/api/settings/defaults'],
+    staleTime: 60000,
+  });
 
   // Fetch countries and contents from public APIs (no auth required)
   const { data: countries = [] } = useQuery({
@@ -71,6 +79,23 @@ export default function AgentCourses() {
     
     return countriesWithContent;
   }, [countries, contents]);
+
+  // Initialize selected country from API defaults once countries are loaded
+  useEffect(() => {
+    if (defaultInitialized || activeCountries.length === 0) return;
+    const apiDefault = defaultsData?.defaults?.default_country_code;
+    if (apiDefault) {
+      const found = activeCountries.find(c => c.code.toLowerCase() === apiDefault.toLowerCase());
+      if (found) {
+        setSelectedCountry(found.code.toLowerCase());
+        setDefaultInitialized(true);
+        return;
+      }
+    }
+    // Fallback: first active country (usually Turkey)
+    setSelectedCountry(activeCountries[0].code.toLowerCase());
+    setDefaultInitialized(true);
+  }, [activeCountries, defaultsData, defaultInitialized]);
 
   // Get content for selected country
   const selectedCountryData = activeCountries.find(c => 
@@ -175,7 +200,7 @@ export default function AgentCourses() {
                 className="group relative flex items-center gap-3 whitespace-nowrap px-6 py-3 transition-all duration-300 hover:-translate-y-0.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
                 data-testid={`tab-country-${country.code.toLowerCase()}`}
               >
-                <span className="text-2xl transition-transform duration-300 group-hover:scale-110">{country.flag || '🌍'}</span>
+                <CountryFlag code={country.code} size="md" />
                 <span className="font-medium">{country.name}</span>
               </TabsTrigger>
             ))}

@@ -34,6 +34,11 @@ The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toa
 - **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature.
 - **Quiz-to-Content Linking System:** Allows associating quizzes with specific lessons.
 - **Country-based Final Exam System:** Final exams linked to specific countries and courses with rigorous validation.
+- **Multilingual Content System:** `contentTranslations` table with 6 languages (TR/EN/RU/UZ/KK/AZ), Tiptap rich-text editor, DOMPurify sanitization, 5 API routes.
+- **FindyAI Extended Tabs:** KnowledgeBaseTab (RAG config), ChannelsEmbedTab (widget embed), ApiWebhooksTab (webhook/API).
+- **Integration Wizard:** 2-step visual create dialog with type-selection cards and step indicators.
+- **Security Hardening:** `express-rate-limit` on `/api/login` (20/15min), `/api/signup`, `/api/forgot-password` & `/api/reset-password` (5/hr); security response headers (X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, X-Frame-Options, Permissions-Policy); request body size capped at 10MB.
+- **Content File Upload API:** `POST /api/uploads/content` — multer-based endpoint for images (5MB profile/logo) and content files up to 50MB (PDF, DOCX, MP4, etc.), served statically via `/uploads/content/`.
 
 ## External Dependencies
 
@@ -63,6 +68,14 @@ The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toa
 -   **jsPDF**: PDF generation.
 -   **html2canvas**: HTML to canvas conversion.
 -   **QRCode**: QR code generation.
+
+### Security
+-   **express-rate-limit**: Rate limiting for auth and API endpoints.
+-   **bcryptjs**: Password hashing.
+
+### Content Editing
+-   **Tiptap**: Rich-text editor for multilingual content.
+-   **DOMPurify**: HTML sanitization for user-generated content.
 
 ### Utilities
 -   **Day.js**: Date manipulation.

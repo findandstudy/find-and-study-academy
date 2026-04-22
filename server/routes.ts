@@ -22,6 +22,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 
 // Server-side questions validation schema (matches frontend)
 const questionSchema = z.discriminatedUnion('type', [
@@ -146,7 +147,33 @@ function generateSecureCertificateCode(): string {
   return `FAS-${code}`;
 }
 
-// Configure multer for local file uploads
+// ── Rate Limiters ────────────────────────────────────────────────────────────
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { success: false, message: 'Too many attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const passwordResetRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { success: false, message: 'Too many password reset requests, please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiRateLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 120,
+  message: { success: false, message: 'API rate limit exceeded, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/admin'), // Skip admin routes
+});
+
+// ── Configure multer for local file uploads ──────────────────────────────────
 // Profile pictures upload configuration
 const profilePictureStorage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -212,6 +239,39 @@ const agencyLogoUpload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: imageFileFilter
+});
+
+// Content uploads — images and documents for course content
+const contentUploadStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const folder = file.mimetype.startsWith('image/') ? 'images' : 'documents';
+    const uploadPath = path.join(process.cwd(), 'public', 'uploads', 'content', folder);
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'content-' + uniqueSuffix + ext);
+  }
+});
+
+const contentFileFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|xlsx|ppt|pptx|mp4|webm/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  if (extname) {
+    cb(null, true);
+  } else {
+    cb(new Error('File type not allowed'));
+  }
+};
+
+const contentUpload = multer({
+  storage: contentUploadStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit for videos/docs
+  fileFilter: contentFileFilter,
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -331,6 +391,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint: get default settings for agent frontend
+  app.get('/api/settings/defaults', async (req, res) => {
+    try {
+      const settings = await storage.getSystemSettings();
+      const defaultCountry = settings.find(s => s.key === 'default_country_code');
+      const defaultCourse = settings.find(s => s.key === 'default_course_id');
+      res.json({
+        success: true,
+        defaults: {
+          default_country_code: defaultCountry?.value || null,
+          default_course_id: defaultCourse?.value || null,
+        }
+      });
+    } catch (error) {
+      console.error('Settings defaults error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch defaults' });
+    }
+  });
+
   // Get all courses - no auth required for certificate downloads
   app.get('/api/courses', async (req, res) => {
     try {
@@ -349,8 +428,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply global API rate limiting (non-admin routes)
+  app.use('/api/public', apiRateLimit);
+
   // Login endpoint - authenticate user and return user data
-  app.post('/api/login', async (req, res) => {
+  app.post('/api/login', authRateLimit, async (req, res) => {
     try {
       const { email, password } = req.body;
 
@@ -410,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Signup endpoint - create new agent user and agency
-  app.post('/api/signup', async (req, res) => {
+  app.post('/api/signup', authRateLimit, async (req, res) => {
     try {
       const { name, email, password, agencyName } = req.body;
 
@@ -528,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Forgot password endpoint - generate reset token and send email
-  app.post('/api/forgot-password', async (req, res) => {
+  app.post('/api/forgot-password', passwordResetRateLimit, async (req, res) => {
     try {
       const { email } = req.body;
 
@@ -593,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reset password endpoint - validate token and update password
-  app.post('/api/reset-password', async (req, res) => {
+  app.post('/api/reset-password', passwordResetRateLimit, async (req, res) => {
     try {
       const { token, newPassword } = req.body;
 
@@ -1272,6 +1354,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastLessonCompletedAt: lessonCompletedIds && lessonCompletedIds.length > 0 ? new Date() : undefined,
       });
 
+      // Track newly completed lessons as analytics events (non-blocking)
+      if (lessonCompletedIds && lessonCompletedIds.length > 0) {
+        const prevIds = existingProgress?.lessonCompletedIds || [];
+        const newlyCompleted = lessonCompletedIds.filter((id: string) => !prevIds.includes(id));
+        for (const contentId of newlyCompleted) {
+          storage.createAnalyticsMetric({
+            userId: authenticatedUser.id,
+            metricType: 'lesson_view',
+            contentId,
+            courseId,
+            metricValue: JSON.stringify({ action: 'lesson_complete' }),
+          }).catch(() => {});
+        }
+      }
+
       // Send course completion email (non-blocking) if just completed
       if (percent === 100 && wasNotCompleted && authenticatedUser.courseCompletionNotif && authenticatedUser.emailNotifications) {
         const courses = await storage.getCourses();
@@ -1343,6 +1440,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: 'Internal server error during progress update'
       });
+    }
+  });
+
+  // Get current user's learning activity for last 7 days (for dashboard chart)
+  app.get('/api/analytics/my-activity', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const now = new Date();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+
+      const metrics = await storage.getUserMetricsInDateRange(
+        authenticatedUser.id,
+        sevenDaysAgo,
+        now
+      );
+
+      // Build last 7 days array
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(now.getDate() - (6 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const count = metrics.filter(m => {
+          if (m.metricType !== 'lesson_view') return false;
+          const mDate = new Date(m.timestamp).toISOString().split('T')[0];
+          return mDate === dateStr;
+        }).length;
+        return { day: dayName, date: dateStr, lessons: count };
+      });
+
+      res.json({ success: true, activity: days });
+    } catch (error) {
+      console.error('Activity fetch error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch activity' });
     }
   });
 
@@ -1431,13 +1564,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { role, name, email } = req.body;
+      const { role, name, email, status, companyName, agencyId, languagePreference } = req.body;
 
       // Validate role if provided
-      if (role && !['admin', 'agent'].includes(role)) {
+      if (role && !['admin', 'agent', 'staff'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid role. Must be admin or agent.'
+          message: 'Invalid role. Must be admin, agent, or staff.'
         });
       }
 
@@ -1455,6 +1588,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (role !== undefined) updates.role = role;
       if (name !== undefined) updates.name = name;
       if (email !== undefined) updates.email = email;
+      if (status !== undefined) updates.status = status;
+      if (companyName !== undefined) updates.companyName = companyName;
+      if (agencyId !== undefined) updates.agencyId = agencyId;
+      if (languagePreference !== undefined) updates.languagePreference = languagePreference;
 
       const updatedUser = await storage.updateUser(id, updates);
       
@@ -1488,10 +1625,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate role
-      if (role && !['admin', 'agent'].includes(role)) {
+      if (role && !['admin', 'agent', 'staff'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid role. Must be admin or agent.'
+          message: 'Invalid role. Must be admin, agent, or staff.'
         });
       }
 
@@ -2602,6 +2739,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Admin or Staff middleware (operational roles)
+  async function requireAdminOrStaff(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = (req as any).user;
+      if (!user || !['admin', 'staff'].includes(user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin or Staff access required'
+        });
+      }
+      next();
+    } catch (error) {
+      res.status(403).json({ success: false, message: 'Authorization failed' });
+    }
+  }
+
   // Agency management routes (admin only)
   app.get('/api/admin/agencies', requireAuth, requireAdmin, async (req, res) => {
     try {
@@ -3427,6 +3580,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---- Integration Event Log ----
+  app.get('/api/admin/integration-events', requireAdminOrStaff, async (req, res) => {
+    try {
+      const { integration_id, event_type, status, limit } = req.query;
+      const events = await storage.getIntegrationEvents({
+        integrationId: integration_id as string | undefined,
+        eventType: event_type as string | undefined,
+        status: status as string | undefined,
+        limit: limit ? parseInt(limit as string) : 200,
+      });
+      res.json({ success: true, events });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Manual webhook trigger (for testing)
+  app.post('/api/admin/integration-events/trigger', requireAdminOrStaff, async (req, res) => {
+    try {
+      const { integrationId, eventType, payload } = req.body;
+      if (!integrationId || !eventType) {
+        return res.status(400).json({ success: false, message: 'integrationId and eventType are required' });
+      }
+
+      const integration = await storage.getIntegrationById(integrationId);
+      if (!integration) {
+        return res.status(404).json({ success: false, message: 'Integration not found' });
+      }
+
+      if (!integration.endpointUrl) {
+        return res.status(400).json({ success: false, message: 'Integration has no endpoint URL configured' });
+      }
+
+      const user = (req as any).user;
+      const requestPayload = payload || { event: eventType, timestamp: new Date().toISOString(), test: true };
+      const payloadStr = JSON.stringify(requestPayload);
+
+      // Generate HMAC signature if webhook secret is set
+      let hmacHeader: string | undefined;
+      if (integration.webhookSecret) {
+        const crypto = await import('crypto');
+        const sig = crypto.createHmac('sha256', integration.webhookSecret)
+          .update(payloadStr)
+          .digest('hex');
+        hmacHeader = `sha256=${sig}`;
+      }
+
+      // Create event log entry
+      const event = await storage.createIntegrationEvent({
+        integrationId: integration.id,
+        integrationName: integration.name,
+        eventType,
+        method: 'POST',
+        targetUrl: integration.endpointUrl,
+        requestPayload: payloadStr,
+        hmacHeader: hmacHeader || null,
+        status: 'pending',
+        triggeredBy: user?.id || 'system',
+      });
+
+      // Make the webhook call
+      const startTime = Date.now();
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (hmacHeader) headers['X-Hub-Signature-256'] = hmacHeader;
+        if (integration.apiKey) headers['X-API-Key'] = integration.apiKey;
+
+        const response = await fetch(integration.endpointUrl, {
+          method: 'POST',
+          headers,
+          body: payloadStr,
+          signal: AbortSignal.timeout(15000),
+        });
+
+        const responseText = await response.text().catch(() => '');
+        const durationMs = Date.now() - startTime;
+        const isSuccess = response.status >= 200 && response.status < 300;
+
+        const updated = await storage.updateIntegrationEventStatus(
+          event.id,
+          isSuccess ? 'success' : 'failed',
+          response.status,
+          responseText.slice(0, 2000),
+          durationMs,
+          isSuccess ? undefined : `HTTP ${response.status}`
+        );
+
+        res.json({ success: true, event: updated });
+      } catch (fetchError: any) {
+        const durationMs = Date.now() - startTime;
+        const updated = await storage.updateIntegrationEventStatus(
+          event.id, 'failed', undefined, undefined, durationMs,
+          fetchError.message
+        );
+        res.json({ success: false, event: updated, message: fetchError.message });
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // ---- Integration API Keys ----
+  app.get('/api/admin/integration-api-keys', requireAdminOrStaff, async (req, res) => {
+    try {
+      const includeRevoked = req.query.include_revoked === 'true';
+      const keys = await storage.getIntegrationApiKeys(includeRevoked);
+      res.json({ success: true, keys });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post('/api/admin/integration-api-keys', requireAdminOrStaff, async (req, res) => {
+    try {
+      const { name, scopes, integrationId, expiresAt } = req.body;
+      if (!name) return res.status(400).json({ success: false, message: 'name is required' });
+
+      const crypto = await import('crypto');
+      const user = (req as any).user;
+
+      // Generate a secure random key: fas_<32 random bytes hex>
+      const rawKey = `fas_${crypto.randomBytes(20).toString('hex')}`;
+      const keyPrefix = rawKey.slice(0, 12); // "fas_" + 8 chars
+      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+
+      const key = await storage.createIntegrationApiKey({
+        name,
+        keyPrefix,
+        keyHash,
+        scopes: scopes || null,
+        integrationId: integrationId || null,
+        isActive: true,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdBy: user?.id || 'system',
+        lastUsedAt: null,
+        revokedAt: null,
+        revokedBy: null,
+      });
+
+      // Return the full key only once (never stored)
+      res.status(201).json({ success: true, key, rawKey });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.delete('/api/admin/integration-api-keys/:id', requireAdminOrStaff, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+      const key = await storage.revokeIntegrationApiKey(id, user?.id || 'system');
+      res.json({ success: true, key });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // Menu Visibility Management
   app.get('/api/menu-visibility', requireAuth, async (req, res) => {
     try {
@@ -3606,7 +3916,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---- Bulk Content Import ----
+  app.get('/api/admin/content/bulk-template', requireAdminOrStaff, async (req, res) => {
+    // Return column headers as JSON for client-side template generation
+    const headers = [
+      'title', 'slug', 'description', 'content_type', 'status', 'section',
+      'country_code', 'linked_quiz_slug', 'order', 'language', 'content_body_html',
+      'video_url', 'document_url', 'image_url', 'alt_text', 'duration',
+      'category_tag', 'display_name', 'file_size'
+    ];
+    const validations = {
+      content_type: ['lesson', 'video', 'image', 'document', 'quiz'],
+      status: ['draft', 'published', 'archived'],
+      language: ['en', 'tr', 'ru', 'ar', 'az', 'fa'],
+    };
+    res.json({ success: true, headers, validations });
+  });
+
+  app.post('/api/admin/content/bulk-import', requireAdminOrStaff, async (req, res) => {
+    try {
+      const { rows } = req.body;
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'No rows provided' });
+      }
+
+      const user = (req as any).user;
+      const results = { created: 0, updated: 0, errors: [] as any[] };
+
+      // Get existing content for upsert matching (by slug)
+      const allContents = await storage.getContents();
+      const contentBySlug = new Map(allContents.map(c => [c.slug, c]));
+
+      // Get countries for validation
+      const countries = await storage.getCountries();
+      const countryCodes = new Set(countries.map(c => c.code));
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowErrors: string[] = [];
+
+        // Validate required fields
+        if (!row.title) rowErrors.push('title is required');
+        if (!row.slug) rowErrors.push('slug is required');
+        if (!row.content_type) rowErrors.push('content_type is required');
+        if (row.country_code && !countryCodes.has(row.country_code)) {
+          rowErrors.push(`unknown country_code: ${row.country_code}`);
+        }
+
+        if (rowErrors.length > 0) {
+          results.errors.push({ row: i + 1, slug: row.slug, errors: rowErrors });
+          continue;
+        }
+
+        try {
+          const existing = contentBySlug.get(row.slug);
+          const contentData = {
+            title: row.title,
+            slug: row.slug,
+            description: row.description || null,
+            type: row.content_type || 'lesson',
+            contentType: row.content_type || null,
+            status: row.status || 'draft',
+            section: row.section || null,
+            countryCode: row.country_code || null,
+            language: row.language || 'en',
+            content: row.content_body_html || null,
+            videoUrl: row.video_url || null,
+            documentUrl: row.document_url || null,
+            imageUrl: row.image_url || null,
+            altText: row.alt_text || null,
+            videoDuration: row.duration ? parseInt(row.duration) : null,
+            categoryTag: row.category_tag || null,
+            displayName: row.display_name || null,
+            fileSize: row.file_size || null,
+            order: row.order ? parseInt(row.order) : 0,
+          };
+
+          if (existing) {
+            await storage.updateContent(existing.id, contentData as any);
+            results.updated++;
+          } else {
+            await storage.createContent(contentData as any);
+            results.created++;
+          }
+        } catch (err: any) {
+          results.errors.push({ row: i + 1, slug: row.slug, errors: [err.message] });
+        }
+      }
+
+      res.json({
+        success: true,
+        created: results.created,
+        updated: results.updated,
+        skipped: results.errors.length,
+        errors: results.errors,
+      });
+    } catch (error: any) {
+      console.error('Bulk import error:', error);
+      res.status(500).json({ success: false, message: 'Bulk import failed: ' + error.message });
+    }
+  });
+
   // Chat API endpoint - Proxy to n8n webhook
+  // ---- Findy AI Admin Routes ----
+  app.get('/api/admin/findy/config', requireAdminOrStaff, async (req, res) => {
+    const configs = await storage.getFindyConfigs();
+    const configMap: Record<string, string | null> = {};
+    for (const c of configs) configMap[c.key] = c.value;
+    res.json({ success: true, config: configMap });
+  });
+
+  app.post('/api/admin/findy/config', requireAdmin, async (req, res) => {
+    const { key, value } = req.body;
+    if (!key) return res.status(400).json({ success: false, message: 'key is required' });
+    const user = (req as any).user;
+    const config = await storage.setFindyConfig(key, String(value ?? ''), user?.id);
+    res.json({ success: true, config });
+  });
+
+  app.post('/api/admin/findy/config/bulk', requireAdmin, async (req, res) => {
+    const { configs } = req.body; // { key: string, value: string }[]
+    if (!Array.isArray(configs)) return res.status(400).json({ success: false, message: 'configs must be an array' });
+    const user = (req as any).user;
+    const results = [];
+    for (const { key, value } of configs) {
+      if (key) results.push(await storage.setFindyConfig(key, String(value ?? ''), user?.id));
+    }
+    res.json({ success: true, updated: results.length });
+  });
+
+  app.get('/api/admin/findy/conversations', requireAdminOrStaff, async (req, res) => {
+    const limit = parseInt(String(req.query.limit || '100'));
+    const conversations = await storage.getFindyConversations(limit);
+    res.json({ success: true, conversations });
+  });
+
+  app.get('/api/admin/findy/conversations/:id', requireAdminOrStaff, async (req, res) => {
+    const conversation = await storage.getFindyConversationById(req.params.id);
+    if (!conversation) return res.status(404).json({ success: false, message: 'Conversation not found' });
+    const messages = await storage.getFindyMessages(req.params.id);
+    res.json({ success: true, conversation, messages });
+  });
+
+  app.get('/api/admin/findy/analytics', requireAdminOrStaff, async (req, res) => {
+    const analytics = await storage.getFindyAnalytics();
+    res.json({ success: true, analytics });
+  });
+
+  // Public Findy config endpoint (for widget, only returns safe keys)
+  app.get('/api/findy/widget-config', async (req, res) => {
+    const SAFE_KEYS = ['persona_name', 'welcome_message', 'input_placeholder', 'widget_position', 'widget_primary_color', 'widget_enabled'];
+    const configs = await storage.getFindyConfigs();
+    const configMap: Record<string, string | null> = {};
+    for (const c of configs) {
+      if (SAFE_KEYS.includes(c.key)) configMap[c.key] = c.value;
+    }
+    res.json({ success: true, config: configMap });
+  });
+
   app.post('/api/chat', async (req, res) => {
     try {
       const { message, sessionId } = req.body;
@@ -3668,6 +4135,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: 'Failed to process chat message'
       });
+    }
+  });
+
+  // ── Content File Upload Route ────────────────────────────────────────────────
+  // POST /api/uploads/content — upload image or document for course content
+  app.post('/api/uploads/content', requireAuth, requireAdminOrStaff, contentUpload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+      const { file } = req;
+      const isImage = file.mimetype.startsWith('image/');
+      const folder = isImage ? 'images' : 'documents';
+      const publicUrl = `/uploads/content/${folder}/${file.filename}`;
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+      res.json({
+        success: true,
+        url: publicUrl,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: fileSizeMB,
+        type: isImage ? 'image' : 'document',
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message || 'Upload failed' });
+    }
+  });
+
+  // ── Content Translation Routes ──────────────────────────────────────────────
+  // GET /api/admin/contents/:id/translations — list all translations for a content item
+  app.get('/api/admin/contents/:id/translations', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const translations = await storage.getContentTranslations(req.params.id);
+      res.json({ success: true, data: translations });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch translations' });
+    }
+  });
+
+  // GET /api/admin/contents/:id/translations/:lang — single translation
+  app.get('/api/admin/contents/:id/translations/:lang', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const translation = await storage.getContentTranslation(req.params.id, req.params.lang);
+      if (!translation) return res.status(404).json({ success: false, message: 'Translation not found' });
+      res.json({ success: true, data: translation });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch translation' });
+    }
+  });
+
+  // PUT /api/admin/contents/:id/translations/:lang — upsert a translation
+  app.put('/api/admin/contents/:id/translations/:lang', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const userId = req.headers['x-user-id'] as string;
+      const { title, description, content, status } = req.body;
+      const translation = await storage.upsertContentTranslation({
+        contentId: req.params.id,
+        language: req.params.lang,
+        title: title || null,
+        description: description || null,
+        content: content || null,
+        status: status || 'draft',
+        translatedBy: userId,
+      });
+      res.json({ success: true, data: translation });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to save translation' });
+    }
+  });
+
+  // DELETE /api/admin/contents/:id/translations/:lang — delete a translation
+  app.delete('/api/admin/contents/:id/translations/:lang', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      await storage.deleteContentTranslation(req.params.id, req.params.lang);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to delete translation' });
+    }
+  });
+
+  // GET /api/admin/translations — list all translations across all content
+  app.get('/api/admin/translations', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const translations = await storage.getAllTranslations();
+      res.json({ success: true, data: translations });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch translations' });
+    }
+  });
+
+  // Public: GET /api/public/contents/:id/translation?lang=tr — serve translated content to agents
+  app.get('/api/public/contents/:id/translation', async (req, res) => {
+    try {
+      const lang = (req.query.lang as string) || 'en';
+      const translation = await storage.getContentTranslation(req.params.id, lang);
+      res.json({ success: true, data: translation || null });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch translation' });
     }
   });
 

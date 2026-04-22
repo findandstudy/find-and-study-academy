@@ -6,8 +6,21 @@ import bcrypt from "bcryptjs";
 import path from "path";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// ── Security Headers ──────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Allow iframe embedding for the Findy chat widget
+  if (!req.path.startsWith('/embed')) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
+  next();
+});
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));

@@ -30,6 +30,12 @@ export default function AgentDashboard() {
     queryKey: ['/api/certificates'],
     enabled: !!user,
   });
+
+  // Fetch real weekly activity from analytics
+  const { data: activityData } = useQuery<{ success: boolean; activity: { day: string; date: string; lessons: number }[] }>({
+    queryKey: ['/api/analytics/my-activity'],
+    enabled: !!user,
+  });
   
   // Fetch announcements from backend
   const { data: announcementsData } = useQuery<{ success: boolean; announcements: Announcement[] }>({
@@ -111,27 +117,12 @@ export default function AgentDashboard() {
     })
     .sort((a, b) => b.progress - a.progress); // Sort by progress descending
   
-  // Weekly activity - use real lesson completion data
-  const getLast7DaysActivity = () => {
-    const days = Array.from({ length: 7 }, (_, i) => ({
-      day: dayjs().subtract(6 - i, 'day').format('ddd'),
-      date: dayjs().subtract(6 - i, 'day').format('YYYY-MM-DD'),
-      lessons: 0,
-      progress: 0
-    }));
-    
-    // Distribute completed lessons across the week for visualization
-    // In a real implementation, this would use timestamped activity data
-    const avgLessonsPerDay = totalLessonsCompleted / 7;
-    days.forEach((day, i) => {
-      day.lessons = Math.max(0, Math.round(avgLessonsPerDay + (Math.random() - 0.5) * 2));
-      day.progress = Math.round((day.lessons / (avgLessonsPerDay || 1)) * 100);
-    });
-    
-    return days;
-  };
-  
-  const weeklyProgressData = getLast7DaysActivity();
+  // Real weekly activity data from analytics API
+  const weeklyProgressData = activityData?.activity || Array.from({ length: 7 }, (_, i) => ({
+    day: dayjs().subtract(6 - i, 'day').format('ddd'),
+    date: dayjs().subtract(6 - i, 'day').format('YYYY-MM-DD'),
+    lessons: 0,
+  }));
 
   return (
     <div className="space-y-6">

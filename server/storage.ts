@@ -41,10 +41,28 @@ import {
   type EmailLog,
   type InsertEmailLog,
   type AnalyticsMetric,
-  type InsertAnalyticsMetric
+  type InsertAnalyticsMetric,
+  findyConfig,
+  findyConversations,
+  findyMessages,
+  integrationEvents,
+  integrationApiKeys,
+  type FindyConfig,
+  type FindyConversation,
+  type FindyMessage,
+  type InsertFindyConfig,
+  type InsertFindyConversation,
+  type InsertFindyMessage,
+  type IntegrationEvent,
+  type IntegrationApiKey,
+  type InsertIntegrationEvent,
+  type InsertIntegrationApiKey,
+  contentTranslations,
+  type ContentTranslation,
+  type InsertContentTranslation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, count, and } from "drizzle-orm";
+import { eq, count, and, gte, lte, desc, sql as sqlExpr } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -151,6 +169,25 @@ export interface IStorage {
   getCourseMetrics(courseId: string): Promise<AnalyticsMetric[]>;
   getMetricsByType(metricType: string): Promise<AnalyticsMetric[]>;
   getMetricsInDateRange(startDate: Date, endDate: Date): Promise<AnalyticsMetric[]>;
+  getUserMetricsInDateRange(userId: string, startDate: Date, endDate: Date): Promise<AnalyticsMetric[]>;
+
+  // Integration Event Log methods
+  createIntegrationEvent(data: InsertIntegrationEvent): Promise<IntegrationEvent>;
+  getIntegrationEvents(options?: { integrationId?: string; eventType?: string; status?: string; limit?: number }): Promise<IntegrationEvent[]>;
+  updateIntegrationEventStatus(id: string, status: string, responseStatus?: number, responseBody?: string, durationMs?: number, errorMessage?: string): Promise<IntegrationEvent>;
+
+  // Integration API Key methods
+  createIntegrationApiKey(data: InsertIntegrationApiKey): Promise<IntegrationApiKey>;
+  getIntegrationApiKeys(includeRevoked?: boolean): Promise<IntegrationApiKey[]>;
+  revokeIntegrationApiKey(id: string, revokedBy: string): Promise<IntegrationApiKey>;
+  getApiKeyByHash(keyHash: string): Promise<IntegrationApiKey | undefined>;
+
+  // Content Translation methods
+  getContentTranslations(contentId: string): Promise<ContentTranslation[]>;
+  getContentTranslation(contentId: string, language: string): Promise<ContentTranslation | undefined>;
+  upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation>;
+  deleteContentTranslation(contentId: string, language: string): Promise<void>;
+  getAllTranslations(): Promise<ContentTranslation[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -476,12 +513,21 @@ export class DatabaseStorage implements IStorage {
         slug: contents.slug,
         description: contents.description,
         type: contents.type,
+        contentType: contents.contentType,
         countryId: contents.countryId,
+        countryCode: contents.countryCode,
         courseId: contents.courseId,
         quizId: contents.quizId,
         content: contents.content,
         videoUrl: contents.videoUrl,
         videoDuration: contents.videoDuration,
+        documentUrl: contents.documentUrl,
+        imageUrl: contents.imageUrl,
+        altText: contents.altText,
+        displayName: contents.displayName,
+        fileSize: contents.fileSize,
+        categoryTag: contents.categoryTag,
+        language: contents.language,
         section: contents.section,
         status: contents.status,
         order: contents.order,
@@ -934,7 +980,221 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(analyticsMetrics)
-      .where(eq(analyticsMetrics.timestamp, startDate)); // Note: Simplified - would need proper date range query
+      .where(and(gte(analyticsMetrics.timestamp, startDate), lte(analyticsMetrics.timestamp, endDate)));
+  }
+
+  async getUserMetricsInDateRange(userId: string, startDate: Date, endDate: Date): Promise<AnalyticsMetric[]> {
+    return await db
+      .select()
+      .from(analyticsMetrics)
+      .where(and(
+        eq(analyticsMetrics.userId, userId),
+        gte(analyticsMetrics.timestamp, startDate),
+        lte(analyticsMetrics.timestamp, endDate)
+      ));
+  }
+
+  // --- Findy AI ---
+  async getFindyConfigs(): Promise<FindyConfig[]> {
+    return await db.select().from(findyConfig);
+  }
+
+  async getFindyConfigByKey(key: string): Promise<FindyConfig | undefined> {
+    const [row] = await db.select().from(findyConfig).where(eq(findyConfig.key, key));
+    return row;
+  }
+
+  async setFindyConfig(key: string, value: string, updatedBy?: string): Promise<FindyConfig> {
+    const existing = await this.getFindyConfigByKey(key);
+    if (existing) {
+      const [updated] = await db.update(findyConfig)
+        .set({ value, updatedAt: new Date(), updatedBy })
+        .where(eq(findyConfig.key, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(findyConfig)
+        .values({ key, value, updatedBy })
+        .returning();
+      return created;
+    }
+  }
+
+  async getFindyConversations(limit = 100): Promise<FindyConversation[]> {
+    return await db.select().from(findyConversations)
+      .orderBy(desc(findyConversations.startedAt))
+      .limit(limit);
+  }
+
+  async getFindyConversationById(id: string): Promise<FindyConversation | undefined> {
+    const [row] = await db.select().from(findyConversations).where(eq(findyConversations.id, id));
+    return row;
+  }
+
+  async createFindyConversation(data: Partial<InsertFindyConversation>): Promise<FindyConversation> {
+    const [conv] = await db.insert(findyConversations).values({
+      sessionId: data.sessionId || crypto.randomUUID(),
+      channel: data.channel || 'web',
+      userId: data.userId,
+    }).returning();
+    return conv;
+  }
+
+  async updateFindyConversation(id: string, data: Partial<FindyConversation>): Promise<FindyConversation | undefined> {
+    const [updated] = await db.update(findyConversations).set(data).where(eq(findyConversations.id, id)).returning();
+    return updated;
+  }
+
+  async getFindyMessages(conversationId: string): Promise<FindyMessage[]> {
+    return await db.select().from(findyMessages)
+      .where(eq(findyMessages.conversationId, conversationId))
+      .orderBy(findyMessages.createdAt);
+  }
+
+  async createFindyMessage(data: InsertFindyMessage): Promise<FindyMessage> {
+    const [msg] = await db.insert(findyMessages).values(data).returning();
+    return msg;
+  }
+
+  async getFindyAnalytics(): Promise<{ totalConversations: number; totalMessages: number; totalTokens: number; fallbackRate: number; last7Days: any[] }> {
+    const [convStats] = await db.select({
+      total: count(findyConversations.id),
+      totalTokens: sqlExpr<number>`SUM(${findyConversations.tokenCount})`,
+      totalFallbacks: sqlExpr<number>`SUM(${findyConversations.fallbackCount})`,
+    }).from(findyConversations);
+
+    const [msgStats] = await db.select({
+      total: count(findyMessages.id),
+    }).from(findyMessages);
+
+    const totalConversations = Number(convStats?.total ?? 0);
+    const totalTokens = Number(convStats?.totalTokens ?? 0);
+    const totalFallbacks = Number(convStats?.totalFallbacks ?? 0);
+    const totalMessages = Number(msgStats?.total ?? 0);
+
+    return {
+      totalConversations,
+      totalMessages,
+      totalTokens,
+      fallbackRate: totalConversations > 0 ? (totalFallbacks / totalConversations) : 0,
+      last7Days: [],
+    };
+  }
+
+  // ---- Integration Event Log ----
+  async createIntegrationEvent(data: InsertIntegrationEvent): Promise<IntegrationEvent> {
+    const [event] = await db.insert(integrationEvents).values(data).returning();
+    return event;
+  }
+
+  async getIntegrationEvents(options: { integrationId?: string; eventType?: string; status?: string; limit?: number } = {}): Promise<IntegrationEvent[]> {
+    const { integrationId, eventType, status, limit = 200 } = options;
+    const conditions = [];
+    if (integrationId) conditions.push(eq(integrationEvents.integrationId, integrationId));
+    if (eventType) conditions.push(eq(integrationEvents.eventType, eventType));
+    if (status) conditions.push(eq(integrationEvents.status, status));
+
+    const query = db.select().from(integrationEvents)
+      .orderBy(desc(integrationEvents.createdAt))
+      .limit(limit);
+
+    if (conditions.length > 0) {
+      return await query.where(and(...conditions));
+    }
+    return await query;
+  }
+
+  async updateIntegrationEventStatus(
+    id: string,
+    status: string,
+    responseStatus?: number,
+    responseBody?: string,
+    durationMs?: number,
+    errorMessage?: string
+  ): Promise<IntegrationEvent> {
+    const updates: any = { status };
+    if (responseStatus !== undefined) updates.responseStatus = responseStatus;
+    if (responseBody !== undefined) updates.responseBody = responseBody;
+    if (durationMs !== undefined) updates.durationMs = durationMs;
+    if (errorMessage !== undefined) updates.errorMessage = errorMessage;
+
+    const [event] = await db.update(integrationEvents)
+      .set(updates)
+      .where(eq(integrationEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  // ---- Integration API Keys ----
+  async createIntegrationApiKey(data: InsertIntegrationApiKey): Promise<IntegrationApiKey> {
+    const [key] = await db.insert(integrationApiKeys).values(data).returning();
+    return key;
+  }
+
+  async getIntegrationApiKeys(includeRevoked = false): Promise<IntegrationApiKey[]> {
+    const query = db.select().from(integrationApiKeys).orderBy(desc(integrationApiKeys.createdAt));
+    if (!includeRevoked) {
+      return await query.where(eq(integrationApiKeys.isActive, true));
+    }
+    return await query;
+  }
+
+  async revokeIntegrationApiKey(id: string, revokedBy: string): Promise<IntegrationApiKey> {
+    const [key] = await db.update(integrationApiKeys)
+      .set({ isActive: false, revokedAt: new Date(), revokedBy })
+      .where(eq(integrationApiKeys.id, id))
+      .returning();
+    return key;
+  }
+
+  async getApiKeyByHash(keyHash: string): Promise<IntegrationApiKey | undefined> {
+    const [key] = await db.select().from(integrationApiKeys)
+      .where(and(eq(integrationApiKeys.keyHash, keyHash), eq(integrationApiKeys.isActive, true)));
+    return key || undefined;
+  }
+
+  // Content Translation implementations
+  async getContentTranslations(contentId: string): Promise<ContentTranslation[]> {
+    return db.select().from(contentTranslations)
+      .where(eq(contentTranslations.contentId, contentId))
+      .orderBy(contentTranslations.language);
+  }
+
+  async getContentTranslation(contentId: string, language: string): Promise<ContentTranslation | undefined> {
+    const [row] = await db.select().from(contentTranslations)
+      .where(and(
+        eq(contentTranslations.contentId, contentId),
+        eq(contentTranslations.language, language)
+      ));
+    return row || undefined;
+  }
+
+  async upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation> {
+    const existing = await this.getContentTranslation(data.contentId, data.language);
+    if (existing) {
+      const [updated] = await db.update(contentTranslations)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(contentTranslations.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(contentTranslations)
+      .values({ ...data, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async deleteContentTranslation(contentId: string, language: string): Promise<void> {
+    await db.delete(contentTranslations)
+      .where(and(
+        eq(contentTranslations.contentId, contentId),
+        eq(contentTranslations.language, language)
+      ));
+  }
+
+  async getAllTranslations(): Promise<ContentTranslation[]> {
+    return db.select().from(contentTranslations)
+      .orderBy(contentTranslations.contentId, contentTranslations.language);
   }
 }
 

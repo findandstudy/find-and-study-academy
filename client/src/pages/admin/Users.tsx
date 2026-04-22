@@ -28,9 +28,10 @@ interface User {
   name: string;
   email: string;
   username: string;
-  role: 'admin' | 'agent';
+  role: 'admin' | 'agent' | 'staff';
   status: 'active' | 'inactive';
   agencyId?: string;
+  companyName?: string;
   profilePicture?: string;
   agency?: {
     id: string;
@@ -43,8 +44,9 @@ interface User {
 interface UserEditForm {
   name: string;
   email: string;
-  role: 'admin' | 'agent';
+  role: 'admin' | 'agent' | 'staff';
   status: 'active' | 'inactive';
+  companyName: string;
 }
 
 interface CreateUserForm {
@@ -52,8 +54,9 @@ interface CreateUserForm {
   password: string;
   name: string;
   email: string;
-  role: 'admin' | 'agent';
+  role: 'admin' | 'agent' | 'staff';
   status: 'active' | 'inactive';
+  companyName: string;
 }
 
 export default function AdminUsers() {
@@ -64,7 +67,7 @@ export default function AdminUsers() {
   
   // Edit dialog state
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState<UserEditForm>({ name: '', email: '', role: 'agent', status: 'active' });
+  const [editForm, setEditForm] = useState<UserEditForm>({ name: '', email: '', role: 'agent', status: 'active', companyName: '' });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Create dialog state
@@ -75,7 +78,8 @@ export default function AdminUsers() {
     name: '',
     email: '',
     role: 'agent',
-    status: 'active'
+    status: 'active',
+    companyName: '',
   });
   
   // Delete confirmation state
@@ -113,9 +117,10 @@ export default function AdminUsers() {
     const total = users.length;
     const admins = users.filter(u => u.role === 'admin').length;
     const agents = users.filter(u => u.role === 'agent').length;
+    const staff = users.filter(u => u.role === 'staff').length;
     const active = users.filter(u => u.status === 'active').length;
     
-    return { total, admins, agents, active };
+    return { total, admins, agents, staff, active };
   }, [users]);
 
   // Selection handlers
@@ -156,7 +161,8 @@ export default function AdminUsers() {
         name: '',
         email: '',
         role: 'agent',
-        status: 'active'
+        status: 'active',
+        companyName: '',
       });
     },
     onError: (error: any) => {
@@ -262,6 +268,7 @@ export default function AdminUsers() {
       email: user.email,
       role: user.role,
       status: user.status,
+      companyName: user.companyName || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -302,8 +309,16 @@ export default function AdminUsers() {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '??';
   };
 
-  const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'default' : 'secondary';
+  const getRoleBadgeVariant = (role: string): 'default' | 'secondary' | 'outline' => {
+    if (role === 'admin') return 'default';
+    if (role === 'staff') return 'outline';
+    return 'secondary';
+  };
+
+  const getRoleLabel = (role: string) => {
+    if (role === 'admin') return 'Administrator';
+    if (role === 'staff') return 'Staff';
+    return 'Agent';
   };
 
   const getStatusBadge = (status: string) => {
@@ -400,8 +415,8 @@ export default function AdminUsers() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold" data-testid="text-active-users">{stats.active}</p>
+                <p className="text-sm font-medium text-muted-foreground">Staff / Active</p>
+                <p className="text-2xl font-bold" data-testid="text-active-users">{stats.staff} / {stats.active}</p>
               </div>
               <Calendar className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -428,6 +443,7 @@ export default function AdminUsers() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Administrators</SelectItem>
+            <SelectItem value="staff">Staff</SelectItem>
             <SelectItem value="agent">Agents</SelectItem>
           </SelectContent>
         </Select>
@@ -533,7 +549,7 @@ export default function AdminUsers() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
                         <Badge variant={getRoleBadgeVariant(user.role)} data-testid={`badge-role-${user.id}`}>
-                          {user.role === 'admin' ? 'Administrator' : 'Agent'}
+                          {getRoleLabel(user.role)}
                         </Badge>
                         {getStatusBadge(user.status)}
                       </div>
@@ -541,6 +557,11 @@ export default function AdminUsers() {
                       {user.agency && (
                         <p className="text-sm text-muted-foreground" data-testid={`text-user-agency-${user.id}`}>
                           {user.agency.name} • {user.agency.city}, {user.agency.country}
+                        </p>
+                      )}
+                      {!user.agency && user.companyName && (
+                        <p className="text-sm text-muted-foreground" data-testid={`text-user-company-${user.id}`}>
+                          {user.companyName}
                         </p>
                       )}
                     </div>
@@ -621,15 +642,26 @@ export default function AdminUsers() {
             </div>
             <div>
               <Label htmlFor="create-role">Role</Label>
-              <Select value={createForm.role} onValueChange={(value: 'admin' | 'agent') => setCreateForm({ ...createForm, role: value })}>
+              <Select value={createForm.role} onValueChange={(value: 'admin' | 'agent' | 'staff') => setCreateForm({ ...createForm, role: value })}>
                 <SelectTrigger data-testid="select-create-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="agent">Agent</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
                   <SelectItem value="admin">Administrator</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="create-company">Company Name</Label>
+              <Input
+                id="create-company"
+                value={createForm.companyName}
+                onChange={(e) => setCreateForm({ ...createForm, companyName: e.target.value })}
+                placeholder="Enter company name (optional)"
+                data-testid="input-create-company"
+              />
             </div>
             <div>
               <Label htmlFor="create-status">Status</Label>
@@ -694,15 +726,26 @@ export default function AdminUsers() {
               </div>
               <div>
                 <Label htmlFor="edit-role">Role</Label>
-                <Select value={editForm.role} onValueChange={(value: 'admin' | 'agent') => setEditForm({ ...editForm, role: value })}>
+                <Select value={editForm.role} onValueChange={(value: 'admin' | 'agent' | 'staff') => setEditForm({ ...editForm, role: value })}>
                   <SelectTrigger data-testid="select-edit-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="agent">Agent</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-company">Company Name</Label>
+                <Input
+                  id="edit-company"
+                  value={editForm.companyName}
+                  onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
+                  placeholder="Enter company name (optional)"
+                  data-testid="input-edit-company"
+                />
               </div>
               <div>
                 <Label htmlFor="edit-status">Status</Label>

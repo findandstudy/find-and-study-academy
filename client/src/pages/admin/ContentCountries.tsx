@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -25,9 +25,13 @@ import {
   FileIcon,
   HelpCircle,
   Power,
-  PowerOff
+  PowerOff,
+  Upload
 } from 'lucide-react';
 import { insertCountrySchema, insertContentSchema, type Country, type Content, type InsertCountry, type InsertContent } from '@shared/schema';
+import { CountryFlag } from '@/components/CountryFlag';
+import { BulkUploadWizard } from '@/components/BulkUploadWizard';
+import { ContentTranslationEditor } from '@/components/ContentTranslationEditor';
 
 export default function AdminContentCountries() {
   const { toast } = useToast();
@@ -37,6 +41,8 @@ export default function AdminContentCountries() {
   const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
   const [editingCountry, setEditingCountry] = useState<Country | null>(null);
   const [editingContent, setEditingContent] = useState<(Content & { countryName?: string }) | null>(null);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [translatingContent, setTranslatingContent] = useState<Content | null>(null);
 
   // Countries query
   const { data: countries = [], isLoading: countriesLoading, refetch: refetchCountries } = useQuery({
@@ -81,9 +87,20 @@ export default function AdminContentCountries() {
       quizId: 'none',
       content: '',
       status: 'published',
-      order: 0
+      order: 0,
+      language: 'en',
+      section: '',
+      videoUrl: null,
+      videoDuration: null,
+      documentUrl: null,
+      imageUrl: null,
+      altText: null,
+      displayName: null,
+      fileSize: null,
+      categoryTag: null,
     }
   });
+  const watchedContentType = useWatch({ control: contentForm.control, name: 'type' });
 
   // Country mutations
   const createCountryMutation = useMutation({
@@ -249,11 +266,20 @@ export default function AdminContentCountries() {
       setEditingContent(content);
       contentForm.reset({
         ...content,
-        content: content.content || '', // Convert null to empty string
+        content: content.content || '',
         countryId: content.countryId || 'none',
         courseId: content.courseId || 'none',
         quizId: content.quizId || 'none',
-        section: content.section || '' // Empty string for text input
+        section: content.section || '',
+        language: (content as any).language || 'en',
+        videoUrl: (content as any).videoUrl || null,
+        videoDuration: (content as any).videoDuration || null,
+        documentUrl: (content as any).documentUrl || null,
+        imageUrl: (content as any).imageUrl || null,
+        altText: (content as any).altText || null,
+        displayName: (content as any).displayName || null,
+        fileSize: (content as any).fileSize || null,
+        categoryTag: (content as any).categoryTag || null,
       });
     } else {
       setEditingContent(null);
@@ -463,7 +489,7 @@ export default function AdminContentCountries() {
                   {filteredCountries.map((country) => (
                     <div key={country.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{country.flag}</span>
+                        <CountryFlag code={country.code} flag={country.flag} size="lg" />
                         <div>
                           <div className="font-medium">{country.name}</div>
                           <div className="text-sm text-muted-foreground">
@@ -528,14 +554,23 @@ export default function AdminContentCountries() {
                   <FileText className="w-5 h-5" />
                   Content Management
                 </CardTitle>
-                <Dialog open={isContentDialogOpen} onOpenChange={setIsContentDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => openContentDialog()} data-testid="button-add-content">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Content
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsBulkUploadOpen(true)}
+                    data-testid="button-bulk-upload"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Bulk Upload
+                  </Button>
+                  <Dialog open={isContentDialogOpen} onOpenChange={setIsContentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button onClick={() => openContentDialog()} data-testid="button-add-content">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Content
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>
                         {editingContent ? 'Edit Content' : 'Add New Content'}
@@ -723,25 +758,259 @@ export default function AdminContentCountries() {
                             )}
                           />
                         </div>
-                        <FormField
-                          control={contentForm.control}
-                          name="content"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Content Body</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Content body (HTML, Markdown, etc.)" 
-                                  className="min-h-[150px]"
-                                  {...field} 
-                                  value={field.value || ''}
-                                  data-testid="textarea-content-body"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* Language & Category */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={contentForm.control}
+                            name="language"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Language</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || 'en'}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-content-language">
+                                      <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="en">English</SelectItem>
+                                    <SelectItem value="tr">Türkçe</SelectItem>
+                                    <SelectItem value="ru">Русский</SelectItem>
+                                    <SelectItem value="ar">العربية</SelectItem>
+                                    <SelectItem value="az">Azərbaycan</SelectItem>
+                                    <SelectItem value="fa">فارسی</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={contentForm.control}
+                            name="categoryTag"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Category Tag <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g. visa, admission, scholarship"
+                                    {...field}
+                                    value={field.value || ''}
+                                    data-testid="input-content-category-tag"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Type-specific fields */}
+                        {(watchedContentType === 'lesson' || watchedContentType === 'quiz' || !watchedContentType) && (
+                          <FormField
+                            control={contentForm.control}
+                            name="content"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Content Body</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Content body (HTML, Markdown, etc.)"
+                                    className="min-h-[150px]"
+                                    {...field}
+                                    value={field.value || ''}
+                                    data-testid="textarea-content-body"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {watchedContentType === 'video' && (
+                          <div className="space-y-4">
+                            <FormField
+                              control={contentForm.control}
+                              name="videoUrl"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Video URL</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="input-content-video-url"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={contentForm.control}
+                              name="videoDuration"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Duration <span className="text-muted-foreground text-xs">(seconds, optional)</span></FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="e.g. 360 for 6 minutes"
+                                      {...field}
+                                      value={field.value?.toString() || ''}
+                                      onChange={e => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                                      data-testid="input-content-duration"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={contentForm.control}
+                              name="content"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description / Transcript <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Optional description or transcript"
+                                      className="min-h-[80px]"
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="textarea-content-body"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+
+                        {watchedContentType === 'document' && (
+                          <div className="space-y-4">
+                            <FormField
+                              control={contentForm.control}
+                              name="documentUrl"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Document URL</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="https://... (PDF, DOCX, etc.)"
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="input-content-document-url"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <div className="grid grid-cols-2 gap-4">
+                              <FormField
+                                control={contentForm.control}
+                                name="displayName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Display Name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="e.g. Application Guide 2025"
+                                        {...field}
+                                        value={field.value || ''}
+                                        data-testid="input-content-display-name"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={contentForm.control}
+                                name="fileSize"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>File Size <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="e.g. 2.3 MB"
+                                        {...field}
+                                        value={field.value || ''}
+                                        data-testid="input-content-file-size"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <FormField
+                              control={contentForm.control}
+                              name="content"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Brief description of the document"
+                                      className="min-h-[80px]"
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="textarea-content-body"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+
+                        {watchedContentType === 'image' && (
+                          <div className="space-y-4">
+                            <FormField
+                              control={contentForm.control}
+                              name="imageUrl"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Image URL</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="https://... (JPG, PNG, WebP, etc.)"
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="input-content-image-url"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={contentForm.control}
+                              name="altText"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Alt Text <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Descriptive text for accessibility"
+                                      {...field}
+                                      value={field.value || ''}
+                                      data-testid="input-content-alt-text"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+
                         <div className="flex justify-end space-x-2">
                           <Button type="button" variant="outline" onClick={() => setIsContentDialogOpen(false)}>
                             Cancel
@@ -759,6 +1028,7 @@ export default function AdminContentCountries() {
                   </DialogContent>
                 </Dialog>
               </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
                 <Input
@@ -771,6 +1041,11 @@ export default function AdminContentCountries() {
               </div>
             </CardHeader>
             <CardContent>
+              <BulkUploadWizard
+                open={isBulkUploadOpen}
+                onClose={() => setIsBulkUploadOpen(false)}
+                onSuccess={() => refetchContents()}
+              />
               {contentsLoading ? (
                 <div className="text-center py-4">Loading content...</div>
               ) : (
@@ -791,6 +1066,15 @@ export default function AdminContentCountries() {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setTranslatingContent(content)}
+                          data-testid={`button-translate-content-${content.id}`}
+                          title="Çevirileri Düzenle"
+                        >
+                          <Globe className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -821,6 +1105,14 @@ export default function AdminContentCountries() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {translatingContent && (
+        <ContentTranslationEditor
+          content={translatingContent}
+          open={!!translatingContent}
+          onClose={() => setTranslatingContent(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,347 @@
+Staff = B (orta seviye operasyonel) olarak not aldım. Başka eksik söylemediğin için biriken tüm maddeleri kapsayan Replit prompt'unu hazırladım. Aşağıdaki metni olduğu gibi Replit'e yapıştırabilirsin — İngilizce yazdım, çünkü Replit Agent İngilizce yönergelerle daha iyi çalışıyor; sonunda Türkçe kısa bir "Notes to Agent" bloğu var.
+
+---
+
+# Replit Prompt — Find And Study Academy: Feature & Fix Sprint
+
+You are upgrading an existing full-stack app that lives at `academy.findandstudy.com` with two panels:
+- **Agent panel** at `/agent/*`
+- **Admin panel** at `/admin/*`
+- A floating chat widget called **Findy Assistant** that currently POSTs to `/api/chat`.
+
+Do NOT break existing working pages (Agent Dashboard, Courses, Admin Dashboard, Quizzes, Agencies, Reports, Announcements, Menu Management). Apply the changes below in the order they appear. For every change: update UI, backend, DB schema/migrations, API routes, validation, authorization, and write minimal unit/integration tests. Use the existing design system / colors (Find & Study blue `#143591`, red `#ED1C24`).
+
+---
+
+## 1) Agent panel — missing pages (fix 404 / redirects)
+
+Currently these routes either 404 or silently redirect to `/agent/dashboard`:
+- `/agent/certificates`
+- `/agent/agency`  (linked as "My Agency" in sidebar)
+- `/agent/subscriptions`
+- `/agent/profile`
+
+Build real pages for each:
+
+1. **Certificates** (`/agent/certificates`): list of all certificates the agent has earned, with score, issue date, course, country, download PDF button, share link. Dashboard's "View All Certificates" button must link here.
+2. **My Agency** (`/agent/agency`): agent's linked agency (from `agencies` table) with company name, logo, address, team members list, role within agency, contact info. If no agency is linked, show "Request to join an agency" flow.
+3. **Subscriptions** (`/agent/subscriptions`): current plan, renewal date, invoices, payment method (managed by Stripe — do NOT store card data), upgrade/downgrade CTA.
+4. **Profile** (`/agent/profile`): editable personal info (full name, email read-only, phone, language preference, avatar upload, password change), notification preferences.
+
+Acceptance: all four routes return 200, render real data for the logged-in agent, and are reachable from sidebar and relevant dashboard CTAs.
+
+---
+
+## 2) Agent Dashboard — real charts (no mock data)
+
+- `Weekly Learning Activity` currently renders random/mock data that changes on every reload. Replace with real lesson-completion counts per day (last 7 days) from the `lesson_progress` table.
+- `Course Progress Overview` is empty. Render a horizontal bar chart (one bar per enrolled course) showing `lessons_completed / total_lessons`.
+- Add an empty-state when the agent has zero activity.
+
+Acceptance: charts are deterministic between reloads, reflect actual DB data, and update when an agent completes a lesson.
+
+---
+
+## 3) Country flags — cross-platform fix
+
+Edit Country form (`Admin > Content/Countries > edit`) currently has a `Flag (emoji or URL)` field that stores `"AZ"`, `"CN"`, etc. This renders as a flag emoji on macOS but as plain letters on Windows.
+
+Fix:
+- Replace the text field with a **flag picker** that stores a stable asset reference.
+- Ship a built-in SVG flag set (use the `flag-icons` package or Twemoji country flags bundled locally — no emoji reliance).
+- Allow admin to override with a custom PNG/SVG upload (stored in `/uploads/flags/{country_code}.svg`).
+- Render flags via `<img>` or an `<Flag code="AZ" />` component everywhere they appear (Courses country tabs, admin list, agent list).
+- Data migration: convert all existing two-letter values to the bundled SVG by `country_code`.
+
+Acceptance: all country flags look identical on Windows, macOS, and Linux browsers.
+
+---
+
+## 4) Default course / destination selector (admin)
+
+Add a **"Defaults"** section inside `Admin > Settings/Payments > System Settings` (or a new `Admin > Defaults` page):
+
+- **Global default country**: dropdown of active countries. When an agent opens `/agent/courses`, that country tab is pre-selected.
+- **Per-country default section/lesson** (optional): for each country, pick which A1–A8 module (and optionally first lesson) opens by default.
+- **Global default course**: which course is surfaced on dashboard CTAs like "Continue learning".
+
+Persist as JSON in `system_settings` under keys `default_country_code`, `default_course_id`, `default_lessons_by_country`. Expose read API `GET /api/settings/defaults` used by agent frontend.
+
+Acceptance: changing defaults in admin immediately reflects in the agent panel without redeploy.
+
+---
+
+## 5) Content form — dynamic type-based fields + uploads + Partner Zone
+
+`Admin > Content/Countries > Add/Edit Content` currently shows the same fields regardless of `Content Type`. Rework so fields are dynamic:
+
+- **Common fields (always visible)**: Title, Slug, Description, Content Type, Status, Section, Country, Linked Quiz, Order, Language (see §6).
+- **Lesson**: Content Body (rich HTML editor with sanitized paste, see §6).
+- **Video**: one of two modes — (a) Upload file (`mp4/webm/mov`, max 500 MB, streamed to `/uploads/videos/{uuid}`) OR (b) External URL (YouTube, Vimeo, raw MP4). Plus: Thumbnail upload (image), Duration (auto-detected if uploaded), Captions/Subtitles upload (`.vtt`, multi-language).
+- **Image**: Image upload (`png/jpg/webp/svg`, max 20 MB), Alt text, Caption.
+- **Document**: File upload (`pdf/doc/docx/xls/xlsx/ppt/pptx/zip`, max 100 MB), Display name, File size (auto), Short description, Category tag. Mark `downloadable: true`.
+- **Quiz**: keep current Linked Quiz behavior.
+
+All uploads go through a single `/api/uploads` endpoint with server-side validation (MIME sniffing, antivirus hook-point, size checks). Store files in object storage (Replit Object Storage / S3-compatible) and persist only URLs in DB.
+
+### 5a) Agent-facing Partner Zone
+Add a new agent page `/agent/partner-zone` (visible only if Menu Management enables it). It lists all content with `content_type = 'document'` as downloadable cards grouped by Category tag and Country. Each card shows filename, size, description, download button, and a "last updated" date. Hide content with `status != 'published'`.
+
+Acceptance: admin can attach a PDF/ZIP to a content item; agent sees it in Partner Zone and can download it; video lessons play inline in agent Courses pages.
+
+---
+
+## 6) Multilingual Content Body + safe HTML rendering
+
+`Content Body` is currently a single plain textarea. Replace with:
+
+- **Language tabs** above the body editor. Available languages managed in `Admin > Defaults > Languages` (seed with `en`, `tr`; admin can add more e.g. `ru`, `ar`, `az`, `fa`). Each language stores its own Title, Description, and Content Body.
+- **Rich editor** (TipTap or CKEditor) with "Source code" mode so admin can paste raw HTML blocks. On save, server sanitizes with **DOMPurify** using an allowlist that keeps: `section, div, span, p, h1-h6, ul, ol, li, a[href,target], img[src,alt], iframe[src,allowfullscreen]` (iframes restricted to YouTube/Vimeo/Google Drive), inline `style`, and safe attributes. Strip all `<script>` and event handlers.
+- **Agent-side rendering**: render sanitized HTML inside a sandboxed container. If content contains complex `<style>` blocks that may leak globally, wrap in `<iframe sandbox="allow-scripts allow-same-origin" srcdoc="…">`.
+- Data model: `content_translations(content_id, language_code, title, description, body)` with unique `(content_id, language_code)`.
+- Agent's active language is derived from user profile (`user.language`) with fallback to browser locale then `en`.
+
+Acceptance: admin can paste a large multi-block HTML page (styles + sections) in the TR tab and the agent switching to TR sees it render intact; switching to EN shows the English variant.
+
+---
+
+## 7) Bulk content upload (Excel/CSV)
+
+In `Admin > Content/Countries > Content` tab, next to `+ Add Content`, add **`⬆ Bulk Upload`** button that opens a wizard:
+
+- **Step 1 — Download Template**: generates an `.xlsx` with these columns:
+  `title, slug, description, content_type, status, section, country_code, linked_quiz_slug, order, language, content_body_html, video_url, document_url, image_url, alt_text, duration, category_tag`.
+  Include a hidden "Instructions" sheet and dropdown validations (content_type, status, country_code, language).
+- **Step 2 — Upload file** (xlsx/csv, max 10 MB). Parse with `SheetJS`.
+- **Step 3 — Preview & Validate**: table showing each row with per-cell validation errors (missing required, unknown country_code, invalid URL, duplicate slug, non-existing quiz slug). Rows are selectable; invalid rows are non-selectable with red highlight.
+- **Step 4 — Import**: call `POST /api/admin/content/bulk-import` with valid rows. Show progress bar. On completion, show report: `X created, Y updated (by slug), Z skipped with errors` + downloadable error log CSV.
+
+Upsert strategy: match by `slug + language`; create if missing, update if exists.
+
+Acceptance: admin can seed 100 lessons across 5 countries in one upload; errors are actionable.
+
+---
+
+## 8) Users — Staff role + Company Name
+
+### 8a) New role: `staff` (middle-tier operational)
+Add `staff` to `users.role` enum alongside `agent` and `administrator`. Surface it in:
+- Create User & Edit User role dropdowns
+- "All Roles" filter dropdown on User Management
+- User Directory badge
+
+**Permission matrix for `staff`** (middle-tier operational — option B):
+
+| Module | Staff permissions |
+|---|---|
+| Dashboard (admin) | Read |
+| Users | Read + Create/Edit `agent` users; CANNOT create/edit/delete `administrator` or `staff` |
+| Agencies | Full CRUD |
+| Content/Countries | Full CRUD (including bulk upload) |
+| Quizzes | Full CRUD |
+| Certificates | Full CRUD (issue, revoke) |
+| Announcements | Full CRUD |
+| Reports | Read + export |
+| Menu Management | Read only |
+| **Settings/Payments** | **Denied** (no access) |
+| **Integrations** | **Denied** (no access) |
+| **Findy AI (see §12)** | Read conversations only; no credential/provider access |
+
+Enforce on backend with middleware (`requireRole(['administrator'])` vs `requireRole(['administrator','staff'])`). Frontend hides denied sidebar items and disables denied actions. Any forbidden API call returns 403.
+
+### 8b) Company Name field on User
+Create User & Edit User forms gain a **Company Name** section with two inputs:
+- `company_name` — free-text (max 200 chars), always editable.
+- `agency_id` — optional searchable dropdown of existing `agencies`. When set, overrides display to agency's official name; the free-text is still stored as a hint.
+
+Show company name on User Directory cards (already visually present for some rows — now drive it from these fields). The existing search bar placeholder "name, email, username, or agency" must match against both `company_name` and linked `agency.name`.
+
+Migration: for users who already have a visible agency string, backfill `agency_id` where possible; otherwise put it into `company_name`.
+
+Acceptance: admin creates a user with company name + optional agency link; it appears in the list and is searchable.
+
+---
+
+## 9) Integrations & Webhooks — real infrastructure
+
+Currently `/admin/integrations` is an empty stub and the `Add Integration` form only covers outbound configuration. Build a proper integration/webhook backbone.
+
+### 9a) Integration Types expanded
+Add `Webhook` to the Integration Type dropdown alongside existing `Payment, Email, Storage, CRM, Analytics, Automation`.
+
+### 9b) Incoming Webhooks (external systems → Academy)
+For each integration of type `Webhook` (or for specific named providers like `meetup`, `stripe`, `kommo`, `sendgrid`), auto-generate a stable endpoint:
+
+```
+POST https://academy.findandstudy.com/api/integrations/{provider}/webhook
+```
+
+For each endpoint:
+- **Signing secret**: generated via `Generate new secret` button; stored server-side (env: `ACADEMY_WEBHOOK_SECRET_{PROVIDER}` if set, otherwise in `integrations.signing_secret_encrypted`). Show last-4 and `last_rotated_at`. Include a `Rotate` and `Revoke` action.
+- **HMAC verification**: require `X-Signature` (hex-encoded HMAC-SHA256 of raw body using signing secret) and `X-Timestamp` (unix seconds; reject if |now - ts| > 300). Return 401 on mismatch.
+- **Idempotency**: honor `Idempotency-Key` header; store last 1000 keys per provider and return cached response on repeat.
+- **Event subscriptions**: admin selects which events this integration emits (e.g., `booking.created, booking.updated, booking.cancelled`). Unknown events are 202-accepted but logged.
+- **Event → Action mapping**: a rule editor to say "when `booking.created`, upsert user by email then enroll in course X and send welcome email". Store as JSON rules; apply on webhook receipt.
+- **IP allowlist** (optional) per integration.
+- **Rate limit**: 60 req/min per IP, 600 req/min per integration (configurable).
+
+### 9c) API Keys (external systems → Academy REST)
+New section `Admin > Integrations > API Keys`:
+- Create, list, rotate, revoke keys.
+- Each key has `name, scopes (users:read, users:write, enrollments:write, content:read, chat:invoke), expires_at, ip_allowlist, last_used_at`.
+- Secret shown **once** at creation only.
+- Middleware validates `Authorization: Bearer <key>` and enforces scopes per route.
+
+### 9d) Outgoing Webhooks (Academy → external systems)
+For events like `user.created, enrollment.created, certificate.issued, course.completed`:
+- Admin configures target URL, signing secret, subscribed events, active toggle.
+- Academy POSTs signed payloads with `X-Academy-Signature` + `X-Academy-Timestamp`.
+- Retry with exponential backoff (1m, 5m, 30m, 2h, 12h — 5 attempts total). Persist every attempt.
+
+### 9e) Event Log (central)
+`Admin > Integrations > Event Log` table: timestamp, direction (in/out), provider, event type, HTTP status, signature valid?, idempotency key, duration, error. Row click → payload (masked secrets) + response body + **Replay** button.
+
+### 9f) Test tools
+Per integration: `Test Connection` (for API/SMTP types) and `Send Test Event` (for webhook types, sends a synthetic payload to the target or to the Academy handler).
+
+### 9g) Environment/Secrets status UI
+Show status (not values!) of expected env vars: `ACADEMY_API_URL`, `ACADEMY_API_KEY`, `ACADEMY_WEBHOOK_SECRET`, `MEETUP_*`, `STRIPE_*`, etc. Each shows `configured | not configured | last updated`. Provide an inline help panel explaining how to set them in Replit Secrets and restart the server.
+
+### 9h) Public Integration Docs
+A read-only page `/admin/integrations/docs` (also linkable externally) per provider describing: endpoint URL, required headers (`X-Signature`, `X-Timestamp`, `Idempotency-Key`, `Content-Type`), payload schema, cURL example, signature generation examples in Node.js and Python.
+
+### 9i) Provider presets
+Ship presets for `MeetUp`, `Stripe`, `Kommo`, `SendGrid`, `Generic Webhook`. Selecting a preset prefills name, type, default endpoint path, default event list, and docs links.
+
+---
+
+## 10) Redesign `Add New Integration` form (UX)
+
+The current modal piles all config sections (API, SMTP, Google Sheets, CRM, Automation) on top of each other regardless of selected type. Rebuild as:
+
+- Convert modal into a **full-page wizard** at `/admin/integrations/new` (mobile: stepper modal).
+- Steps:
+  1. **Choose Preset** — card grid (MeetUp, Stripe, Kommo, SendGrid, Google Sheets, Generic Webhook, Custom).
+  2. **Basic Info** — Integration Name, Display Name, Description, Integration Type, Enable toggle.
+  3. **Connection** — fields are **rendered dynamically based on Integration Type**. Payment/Storage/CRM show API Configuration only. Email shows SMTP only. Webhook shows Incoming URL + Signing Secret + Event Subscriptions. No unrelated fields visible.
+  4. **Credentials** — masked inputs with show/hide eye icon, Copy, Regenerate. Help text under each: "Stored only on the server as ACADEMY_API_KEY. Rotate anytime."
+  5. **Events & Mapping** (webhook types) — checkboxes for subscribed events + rule editor.
+  6. **Review & Test** — summary + `Test Connection` / `Send Test Event` buttons with green/red result badges.
+- Inline validation (slug pattern `^[a-z0-9][a-z0-9-_]*$`, URL must be https, SMTP port 1–65535). Save-blocking errors scroll to the offending step.
+- Two-column field layout inside each step, clear required/optional tags, section dividers, help tooltips.
+
+Acceptance: creating a Payment integration shows ~5 fields; creating a Webhook integration shows an entirely different set; no cross-contamination.
+
+---
+
+## 11) Findy AI — full management module
+
+Add a new top-level sidebar item **`Findy AI`** (icon: message + sparkle) with these sub-pages:
+
+### 11a) Overview
+KPIs: conversations today/7d/30d, answer rate, avg response time, fallback rate, token cost (today/MTD). Quick links to Logs, Knowledge Base, Channels.
+
+### 11b) Provider & Model
+- Multiple AI provider support: `OpenAI, Anthropic, Azure OpenAI, Google Gemini, Mistral, OpenRouter, Custom endpoint`.
+- Per provider: API base URL, API key (masked; set-once; `Rotate`; show last-4 + `last_rotated_at`), organization id (optional).
+- Pick **Active provider + model** (with searchable model list fetched from provider).
+- Sliders for: temperature, top_p, presence/frequency penalty, max output tokens, timeout (s), max retries.
+- **Fallback provider** config: if primary fails N times, route to backup.
+- All secret values shown only as `configured | not configured | last rotated`. Values never revealed in UI after save.
+
+### 11c) Persona & Prompt
+- Markdown editor for **System Prompt** with variables (`{{user.name}}, {{user.language}}, {{today}}, {{country_default}}`).
+- Persona name (default `Findy`), welcome message, input placeholder, error message, refusal message.
+- Language mode: `auto (match user) | forced (single) | user profile`.
+- **Guardrails**: banned topics list, max user message length, PII masking, `strict_mode` toggle (see §11d).
+- **Versioning**: every save creates a new version; diff viewer; one-click rollback.
+
+### 11d) Knowledge Base (RAG)
+- **Internal sources** (checkboxes): Courses, Content (Lessons/Video transcripts/Documents OCR), Quizzes (titles only), Certificates metadata, Announcements, Agencies, FAQ, Settings/Menu text. Each has `include/exclude`.
+- **Manual uploads**: drag-drop PDF/DOCX/TXT/MD/CSV; URL crawl (depth 1); FAQ JSON import. Each entry shows size, chunks, last indexed.
+- **Embeddings**: choose model (e.g., `text-embedding-3-large`), chunk size, overlap. Store vectors in `pgvector` (or configured vector DB).
+- **Sync**: manual `Re-index` button; automatic re-index webhook when any included source mutates.
+- **Strict Mode**: when enabled, Findy is not allowed to answer from the model's general knowledge — must cite at least one KB chunk. If zero chunks match above similarity threshold, return the configured fallback message ("I don't have information about this in the Find And Study system."). Cited sources rendered as small chips under each answer linking back to the source page.
+
+### 11e) Channels & Embed
+- **Site widget**: position, colors, avatar, title, welcome message, working hours, show when anonymous? — all editable; preview pane on the right.
+- **Embeddable script** for external sites:
+  ```html
+  <script src="https://academy.findandstudy.com/findy/embed.js"
+          data-key="PUBLIC_KEY"
+          data-theme="light"></script>
+  ```
+  Admin generates public embed keys with **allowed domains** (CORS allowlist), usage quota (messages/day), and rate limit.
+- **WhatsApp Cloud API**: fields for Meta App ID, Phone Number ID, Access Token, Verify Token. Auto-generated inbound webhook URL shown for copy into Meta portal. `Connect / Test` button.
+- **Telegram**: Bot token → auto-register webhook.
+- **Messenger / Instagram DM**: optional, same pattern.
+- Per channel: separate on/off, per-channel persona override, per-channel rate limits.
+
+### 11f) API & Webhooks (for Findy specifically)
+- **Inbound REST**:
+  - `POST /api/findy/chat` with `Authorization: Bearer <API_KEY>`.
+  - Body: `{ message, session_id, user_id?, locale?, context? }`.
+  - Response: `{ reply, sources: [...], usage: {tokens, cost_usd} }`.
+  - Admin generates API keys scoped to `chat:invoke` (with optional `chat:history`).
+- **Outbound Webhooks**: subscribe URLs to events `message.received, message.answered, feedback.given, fallback.triggered, error.occurred`. Signed with dedicated secret; retry same as §9d.
+- **Proxy mode**: toggle `Forward all messages to external bot URL`. When on, Findy becomes a pass-through: user messages go to the configured URL, its response (JSON `{reply}`) is shown back in the widget. Lets the user connect an external bot without changing the widget.
+
+### 11g) Conversations (logs)
+Table: session id, started at, channel (web/api/whatsapp/telegram/embed), user, messages count, tokens, cost, fallback count, feedback 👍/👎. Click → full transcript with per-message cited KB chunks, model, latency. Filters + CSV export. Retention configurable (default 90 days).
+
+### 11h) Analytics
+Charts: messages/day, top intents (clustered), unanswered questions (suggest as FAQ entries — one-click "Add to FAQ"), avg latency, token cost, channel distribution, CSAT.
+
+### 11i) Settings
+Rate limits (per IP/user/API key), ban list, PII masking regex, log retention days, GDPR export/delete, monthly cost cap with alert webhook when 80% / 100% reached.
+
+### Authorization
+- `administrator`: full access to all Findy AI sub-pages.
+- `staff`: read-only access to Conversations and Analytics; cannot see Provider, API keys, Channels credentials, or Settings.
+- `agent`: no admin access; consumes Findy via widget only.
+
+Acceptance:
+- Admin configures OpenAI key + selects model + writes system prompt + enables `strict_mode` + selects Courses/Content/FAQ as sources + clicks Re-index; a test question about a lesson is answered with cited source links; a question about an unrelated topic returns the refusal message.
+- Admin copies embed snippet, pastes on another site; widget works when the site is in the allowlist, rejected otherwise.
+- A third-party bot calls `/api/findy/chat` with a valid API key and receives a proper JSON reply.
+- Enabling Proxy mode routes all messages to the configured external URL and back.
+
+---
+
+## 12) Security, quality, and infra requirements (apply to all items)
+
+- All secrets (API keys, webhook secrets, SMTP passwords, AI provider keys) stored encrypted at rest; never returned in API responses; never logged.
+- Add audit logging for any create/update/delete in Users, Agencies, Integrations, Content, Findy settings. Surface in `Admin > Reports > Audit Log`.
+- CSRF protection on all admin mutating routes; SameSite cookies; HSTS.
+- File uploads: MIME sniffing, extension allowlist, size caps, virus-scan hook interface (implementation optional, hook present).
+- Rate limiting globally and per endpoint (stricter on `/api/integrations/*/webhook` and `/api/findy/chat`).
+- All new components responsive (≥ 360px), accessible (labels, focus ring, keyboard nav, `aria-*`), and dark-mode friendly where the app already supports it.
+- Database migrations committed with both up and down paths. Seed scripts for new enums (`role = 'staff'`, `content_type = 'video|document|image|lesson|quiz'`, languages, flag assets).
+- Tests: at least happy-path + one failure path per new API route.
+- Update README with setup notes: required env vars (`ACADEMY_API_URL`, `ACADEMY_API_KEY`, `ACADEMY_WEBHOOK_SECRET`, AI provider keys, WhatsApp keys), how to run migrations, how to reindex KB.
+
+---
+
+## 13) Delivery order (please follow)
+
+1. §1, §2, §3 (visible agent-panel wins).
+2. §8 (Staff role + Company Name) and §4 (Defaults) — small, unblock others.
+3. §5 + §6 + §7 (content pipeline + localization + bulk).
+4. §9 + §10 (integration backbone + redesigned form).
+5. §11 (Findy AI module) — largest; can be split into 11a–c first, then 11d, then 11e–i.
+6. §12 hardening pass.
+
+After each block, run migrations, build, and smoke-test both panels.
+
+---
+
+### Notes to Agent (TR)
+- Mevcut çalışan sayfaları (Dashboard, Courses, Quizzes, Agencies, Reports, Announcements, Menu Management) bozma.
+- UI'daki Türkçe/İngilizce metinler projedeki mevcut i18n mantığına uysun; yoksa basit bir i18n katmanı (`react-i18next` vb.) ekle.
+- Findy için `strict_mode` KESİN olsun: KB eşleşmesi yoksa model kendi bilgisini kullanmasın, konfigüre edilen fallback mesajını dönsün.
+- Webhook secret'ları ve AI API key'leri UI'da **hiçbir zaman** değer olarak gösterilmesin; yalnızca "configured / last rotated" durumu.
+- Replit Secrets'ta olması gereken env değişkenlerinin listesini README'ye yaz ve admin UI'daki "Environment status" bloğunda aynı listeyi sergile.
+
+---
+
+İşte prompt bu. İstersen doğrudan Replit'e yapıştırabilirsin. Bir sonraki turda ayar/düzenleme istersen (bir maddeyi kısalt, bir madde ekle/çıkar, teknoloji tercihi değiştir vb.) söyle, yeniden düzenleyeyim. 🚀

@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -120,6 +121,101 @@ const getProviderBadge = (provider: string, isActive: boolean) => {
     </div>
   );
 };
+
+// --- Defaults Tab Component ---
+function DefaultsTabContent() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: countriesData } = useQuery<{ success: boolean; countries: any[] }>({
+    queryKey: ['/api/countries'],
+  });
+  const { data: defaultsData, isLoading: defaultsLoading } = useQuery<{ success: boolean; defaults: Record<string, string> }>({
+    queryKey: ['/api/settings/defaults'],
+  });
+
+  const countries = countriesData?.countries?.filter((c: any) => c.status === 'active') ?? [];
+  const defaults = defaultsData?.defaults ?? {};
+
+  const [defaultCountry, setDefaultCountry] = useState('');
+  const [platformName, setPlatformName] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+
+  useEffect(() => {
+    if (defaults.default_country_code) setDefaultCountry(defaults.default_country_code);
+    if (defaults.platform_name) setPlatformName(defaults.platform_name);
+    if (defaults.support_email) setSupportEmail(defaults.support_email);
+  }, [defaults]);
+
+  const saveDefaultMutation = useMutation({
+    mutationFn: async (payload: { key: string; value: string }) =>
+      apiRequest('POST', '/api/admin/settings', { key: payload.key, value: payload.value, category: 'general', type: 'string', isPublic: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings/defaults'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
+      toast({ title: 'Saved', description: 'Default settings updated.' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to save setting.', variant: 'destructive' });
+    },
+  });
+
+  const handleSave = () => {
+    if (defaultCountry) saveDefaultMutation.mutate({ key: 'default_country_code', value: defaultCountry });
+    if (platformName) saveDefaultMutation.mutate({ key: 'platform_name', value: platformName });
+    if (supportEmail) saveDefaultMutation.mutate({ key: 'support_email', value: supportEmail });
+  };
+
+  if (defaultsLoading) return <div className="py-8 text-center text-muted-foreground">Loading defaults...</div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Platform Defaults</CardTitle>
+        <CardDescription>Configure default settings applied platform-wide.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label>Default Country</Label>
+          <Select value={defaultCountry} onValueChange={setDefaultCountry}>
+            <SelectTrigger data-testid="select-default-country">
+              <SelectValue placeholder="Select default country..." />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map((c: any) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.flag ? <span className="mr-2">{c.flag}</span> : null}{c.name} ({c.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">New agents will see this country's courses by default.</p>
+        </div>
+        <div className="space-y-2">
+          <Label>Platform Name</Label>
+          <Input
+            value={platformName}
+            onChange={(e) => setPlatformName(e.target.value)}
+            placeholder="Find And Study Academy"
+            data-testid="input-platform-name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Support Email</Label>
+          <Input
+            value={supportEmail}
+            onChange={(e) => setSupportEmail(e.target.value)}
+            placeholder="support@example.com"
+            data-testid="input-support-email"
+          />
+        </div>
+        <Button onClick={handleSave} disabled={saveDefaultMutation.isPending} data-testid="button-save-defaults">
+          {saveDefaultMutation.isPending ? 'Saving...' : 'Save Defaults'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminSettingsPayments() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -400,7 +496,7 @@ export default function AdminSettingsPayments() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="settings" data-testid="tab-settings">
             <Settings className="w-4 h-4 mr-2" />
             System Settings
@@ -408,6 +504,10 @@ export default function AdminSettingsPayments() {
           <TabsTrigger value="payments" data-testid="tab-payments">
             <CreditCard className="w-4 h-4 mr-2" />
             Payment Configuration
+          </TabsTrigger>
+          <TabsTrigger value="defaults" data-testid="tab-defaults">
+            <Globe className="w-4 h-4 mr-2" />
+            Defaults
           </TabsTrigger>
         </TabsList>
 
@@ -1043,6 +1143,11 @@ export default function AdminSettingsPayments() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Defaults Tab */}
+        <TabsContent value="defaults" className="space-y-4">
+          <DefaultsTabContent />
         </TabsContent>
       </Tabs>
 

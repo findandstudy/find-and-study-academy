@@ -12,6 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { IntegrationEventLog } from '@/components/IntegrationEventLog';
+import { IntegrationApiKeys } from '@/components/IntegrationApiKeys';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,7 +42,10 @@ import {
   Database,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  ChevronRight,
+  ChevronLeft,
+  Check
 } from 'lucide-react';
 
 // Types
@@ -169,6 +174,7 @@ export default function AdminIntegrations() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [showSecrets, setShowSecrets] = useState<{[key: string]: boolean}>({});
+  const [createWizardStep, setCreateWizardStep] = useState(1);
   const { toast } = useToast();
 
   // Fetch integrations
@@ -408,9 +414,26 @@ export default function AdminIntegrations() {
       <div>
         <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">Integrations</h1>
         <p className="text-muted-foreground mt-1">
-          Manage third-party integrations and external service connections.
+          Manage third-party integrations, webhook events, and API key access.
         </p>
       </div>
+
+      <Tabs defaultValue="integrations">
+        <TabsList>
+          <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="event-log" data-testid="tab-event-log">Event Log</TabsTrigger>
+          <TabsTrigger value="api-keys" data-testid="tab-api-keys">API Keys</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="event-log" className="mt-4">
+          <IntegrationEventLog integrations={integrations as any} />
+        </TabsContent>
+
+        <TabsContent value="api-keys" className="mt-4">
+          <IntegrationApiKeys integrations={integrations as any} />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="mt-4 space-y-4">
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -440,7 +463,13 @@ export default function AdminIntegrations() {
           </Select>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog
+          open={isCreateDialogOpen}
+          onOpenChange={(v) => {
+            setIsCreateDialogOpen(v);
+            if (!v) { setCreateWizardStep(1); form.reset(); }
+          }}
+        >
           <DialogTrigger asChild>
             <Button data-testid="button-create-integration">
               <Plus className="w-4 h-4 mr-2" />
@@ -449,8 +478,70 @@ export default function AdminIntegrations() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Integration</DialogTitle>
+              <DialogTitle>
+                {createWizardStep === 1 ? 'Choose Integration Type' : 'Configure Integration'}
+              </DialogTitle>
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 mt-3">
+                {[1, 2].map(step => (
+                  <div key={step} className="flex items-center gap-2">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${step === createWizardStep ? 'bg-primary text-primary-foreground' : step < createWizardStep ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                      {step < createWizardStep ? <Check className="w-3.5 h-3.5" /> : step}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{step === 1 ? 'Type' : 'Config'}</span>
+                    {step < 2 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+                  </div>
+                ))}
+              </div>
             </DialogHeader>
+
+            {/* STEP 1: Type Selection */}
+            {createWizardStep === 1 && (
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground">Select the type of service you want to connect.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { value: 'payment', label: 'Payment', Icon: CreditCard, desc: 'Stripe, PayPal, Iyzico' },
+                    { value: 'email', label: 'Email', Icon: Mail, desc: 'SendGrid, Mailgun, SMTP' },
+                    { value: 'storage', label: 'Storage', Icon: Cloud, desc: 'S3, GCS, Object Store' },
+                    { value: 'crm', label: 'CRM', Icon: Users, desc: 'HubSpot, Salesforce' },
+                    { value: 'analytics', label: 'Analytics', Icon: BarChart3, desc: 'GA4, Mixpanel, Segment' },
+                    { value: 'automation', label: 'Automation', Icon: Zap, desc: 'n8n, Zapier, Make' },
+                  ].map(typeOpt => {
+                    const currentType = form.watch('type');
+                    const isSelected = currentType === typeOpt.value;
+                    return (
+                      <button
+                        key={typeOpt.value}
+                        type="button"
+                        onClick={() => form.setValue('type', typeOpt.value)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-md border-2 transition-colors text-center ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover-elevate'}`}
+                        data-testid={`wizard-type-${typeOpt.value}`}
+                      >
+                        <typeOpt.Icon className={`w-8 h-8 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className="text-sm font-semibold">{typeOpt.label}</span>
+                        <span className="text-xs text-muted-foreground">{typeOpt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                  <Button
+                    onClick={() => {
+                      if (!form.watch('type')) { toast({ title: 'Please select a type', variant: 'destructive' }); return; }
+                      setCreateWizardStep(2);
+                    }}
+                    data-testid="wizard-next-step"
+                  >
+                    Next <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Configuration */}
+            {createWizardStep === 2 && (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleCreateIntegration)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -779,25 +870,37 @@ export default function AdminIntegrations() {
                   />
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="flex justify-between pt-4">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsCreateDialogOpen(false)}
-                    data-testid="button-cancel-create"
+                    onClick={() => setCreateWizardStep(1)}
+                    data-testid="button-wizard-back"
                   >
-                    Cancel
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Back
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={createIntegrationMutation.isPending}
-                    data-testid="button-submit-create"
-                  >
-                    {createIntegrationMutation.isPending ? 'Creating...' : 'Create Integration'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateDialogOpen(false)}
+                      data-testid="button-cancel-create"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createIntegrationMutation.isPending}
+                      data-testid="button-submit-create"
+                    >
+                      {createIntegrationMutation.isPending ? 'Creating...' : 'Create Integration'}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -1199,6 +1302,9 @@ export default function AdminIntegrations() {
           </Form>
         </DialogContent>
       </Dialog>
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

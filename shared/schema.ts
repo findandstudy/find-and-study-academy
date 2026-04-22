@@ -9,9 +9,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default('agent'), // 'admin' | 'agent'
+  role: text("role").notNull().default('agent'), // 'admin' | 'agent' | 'staff'
   status: text("status").notNull().default('active'), // 'active' | 'inactive'
   agencyId: varchar("agency_id"),
+  companyName: text("company_name"), // Free-text company name (optional)
+  languagePreference: text("language_preference").default('en'), // 'en' | 'tr' | etc.
   profilePicture: text("profile_picture"), // URL to profile picture
   emailNotifications: boolean("email_notifications").notNull().default(true), // Email notification preference
   courseCompletionNotif: boolean("course_completion_notif").notNull().default(true),
@@ -79,14 +81,23 @@ export const contents = pgTable("contents", {
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
-  type: text("type").notNull().default('lesson'), // 'lesson' | 'video' | 'document' | 'quiz'
+  type: text("type").notNull().default('lesson'), // 'lesson' | 'video' | 'document' | 'quiz' | 'image'
+  contentType: text("content_type"), // Alias for type (used in newer code)
   countryId: varchar("country_id"), // Optional - content can be country-specific
+  countryCode: text("country_code"), // Country ISO code for direct reference
   courseId: varchar("course_id"), // Link to courses if needed
   quizId: varchar("quiz_id"), // Optional - link to quiz if this content has an embedded quiz
   content: text("content"), // Main content body (HTML, markdown, etc.)
   videoUrl: text("video_url"), // YouTube, Vimeo, or Object Storage video URL
   videoDuration: integer("video_duration"), // Video duration in seconds
-  section: text("section"), // Section/category name (e.g., "A1 Destination Countries", "A2 Advanced Level")
+  documentUrl: text("document_url"), // URL to downloadable document
+  imageUrl: text("image_url"), // URL to image asset
+  altText: text("alt_text"), // Image alt text
+  displayName: text("display_name"), // User-friendly display name (for documents)
+  fileSize: text("file_size"), // Human-readable file size (e.g. "2.3 MB")
+  categoryTag: text("category_tag"), // Category tag for grouping (used in Partner Zone)
+  language: text("language").notNull().default('en'), // Content language
+  section: text("section"), // Section/category name (e.g., "A1 Destination Countries")
   status: text("status").notNull().default('draft'), // 'draft' | 'published' | 'archived'
   order: integer("order").default(0), // For sorting content within a course/country
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -207,7 +218,7 @@ export const insertContentSchema = createInsertSchema(contents).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  content: z.string().trim().min(10, 'Content body must be at least 10 characters'),
+  content: z.string().optional(),
 });
 
 export const insertCertificateSchema = createInsertSchema(certificates);
@@ -316,6 +327,101 @@ export const integrations = pgTable("integrations", {
   updatedBy: varchar("updated_by"), // User ID who last updated
 });
 
+// Findy AI configuration table
+export const findyConfig = pgTable("findy_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: varchar("updated_by"),
+});
+
+// Findy AI conversations table
+export const findyConversations = pgTable("findy_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id").notNull(),
+  channel: text("channel").notNull().default('web'), // web | api | whatsapp | telegram | embed
+  userId: varchar("user_id"),
+  messageCount: integer("message_count").notNull().default(0),
+  tokenCount: integer("token_count").notNull().default(0),
+  fallbackCount: integer("fallback_count").notNull().default(0),
+  feedbackPositive: integer("feedback_positive").notNull().default(0),
+  feedbackNegative: integer("feedback_negative").notNull().default(0),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  lastMessageAt: timestamp("last_message_at").notNull().defaultNow(),
+});
+
+// Findy AI messages table
+export const findyMessages = pgTable("findy_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => findyConversations.id, { onDelete: 'cascade' }),
+  role: text("role").notNull(), // user | assistant
+  content: text("content").notNull(),
+  tokenCount: integer("token_count").notNull().default(0),
+  isFallback: boolean("is_fallback").notNull().default(false),
+  feedback: text("feedback"), // positive | negative | null
+  latencyMs: integer("latency_ms"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertFindyConfigSchema = createInsertSchema(findyConfig).omit({ id: true, updatedAt: true });
+// Webhook event log table - tracks all outgoing webhook calls and their results
+export const integrationEvents = pgTable("integration_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  integrationId: varchar("integration_id"), // FK to integrations
+  integrationName: text("integration_name"), // Snapshot of integration name
+  eventType: text("event_type").notNull(), // e.g. 'agent.enrolled', 'quiz.passed', 'certificate.issued'
+  method: text("method").notNull().default('POST'), // HTTP method used
+  targetUrl: text("target_url"), // Webhook endpoint URL called
+  requestPayload: text("request_payload"), // JSON payload sent (may be large)
+  responseStatus: integer("response_status"), // HTTP response status
+  responseBody: text("response_body"), // Response from webhook receiver
+  hmacHeader: text("hmac_header"), // X-Hub-Signature-256 value sent
+  durationMs: integer("duration_ms"), // Time taken in milliseconds
+  status: text("status").notNull().default('pending'), // 'pending' | 'success' | 'failed' | 'retrying'
+  retryCount: integer("retry_count").notNull().default(0),
+  errorMessage: text("error_message"),
+  triggeredBy: varchar("triggered_by"), // User or system that triggered
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Integration API keys table - manages API keys for external access
+export const integrationApiKeys = pgTable("integration_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Human-readable key name
+  keyPrefix: text("key_prefix").notNull(), // First 8 chars for display (e.g. "fas_abc1")
+  keyHash: text("key_hash").notNull(), // SHA-256 hash of the full key
+  scopes: text("scopes").array(), // Granted permission scopes
+  integrationId: varchar("integration_id"), // Optional - tied to specific integration
+  isActive: boolean("is_active").notNull().default(true),
+  expiresAt: timestamp("expires_at"), // null = never expires
+  lastUsedAt: timestamp("last_used_at"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by"),
+});
+
+// Content Translations table — per-language overrides for title, description, and body
+export const contentTranslations = pgTable("content_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contentId: varchar("content_id").notNull(), // FK to contents.id
+  language: text("language").notNull(), // e.g. 'tr', 'ru', 'uz', 'kk', 'az', 'en'
+  title: text("title"), // Translated title (null = use base)
+  description: text("description"), // Translated description
+  content: text("content"), // Translated body (HTML)
+  status: text("status").notNull().default('draft'), // 'draft' | 'published'
+  translatedBy: varchar("translated_by"), // User who created/edited
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertFindyConversationSchema = createInsertSchema(findyConversations).omit({ id: true, startedAt: true, lastMessageAt: true });
+export const insertFindyMessageSchema = createInsertSchema(findyMessages).omit({ id: true, createdAt: true });
+export const insertIntegrationEventSchema = createInsertSchema(integrationEvents).omit({ id: true, createdAt: true });
+export const insertIntegrationApiKeySchema = createInsertSchema(integrationApiKeys).omit({ id: true, createdAt: true });
+export const insertContentTranslationSchema = createInsertSchema(contentTranslations).omit({ id: true, createdAt: true, updatedAt: true });
+
 export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
   id: true,
   updatedAt: true,
@@ -363,6 +469,18 @@ export type EmailLog = typeof emailLogs.$inferSelect;
 export type InsertEmailLog = z.infer<typeof insertEmailLogSchema>;
 export type AnalyticsMetric = typeof analyticsMetrics.$inferSelect;
 export type InsertAnalyticsMetric = z.infer<typeof insertAnalyticsMetricSchema>;
+export type FindyConfig = typeof findyConfig.$inferSelect;
+export type FindyConversation = typeof findyConversations.$inferSelect;
+export type FindyMessage = typeof findyMessages.$inferSelect;
+export type InsertFindyConfig = z.infer<typeof insertFindyConfigSchema>;
+export type InsertFindyConversation = z.infer<typeof insertFindyConversationSchema>;
+export type InsertFindyMessage = z.infer<typeof insertFindyMessageSchema>;
+export type IntegrationEvent = typeof integrationEvents.$inferSelect;
+export type IntegrationApiKey = typeof integrationApiKeys.$inferSelect;
+export type InsertIntegrationEvent = z.infer<typeof insertIntegrationEventSchema>;
+export type InsertIntegrationApiKey = z.infer<typeof insertIntegrationApiKeySchema>;
+export type ContentTranslation = typeof contentTranslations.$inferSelect;
+export type InsertContentTranslation = z.infer<typeof insertContentTranslationSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [

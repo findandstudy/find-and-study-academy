@@ -18,7 +18,8 @@ import {
   Menu,
   X,
   Search,
-  Trophy
+  Trophy,
+  Package
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -36,6 +37,7 @@ const allNavigation = [
   { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
   { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
   { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+  { id: 'partner-zone', name: 'Partner Zone', href: '/agent/partner-zone', icon: Package },
   { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
   { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
   { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },

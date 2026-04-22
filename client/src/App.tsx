@@ -40,6 +40,10 @@ import AdminAnnouncements from './pages/admin/Announcements';
 import AdminSettingsPayments from './pages/admin/SettingsPayments';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminMenuManagement from './pages/admin/MenuManagement';
+import AdminFindyAI from './pages/admin/FindyAI';
+
+// Agent Extra Pages
+import AgentPartnerZone from './pages/agent/PartnerZone';
 
 // Public Pages
 import VerifyCertificate from './pages/VerifyCertificate';
@@ -209,6 +213,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/admin/findy-ai">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminFindyAI />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
       {/* Agent Routes */}
       <Route path="/agent/dashboard">
         <ProtectedRoute requiredRole="agent">
@@ -270,6 +282,14 @@ function Router() {
         <ProtectedRoute requiredRole="agent">
           <AgentLayout>
             <AgentSubscriptions />
+          </AgentLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/agent/partner-zone">
+        <ProtectedRoute requiredRole="agent">
+          <AgentLayout>
+            <AgentPartnerZone />
           </AgentLayout>
         </ProtectedRoute>
       </Route>
