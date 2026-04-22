@@ -414,6 +414,23 @@ export default function AdminCertificates() {
                       </div>
                       
                       <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          onClick={() => downloadCertificate(certificate)}
+                          data-testid={`button-download-pdf-${certificate.id}`}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadBadge(certificate)}
+                          data-testid={`button-download-badge-list-${certificate.id}`}
+                        >
+                          <Award className="w-4 h-4 mr-1" />
+                          Badge
+                        </Button>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
