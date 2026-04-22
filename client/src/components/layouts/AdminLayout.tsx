@@ -29,20 +29,20 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Profile', href: '/admin/profile', icon: User },
-  { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText },
-  { name: 'Quizzes', href: '/admin/quizzes', icon: Award },
-  { name: 'Certificates', href: '/admin/certificates', icon: Award },
-  { name: 'Agencies', href: '/admin/agencies', icon: Building },
-  { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-  { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
-  { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings },
-  { name: 'Integrations', href: '/admin/integrations', icon: Plug },
-  { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot },
-  { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree },
+const allNavigation = [
+  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, adminOnly: false },
+  { name: 'Profile', href: '/admin/profile', icon: User, adminOnly: false },
+  { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText, adminOnly: false },
+  { name: 'Quizzes', href: '/admin/quizzes', icon: Award, adminOnly: false },
+  { name: 'Certificates', href: '/admin/certificates', icon: Award, adminOnly: false },
+  { name: 'Agencies', href: '/admin/agencies', icon: Building, adminOnly: false },
+  { name: 'Users', href: '/admin/users', icon: Users, adminOnly: false },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, adminOnly: false },
+  { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, adminOnly: false },
+  { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot, adminOnly: false },
+  { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
+  { name: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
+  { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
@@ -53,8 +53,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return saved === 'true';
   });
   const [location] = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, role, logout } = useAuthStore();
   
+  // Filter navigation based on role — staff cannot see admin-only pages
+  const navigation = allNavigation.filter(item => !item.adminOnly || role === 'admin');
+
   // Save sidebar collapsed state to localStorage
   useEffect(() => {
     localStorage.setItem('admin-sidebar-collapsed', String(sidebarCollapsed));

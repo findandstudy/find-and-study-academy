@@ -58,7 +58,7 @@ function ProtectedRoute({
   requiredRole 
 }: { 
   children: React.ReactNode; 
-  requiredRole?: 'admin' | 'agent' 
+  requiredRole?: string | string[];
 }) {
   const { user, role } = useAuthStore();
   
@@ -66,8 +66,11 @@ function ProtectedRoute({
     return <Redirect to="/login" />;
   }
   
-  if (requiredRole && role !== requiredRole) {
-    return <Forbidden403 />;
+  if (requiredRole) {
+    const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowed.includes(role)) {
+      return <Forbidden403 />;
+    }
   }
   
   return <>{children}</>;
@@ -77,7 +80,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, role } = useAuthStore();
   
   if (user && role) {
-    const dashboardPath = role === 'admin' ? '/admin/dashboard' : '/agent/dashboard';
+    const dashboardPath = (role === 'admin' || role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
     return <Redirect to={dashboardPath} />;
   }
   
@@ -116,9 +119,9 @@ function Router() {
         <VerifyCertificate />
       </Route>
 
-      {/* Admin Routes */}
+      {/* Admin + Staff Routes */}
       <Route path="/admin/dashboard">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminDashboard />
           </AdminLayout>
@@ -126,7 +129,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/profile">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminProfile />
           </AdminLayout>
@@ -134,7 +137,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/content/countries">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminContentCountries />
           </AdminLayout>
@@ -142,7 +145,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/quizzes">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminQuizzes />
           </AdminLayout>
@@ -150,7 +153,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/certificates">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminCertificates />
           </AdminLayout>
@@ -158,7 +161,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/agencies">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminAgencies />
           </AdminLayout>
@@ -166,7 +169,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/users">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminUsers />
           </AdminLayout>
@@ -174,7 +177,7 @@ function Router() {
       </Route>
 
       <Route path="/admin/reports">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminReports />
           </AdminLayout>
@@ -182,13 +185,22 @@ function Router() {
       </Route>
 
       <Route path="/admin/announcements">
-        <ProtectedRoute requiredRole="admin">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminAnnouncements />
           </AdminLayout>
         </ProtectedRoute>
       </Route>
 
+      <Route path="/admin/findy-ai">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
+          <AdminLayout>
+            <AdminFindyAI />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      {/* Admin-only Routes */}
       <Route path="/admin/settings/payments">
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
@@ -209,14 +221,6 @@ function Router() {
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
             <AdminMenuManagement />
-          </AdminLayout>
-        </ProtectedRoute>
-      </Route>
-
-      <Route path="/admin/findy-ai">
-        <ProtectedRoute requiredRole="admin">
-          <AdminLayout>
-            <AdminFindyAI />
           </AdminLayout>
         </ProtectedRoute>
       </Route>
