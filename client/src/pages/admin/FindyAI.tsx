@@ -146,9 +146,6 @@ export default function AdminFindyAI() {
           <TabsTrigger value="settings" data-testid="tab-findy-settings">
             <Settings className="w-4 h-4 mr-1" /> Settings
           </TabsTrigger>
-          <TabsTrigger value="knowledge-base" data-testid="tab-findy-knowledge">
-            <BookOpen className="w-4 h-4 mr-1" /> Knowledge Base
-          </TabsTrigger>
           <TabsTrigger value="channels" data-testid="tab-findy-channels">
             <Code2 className="w-4 h-4 mr-1" /> Channels & Embed
           </TabsTrigger>
@@ -282,11 +279,6 @@ export default function AdminFindyAI() {
         {/* SETTINGS */}
         <TabsContent value="settings" className="space-y-4">
           <FindySettingsTab config={config} onSave={(configs) => bulkSaveMutation.mutate(configs)} saving={bulkSaveMutation.isPending} />
-        </TabsContent>
-
-        {/* KNOWLEDGE BASE */}
-        <TabsContent value="knowledge-base" className="space-y-4">
-          <KnowledgeBaseTab config={config} onSave={(configs) => bulkSaveMutation.mutate(configs)} saving={bulkSaveMutation.isPending} />
         </TabsContent>
 
         {/* CHANNELS & EMBED */}
@@ -903,128 +895,6 @@ function FindySettingsTab({ config, onSave, saving }: { config: FindyConfig; onS
         <Button onClick={handleSave} disabled={saving} data-testid="button-save-findy-settings">
           <Save className="w-4 h-4 mr-2" />
           {saving ? 'Saving...' : 'Save Settings'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Knowledge Base Tab ───────────────────────────────────────────────────────
-function KnowledgeBaseTab({ config, onSave, saving }: { config: FindyConfig; onSave: (c: any[]) => void; saving: boolean }) {
-  const { toast } = useToast();
-  const [ragEnabled, setRagEnabled] = useState(config['findy_rag_enabled'] === 'true');
-  const [vectorDb, setVectorDb] = useState(config['findy_vector_db'] || 'none');
-  const [ragUrl, setRagUrl] = useState(config['findy_rag_url'] || '');
-  const [ragApiKey, setRagApiKey] = useState(config['findy_rag_api_key'] || '');
-  const [showKey, setShowKey] = useState(false);
-
-  const handleSave = () => {
-    onSave([
-      { key: 'findy_rag_enabled', value: ragEnabled ? 'true' : 'false', label: 'RAG Enabled', isSecret: false },
-      { key: 'findy_vector_db', value: vectorDb, label: 'Vector DB Provider', isSecret: false },
-      { key: 'findy_rag_url', value: ragUrl, label: 'RAG Endpoint URL', isSecret: false },
-      { key: 'findy_rag_api_key', value: ragApiKey, label: 'RAG API Key', isSecret: true },
-    ]);
-  };
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BookOpen className="w-5 h-5 text-primary" />
-            Knowledge Base (RAG) Configuration
-          </CardTitle>
-          <CardDescription>
-            Connect a vector database to enable Retrieval-Augmented Generation. Findy will search your knowledge base before generating responses.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
-            <div>
-              <p className="text-sm font-medium">Enable RAG</p>
-              <p className="text-xs text-muted-foreground">Search knowledge base before responding</p>
-            </div>
-            <Switch checked={ragEnabled} onCheckedChange={setRagEnabled} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Vector Database Provider</Label>
-            <Select value={vectorDb} onValueChange={setVectorDb} disabled={!ragEnabled}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None (RAG Disabled)</SelectItem>
-                <SelectItem value="pinecone">Pinecone</SelectItem>
-                <SelectItem value="qdrant">Qdrant</SelectItem>
-                <SelectItem value="weaviate">Weaviate</SelectItem>
-                <SelectItem value="chroma">ChromaDB</SelectItem>
-                <SelectItem value="custom">Custom HTTP Endpoint</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {vectorDb !== 'none' && ragEnabled && (
-            <>
-              <div className="space-y-2">
-                <Label>RAG Endpoint URL</Label>
-                <Input
-                  value={ragUrl}
-                  onChange={e => setRagUrl(e.target.value)}
-                  placeholder="https://your-vector-db-endpoint.com/query"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type={showKey ? "text" : "password"}
-                    value={ragApiKey}
-                    onChange={e => setRagApiKey(e.target.value)}
-                    placeholder="sk-..."
-                  />
-                  <Button variant="outline" size="icon" onClick={() => setShowKey(s => !s)}>
-                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="w-5 h-5 text-primary" />
-            Document Sources
-          </CardTitle>
-          <CardDescription>
-            Documents indexed in your knowledge base. Upload files via your vector database provider's dashboard or API.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border bg-muted/20 p-6 text-center space-y-3">
-            <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-            <p className="text-sm font-medium">Connect a vector database to manage documents</p>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Once connected, documents will be automatically indexed and Findy will use them to answer questions with accurate, source-grounded responses.
-            </p>
-            {vectorDb !== 'none' && ragEnabled && (
-              <Badge variant="secondary" className="gap-1">
-                <CheckCircle className="w-3 h-3" />
-                {vectorDb} configured
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Knowledge Base Settings'}
         </Button>
       </div>
     </div>

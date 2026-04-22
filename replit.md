@@ -35,7 +35,7 @@ The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toa
 - **Quiz-to-Content Linking System:** Allows associating quizzes with specific lessons.
 - **Country-based Final Exam System:** Final exams linked to specific countries and courses with rigorous validation.
 - **Multilingual Content System:** `contentTranslations` table with 6 languages (TR/EN/RU/UZ/KK/AZ), Tiptap rich-text editor, DOMPurify sanitization, 5 API routes.
-- **FindyAI Extended Tabs:** KnowledgeBaseTab (RAG config), ChannelsEmbedTab (widget embed), ApiWebhooksTab (webhook/API).
+- **FindyAI Extended Tabs:** ChannelsEmbedTab (widget embed), ApiWebhooksTab (webhook/API). Knowledge Base tab removed — replaced by Sources tab with built-in PostgreSQL RAG.
 - **FindyAI RAG Knowledge Sources:** `SourcesTab` in FindyAI admin — upload Excel/PDF/Word files or add URLs, parsed into `knowledge_sources`/`knowledge_chunks` tables; top-15 relevant chunks injected into chat context for token-efficient RAG. Background processing with status tracking (active/processing/error). Full CRUD API: GET/POST /api/admin/findy/sources, DELETE/POST reprocess per source.
 - **Integration Wizard:** 2-step visual create dialog with type-selection cards and step indicators.
 - **Security Hardening:** `express-rate-limit` on `/api/login` (20/15min), `/api/signup`, `/api/forgot-password` & `/api/reset-password` (5/hr); security response headers (X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, X-Frame-Options, Permissions-Policy); request body size capped at 10MB.
