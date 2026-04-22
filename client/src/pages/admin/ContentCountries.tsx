@@ -26,12 +26,14 @@ import {
   HelpCircle,
   Power,
   PowerOff,
-  Upload
+  Upload,
+  Download
 } from 'lucide-react';
 import { insertCountrySchema, insertContentSchema, type Country, type Content, type InsertCountry, type InsertContent } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
 import { BulkUploadWizard } from '@/components/BulkUploadWizard';
 import { ContentTranslationEditor } from '@/components/ContentTranslationEditor';
+import * as XLSX from 'xlsx';
 
 export default function AdminContentCountries() {
   const { toast } = useToast();
@@ -61,6 +63,51 @@ export default function AdminContentCountries() {
     queryKey: ['/api/admin/quizzes'],
     select: (data: any) => data.quizzes as Array<{ id: string; title: string; description?: string }>
   });
+
+  // ── Download All Content ────────────────────────────────────────────────────
+  const downloadAllContent = () => {
+    if (contents.length === 0) {
+      toast({ title: 'No data', description: 'There is no content to download.', variant: 'destructive' });
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+
+    // ── Content sheet ────────────────────────────────────────────────────────
+    const contentRows = contents.map(c => ({
+      id: c.id,
+      title: c.title,
+      type: c.type,
+      country: c.countryName || '',
+      countryId: c.countryId || '',
+      duration: c.duration || '',
+      status: c.status,
+      description: c.description || '',
+      videoUrl: (c as any).videoUrl || '',
+      documentUrl: (c as any).documentUrl || '',
+      quizId: (c as any).quizId || '',
+      order: (c as any).order ?? '',
+    }));
+    const contentSheet = XLSX.utils.json_to_sheet(contentRows);
+    contentSheet['!cols'] = [{ wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 50 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, contentSheet, 'Content');
+
+    // ── Countries sheet ──────────────────────────────────────────────────────
+    const countryRows = countries.map((c: Country) => ({
+      id: c.id,
+      name: c.name,
+      code: c.code,
+      status: c.status,
+      flag: (c as any).flag || '',
+      description: (c as any).description || '',
+    }));
+    const countrySheet = XLSX.utils.json_to_sheet(countryRows);
+    countrySheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 6 }, { wch: 10 }, { wch: 6 }, { wch: 50 }];
+    XLSX.utils.book_append_sheet(wb, countrySheet, 'Countries');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `content_export_${dateStr}.xlsx`);
+    toast({ title: 'Download started', description: `Exported ${contents.length} content items and ${countries.length} countries.` });
+  };
 
   // Country form
   const countryForm = useForm<InsertCountry>({
@@ -555,6 +602,14 @@ export default function AdminContentCountries() {
                   Content Management
                 </CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={downloadAllContent}
+                    data-testid="button-download-all-content"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download All
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsBulkUploadOpen(true)}

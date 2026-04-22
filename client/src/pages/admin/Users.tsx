@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Users, Search, Crown, UserCheck, Calendar, Edit3, Save, X, Trash2, UserPlus, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Users, Search, Crown, UserCheck, Calendar, Edit3, Save, X, Trash2, UserPlus, CheckCircle2, XCircle, AlertCircle, Upload, Download, FileSpreadsheet, ChevronRight, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Checkbox } from '@/components/ui/checkbox';
+import * as XLSX from 'xlsx';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +86,15 @@ export default function AdminUsers() {
   // Delete confirmation state
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Bulk import state
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [importStep, setImportStep] = useState<1 | 2 | 3>(1);
+  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string };
+  type ImportResult = { row: number; email: string; status: 'success' | 'error'; message?: string };
+  const [importData, setImportData] = useState<ImportRow[]>([]);
+  const [importResults, setImportResults] = useState<{ successCount: number; errorCount: number; results: ImportResult[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
 
@@ -305,6 +315,83 @@ export default function AdminUsers() {
     bulkDeleteMutation.mutate(userIds);
   };
 
+  // ── Bulk Import helpers ──────────────────────────────────────────────────────
+  const downloadUserTemplate = () => {
+    const wb = XLSX.utils.book_new();
+    const instructionData = [
+      ['FIELD', 'REQUIRED', 'EXAMPLE', 'NOTES'],
+      ['name', 'Yes', 'John Smith', 'Full name of the user'],
+      ['email', 'Yes', 'john@agency.com', 'Must be unique'],
+      ['username', 'Yes', 'johnsmith', 'Must be unique, no spaces'],
+      ['password', 'Yes', 'SecurePass123', 'Minimum 6 characters'],
+      ['role', 'No', 'agent', 'admin | agent | staff (default: agent)'],
+      ['status', 'No', 'active', 'active | inactive (default: active)'],
+      ['companyName', 'No', 'ABC Agency', 'Agency or company name'],
+    ];
+    const instrSheet = XLSX.utils.aoa_to_sheet(instructionData);
+    instrSheet['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 40 }];
+    XLSX.utils.book_append_sheet(wb, instrSheet, 'Instructions');
+
+    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName'];
+    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency'];
+    const dataSheet = XLSX.utils.aoa_to_sheet([headerRow, exampleRow]);
+    dataSheet['!cols'] = headerRow.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, dataSheet, 'Users');
+    XLSX.writeFile(wb, 'user_bulk_import_template.xlsx');
+  };
+
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target?.result, { type: 'binary' });
+        const wsName = wb.SheetNames.find(n => n.toLowerCase() !== 'instructions') || wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const json = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
+        const mapped = json.map(row => ({
+          name: String(row['name'] || row['Name'] || '').trim(),
+          email: String(row['email'] || row['Email'] || '').trim().toLowerCase(),
+          username: String(row['username'] || row['Username'] || '').trim(),
+          password: String(row['password'] || row['Password'] || '').trim(),
+          role: String(row['role'] || row['Role'] || 'agent').trim().toLowerCase(),
+          status: String(row['status'] || row['Status'] || 'active').trim().toLowerCase(),
+          companyName: String(row['companyName'] || row['CompanyName'] || row['company_name'] || '').trim(),
+        }));
+        setImportData(mapped);
+        setImportStep(2);
+      } catch {
+        toast({ title: 'Error', description: 'Could not parse the file. Please use the template.', variant: 'destructive' });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (users: typeof importData) => {
+      return apiRequest('POST', '/api/admin/users/bulk-import', { users }) as Promise<any>;
+    },
+    onSuccess: async (data: any) => {
+      setImportResults({ successCount: data.successCount, errorCount: data.errorCount, results: data.results });
+      setImportStep(3);
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Import Failed', description: error.message || 'An error occurred', variant: 'destructive' });
+    },
+  });
+
+  const closeBulkImport = () => {
+    setIsBulkImportOpen(false);
+    setImportStep(1);
+    setImportData([]);
+    setImportResults(null);
+    if (importFileRef.current) importFileRef.current.value = '';
+  };
+
   const getUserInitials = (name: string) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '??';
   };
@@ -367,10 +454,16 @@ export default function AdminUsers() {
             Manage users, roles, and permissions across the platform.
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-user">
-          <UserPlus className="w-4 h-4 mr-2" />
-          Create User
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} data-testid="button-bulk-import-users">
+            <Upload className="w-4 h-4 mr-2" />
+            Bulk Import
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-user">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -825,6 +918,179 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Bulk Import Dialog ────────────────────────────────────────────── */}
+      <Dialog open={isBulkImportOpen} onOpenChange={(open) => !open && closeBulkImport()}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto" data-testid="dialog-bulk-import">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5" />
+              Bulk Import Users
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step Indicator */}
+          <div className="flex items-center gap-2 text-sm mb-4">
+            {(['1. Template', '2. Preview', '3. Results'] as const).map((label, idx) => {
+              const step = idx + 1;
+              const active = importStep === step;
+              const done = importStep > step;
+              return (
+                <div key={label} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${done ? 'bg-green-500 text-white' : active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    {done ? <CheckCircle2 className="w-3 h-3" /> : step}
+                  </div>
+                  <span className={active ? 'font-medium' : 'text-muted-foreground'}>{label.split('. ')[1]}</span>
+                  {idx < 2 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Step 1 – Download Template */}
+          {importStep === 1 && (
+            <div className="space-y-4">
+              <div className="rounded-md border p-4 bg-muted/30 space-y-2">
+                <p className="font-medium text-sm">Before uploading, download the Excel template:</p>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li><strong>name</strong>, <strong>email</strong>, <strong>username</strong>, <strong>password</strong> — required</li>
+                  <li><strong>role</strong> — admin | agent | staff (default: agent)</li>
+                  <li><strong>status</strong> — active | inactive (default: active)</li>
+                  <li><strong>companyName</strong> — optional agency/company name</li>
+                </ul>
+              </div>
+              <Button onClick={downloadUserTemplate} className="w-full" variant="outline" data-testid="button-download-user-template">
+                <Download className="w-4 h-4 mr-2" />
+                Download Excel Template
+              </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or upload your file</span></div>
+              </div>
+              <div
+                className="border-2 border-dashed rounded-md p-8 text-center cursor-pointer hover-elevate"
+                onClick={() => importFileRef.current?.click()}
+                data-testid="drop-zone-import"
+              >
+                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">Click to choose your Excel or CSV file</p>
+                <p className="text-xs text-muted-foreground mt-1">Supported: .xlsx, .xls, .csv</p>
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={handleImportFileChange}
+                  data-testid="input-import-file"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 – Preview & Confirm */}
+          {importStep === 2 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">{importData.length} row(s) found in file</p>
+                <Button variant="ghost" size="sm" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Choose another file
+                </Button>
+              </div>
+              <div className="overflow-x-auto max-h-64 border rounded-md">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company'].map(h => (
+                        <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importData.slice(0, 100).map((row, i) => {
+                      const hasError = !row.name || !row.email || !row.username || !row.password;
+                      return (
+                        <tr key={i} className={`border-t ${hasError ? 'bg-destructive/5' : ''}`}>
+                          <td className="px-3 py-1.5 text-muted-foreground">{i + 2}</td>
+                          <td className="px-3 py-1.5">{row.name || <span className="text-destructive">Missing</span>}</td>
+                          <td className="px-3 py-1.5">{row.email || <span className="text-destructive">Missing</span>}</td>
+                          <td className="px-3 py-1.5">{row.username || <span className="text-destructive">Missing</span>}</td>
+                          <td className="px-3 py-1.5"><Badge variant="outline" className="text-xs">{row.role || 'agent'}</Badge></td>
+                          <td className="px-3 py-1.5">{row.status || 'active'}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.companyName || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    {importData.length > 100 && (
+                      <tr className="border-t bg-muted/20"><td colSpan={7} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {importData.some(r => !r.name || !r.email || !r.username || !r.password) && (
+                <p className="text-xs text-destructive">Rows highlighted in red are missing required fields and will be skipped.</p>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>Back</Button>
+                <Button
+                  onClick={() => bulkImportMutation.mutate(importData)}
+                  disabled={bulkImportMutation.isPending || importData.length === 0}
+                  data-testid="button-confirm-import"
+                >
+                  {bulkImportMutation.isPending ? 'Importing...' : `Import ${importData.length} Users`}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* Step 3 – Results */}
+          {importStep === 3 && importResults && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-md border p-3 text-center">
+                  <p className="text-2xl font-bold">{importResults.successCount + importResults.errorCount}</p>
+                  <p className="text-xs text-muted-foreground">Total Rows</p>
+                </div>
+                <div className="rounded-md border p-3 text-center bg-green-500/5">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importResults.successCount}</p>
+                  <p className="text-xs text-muted-foreground">Imported</p>
+                </div>
+                <div className="rounded-md border p-3 text-center bg-destructive/5">
+                  <p className="text-2xl font-bold text-destructive">{importResults.errorCount}</p>
+                  <p className="text-xs text-muted-foreground">Errors</p>
+                </div>
+              </div>
+              {importResults.errorCount > 0 && (
+                <div className="overflow-y-auto max-h-48 border rounded-md">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Row</th>
+                        <th className="px-3 py-2 text-left">Email</th>
+                        <th className="px-3 py-2 text-left">Status</th>
+                        <th className="px-3 py-2 text-left">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importResults.results.filter(r => r.status === 'error').map((r, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-3 py-1.5 text-muted-foreground">{r.row}</td>
+                          <td className="px-3 py-1.5">{r.email}</td>
+                          <td className="px-3 py-1.5"><Badge variant="destructive" className="text-xs">Error</Badge></td>
+                          <td className="px-3 py-1.5 text-destructive">{r.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <DialogFooter>
+                <Button onClick={closeBulkImport} data-testid="button-close-import">Done</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

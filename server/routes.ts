@@ -1790,6 +1790,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk import users from Excel/CSV upload
+  app.post('/api/admin/users/bulk-import', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { users: rawUsers } = req.body;
+
+      if (!Array.isArray(rawUsers) || rawUsers.length === 0) {
+        return res.status(400).json({ success: false, message: 'users array is required' });
+      }
+
+      if (rawUsers.length > 500) {
+        return res.status(400).json({ success: false, message: 'Maximum 500 users per import' });
+      }
+
+      const results: { row: number; email: string; status: 'success' | 'error'; message?: string }[] = [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < rawUsers.length; i++) {
+        const row = rawUsers[i];
+        const rowNum = i + 2; // Excel row (1-indexed header + 1)
+
+        // Basic validation
+        if (!row.email || !row.name || !row.username || !row.password) {
+          results.push({ row: rowNum, email: row.email || '(missing)', status: 'error', message: 'name, email, username, and password are required' });
+          errorCount++;
+          continue;
+        }
+
+        // Check email uniqueness
+        const existing = await storage.getUserByEmail(row.email);
+        if (existing) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'Email already exists' });
+          errorCount++;
+          continue;
+        }
+
+        // Check username uniqueness
+        const existingUsername = await storage.getUserByUsername(row.username);
+        if (existingUsername) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'Username already exists' });
+          errorCount++;
+          continue;
+        }
+
+        try {
+          const hashedPassword = await bcrypt.hash(row.password, 10);
+          const userId = crypto.randomUUID();
+          await storage.createUser({
+            id: userId,
+            username: row.username.trim(),
+            password: hashedPassword,
+            name: row.name.trim(),
+            email: row.email.trim().toLowerCase(),
+            role: ['admin', 'agent', 'staff'].includes(row.role) ? row.role : 'agent',
+            status: row.status === 'inactive' ? 'inactive' : 'active',
+            companyName: row.companyName?.trim() || '',
+          });
+          results.push({ row: rowNum, email: row.email, status: 'success' });
+          successCount++;
+        } catch (err: any) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: err.message || 'Failed to create user' });
+          errorCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        successCount,
+        errorCount,
+        total: rawUsers.length,
+        results,
+      });
+    } catch (error: any) {
+      console.error('Bulk import error:', error);
+      res.status(500).json({ success: false, message: 'Bulk import failed' });
+    }
+  });
+
   // Admin analytics endpoints
   app.get('/api/admin/analytics/overview', requireAuth, requireAdmin, async (req, res) => {
     try {
