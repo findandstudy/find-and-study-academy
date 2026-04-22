@@ -77,7 +77,7 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
       if (filterStatus !== 'all') params.set('status', filterStatus);
       params.set('limit', '100');
       const res = await fetch(`/api/admin/integration-events?${params}`, {
-        headers: { 'x-user-id': JSON.parse(sessionStorage.getItem('fas_session') || '{}')?.user?.id || '' },
+        headers: { 'x-user-id': JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || '' },
       });
       return res.json();
     },

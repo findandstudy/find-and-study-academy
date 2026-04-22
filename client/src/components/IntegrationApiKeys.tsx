@@ -54,7 +54,7 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
     queryFn: async () => {
       const url = showRevoked ? '/api/admin/integration-api-keys?include_revoked=true' : '/api/admin/integration-api-keys';
       const res = await fetch(url, {
-        headers: { 'x-user-id': JSON.parse(sessionStorage.getItem('fas_session') || '{}')?.user?.id || '' },
+        headers: { 'x-user-id': JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || '' },
       });
       return res.json();
     },

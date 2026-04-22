@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/store/auth';
 import {
   Bot, MessageSquare, Settings, BarChart2, Users, Zap,
   Eye, EyeOff, RefreshCw, Save, AlertCircle, CheckCircle,
@@ -1197,6 +1198,7 @@ interface KnowledgeSource {
 
 function SourcesTab() {
   const { toast } = useToast();
+  const { user } = useAuthStore();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
@@ -1216,10 +1218,9 @@ function SourcesTab() {
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const session = JSON.parse(sessionStorage.getItem('fas_session') || '{}');
       const res = await fetch('/api/admin/findy/sources/upload', {
         method: 'POST',
-        headers: { 'x-user-id': session.id || '' },
+        headers: { 'x-user-id': user?.id || '' },
         body: formData,
       });
       const json = await res.json();

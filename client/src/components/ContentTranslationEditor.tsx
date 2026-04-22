@@ -26,7 +26,7 @@ const SUPPORTED_LANGUAGES = [
 ];
 
 function getAuthHeaders(): Record<string, string> {
-  const raw = sessionStorage.getItem("fas_session");
+  const raw = localStorage.getItem("fas_session");
   if (!raw) return {};
   try {
     const session = JSON.parse(raw);
