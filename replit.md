@@ -40,6 +40,8 @@ The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toa
 - **Integration Wizard:** 2-step visual create dialog with type-selection cards and step indicators.
 - **Security Hardening:** `express-rate-limit` on `/api/login` (20/15min), `/api/signup`, `/api/forgot-password` & `/api/reset-password` (5/hr); security response headers (X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, X-Frame-Options, Permissions-Policy); request body size capped at 10MB.
 - **Content File Upload API:** `POST /api/uploads/content` — multer-based endpoint for images (5MB profile/logo) and content files up to 50MB (PDF, DOCX, MP4, etc.), served statically via `/uploads/content/`.
+- **Partner Zone Admin Panel:** `/admin/partner-zone` — dedicated admin page (separate from Content/Countries) for managing Partner Zone documents. Full CRUD: add/edit/delete/publish/unpublish documents with file upload, category tags, country codes. `partner-zone` key added to MenuManagement agent items so admin can toggle its sidebar visibility.
+- **Agency Bulk Export/Import:** Export button downloads all agencies to `.xlsx`; Bulk Import button opens dialog with template download, file picker (Excel/CSV), preview table, and `POST /api/admin/agencies/bulk-import` backend route.
 
 ## External Dependencies
 

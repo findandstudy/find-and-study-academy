@@ -15,7 +15,8 @@ import {
   Bell,
   Trophy,
   Save,
-  RefreshCw
+  RefreshCw,
+  Package
 } from 'lucide-react';
 
 // Agent menu öğeleri
@@ -25,6 +26,7 @@ const agentMenuItems = [
   { id: 'certificates', name: 'Certificates', icon: Award },
   { id: 'leaderboard', name: 'Leaderboard', icon: Trophy },
   { id: 'agency', name: 'My Agency', icon: Building },
+  { id: 'partner-zone', name: 'Partner Zone', icon: Package },
   { id: 'exams-orders', name: 'Exams/Orders', icon: ShoppingCart },
   { id: 'subscriptions', name: 'Subscriptions', icon: Bell },
   { id: 'profile', name: 'Profile', icon: User },

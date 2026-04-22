@@ -20,7 +20,8 @@ import {
   Menu,
   X,
   ListTree,
-  Bot
+  Bot,
+  Package
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -38,6 +39,7 @@ const allNavigation = [
   { name: 'Agencies', href: '/admin/agencies', icon: Building, adminOnly: false },
   { name: 'Users', href: '/admin/users', icon: Users, adminOnly: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, adminOnly: false },
+  { name: 'Partner Zone', href: '/admin/partner-zone', icon: Package, adminOnly: false },
   { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, adminOnly: false },
   { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot, adminOnly: false },
   { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },

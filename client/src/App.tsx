@@ -41,6 +41,7 @@ import AdminSettingsPayments from './pages/admin/SettingsPayments';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminMenuManagement from './pages/admin/MenuManagement';
 import AdminFindyAI from './pages/admin/FindyAI';
+import AdminPartnerZone from './pages/admin/PartnerZoneAdmin';
 
 // Agent Extra Pages
 import AgentPartnerZone from './pages/agent/PartnerZone';
@@ -196,6 +197,14 @@ function Router() {
         <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
             <AdminFindyAI />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/partner-zone">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
+          <AdminLayout>
+            <AdminPartnerZone />
           </AdminLayout>
         </ProtectedRoute>
       </Route>
