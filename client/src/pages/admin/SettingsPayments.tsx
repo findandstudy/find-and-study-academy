@@ -128,7 +128,7 @@ function DefaultsTabContent() {
   const queryClient = useQueryClient();
 
   const { data: countriesData } = useQuery<{ success: boolean; countries: any[] }>({
-    queryKey: ['/api/countries'],
+    queryKey: ['/api/admin/countries'],
   });
   const { data: defaultsData, isLoading: defaultsLoading } = useQuery<{ success: boolean; defaults: Record<string, string> }>({
     queryKey: ['/api/settings/defaults'],
