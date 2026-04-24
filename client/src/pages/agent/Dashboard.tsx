@@ -147,11 +147,20 @@ export default function AgentDashboard() {
       {/* Announcements */}
       {activeAnnouncements.length > 0 && (
         <div className="space-y-3" data-testid="section-announcements">
-          <div className="flex items-center gap-2 mb-2">
-            <Bell className="w-5 h-5 text-primary" data-testid="icon-announcements" />
-            <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">Announcements</h2>
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" data-testid="icon-announcements" />
+              <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">Duyurular</h2>
+            </div>
+            {activeAnnouncements.length > 3 && (
+              <Link href="/agent/announcements">
+                <Button variant="ghost" size="sm" data-testid="button-view-all-announcements">
+                  Tümünü Gör ({activeAnnouncements.length})
+                </Button>
+              </Link>
+            )}
           </div>
-          {activeAnnouncements.map(announcement => {
+          {activeAnnouncements.slice(0, 3).map(announcement => {
             const style = announcementTypeStyles[announcement.type];
             const IconComponent = style.icon;
             

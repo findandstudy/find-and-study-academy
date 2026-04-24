@@ -155,6 +155,38 @@ export const progresses = pgTable("progresses", {
   userCourseUnique: unique("user_course_progress_unique").on(table.userId, table.courseId),
 }));
 
+// Pop-up advertisements / announcements modal table
+export const popups = pgTable("popups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  linkUrl: text("link_url"),
+  linkText: text("link_text"),
+  targetAudience: text("target_audience").notNull().default('all'), // 'all' | 'agents' | 'specific'
+  targetAgencyIds: text("target_agency_ids").array(), // when targetAudience='specific'
+  status: text("status").notNull().default('draft'), // 'draft' | 'active' | 'archived'
+  startsAt: timestamp("starts_at"),
+  expiresAt: timestamp("expires_at"),
+  frequency: text("frequency").notNull().default('every_session'), // 'every_session' | 'every_login' | 'once_per_user'
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Records each user's dismissal of a pop-up (used for once-per-user frequency
+// and to prevent re-showing within a single login session for every_login)
+export const popupDismissals = pgTable("popup_dismissals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  popupId: varchar("popup_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  dismissedAt: timestamp("dismissed_at").notNull().defaultNow(),
+  dontShowAgain: boolean("dont_show_again").notNull().default(false),
+}, (table) => ({
+  // One row per user/popup dismissal record (latest wins via dismissedAt)
+  popupUserUnique: unique("popup_user_unique").on(table.popupId, table.userId),
+}));
+
 // Announcements table
 export const announcements = pgTable("announcements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -239,6 +271,17 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertPopupSchema = createInsertSchema(popups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPopupDismissalSchema = createInsertSchema(popupDismissals).omit({
+  id: true,
+  dismissedAt: true,
 });
 
 export const insertEmailLogSchema = createInsertSchema(emailLogs).omit({
@@ -505,6 +548,8 @@ export type Attempt = typeof attempts.$inferSelect;
 export type Progress = typeof progresses.$inferSelect;
 export type Quiz = typeof quizzes.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
+export type Popup = typeof popups.$inferSelect;
+export type PopupDismissal = typeof popupDismissals.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type PaymentConfig = typeof paymentConfigs.$inferSelect;
 export type Integration = typeof integrations.$inferSelect;
@@ -517,6 +562,8 @@ export type InsertAttempt = z.infer<typeof insertAttemptSchema>;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
 export type InsertQuiz = z.infer<typeof insertQuizSchema>;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type InsertPopup = z.infer<typeof insertPopupSchema>;
+export type InsertPopupDismissal = z.infer<typeof insertPopupDismissalSchema>;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type InsertPaymentConfig = z.infer<typeof insertPaymentConfigSchema>;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;

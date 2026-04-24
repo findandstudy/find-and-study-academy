@@ -24,6 +24,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const session = await authLogin(credentials);
       if (session) {
+        // Reset per-login popup tracking so 'every_login' popups re-show this login
+        try { sessionStorage.removeItem('fas_popups_seen_login'); } catch {}
         set({ user: session.user, role: session.role, isLoading: false });
         return true;
       }
@@ -40,6 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const session = await authSignup(data);
+      try { sessionStorage.removeItem('fas_popups_seen_login'); } catch {}
       set({ user: session.user, role: session.role, isLoading: false });
       return true;
     } catch (error) {
@@ -51,6 +54,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     authLogout();
+    try {
+      sessionStorage.removeItem('fas_popups_seen_login');
+      sessionStorage.removeItem('fas_popups_seen_session');
+    } catch {}
     set({ user: null, role: null });
   },
 

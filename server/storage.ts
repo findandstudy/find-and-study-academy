@@ -9,6 +9,8 @@ import {
   countries,
   contents,
   announcements,
+  popups,
+  popupDismissals,
   systemSettings,
   paymentConfigs,
   integrations,
@@ -32,6 +34,10 @@ import {
   type InsertContent,
   type Announcement,
   type InsertAnnouncement,
+  type Popup,
+  type InsertPopup,
+  type PopupDismissal,
+  type InsertPopupDismissal,
   type SystemSetting,
   type InsertSystemSetting,
   type PaymentConfig,
@@ -137,6 +143,16 @@ export interface IStorage {
   updateAnnouncement(id: string, updates: Partial<InsertAnnouncement>): Promise<Announcement>;
   deleteAnnouncement(id: string): Promise<void>;
   getAnnouncementById(id: string): Promise<Announcement | undefined>;
+
+  // Popup methods
+  getPopups(): Promise<Array<Popup & { creatorName?: string }>>;
+  getPopupById(id: string): Promise<Popup | undefined>;
+  createPopup(popup: InsertPopup): Promise<Popup>;
+  updatePopup(id: string, updates: Partial<InsertPopup>): Promise<Popup>;
+  deletePopup(id: string): Promise<void>;
+  getActivePopupsForUser(userId: string, agencyId: string | null | undefined, role: string): Promise<Popup[]>;
+  upsertPopupDismissal(data: InsertPopupDismissal): Promise<PopupDismissal>;
+  getUserDismissals(userId: string): Promise<PopupDismissal[]>;
 
   // System Settings methods
   getSystemSettings(): Promise<SystemSetting[]>;
@@ -629,7 +645,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(announcements)
       .leftJoin(users, eq(announcements.createdBy, users.id))
-      .orderBy(announcements.createdAt);
+      .orderBy(desc(announcements.publishedAt), desc(announcements.createdAt));
 
     // Convert null to undefined for type compatibility
     return announcementsWithCreator.map(item => ({
@@ -668,6 +684,100 @@ export class DatabaseStorage implements IStorage {
   async getAnnouncementById(id: string): Promise<Announcement | undefined> {
     const [announcement] = await db.select().from(announcements).where(eq(announcements.id, id));
     return announcement || undefined;
+  }
+
+  // Popup methods implementation
+  async getPopups(): Promise<Array<Popup & { creatorName?: string }>> {
+    const rows = await db
+      .select({
+        id: popups.id,
+        title: popups.title,
+        content: popups.content,
+        imageUrl: popups.imageUrl,
+        linkUrl: popups.linkUrl,
+        linkText: popups.linkText,
+        targetAudience: popups.targetAudience,
+        targetAgencyIds: popups.targetAgencyIds,
+        status: popups.status,
+        startsAt: popups.startsAt,
+        expiresAt: popups.expiresAt,
+        frequency: popups.frequency,
+        createdBy: popups.createdBy,
+        createdAt: popups.createdAt,
+        updatedAt: popups.updatedAt,
+        creatorName: users.name,
+      })
+      .from(popups)
+      .leftJoin(users, eq(popups.createdBy, users.id))
+      .orderBy(desc(popups.createdAt));
+    return rows.map(r => ({ ...r, creatorName: r.creatorName ?? undefined }));
+  }
+
+  async getPopupById(id: string): Promise<Popup | undefined> {
+    const [row] = await db.select().from(popups).where(eq(popups.id, id));
+    return row || undefined;
+  }
+
+  async createPopup(data: InsertPopup): Promise<Popup> {
+    const [row] = await db
+      .insert(popups)
+      .values({ ...data, updatedAt: new Date() })
+      .returning();
+    return row;
+  }
+
+  async updatePopup(id: string, updates: Partial<InsertPopup>): Promise<Popup> {
+    const [row] = await db
+      .update(popups)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(popups.id, id))
+      .returning();
+    return row;
+  }
+
+  async deletePopup(id: string): Promise<void> {
+    await db.delete(popupDismissals).where(eq(popupDismissals.popupId, id));
+    await db.delete(popups).where(eq(popups.id, id));
+  }
+
+  async getActivePopupsForUser(
+    userId: string,
+    agencyId: string | null | undefined,
+    role: string,
+  ): Promise<Popup[]> {
+    const now = new Date();
+    const all = await db.select().from(popups).where(eq(popups.status, 'active'));
+    return all.filter(p => {
+      if (p.startsAt && new Date(p.startsAt) > now) return false;
+      if (p.expiresAt && new Date(p.expiresAt) < now) return false;
+      // Audience filter
+      if (p.targetAudience === 'agents' && role !== 'agent') return false;
+      if (p.targetAudience === 'specific') {
+        if (!agencyId) return false;
+        const ids = p.targetAgencyIds ?? [];
+        if (!ids.includes(agencyId)) return false;
+      }
+      return true;
+    });
+  }
+
+  async upsertPopupDismissal(data: InsertPopupDismissal): Promise<PopupDismissal> {
+    const [row] = await db
+      .insert(popupDismissals)
+      .values({ ...data, dismissedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [popupDismissals.popupId, popupDismissals.userId],
+        set: {
+          dismissedAt: new Date(),
+          dontShowAgain: data.dontShowAgain ?? false,
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async getUserDismissals(userId: string): Promise<PopupDismissal[]> {
+    return await db.select().from(popupDismissals).where(eq(popupDismissals.userId, userId));
   }
 
   // System Settings methods implementation

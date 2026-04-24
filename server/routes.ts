@@ -123,6 +123,7 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
       role: user.role,  // Use actual role from storage, not client-provided
       email: user.email,
       name: user.name,
+      agencyId: user.agencyId,
       // Include notification preferences for email triggers
       emailNotifications: user.emailNotifications,
       certificateNotif: user.certificateNotif,
@@ -2200,6 +2201,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: 'Failed to retrieve announcements'
       });
+    }
+  });
+
+  // Public announcements endpoint - shown on the public landing page (top N "all" published)
+  app.get('/api/announcements/public', async (req, res) => {
+    try {
+      const limit = Math.min(parseInt((req.query.limit as string) || '3', 10) || 3, 10);
+      const all = await storage.getAnnouncements();
+      const filtered = all.filter(a => {
+        const isPublished = a.status === 'published';
+        const isAll = a.targetAudience === 'all';
+        const notExpired = !a.expiresAt || new Date(a.expiresAt) > new Date();
+        return isPublished && isAll && notExpired;
+      });
+      res.json({ success: true, announcements: filtered.slice(0, limit) });
+    } catch (error) {
+      console.error('Public announcements error:', error);
+      res.status(500).json({ success: false, message: 'Failed to retrieve announcements' });
+    }
+  });
+
+  // ==================== POPUPS (Pop-up Reklamlar) ====================
+  // Admin: list all popups
+  app.get('/api/admin/popups', requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const popups = await storage.getPopups();
+      res.json({ success: true, popups });
+    } catch (error) {
+      console.error('List popups error:', error);
+      res.status(500).json({ success: false, message: 'Failed to retrieve popups' });
+    }
+  });
+
+  // Admin: create popup
+  app.post('/api/admin/popups', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { 
+        title, content, imageUrl, linkUrl, linkText,
+        targetAudience, targetAgencyIds, status,
+        startsAt, expiresAt, frequency,
+      } = req.body;
+      if (!title || !content) {
+        return res.status(400).json({ success: false, message: 'Title and content are required' });
+      }
+      const popup = await storage.createPopup({
+        title,
+        content,
+        imageUrl: imageUrl || null,
+        linkUrl: linkUrl || null,
+        linkText: linkText || null,
+        targetAudience: targetAudience || 'all',
+        targetAgencyIds: Array.isArray(targetAgencyIds) ? targetAgencyIds : null,
+        status: status || 'draft',
+        startsAt: startsAt ? new Date(startsAt) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        frequency: frequency || 'every_session',
+        createdBy: authenticatedUser.id,
+      });
+      res.json({ success: true, popup });
+    } catch (error) {
+      console.error('Create popup error:', error);
+      res.status(500).json({ success: false, message: 'Failed to create popup' });
+    }
+  });
+
+  // Admin: update popup
+  app.put('/api/admin/popups/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getPopupById(id);
+      if (!existing) return res.status(404).json({ success: false, message: 'Popup not found' });
+      const allowed = ['title','content','imageUrl','linkUrl','linkText','targetAudience','targetAgencyIds','status','frequency'];
+      const updates: any = {};
+      for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
+      if (req.body.startsAt !== undefined) updates.startsAt = req.body.startsAt ? new Date(req.body.startsAt) : null;
+      if (req.body.expiresAt !== undefined) updates.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
+      const popup = await storage.updatePopup(id, updates);
+      res.json({ success: true, popup });
+    } catch (error) {
+      console.error('Update popup error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update popup' });
+    }
+  });
+
+  // Admin: delete popup
+  app.delete('/api/admin/popups/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await storage.getPopupById(id);
+      if (!existing) return res.status(404).json({ success: false, message: 'Popup not found' });
+      await storage.deletePopup(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete popup error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete popup' });
+    }
+  });
+
+  // Authenticated user: get active popups visible to them, applying frequency rules
+  app.get('/api/popups/active', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const active = await storage.getActivePopupsForUser(
+        authenticatedUser.id,
+        authenticatedUser.agencyId,
+        authenticatedUser.role,
+      );
+      const dismissals = await storage.getUserDismissals(authenticatedUser.id);
+      const dismissalMap = new Map(dismissals.map(d => [d.popupId, d]));
+
+      const visible = active.filter(p => {
+        const d = dismissalMap.get(p.id);
+        if (!d) return true;
+        // Once-per-user: any dismissal hides forever
+        if (p.frequency === 'once_per_user') return false;
+        // Every-login: hidden if dismissed since the user's last login (we
+        // approximate "this login" by the client clearing its session storage
+        // on next login. Server-side, we treat dontShowAgain as a hard block.)
+        if (d.dontShowAgain) return false;
+        // every_session and every_login both rely on the client to enforce
+        // per-session/per-login visibility via local storage.
+        return true;
+      });
+
+      res.json({ success: true, popups: visible });
+    } catch (error) {
+      console.error('Active popups error:', error);
+      res.status(500).json({ success: false, message: 'Failed to retrieve popups' });
+    }
+  });
+
+  // Authenticated user: dismiss popup
+  app.post('/api/popups/:id/dismiss', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { id } = req.params;
+      const dontShowAgain = !!req.body?.dontShowAgain;
+      const existing = await storage.getPopupById(id);
+      if (!existing) return res.status(404).json({ success: false, message: 'Popup not found' });
+      await storage.upsertPopupDismissal({
+        popupId: id,
+        userId: authenticatedUser.id,
+        dontShowAgain,
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Dismiss popup error:', error);
+      res.status(500).json({ success: false, message: 'Failed to dismiss popup' });
     }
   });
 

@@ -72,6 +72,7 @@ const navigationGroups: NavGroup[] = [
     label: 'Etkileşim',
     items: [
       { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+      { name: 'Pop-up Reklamlar', href: '/admin/popups', icon: Megaphone, adminOnly: true },
       { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot },
     ],
   },

@@ -37,6 +37,7 @@ import AdminAgencies from './pages/admin/Agencies';
 import AdminUsers from './pages/admin/Users';
 import AdminReports from './pages/admin/Reports';
 import AdminAnnouncements from './pages/admin/Announcements';
+import AdminPopups from './pages/admin/Popups';
 import AdminSettingsPayments from './pages/admin/SettingsPayments';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminMenuManagement from './pages/admin/MenuManagement';
@@ -48,6 +49,11 @@ import AgentPartnerZone from './pages/agent/PartnerZone';
 
 // Public Pages
 import VerifyCertificate from './pages/VerifyCertificate';
+import Home from './pages/Home';
+
+// Components
+import { PopupRenderer } from './components/PopupRenderer';
+import AgentAnnouncements from './pages/agent/Announcements';
 
 // Error Pages
 import NotFound404 from './pages/errors/NotFound404';
@@ -193,6 +199,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/admin/popups">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminPopups />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/admin/findy-ai">
         <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
@@ -239,6 +253,14 @@ function Router() {
         <ProtectedRoute requiredRole="agent">
           <AgentLayout>
             <AgentDashboard />
+          </AgentLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/agent/announcements">
+        <ProtectedRoute requiredRole="agent">
+          <AgentLayout>
+            <AgentAnnouncements />
           </AgentLayout>
         </ProtectedRoute>
       </Route>
@@ -307,9 +329,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      {/* Root Redirect */}
+      {/* Public Landing */}
       <Route path="/">
-        <Redirect to="/login" />
+        <Home />
       </Route>
 
       {/* 404 - Must be last */}
@@ -335,6 +357,7 @@ export default function App() {
       <TooltipProvider>
         <div className="min-h-screen bg-background">
           <Router />
+          <PopupRenderer />
         </div>
         <Toaster />
       </TooltipProvider>

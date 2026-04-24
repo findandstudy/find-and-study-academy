@@ -48,6 +48,7 @@ const navigationGroups: NavGroup[] = [
     label: 'Genel',
     items: [
       { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
+      { id: 'announcements', name: 'Duyurular', href: '/agent/announcements', icon: Bell },
     ],
   },
   {
