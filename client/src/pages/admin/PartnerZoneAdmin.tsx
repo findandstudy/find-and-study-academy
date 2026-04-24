@@ -639,6 +639,8 @@ export default function PartnerZoneAdmin() {
 
 // ─── Folder Dialog ──────────────────────────────────────────────────────────
 
+interface Country { id: string; name: string; code: string; flag: string | null; status: string; }
+
 function FolderDialog({ open, onOpenChange, form, onSubmit, isMutating, isEditing, coverPreview, coverUploading, coverInputRef, onCoverSelect }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -651,6 +653,13 @@ function FolderDialog({ open, onOpenChange, form, onSubmit, isMutating, isEditin
   coverInputRef: React.RefObject<HTMLInputElement>;
   onCoverSelect: (file: File) => void;
 }) {
+  const { data: countriesData } = useQuery<{ countries: Country[] }>({
+    queryKey: ['/api/public/countries'],
+    queryFn: async () => { const r = await fetch('/api/public/countries'); return r.json(); },
+    staleTime: 5 * 60 * 1000,
+  });
+  const countryList = (countriesData?.countries ?? []).filter(c => c.status === 'active');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -720,8 +729,25 @@ function FolderDialog({ open, onOpenChange, form, onSubmit, isMutating, isEditin
               )} />
               <FormField control={form.control} name="countryCode" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ülke Kodu</FormLabel>
-                  <FormControl><Input {...field} value={field.value ?? ''} placeholder="ör. TR" /></FormControl>
+                  <FormLabel>Ülke</FormLabel>
+                  <Select
+                    onValueChange={v => field.onChange(v === '__none__' ? '' : v)}
+                    value={field.value || '__none__'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ülke seçin..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="__none__">— Ülke yok —</SelectItem>
+                      {countryList.map(c => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.flag ? `${c.flag} ` : ''}{c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />
