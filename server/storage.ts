@@ -77,7 +77,7 @@ import {
   type InsertPartnerFolder,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike } from "drizzle-orm";
+import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike, isNull } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -215,12 +215,14 @@ export interface IStorage {
   getAllTranslations(): Promise<ContentTranslation[]>;
 
   // Partner Folder methods
-  getPartnerFolders(): Promise<PartnerFolder[]>;
+  getPartnerFolders(parentFolderId?: string | null): Promise<PartnerFolder[]>;
   getPartnerFolderById(id: string): Promise<PartnerFolder | undefined>;
   createPartnerFolder(folder: InsertPartnerFolder): Promise<PartnerFolder>;
   updatePartnerFolder(id: string, updates: Partial<InsertPartnerFolder>): Promise<PartnerFolder>;
   deletePartnerFolder(id: string): Promise<void>;
   getFolderContents(folderId: string): Promise<Content[]>;
+  getFolderPath(folderId: string): Promise<PartnerFolder[]>;
+  countFolderChildren(folderId: string): Promise<{ subfolders: number; contents: number }>;
 
   // Knowledge Source methods (Findy AI RAG)
   getKnowledgeSources(): Promise<KnowledgeSource[]>;
@@ -1339,8 +1341,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Partner Folder implementations ──────────────────────────────────────────
-  async getPartnerFolders(): Promise<PartnerFolder[]> {
-    return db.select().from(partnerFolders).orderBy(partnerFolders.order, partnerFolders.name);
+  async getPartnerFolders(parentFolderId?: string | null): Promise<PartnerFolder[]> {
+    // When parentFolderId is undefined → return ALL folders (admin flat listing).
+    // When null → root folders only. When string → folders under that parent.
+    if (parentFolderId === undefined) {
+      return db.select().from(partnerFolders).orderBy(partnerFolders.order, partnerFolders.name);
+    }
+    if (parentFolderId === null) {
+      return db.select().from(partnerFolders)
+        .where(isNull(partnerFolders.parentFolderId))
+        .orderBy(partnerFolders.order, partnerFolders.name);
+    }
+    return db.select().from(partnerFolders)
+      .where(eq(partnerFolders.parentFolderId, parentFolderId))
+      .orderBy(partnerFolders.order, partnerFolders.name);
   }
 
   async getPartnerFolderById(id: string): Promise<PartnerFolder | undefined> {
@@ -1362,15 +1376,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePartnerFolder(id: string): Promise<void> {
-    // Unlink contents from this folder before deleting
-    await db.update(contents).set({ folderId: null }).where(eq(contents.folderId as any, id));
+    // Block deletion when subfolders or contents exist; caller surfaces the error.
+    const { subfolders, contents: contentCount } = await this.countFolderChildren(id);
+    if (subfolders > 0 || contentCount > 0) {
+      throw new Error(
+        `Klasör boş değil: ${subfolders} alt klasör ve ${contentCount} içerik var. Önce bunları silin veya taşıyın.`
+      );
+    }
     await db.delete(partnerFolders).where(eq(partnerFolders.id, id));
   }
 
   async getFolderContents(folderId: string): Promise<Content[]> {
     return db.select().from(contents)
-      .where(eq(contents.folderId as any, folderId))
+      .where(eq(contents.folderId, folderId))
       .orderBy(contents.order, contents.title);
+  }
+
+  async getFolderPath(folderId: string): Promise<PartnerFolder[]> {
+    // Walk up the parent chain until root; cycle-safe via visited set + depth cap.
+    const path: PartnerFolder[] = [];
+    const visited = new Set<string>();
+    let currentId: string | null = folderId;
+    let depth = 0;
+    while (currentId && !visited.has(currentId) && depth < 32) {
+      visited.add(currentId);
+      const folder = await this.getPartnerFolderById(currentId);
+      if (!folder) break;
+      path.unshift(folder);
+      currentId = folder.parentFolderId ?? null;
+      depth += 1;
+    }
+    return path;
+  }
+
+  async countFolderChildren(folderId: string): Promise<{ subfolders: number; contents: number }> {
+    const [subResult] = await db.select({ value: count() }).from(partnerFolders)
+      .where(eq(partnerFolders.parentFolderId, folderId));
+    const [contentResult] = await db.select({ value: count() }).from(contents)
+      .where(eq(contents.folderId, folderId));
+    return {
+      subfolders: Number(subResult?.value ?? 0),
+      contents: Number(contentResult?.value ?? 0),
+    };
   }
 
   // ── Knowledge Source implementations ────────────────────────────────────────

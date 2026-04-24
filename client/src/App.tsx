@@ -223,6 +223,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/admin/partner-zone/:folderId">
+        <ProtectedRoute requiredRole={["admin", "staff"]}>
+          <AdminLayout>
+            <AdminPartnerZone />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
       {/* Admin-only Routes */}
       <Route path="/admin/settings/payments">
         <ProtectedRoute requiredRole="admin">
@@ -322,6 +330,14 @@ function Router() {
       </Route>
 
       <Route path="/agent/partner-zone">
+        <ProtectedRoute requiredRole="agent">
+          <AgentLayout>
+            <AgentPartnerZone />
+          </AgentLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/agent/partner-zone/:folderId">
         <ProtectedRoute requiredRole="agent">
           <AgentLayout>
             <AgentPartnerZone />

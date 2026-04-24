@@ -21,6 +21,7 @@ import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import sharp from "sharp";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 
@@ -3423,61 +3424,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Partner Folder routes ─────────────────────────────────────────────────
 
-  // Public: list published folders (for agents)
+  // Helper: parse `parentId` query into the storage parameter contract.
+  // - missing  → undefined (return ALL folders, used for client-side flat ops)
+  // - "root" / "" / "null" → null (root-level folders only)
+  // - any other string → that folder id
+  const parseParentId = (raw: unknown): string | null | undefined => {
+    if (raw === undefined) return undefined;
+    if (typeof raw !== 'string') return undefined;
+    if (raw === '' || raw === 'root' || raw === 'null') return null;
+    return raw;
+  };
+
+  // Public: list published folders (for agents) — supports ?parentId=
   app.get('/api/partner-folders', requireAuth, async (req, res) => {
     try {
-      const folders = await storage.getPartnerFolders();
+      const parentId = parseParentId(req.query.parentId);
+      const folders = await storage.getPartnerFolders(parentId);
       const published = folders.filter(f => f.status === 'published');
-      res.json({ success: true, folders: published });
+      // Attach subfolder + content counts so the agent UI can show "X klasör · Y dosya"
+      const foldersWithCounts = await Promise.all(published.map(async folder => {
+        const counts = await storage.countFolderChildren(folder.id);
+        return { ...folder, subfolderCount: counts.subfolders, contentCount: counts.contents };
+      }));
+      res.json({ success: true, folders: foldersWithCounts });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to fetch folders' });
     }
   });
 
-  // Public: get contents of a published folder (for agents)
+  // Public: get contents of a published folder (for agents) + subfolders + breadcrumbs
   app.get('/api/partner-folders/:id/contents', requireAuth, async (req, res) => {
     try {
       const folder = await storage.getPartnerFolderById(req.params.id);
       if (!folder || folder.status !== 'published') {
         return res.status(404).json({ success: false, message: 'Folder not found' });
       }
-      const items = await storage.getFolderContents(req.params.id);
-      const published = items.filter(c => c.status === 'published');
-      res.json({ success: true, folder, contents: published });
+      const [items, subfolders, breadcrumb] = await Promise.all([
+        storage.getFolderContents(req.params.id),
+        storage.getPartnerFolders(req.params.id),
+        storage.getFolderPath(req.params.id),
+      ]);
+      const publishedItems = items.filter(c => c.status === 'published');
+      const publishedSub = await Promise.all(
+        subfolders
+          .filter(f => f.status === 'published')
+          .map(async f => {
+            const counts = await storage.countFolderChildren(f.id);
+            return { ...f, subfolderCount: counts.subfolders, contentCount: counts.contents };
+          })
+      );
+      res.json({ success: true, folder, contents: publishedItems, subfolders: publishedSub, breadcrumb });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to fetch folder contents' });
     }
   });
 
-  // Admin: list all folders
+  // Admin: list folders — supports ?parentId= (root by default if explicitly 'root')
   app.get('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const folders = await storage.getPartnerFolders();
-      // Attach content count to each folder
-      const allContents = await storage.getContents();
-      const foldersWithCount = await Promise.all(folders.map(async folder => {
-        const count = allContents.filter((c: any) => c.folderId === folder.id).length;
-        return { ...folder, contentCount: count };
+      const parentId = parseParentId(req.query.parentId);
+      const folders = await storage.getPartnerFolders(parentId);
+      // Attach subfolder + content counts for cards
+      const foldersWithCounts = await Promise.all(folders.map(async folder => {
+        const counts = await storage.countFolderChildren(folder.id);
+        return { ...folder, subfolderCount: counts.subfolders, contentCount: counts.contents };
       }));
-      res.json({ success: true, folders: foldersWithCount });
+      res.json({ success: true, folders: foldersWithCounts });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to fetch folders' });
     }
   });
 
-  // Admin: get single folder with its contents
+  // Admin: get single folder with its contents + subfolders + breadcrumbs
   app.get('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       const folder = await storage.getPartnerFolderById(req.params.id);
       if (!folder) return res.status(404).json({ success: false, message: 'Folder not found' });
-      const items = await storage.getFolderContents(req.params.id);
-      res.json({ success: true, folder, contents: items });
+      const [items, subfolders, breadcrumb] = await Promise.all([
+        storage.getFolderContents(req.params.id),
+        storage.getPartnerFolders(req.params.id),
+        storage.getFolderPath(req.params.id),
+      ]);
+      const subWithCounts = await Promise.all(subfolders.map(async f => {
+        const counts = await storage.countFolderChildren(f.id);
+        return { ...f, subfolderCount: counts.subfolders, contentCount: counts.contents };
+      }));
+      res.json({ success: true, folder, contents: items, subfolders: subWithCounts, breadcrumb });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to fetch folder' });
     }
   });
 
-  // Admin: create folder
+  // Admin: create folder — accepts optional parentFolderId
   app.post('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
     try {
       const folder = await storage.createPartnerFolder(req.body);
@@ -3487,9 +3525,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: update folder
+  // Admin: update folder — accepts optional parentFolderId (move folder)
   app.patch('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
+      // Prevent setting a folder as its own parent or as descendant of itself
+      if (req.body.parentFolderId) {
+        if (req.body.parentFolderId === req.params.id) {
+          return res.status(400).json({ success: false, message: 'Bir klasör kendisinin alt klasörü olamaz' });
+        }
+        const ancestors = await storage.getFolderPath(req.body.parentFolderId);
+        if (ancestors.some(a => a.id === req.params.id)) {
+          return res.status(400).json({ success: false, message: 'Klasör kendi alt klasörünün altına taşınamaz' });
+        }
+      }
       const folder = await storage.updatePartnerFolder(req.params.id, req.body);
       res.json({ success: true, folder });
     } catch (error) {
@@ -3497,24 +3545,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: delete folder
+  // Admin: delete folder — fails when folder still has subfolders or contents
   app.delete('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       await storage.deletePartnerFolder(req.params.id);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Failed to delete folder' });
+      const msg = error instanceof Error ? error.message : 'Failed to delete folder';
+      // Storage throws a Turkish, user-facing message when the folder isn't empty
+      const status = msg.startsWith('Klasör boş değil') ? 409 : 500;
+      res.status(status).json({ success: false, message: msg });
     }
   });
 
   // Admin: assign content to a folder (or unassign by passing folderId: null)
   app.patch('/api/admin/contents/:id/folder', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { folderId } = req.body;
-      const content = await storage.updateContent(req.params.id, { folderId } as any);
+      const folderIdSchema = z.object({ folderId: z.string().nullable() });
+      const { folderId } = folderIdSchema.parse(req.body);
+      const content = await storage.updateContent(req.params.id, { folderId });
       res.json({ success: true, content });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Failed to assign content to folder' });
+      const msg = error instanceof Error ? error.message : 'Failed to assign content to folder';
+      res.status(500).json({ success: false, message: msg });
     }
   });
 
@@ -4740,6 +4793,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Content File Upload Route ────────────────────────────────────────────────
   // POST /api/uploads/content — upload image or document for course content
+  // When the form-data field `purpose=cover` is set AND the upload is an image,
+  // the image is downsized server-side to a max of 540x540 (aspect preserved) and
+  // re-encoded; this keeps Partner Zone folder cover images small.
   app.post('/api/uploads/content', requireAuth, requireAdminOrStaff, contentUpload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
@@ -4751,8 +4807,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (file.mimetype.startsWith('image/')) { fileCategory = 'image'; folder = 'images'; }
       else if (file.mimetype.startsWith('video/')) { fileCategory = 'video'; folder = 'videos'; }
       else { fileCategory = 'document'; folder = 'documents'; }
+
+      // Cover-image downsize: only for images flagged as covers and not SVG (sharp can't raster SVG safely without rasterise option).
+      const isCover = (req.body?.purpose === 'cover');
+      let finalSize = file.size;
+      if (isCover && file.mimetype.startsWith('image/') && file.mimetype !== 'image/svg+xml') {
+        try {
+          const original = await fs.promises.readFile(file.path);
+          const resized = await sharp(original)
+            .rotate() // honour EXIF orientation
+            .resize({ width: 540, height: 540, fit: 'inside', withoutEnlargement: true })
+            .toBuffer();
+          await fs.promises.writeFile(file.path, resized);
+          finalSize = resized.length;
+        } catch (resizeErr) {
+          console.warn('Cover image resize failed, keeping original:', resizeErr);
+        }
+      }
+
       const publicUrl = `/uploads/content/${folder}/${file.filename}`;
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+      const fileSizeMB = (finalSize / (1024 * 1024)).toFixed(2) + ' MB';
       res.json({
         success: true,
         url: publicUrl,
@@ -4761,8 +4835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: fileSizeMB,
         type: fileCategory,
       });
-    } catch (error: any) {
-      res.status(400).json({ success: false, message: error.message || 'Upload failed' });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Upload failed';
+      res.status(400).json({ success: false, message: msg });
     }
   });
 
