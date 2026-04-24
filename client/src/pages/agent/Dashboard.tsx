@@ -152,13 +152,11 @@ export default function AgentDashboard() {
               <Bell className="w-5 h-5 text-primary" data-testid="icon-announcements" />
               <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">Duyurular</h2>
             </div>
-            {activeAnnouncements.length > 3 && (
-              <Link href="/agent/announcements">
-                <Button variant="ghost" size="sm" data-testid="button-view-all-announcements">
-                  Tümünü Gör ({activeAnnouncements.length})
-                </Button>
-              </Link>
-            )}
+            <Link href="/agent/announcements">
+              <Button variant="ghost" size="sm" data-testid="button-view-all-announcements">
+                Tümünü Gör ({activeAnnouncements.length})
+              </Button>
+            </Link>
           </div>
           {activeAnnouncements.slice(0, 3).map(announcement => {
             const style = announcementTypeStyles[announcement.type];

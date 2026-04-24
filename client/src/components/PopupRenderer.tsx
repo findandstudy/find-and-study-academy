@@ -35,13 +35,17 @@ function writeSet(key: string, storage: Storage, set: Set<string>) {
 }
 
 export function PopupRenderer() {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [open, setOpen] = useState(false);
 
+  // Only show pop-ups to agents (not admins/staff) and only on agent dashboard area
+  const isAgent = !!user && role === 'agent';
+  const onAgentArea = typeof window !== 'undefined' && window.location.pathname.startsWith('/agent');
+
   const { data } = useQuery<{ success: boolean; popups: Popup[] }>({
     queryKey: ['/api/popups/active'],
-    enabled: !!user,
+    enabled: isAgent && onAgentArea,
   });
 
   const visiblePopup = useMemo<Popup | null>(() => {

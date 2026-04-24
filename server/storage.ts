@@ -645,7 +645,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(announcements)
       .leftJoin(users, eq(announcements.createdBy, users.id))
-      .orderBy(desc(announcements.publishedAt), desc(announcements.createdAt));
+      .orderBy(sqlExpr`${announcements.publishedAt} DESC NULLS LAST`, desc(announcements.createdAt));
 
     // Convert null to undefined for type compatibility
     return announcementsWithCreator.map(item => ({
