@@ -6,20 +6,19 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Award, 
-  User, 
-  Building, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Award,
+  User,
+  Building,
   ShoppingCart,
   Bell,
   LogOut,
   Menu,
   X,
-  Search,
   Trophy,
-  Package
+  Package,
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -29,48 +28,76 @@ interface AgentLayoutProps {
   children: React.ReactNode;
 }
 
-const allNavigation = [
-  { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
-  { id: 'courses', name: 'Courses', href: '/agent/courses', icon: BookOpen },
-  { id: 'certificates', name: 'Certificates', href: '/agent/certificates', icon: Award },
-  { id: 'leaderboard', name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
-  { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
-  { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
-  { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
-  { id: 'partner-zone', name: 'Partner Zone', href: '/agent/partner-zone', icon: Package },
-  { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
-  { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
-  { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
+interface NavItem {
+  id?: string;
+  name: string;
+  href: string;
+  icon?: React.ElementType;
+  customIcon?: string;
+  external?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+// Logical grouping of navigation
+const navigationGroups: NavGroup[] = [
+  {
+    label: 'Genel',
+    items: [
+      { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Eğitim',
+    items: [
+      { id: 'courses', name: 'Courses', href: '/agent/courses', icon: BookOpen },
+      { id: 'certificates', name: 'Certificates', href: '/agent/certificates', icon: Award },
+      { id: 'leaderboard', name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
+    ],
+  },
+  {
+    label: 'Acente',
+    items: [
+      { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
+      { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
+    ],
+  },
+  {
+    label: 'Hizmetler',
+    items: [
+      { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
+      { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+      { id: 'partner-zone', name: 'Partner Zone', href: '/agent/partner-zone', icon: Package },
+    ],
+  },
+  {
+    label: 'Bağlantılar',
+    items: [
+      { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
+      { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
+    ],
+  },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Read initial sidebar collapsed state from localStorage to prevent flash
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('agent-sidebar-collapsed');
-    return saved === 'true';
+    return localStorage.getItem('agent-sidebar-collapsed') === 'true';
   });
-  // Read menu visibility from localStorage first to prevent flash
   const [menuVisibility, setMenuVisibility] = useState<Record<string, boolean>>(() => {
     const cached = localStorage.getItem('agent-menu-visibility');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached menu visibility:', e);
-      }
-    }
-    // Default: all hidden until loaded from API
+    if (cached) { try { return JSON.parse(cached); } catch { /* ignore */ } }
     return {};
   });
-  const [menuLoaded, setMenuLoaded] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
   const { agencies } = useDataStore();
-  
+
   const userAgency = agencies.find(a => a.id === user?.agencyId);
 
-  // Save sidebar collapsed state to localStorage
   useEffect(() => {
     localStorage.setItem('agent-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
@@ -80,82 +107,121 @@ export function AgentLayout({ children }: AgentLayoutProps) {
     const loadMenuVisibility = async () => {
       try {
         const response = await fetch('/api/menu-visibility', {
-          headers: {
-            'x-user-id': user?.id || '',
-            'x-user-role': user?.role || '',
-          },
+          headers: { 'x-user-id': user?.id || '', 'x-user-role': user?.role || '' },
         });
-
         if (response.ok) {
           const visibility = await response.json();
           setMenuVisibility(visibility);
-          // Cache to localStorage to prevent flash on next load
           localStorage.setItem('agent-menu-visibility', JSON.stringify(visibility));
-          setMenuLoaded(true);
         }
       } catch (error) {
         console.error('Error loading menu visibility:', error);
-        setMenuLoaded(true);
       }
     };
-
-    if (user) {
-      loadMenuVisibility();
-    }
+    if (user) loadMenuVisibility();
   }, [user]);
 
-  // Filter navigation based on visibility settings
-  const navigation = allNavigation.filter(item => {
-    // Always show external links
+  // Filter items in each group based on visibility
+  const filterItem = (item: NavItem) => {
     if (item.external) return true;
-    
-    // Check visibility for other items
-    const itemId = (item as any).id;
-    
-    // If menu settings not loaded yet and no cache, show nothing (prevents flash)
-    if (Object.keys(menuVisibility).length === 0) {
-      return false;
-    }
-    
-    return menuVisibility[itemId] !== false; // Show if not explicitly hidden
-  });
+    if (!item.id) return true;
+    if (Object.keys(menuVisibility).length === 0) return false;
+    return menuVisibility[item.id] !== false;
+  };
+
+  const visibleGroups = navigationGroups
+    .map(g => ({ ...g, items: g.items.filter(filterItem) }))
+    .filter(g => g.items.length > 0);
+
+  // ─── Item renderer ──────────────────────────────────────────────────────
+
+  const renderItem = (item: NavItem) => {
+    const isActive = location === item.href;
+    const content = (
+      <div
+        className={`
+          flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover-elevate
+          ${sidebarCollapsed ? 'lg:justify-center' : ''}
+          ${isActive ? 'bg-primary text-primary-foreground' : 'text-foreground'}
+        `}
+      >
+        {item.customIcon ? (
+          <img
+            src={item.customIcon}
+            alt={`${item.name} icon`}
+            className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
+          />
+        ) : item.icon ? (
+          <item.icon className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`} />
+        ) : null}
+        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+      </div>
+    );
+
+    const linkProps = {
+      'data-testid': `link-${item.name.toLowerCase().replace(/\s+/g, '-')}`,
+    };
+
+    const Wrapper = item.external
+      ? ({ children, className }: any) => (
+          <a href={item.href} target="_blank" rel="noopener noreferrer" className={className} {...linkProps}>
+            {children}
+          </a>
+        )
+      : ({ children, className }: any) => (
+          <Link href={item.href} className={className} {...linkProps}>
+            {children}
+          </Link>
+        );
+
+    return (
+      <div key={item.name}>
+        {sidebarCollapsed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Wrapper className="hidden lg:block">{content}</Wrapper>
+            </TooltipTrigger>
+            <TooltipContent side="right">{item.name}</TooltipContent>
+          </Tooltip>
+        )}
+        <Wrapper className={sidebarCollapsed ? 'lg:hidden' : ''}>{content}</Wrapper>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
-      `}>
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
+        `}
+      >
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-center h-20 px-4 border-b border-card-border relative">
+          {/* Header — compact */}
+          <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative shrink-0">
             <Link href="/agent/dashboard" className="flex-1 flex justify-center">
-              {/* Mobile: always show full logo */}
-              <img 
-                src={logoImage} 
-                alt="Find & Study Logo" 
-                className="w-36 h-32 rounded object-contain hover-elevate cursor-pointer lg:hidden"
+              {/* Mobile / desktop expanded: logo */}
+              <img
+                src={logoImage}
+                alt="Find & Study Logo"
+                className={`h-10 w-auto object-contain hover-elevate cursor-pointer ${sidebarCollapsed ? 'lg:hidden' : ''}`}
               />
-              {/* Desktop: show full logo when expanded, small icon when collapsed */}
-              <img 
-                src={logoImage} 
-                alt="Find & Study Logo" 
-                className={`rounded object-contain hover-elevate cursor-pointer hidden lg:block ${sidebarCollapsed ? 'lg:hidden' : 'w-36 h-32'}`}
-              />
-              <img 
-                src={portalIcon} 
-                alt="Find & Study" 
-                className={`w-10 h-10 rounded object-contain hover-elevate cursor-pointer hidden ${sidebarCollapsed ? 'lg:block' : ''}`}
+              {/* Desktop collapsed: small icon */}
+              <img
+                src={portalIcon}
+                alt="Find & Study"
+                className={`w-9 h-9 rounded object-contain hover-elevate cursor-pointer hidden ${sidebarCollapsed ? 'lg:block' : ''}`}
               />
             </Link>
             <Button
@@ -169,124 +235,50 @@ export function AgentLayout({ children }: AgentLayoutProps) {
             </Button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location === item.href;
-              const content = (
-                <div className={`
-                  flex items-center px-3 py-2 text-sm font-medium rounded-md hover-elevate transition-colors
-                  ${sidebarCollapsed ? 'lg:justify-center' : ''}
-                  ${isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                  }
-                `}>
-                  {(item as any).customIcon ? (
-                    <img 
-                      src={(item as any).customIcon} 
-                      alt={`${item.name} icon`}
-                      className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
-                    />
-                  ) : item.icon ? (
-                    <item.icon 
-                      className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
-                      style={(item as any).iconColor ? { 
-                        color: (item as any).iconColor, 
-                        stroke: (item as any).iconColor,
-                        transform: 'rotate(90deg)'
-                      } : undefined}
-                    />
-                  ) : null}
-                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+          {/* Navigation — scrollable, grouped */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3">
+            {visibleGroups.map((group, idx) => (
+              <div key={group.label} className={idx === 0 ? '' : 'mt-3'}>
+                {/* Group label (hidden when collapsed) */}
+                <div className={`px-3 mb-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </span>
                 </div>
-              );
-
-              // External links
-              if ((item as any).external) {
-                return (
-                  <div key={item.name}>
-                    {/* Desktop with tooltip when collapsed */}
-                    {sidebarCollapsed && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <a 
-                            href={item.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                            className="hidden lg:block"
-                          >
-                            {content}
-                          </a>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          {item.name}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {/* Mobile and desktop expanded - always visible */}
-                    <a 
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid={`link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                      className={sidebarCollapsed ? 'lg:hidden' : ''}
-                    >
-                      {content}
-                    </a>
-                  </div>
-                );
-              }
-              
-              // Internal links
-              return (
-                <div key={item.name}>
-                  {/* Desktop with tooltip when collapsed */}
-                  {sidebarCollapsed && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link href={item.href} className="hidden lg:block">
-                          {content}
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {item.name}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {/* Mobile and desktop expanded - always visible */}
-                  <Link href={item.href} className={sidebarCollapsed ? 'lg:hidden' : ''}>
-                    {content}
-                  </Link>
+                {/* Separator when collapsed */}
+                {idx > 0 && sidebarCollapsed && (
+                  <div className="hidden lg:block border-t border-border/50 mx-2 my-2" />
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map(renderItem)}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </nav>
 
-          {/* User section */}
-          <div className="p-4 border-t border-card-border">
-            {/* Mobile & Desktop expanded: full user info */}
+          {/* User section — compact, always visible */}
+          <div className="p-3 border-t border-card-border shrink-0">
+            {/* Mobile & desktop expanded */}
             <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
-              <div className="flex items-center space-x-3 mb-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+              <div className="flex items-center gap-2.5 mb-2">
+                <Avatar className="w-9 h-9 shrink-0">
+                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
                   <AvatarFallback className="text-sm font-medium">
                     {user?.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
+                  <p className="text-sm font-medium text-foreground truncate leading-tight">
                     {user?.name}
                   </p>
-                  <Badge variant="secondary" className="text-xs">Agent</Badge>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Agent</Badge>
+                    {userAgency && (
+                      <span className="text-[11px] text-muted-foreground truncate">{userAgency.name}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              {userAgency && (
-                <p className="text-xs text-muted-foreground mb-4 px-2">
-                  {userAgency.name}
-                </p>
-              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -298,21 +290,19 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 Sign out
               </Button>
             </div>
-            
-            {/* Desktop collapsed: icon only */}
-            <div className={`flex-col items-center space-y-3 ${sidebarCollapsed ? 'hidden lg:flex' : 'hidden'}`}>
+
+            {/* Desktop collapsed */}
+            <div className={`flex-col items-center space-y-2 ${sidebarCollapsed ? 'hidden lg:flex' : 'hidden'}`}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
                     <AvatarFallback className="text-sm font-medium">
                       {user?.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  {user?.name}
-                </TooltipContent>
+                <TooltipContent side="right">{user?.name}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -326,9 +316,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                     <LogOut className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  Sign out
-                </TooltipContent>
+                <TooltipContent side="right">Sign out</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -362,14 +350,11 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               Find And Study Academy
             </h1>
           </div>
-          
-          <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
+          <div className="w-10 lg:hidden" />
         </div>
 
         {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );

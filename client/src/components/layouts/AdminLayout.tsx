@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/store/auth';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Building, 
-  Award, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Building,
+  Award,
+  BarChart3,
   Megaphone,
   Settings,
   Plug,
@@ -21,7 +21,7 @@ import {
   X,
   ListTree,
   Bot,
-  Package
+  Package,
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -30,80 +30,143 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const allNavigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, adminOnly: false },
-  { name: 'Profile', href: '/admin/profile', icon: User, adminOnly: false },
-  { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText, adminOnly: false },
-  { name: 'Quizzes', href: '/admin/quizzes', icon: Award, adminOnly: false },
-  { name: 'Certificates', href: '/admin/certificates', icon: Award, adminOnly: false },
-  { name: 'Agencies', href: '/admin/agencies', icon: Building, adminOnly: false },
-  { name: 'Users', href: '/admin/users', icon: Users, adminOnly: false },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3, adminOnly: false },
-  { name: 'Partner Zone', href: '/admin/partner-zone', icon: Package, adminOnly: false },
-  { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, adminOnly: false },
-  { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot, adminOnly: false },
-  { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
-  { name: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
-  { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  adminOnly?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+// Logical grouping of navigation
+const navigationGroups: NavGroup[] = [
+  {
+    label: 'Genel',
+    items: [
+      { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { name: 'Profile', href: '/admin/profile', icon: User },
+    ],
+  },
+  {
+    label: 'İçerik',
+    items: [
+      { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText },
+      { name: 'Quizzes', href: '/admin/quizzes', icon: Award },
+      { name: 'Certificates', href: '/admin/certificates', icon: Award },
+      { name: 'Partner Zone', href: '/admin/partner-zone', icon: Package },
+    ],
+  },
+  {
+    label: 'Yönetim',
+    items: [
+      { name: 'Agencies', href: '/admin/agencies', icon: Building },
+      { name: 'Users', href: '/admin/users', icon: Users },
+      { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Etkileşim',
+    items: [
+      { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+      { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot },
+    ],
+  },
+  {
+    label: 'Sistem',
+    items: [
+      { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
+      { name: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
+      { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
+    ],
+  },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Read initial sidebar collapsed state from localStorage to prevent flash
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('admin-sidebar-collapsed');
-    return saved === 'true';
+    return localStorage.getItem('admin-sidebar-collapsed') === 'true';
   });
   const [location] = useLocation();
   const { user, role, logout } = useAuthStore();
-  
-  // Filter navigation based on role — staff cannot see admin-only pages
-  const navigation = allNavigation.filter(item => !item.adminOnly || role === 'admin');
 
-  // Save sidebar collapsed state to localStorage
+  // Filter groups based on role — staff cannot see admin-only items
+  const visibleGroups = navigationGroups
+    .map(g => ({ ...g, items: g.items.filter(it => !it.adminOnly || role === 'admin') }))
+    .filter(g => g.items.length > 0);
+
   useEffect(() => {
     localStorage.setItem('admin-sidebar-collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  // ─── Item renderer ──────────────────────────────────────────────────────
+
+  const renderItem = (item: NavItem) => {
+    const isActive = location === item.href;
+    const content = (
+      <div
+        className={`
+          flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover-elevate
+          ${sidebarCollapsed ? 'lg:justify-center' : ''}
+          ${isActive ? 'bg-primary text-primary-foreground' : 'text-foreground'}
+        `}
+      >
+        <item.icon className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`} />
+        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+      </div>
+    );
+
+    return (
+      <div key={item.name}>
+        {sidebarCollapsed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href={item.href} className="hidden lg:block">{content}</Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">{item.name}</TooltipContent>
+          </Tooltip>
+        )}
+        <Link href={item.href} className={sidebarCollapsed ? 'lg:hidden' : ''}>
+          {content}
+        </Link>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
-      `}>
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
+        `}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative">
-            {/* Mobile: always show logo */}
-            <div className="flex items-center lg:hidden">
-              <img 
-                src={logoImage} 
-                alt="Find & Study Logo" 
+          <div className="flex items-center justify-center h-16 px-4 border-b border-card-border relative shrink-0">
+            <div className={`items-center ${sidebarCollapsed ? 'flex lg:hidden' : 'flex'}`}>
+              <img
+                src={logoImage}
+                alt="Find & Study Logo"
                 className="h-9 w-auto object-contain"
               />
             </div>
-            {/* Desktop expanded: show full logo */}
-            <div className={`items-center ${sidebarCollapsed ? 'hidden' : 'hidden lg:flex'}`}>
-              <img 
-                src={logoImage} 
-                alt="Find & Study Logo" 
-                className="h-9 w-auto object-contain"
-              />
-            </div>
-            {/* Desktop collapsed: show icon only */}
-            <img 
-              src={portalIcon} 
-              alt="Find & Study" 
+            <img
+              src={portalIcon}
+              alt="Find & Study"
               className={`w-9 h-9 object-contain ${sidebarCollapsed ? 'hidden lg:block' : 'hidden'}`}
             />
             <Button
@@ -117,64 +180,45 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </Button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location === item.href;
-              const content = (
-                <div className={`
-                  flex items-center px-3 py-2 text-sm font-medium rounded-md hover-elevate transition-colors
-                  ${sidebarCollapsed ? 'lg:justify-center' : ''}
-                  ${isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                  }
-                `}>
-                  <item.icon className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`} />
-                  <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+          {/* Navigation — scrollable, grouped */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3">
+            {visibleGroups.map((group, idx) => (
+              <div key={group.label} className={idx === 0 ? '' : 'mt-3'}>
+                {/* Group label (hidden when collapsed) */}
+                <div className={`px-3 mb-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </span>
                 </div>
-              );
-
-              return (
-                <div key={item.name}>
-                  {/* Desktop with tooltip when collapsed */}
-                  {sidebarCollapsed && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link href={item.href} className="hidden lg:block">
-                          {content}
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {item.name}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {/* Mobile and desktop expanded - always visible */}
-                  <Link href={item.href} className={sidebarCollapsed ? 'lg:hidden' : ''}>
-                    {content}
-                  </Link>
+                {/* Separator when collapsed */}
+                {idx > 0 && sidebarCollapsed && (
+                  <div className="hidden lg:block border-t border-border/50 mx-2 my-2" />
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map(renderItem)}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </nav>
 
-          {/* User section */}
-          <div className="p-4 border-t border-card-border">
-            {/* Mobile & Desktop expanded: full user info */}
+          {/* User section — compact */}
+          <div className="p-3 border-t border-card-border shrink-0">
+            {/* Mobile & desktop expanded */}
             <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
-              <div className="flex items-center space-x-3 mb-4">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+              <div className="flex items-center gap-2.5 mb-2">
+                <Avatar className="w-9 h-9 shrink-0">
+                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
                   <AvatarFallback className="text-sm font-medium">
                     {user?.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
+                  <p className="text-sm font-medium text-foreground truncate leading-tight">
                     {user?.name}
                   </p>
-                  <Badge variant="default" className="text-xs">Admin</Badge>
+                  <Badge variant="default" className="text-[10px] py-0 px-1.5 h-4 mt-0.5">
+                    {role === 'admin' ? 'Admin' : 'Staff'}
+                  </Badge>
                 </div>
               </div>
               <Button
@@ -188,36 +232,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 Sign out
               </Button>
             </div>
-            
-            {/* Desktop collapsed: icon only */}
-            <div className={`flex-col items-center space-y-3 ${sidebarCollapsed ? 'hidden lg:flex' : 'hidden'}`}>
+
+            {/* Desktop collapsed */}
+            <div className={`flex-col items-center space-y-2 ${sidebarCollapsed ? 'hidden lg:flex' : 'hidden'}`}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
                     <AvatarFallback className="text-sm font-medium">
                       {user?.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  {user?.name}
-                </TooltipContent>
+                <TooltipContent side="right">{user?.name}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={logout}
-                    data-testid="button-logout"
-                  >
+                  <Button variant="ghost" size="icon" onClick={logout} data-testid="button-logout">
                     <LogOut className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  Sign out
-                </TooltipContent>
+                <TooltipContent side="right">Sign out</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -251,14 +286,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               Find And Study - Admin Portal
             </h1>
           </div>
-          
-          <div className="w-10 lg:hidden" /> {/* Spacer for mobile */}
+          <div className="w-10 lg:hidden" />
         </div>
 
         {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );
