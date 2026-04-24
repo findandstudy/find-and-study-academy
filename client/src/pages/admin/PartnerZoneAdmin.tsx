@@ -257,6 +257,16 @@ export default function PartnerZoneAdmin() {
   const [fileUploading, setFileUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ─── Drag & drop state ──────────────────────────────────────────────────
+  // Holds the item currently being dragged; null when no drag is active.
+  const [dragItem, setDragItem] = useState<
+    | { kind: 'folder'; id: string; name: string; currentParentId: string | null }
+    | { kind: 'content'; id: string; name: string; currentFolderId: string | null }
+    | null
+  >(null);
+  // Identifier of the drop target currently being hovered (folderId or 'root').
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
   // ─── Queries ────────────────────────────────────────────────────────────
 
   const listParentParam = folderId ?? 'root';
@@ -613,13 +623,117 @@ export default function PartnerZoneAdmin() {
   const isFolderMutating = createFolderMutation.isPending || updateFolderMutation.isPending;
   const isContentMutating = createContentMutation.isPending || updateContentMutation.isPending;
 
+  // ─── Drag & drop: move mutations ────────────────────────────────────────
+
+  // Refresh both the root list and any open folder detail view after moves.
+  const invalidatePartnerFolders = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
+  };
+
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({ id, parentFolderId }: { id: string; parentFolderId: string | null }) => {
+      const r = await apiRequest('PATCH', `/api/admin/partner-folders/${id}`, { parentFolderId });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(body?.message ?? 'Klasör taşınamadı');
+      return body;
+    },
+    onSuccess: () => {
+      invalidatePartnerFolders();
+      toast({ title: 'Klasör taşındı' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Taşıma başarısız', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const moveContentMutation = useMutation({
+    mutationFn: async ({ id, folderId: targetFolderId }: { id: string; folderId: string | null }) => {
+      const r = await apiRequest('PATCH', `/api/admin/contents/${id}/folder`, { folderId: targetFolderId });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(body?.message ?? 'Dosya taşınamadı');
+      return body;
+    },
+    onSuccess: () => {
+      invalidatePartnerFolders();
+      toast({ title: 'Dosya taşındı' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Taşıma başarısız', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  // Resolves a drop event into a backend call; ignores no-op moves and
+  // self-drops. The cycle/self-parent check is also enforced server-side.
+  const handleDrop = (target: { kind: 'folder'; id: string } | { kind: 'root' }) => {
+    if (!dragItem) return;
+    const targetFolderId = target.kind === 'root' ? null : target.id;
+
+    if (dragItem.kind === 'folder') {
+      // Don't drop a folder onto itself.
+      if (target.kind === 'folder' && target.id === dragItem.id) return;
+      // Don't move a folder to where it already lives.
+      if (dragItem.currentParentId === targetFolderId) return;
+      moveFolderMutation.mutate({ id: dragItem.id, parentFolderId: targetFolderId });
+    } else {
+      if (dragItem.currentFolderId === targetFolderId) return;
+      moveContentMutation.mutate({ id: dragItem.id, folderId: targetFolderId });
+    }
+  };
+
+  // Drop targets accept the move only when the dragged item is meaningful
+  // for the target (a folder can't be dropped on itself).
+  const canAcceptDrop = (target: { kind: 'folder'; id: string } | { kind: 'root' }): boolean => {
+    if (!dragItem) return false;
+    if (dragItem.kind === 'folder' && target.kind === 'folder' && target.id === dragItem.id) return false;
+    return true;
+  };
+
+  // Shared drop-target handlers; key=string used to highlight the active target.
+  const dropTargetProps = (target: { kind: 'folder'; id: string } | { kind: 'root' }, key: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!canAcceptDrop(target)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dropTargetId !== key) setDropTargetId(key);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      // Only clear when actually leaving the element (not when entering a child).
+      if (e.currentTarget === e.target) setDropTargetId(null);
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDropTargetId(null);
+      handleDrop(target);
+      setDragItem(null);
+    },
+    'data-drop-active': dropTargetId === key ? 'true' : undefined,
+  });
+
   // ─── Folder card (admin variant with overlay actions) ─────────────────────
   const renderFolderCard = (f: PartnerFolder) => {
     const country = countries.find((c) => c.code === f.countryCode) ?? null;
+    const isDragging = dragItem?.kind === 'folder' && dragItem.id === f.id;
+    const isDropTarget = dropTargetId === `folder-${f.id}`;
     return (
-      <div key={f.id} className="group relative">
+      <div
+        key={f.id}
+        className={`group relative transition-opacity ${isDragging ? 'opacity-40' : ''}`}
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = 'move';
+          // Some browsers require setData to actually start the drag.
+          e.dataTransfer.setData('text/plain', f.id);
+          setDragItem({ kind: 'folder', id: f.id, name: f.name, currentParentId: f.parentFolderId });
+        }}
+        onDragEnd={() => { setDragItem(null); setDropTargetId(null); }}
+        {...dropTargetProps({ kind: 'folder', id: f.id }, `folder-${f.id}`)}
+        data-testid={`folder-card-wrapper-${f.id}`}
+      >
         <div
-          className="rounded-md border overflow-hidden cursor-pointer hover-elevate"
+          className={`rounded-md border overflow-hidden cursor-pointer hover-elevate ${
+            isDropTarget ? 'ring-2 ring-primary border-primary' : ''
+          }`}
           onClick={() => navigate(`/admin/partner-zone/${f.id}`)}
           data-testid={`folder-card-${f.id}`}
         >
@@ -703,18 +817,23 @@ export default function PartnerZoneAdmin() {
   if (folderId) {
     return (
       <div className="space-y-6">
-        {/* Breadcrumbs */}
+        {/* Breadcrumbs (also act as drop targets so users can move items "up") */}
         <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Breadcrumb">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2"
-            onClick={() => navigate('/admin/partner-zone')}
-            data-testid="breadcrumb-root"
+          <div
+            className={`rounded-md ${dropTargetId === 'breadcrumb-root' ? 'ring-2 ring-primary' : ''}`}
+            {...dropTargetProps({ kind: 'root' }, 'breadcrumb-root')}
           >
-            <Home className="w-4 h-4 mr-1.5" />
-            Partner Zone
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2"
+              onClick={() => navigate('/admin/partner-zone')}
+              data-testid="breadcrumb-root"
+            >
+              <Home className="w-4 h-4 mr-1.5" />
+              Partner Zone
+            </Button>
+          </div>
           {breadcrumb.map((b, idx) => {
             const isLast = idx === breadcrumb.length - 1;
             return (
@@ -723,15 +842,20 @@ export default function PartnerZoneAdmin() {
                 {isLast ? (
                   <span className="px-2 py-1 text-foreground font-medium">{b.name}</span>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2"
-                    onClick={() => navigate(`/admin/partner-zone/${b.id}`)}
-                    data-testid={`breadcrumb-${b.id}`}
+                  <div
+                    className={`rounded-md ${dropTargetId === `breadcrumb-${b.id}` ? 'ring-2 ring-primary' : ''}`}
+                    {...dropTargetProps({ kind: 'folder', id: b.id }, `breadcrumb-${b.id}`)}
                   >
-                    {b.name}
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => navigate(`/admin/partner-zone/${b.id}`)}
+                      data-testid={`breadcrumb-${b.id}`}
+                    >
+                      {b.name}
+                    </Button>
+                  </div>
                 )}
               </div>
             );
@@ -836,8 +960,25 @@ export default function PartnerZoneAdmin() {
                         {filteredFolderContents.map((item) => {
                           const mt = getContentType(item);
                           const url = getContentUrl(item);
+                          const isDraggingThis = dragItem?.kind === 'content' && dragItem.id === item.id;
                           return (
-                            <TableRow key={item.id}>
+                            <TableRow
+                              key={item.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('text/plain', item.id);
+                                setDragItem({
+                                  kind: 'content',
+                                  id: item.id,
+                                  name: item.displayName || item.title,
+                                  currentFolderId: item.folderId,
+                                });
+                              }}
+                              onDragEnd={() => { setDragItem(null); setDropTargetId(null); }}
+                              className={`cursor-grab ${isDraggingThis ? 'opacity-40' : ''}`}
+                              data-testid={`content-row-${item.id}`}
+                            >
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <ContentIcon type={mt} className="w-7 h-7 text-primary opacity-70 shrink-0" />
