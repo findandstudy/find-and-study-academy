@@ -3271,6 +3271,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Partner Folder routes ─────────────────────────────────────────────────
+
+  // Public: list published folders (for agents)
+  app.get('/api/partner-folders', requireAuth, async (req, res) => {
+    try {
+      const folders = await storage.getPartnerFolders();
+      const published = folders.filter(f => f.status === 'published');
+      res.json({ success: true, folders: published });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch folders' });
+    }
+  });
+
+  // Public: get contents of a published folder (for agents)
+  app.get('/api/partner-folders/:id/contents', requireAuth, async (req, res) => {
+    try {
+      const folder = await storage.getPartnerFolderById(req.params.id);
+      if (!folder || folder.status !== 'published') {
+        return res.status(404).json({ success: false, message: 'Folder not found' });
+      }
+      const items = await storage.getFolderContents(req.params.id);
+      const published = items.filter(c => c.status === 'published');
+      res.json({ success: true, folder, contents: published });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch folder contents' });
+    }
+  });
+
+  // Admin: list all folders
+  app.get('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const folders = await storage.getPartnerFolders();
+      // Attach content count to each folder
+      const allContents = await storage.getContents();
+      const foldersWithCount = await Promise.all(folders.map(async folder => {
+        const count = allContents.filter((c: any) => c.folderId === folder.id).length;
+        return { ...folder, contentCount: count };
+      }));
+      res.json({ success: true, folders: foldersWithCount });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch folders' });
+    }
+  });
+
+  // Admin: get single folder with its contents
+  app.get('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const folder = await storage.getPartnerFolderById(req.params.id);
+      if (!folder) return res.status(404).json({ success: false, message: 'Folder not found' });
+      const items = await storage.getFolderContents(req.params.id);
+      res.json({ success: true, folder, contents: items });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch folder' });
+    }
+  });
+
+  // Admin: create folder
+  app.post('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const folder = await storage.createPartnerFolder(req.body);
+      res.json({ success: true, folder });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to create folder' });
+    }
+  });
+
+  // Admin: update folder
+  app.patch('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const folder = await storage.updatePartnerFolder(req.params.id, req.body);
+      res.json({ success: true, folder });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to update folder' });
+    }
+  });
+
+  // Admin: delete folder
+  app.delete('/api/admin/partner-folders/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      await storage.deletePartnerFolder(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to delete folder' });
+    }
+  });
+
+  // Admin: assign content to a folder (or unassign by passing folderId: null)
+  app.patch('/api/admin/contents/:id/folder', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { folderId } = req.body;
+      const content = await storage.updateContent(req.params.id, { folderId } as any);
+      res.json({ success: true, content });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to assign content to folder' });
+    }
+  });
+
   // Quiz management routes (admin only)
   app.get('/api/admin/quizzes', requireAuth, requireAdmin, async (req, res) => {
     try {

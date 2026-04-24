@@ -66,6 +66,9 @@ import {
   type InsertKnowledgeSource,
   type KnowledgeChunk,
   type InsertKnowledgeChunk,
+  partnerFolders,
+  type PartnerFolder,
+  type InsertPartnerFolder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike } from "drizzle-orm";
@@ -194,6 +197,14 @@ export interface IStorage {
   upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation>;
   deleteContentTranslation(contentId: string, language: string): Promise<void>;
   getAllTranslations(): Promise<ContentTranslation[]>;
+
+  // Partner Folder methods
+  getPartnerFolders(): Promise<PartnerFolder[]>;
+  getPartnerFolderById(id: string): Promise<PartnerFolder | undefined>;
+  createPartnerFolder(folder: InsertPartnerFolder): Promise<PartnerFolder>;
+  updatePartnerFolder(id: string, updates: Partial<InsertPartnerFolder>): Promise<PartnerFolder>;
+  deletePartnerFolder(id: string): Promise<void>;
+  getFolderContents(folderId: string): Promise<Content[]>;
 
   // Knowledge Source methods (Findy AI RAG)
   getKnowledgeSources(): Promise<KnowledgeSource[]>;
@@ -550,6 +561,7 @@ export class DatabaseStorage implements IStorage {
         section: contents.section,
         status: contents.status,
         order: contents.order,
+        folderId: contents.folderId,
         createdAt: contents.createdAt,
         updatedAt: contents.updatedAt,
         countryName: countries.name
@@ -1214,6 +1226,41 @@ export class DatabaseStorage implements IStorage {
   async getAllTranslations(): Promise<ContentTranslation[]> {
     return db.select().from(contentTranslations)
       .orderBy(contentTranslations.contentId, contentTranslations.language);
+  }
+
+  // ── Partner Folder implementations ──────────────────────────────────────────
+  async getPartnerFolders(): Promise<PartnerFolder[]> {
+    return db.select().from(partnerFolders).orderBy(partnerFolders.order, partnerFolders.name);
+  }
+
+  async getPartnerFolderById(id: string): Promise<PartnerFolder | undefined> {
+    const [folder] = await db.select().from(partnerFolders).where(eq(partnerFolders.id, id));
+    return folder || undefined;
+  }
+
+  async createPartnerFolder(data: InsertPartnerFolder): Promise<PartnerFolder> {
+    const [created] = await db.insert(partnerFolders).values({ ...data, updatedAt: new Date() }).returning();
+    return created;
+  }
+
+  async updatePartnerFolder(id: string, updates: Partial<InsertPartnerFolder>): Promise<PartnerFolder> {
+    const [updated] = await db.update(partnerFolders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(partnerFolders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePartnerFolder(id: string): Promise<void> {
+    // Unlink contents from this folder before deleting
+    await db.update(contents).set({ folderId: null }).where(eq(contents.folderId as any, id));
+    await db.delete(partnerFolders).where(eq(partnerFolders.id, id));
+  }
+
+  async getFolderContents(folderId: string): Promise<Content[]> {
+    return db.select().from(contents)
+      .where(eq(contents.folderId as any, folderId))
+      .orderBy(contents.order, contents.title);
   }
 
   // ── Knowledge Source implementations ────────────────────────────────────────

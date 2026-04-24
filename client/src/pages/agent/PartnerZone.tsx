@@ -1,202 +1,260 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileText, Search, Package, Calendar, Globe } from 'lucide-react';
-import { CountryFlag } from '@/components/CountryFlag';
-import dayjs from 'dayjs';
+import { Loader2, ChevronLeft, Folder, Download, FileText, Video, Image, File, ExternalLink } from 'lucide-react';
 
-interface Content {
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface PartnerFolder {
+  id: string;
+  name: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  countryCode: string | null;
+  categoryTag: string | null;
+  status: string;
+}
+
+interface FolderContent {
   id: string;
   title: string;
   description: string | null;
-  contentType: string;
-  status: string;
-  section: string | null;
-  countryCode: string | null;
-  categoryTag: string | null;
+  contentType: string | null;
+  type: string;
   documentUrl: string | null;
-  fileSize: string | null;
+  videoUrl: string | null;
+  imageUrl: string | null;
   displayName: string | null;
+  fileSize: string | null;
   updatedAt: string;
-  countryName?: string;
-  countryFlag?: string;
 }
 
-export default function AgentPartnerZone() {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [countryFilter, setCountryFilter] = useState('all');
+type MediaType = 'document' | 'video' | 'image';
 
-  const { data: contentsData, isLoading } = useQuery<{ success: boolean; contents: Content[] }>({
-    queryKey: ['/api/contents'],
-  });
+function getContentUrl(item: FolderContent): string | null {
+  return item.documentUrl ?? item.videoUrl ?? item.imageUrl ?? null;
+}
 
-  const allContents = contentsData?.contents ?? [];
+function getContentType(item: FolderContent): MediaType {
+  const t = item.contentType ?? item.type;
+  if (t === 'video') return 'video';
+  if (t === 'image') return 'image';
+  return 'document';
+}
 
-  // Only show published documents
-  const documents = allContents.filter(c => c.contentType === 'document' && c.status === 'published');
+function MediaIcon({ type, className }: { type: MediaType; className?: string }) {
+  if (type === 'video') return <Video className={className} />;
+  if (type === 'image') return <Image className={className} />;
+  return <FileText className={className} />;
+}
 
-  // Get unique categories
-  const categories = Array.from(new Set(documents.map(d => d.categoryTag).filter(Boolean))) as string[];
-  const countries = Array.from(new Set(documents.map(d => d.countryCode).filter(Boolean))) as string[];
+// ─── Folder card ─────────────────────────────────────────────────────────────
 
-  const filtered = documents.filter(doc => {
-    const matchesSearch = !search || 
-      (doc.title?.toLowerCase().includes(search.toLowerCase())) ||
-      (doc.description?.toLowerCase().includes(search.toLowerCase())) ||
-      (doc.displayName?.toLowerCase().includes(search.toLowerCase()));
-    const matchesCategory = categoryFilter === 'all' || doc.categoryTag === categoryFilter;
-    const matchesCountry = countryFilter === 'all' || doc.countryCode === countryFilter;
-    return matchesSearch && matchesCategory && matchesCountry;
-  });
+function FolderCard({ folder, onClick }: { folder: PartnerFolder; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative rounded-xl overflow-hidden border hover-elevate text-left w-full"
+      data-testid={`folder-card-${folder.id}`}
+    >
+      {/* Cover */}
+      <div className="relative aspect-square overflow-hidden bg-muted">
+        {folder.coverImageUrl ? (
+          <img
+            src={folder.coverImageUrl}
+            alt={folder.name}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Folder className="w-20 h-20 text-muted-foreground opacity-20" />
+          </div>
+        )}
+        {/* Dark gradient overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {/* Title overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          <p className="text-white font-semibold text-sm leading-tight drop-shadow-sm line-clamp-3">
+            {folder.name}
+          </p>
+          {folder.countryCode && (
+            <span className="text-white/70 text-xs mt-0.5 block">{folder.countryCode}</span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
 
-  // Group by category
-  const grouped = filtered.reduce((acc: Record<string, Content[]>, doc) => {
-    const key = doc.categoryTag || 'General';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(doc);
-    return acc;
-  }, {});
+// ─── Content item card ────────────────────────────────────────────────────────
 
-  const handleDownload = (doc: Content) => {
-    const url = doc.documentUrl;
+function ContentCard({ item }: { item: FolderContent }) {
+  const url = getContentUrl(item);
+  const mt = getContentType(item);
+
+  const handleAction = () => {
     if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = doc.displayName || doc.title;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (mt === 'image' || mt === 'video') {
+      window.open(url, '_blank');
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.displayName || item.title;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   return (
+    <div className="rounded-xl border bg-card overflow-hidden flex flex-col hover-elevate" data-testid={`content-card-${item.id}`}>
+      {/* Image preview (if type is image) */}
+      {mt === 'image' && url && (
+        <div className="aspect-video overflow-hidden bg-muted">
+          <img src={url} alt={item.displayName || item.title} className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 shrink-0">
+            <MediaIcon type={mt} className="w-6 h-6 text-primary opacity-70" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm leading-tight">{item.displayName || item.title}</p>
+            {item.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+            )}
+            {item.fileSize && (
+              <p className="text-xs text-muted-foreground/70 mt-1">{item.fileSize}</p>
+            )}
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="w-full mt-auto"
+          onClick={handleAction}
+          disabled={!url}
+        >
+          {mt === 'image' || mt === 'video' ? (
+            <><ExternalLink className="w-4 h-4 mr-2" />Aç</>
+          ) : (
+            <><Download className="w-4 h-4 mr-2" />İndir</>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function AgentPartnerZone() {
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+
+  // Folder list
+  const { data: foldersData, isLoading: foldersLoading } = useQuery<{ success: boolean; folders: PartnerFolder[] }>({
+    queryKey: ['/api/partner-folders'],
+    queryFn: async () => {
+      const res = await fetch('/api/partner-folders', {
+        headers: { 'x-user-id': JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || '' },
+      });
+      return res.json();
+    },
+  });
+
+  // Folder detail
+  const { data: detailData, isLoading: detailLoading } = useQuery<{ success: boolean; folder: PartnerFolder; contents: FolderContent[] }>({
+    queryKey: ['/api/partner-folders', openFolderId, 'contents'],
+    queryFn: async () => {
+      const res = await fetch(`/api/partner-folders/${openFolderId}/contents`, {
+        headers: { 'x-user-id': JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || '' },
+      });
+      return res.json();
+    },
+    enabled: !!openFolderId,
+  });
+
+  const folders = foldersData?.folders ?? [];
+  const openFolder = detailData?.folder ?? null;
+  const folderContents = detailData?.contents ?? [];
+
+  // ─── Folder detail view ───────────────────────────────────────────────────
+
+  if (openFolderId) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setOpenFolderId(null)}>
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{openFolder?.name ?? '...'}</h1>
+            {openFolder?.description && (
+              <p className="text-muted-foreground text-sm">{openFolder.description}</p>
+            )}
+          </div>
+        </div>
+
+        {detailLoading ? (
+          <div className="flex justify-center py-20 text-muted-foreground gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /><span>Yükleniyor...</span>
+          </div>
+        ) : folderContents.length === 0 ? (
+          <div className="text-center py-20">
+            <File className="w-14 h-14 mx-auto mb-3 text-muted-foreground opacity-30" />
+            <p className="text-muted-foreground">Bu klasörde henüz içerik bulunmuyor.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {folderContents.map(item => (
+              <ContentCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── Folder grid view ─────────────────────────────────────────────────────
+
+  return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Hero header */}
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 border border-primary/10">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Partner Zone
         </h1>
         <p className="text-muted-foreground mt-2">
-          Access downloadable resources, guides, and documents shared by Find And Study Academy.
+          Find And Study Academy tarafından paylaşılan kaynaklar, rehberler ve materyaller.
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            className="pl-10"
-            placeholder="Search documents..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            data-testid="input-partner-search"
-          />
+      {/* Folders */}
+      {foldersLoading ? (
+        <div className="flex justify-center py-20 text-muted-foreground gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /><span>Yükleniyor...</span>
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-48" data-testid="select-category-filter">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(cat => (
-              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={countryFilter} onValueChange={setCountryFilter}>
-          <SelectTrigger className="w-full sm:w-48" data-testid="select-country-filter">
-            <SelectValue placeholder="All Countries" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Countries</SelectItem>
-            {countries.map(code => (
-              <SelectItem key={code} value={code}>{code}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading resources...</div>
-      ) : Object.keys(grouped).length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-40" />
-            <p className="text-muted-foreground">
-              {documents.length === 0
-                ? 'No documents available in Partner Zone yet.'
-                : 'No documents match your filters.'}
-            </p>
-          </CardContent>
-        </Card>
+      ) : folders.length === 0 ? (
+        <div className="text-center py-20">
+          <Folder className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-25" />
+          <p className="text-muted-foreground text-lg font-medium">Henüz klasör bulunmuyor</p>
+          <p className="text-muted-foreground text-sm mt-1">İçerikler yakında eklenecek.</p>
+        </div>
       ) : (
-        Object.entries(grouped).map(([category, docs]) => (
-          <div key={category}>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              {category}
-              <Badge variant="secondary">{docs.length}</Badge>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {docs.map(doc => (
-                <Card key={doc.id} className="hover-elevate" data-testid={`card-document-${doc.id}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div className="flex-1">
-                        <CardTitle className="text-base leading-tight">
-                          {doc.displayName || doc.title}
-                        </CardTitle>
-                        {doc.description && (
-                          <CardDescription className="mt-1 line-clamp-2">{doc.description}</CardDescription>
-                        )}
-                      </div>
-                      {doc.countryCode && (
-                        <CountryFlag code={doc.countryCode} flag={doc.countryFlag} size="md" />
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-3">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                      {doc.fileSize && (
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {doc.fileSize}
-                        </span>
-                      )}
-                      {doc.countryCode && (
-                        <span className="flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          {doc.countryName || doc.countryCode}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {dayjs(doc.updatedAt).format('MMM D, YYYY')}
-                      </span>
-                    </div>
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => handleDownload(doc)}
-                      disabled={!doc.documentUrl}
-                      data-testid={`button-download-${doc.id}`}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ))
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {folders.map(folder => (
+            <FolderCard
+              key={folder.id}
+              folder={folder}
+              onClick={() => setOpenFolderId(folder.id)}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

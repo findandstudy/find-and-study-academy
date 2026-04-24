@@ -100,6 +100,7 @@ export const contents = pgTable("contents", {
   section: text("section"), // Section/category name (e.g., "A1 Destination Countries")
   status: text("status").notNull().default('draft'), // 'draft' | 'published' | 'archived'
   order: integer("order").default(0), // For sorting content within a course/country
+  folderId: varchar("folder_id"), // FK to partner_folders.id — null means not in any folder
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -451,6 +452,24 @@ export type KnowledgeSource = typeof knowledgeSources.$inferSelect;
 export type InsertKnowledgeSource = z.infer<typeof insertKnowledgeSourceSchema>;
 export type KnowledgeChunk = typeof knowledgeChunks.$inferSelect;
 export type InsertKnowledgeChunk = z.infer<typeof insertKnowledgeChunkSchema>;
+
+// ── Partner Zone Folders ──────────────────────────────────────────────────────
+export const partnerFolders = pgTable("partner_folders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  coverImageUrl: text("cover_image_url"),   // 1080x1080 cover image URL
+  countryCode: varchar("country_code", { length: 10 }),
+  categoryTag: text("category_tag"),
+  status: text("status").notNull().default('draft'), // 'draft' | 'published'
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertPartnerFolderSchema = createInsertSchema(partnerFolders).omit({ id: true, createdAt: true, updatedAt: true });
+export type PartnerFolder = typeof partnerFolders.$inferSelect;
+export type InsertPartnerFolder = z.infer<typeof insertPartnerFolderSchema>;
 
 export const insertFindyConversationSchema = createInsertSchema(findyConversations).omit({ id: true, startedAt: true, lastMessageAt: true });
 export const insertFindyMessageSchema = createInsertSchema(findyMessages).omit({ id: true, createdAt: true });
