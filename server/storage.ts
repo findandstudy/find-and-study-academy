@@ -1393,18 +1393,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFolderPath(folderId: string): Promise<PartnerFolder[]> {
-    // Walk up the parent chain until root; cycle-safe via visited set + depth cap.
+    // Walk up the parent chain until root. Cycle-safe via visited Set —
+    // unbounded depth (no hard cap) to honor the "unlimited nesting" requirement.
     const path: PartnerFolder[] = [];
     const visited = new Set<string>();
     let currentId: string | null = folderId;
-    let depth = 0;
-    while (currentId && !visited.has(currentId) && depth < 32) {
+    while (currentId && !visited.has(currentId)) {
       visited.add(currentId);
       const folder = await this.getPartnerFolderById(currentId);
       if (!folder) break;
       path.unshift(folder);
       currentId = folder.parentFolderId ?? null;
-      depth += 1;
     }
     return path;
   }

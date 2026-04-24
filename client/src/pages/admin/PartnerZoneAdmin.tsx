@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -136,13 +136,23 @@ interface ToolbarProps {
 }
 
 function PartnerToolbar(props: ToolbarProps) {
+  // Local input state debounced (250ms) before propagating to parent filter state
+  const [localSearch, setLocalSearch] = useState(props.search);
+  useEffect(() => { setLocalSearch(props.search); }, [props.search]);
+  useEffect(() => {
+    if (localSearch === props.search) return;
+    const t = setTimeout(() => props.onSearchChange(localSearch), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSearch]);
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="relative flex-1 min-w-[180px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          value={props.search}
-          onChange={(e) => props.onSearchChange(e.target.value)}
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
           placeholder="Ara..."
           className="pl-9"
           data-testid="input-admin-partner-search"

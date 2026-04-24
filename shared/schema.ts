@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, unique, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, unique, jsonb, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -504,7 +504,7 @@ export const partnerFolders = pgTable("partner_folders", {
   coverImageUrl: text("cover_image_url"),   // 540x540 cover image URL (auto-resized server-side)
   countryCode: varchar("country_code", { length: 10 }),
   categoryTag: text("category_tag"),
-  parentFolderId: varchar("parent_folder_id"),  // self-reference for unlimited nesting; null = root
+  parentFolderId: varchar("parent_folder_id").references((): AnyPgColumn => partnerFolders.id, { onDelete: 'restrict' }),  // self-reference for unlimited nesting; null = root
   status: text("status").notNull().default('draft'), // 'draft' | 'published'
   order: integer("order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
