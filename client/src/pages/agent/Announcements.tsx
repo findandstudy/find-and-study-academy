@@ -74,7 +74,7 @@ export default function AgentAnnouncements() {
                           {a.title}
                         </h2>
                         <Badge
-                          variant={announcementPriorityVariants[a.priority] as any}
+                          variant={announcementPriorityVariants[a.priority]}
                           className="text-xs"
                         >
                           {a.priority.toUpperCase()}

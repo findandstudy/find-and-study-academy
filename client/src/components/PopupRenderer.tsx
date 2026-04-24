@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,16 +37,17 @@ function writeSet(key: string, storage: Storage, set: Set<string>) {
 
 export function PopupRenderer() {
   const { user, role } = useAuthStore();
+  const [location] = useLocation();
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // Only show pop-ups to agents (not admins/staff) and only on agent dashboard area
+  // Show pop-ups only to agents on the agent dashboard (first visit after login)
   const isAgent = !!user && role === 'agent';
-  const onAgentArea = typeof window !== 'undefined' && window.location.pathname.startsWith('/agent');
+  const onAgentDashboard = location === '/agent/dashboard';
 
   const { data } = useQuery<{ success: boolean; popups: Popup[] }>({
     queryKey: ['/api/popups/active'],
-    enabled: isAgent && onAgentArea,
+    enabled: isAgent && onAgentDashboard,
   });
 
   const visiblePopup = useMemo<Popup | null>(() => {

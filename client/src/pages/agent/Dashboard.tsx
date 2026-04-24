@@ -179,7 +179,7 @@ export default function AgentDashboard() {
                           {announcement.title}
                         </h3>
                         <Badge 
-                          variant={announcementPriorityVariants[announcement.priority] as any} 
+                          variant={announcementPriorityVariants[announcement.priority]} 
                           className="text-xs"
                           data-testid={`badge-announcement-priority-${announcement.id}`}
                         >

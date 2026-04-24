@@ -141,19 +141,35 @@ export default function AdminPopups() {
   });
   const agencies = agenciesData?.agencies ?? [];
 
+  type PopupPayload = {
+    title: string;
+    content: string;
+    imageUrl: string | null;
+    linkUrl: string | null;
+    linkText: string | null;
+    targetAudience: Popup['targetAudience'];
+    targetAgencyIds: string[] | null;
+    status: Popup['status'];
+    startsAt: string | null;
+    expiresAt: string | null;
+    frequency: Popup['frequency'];
+  };
+  const errorMessage = (e: unknown, fallback: string) =>
+    e instanceof Error ? e.message : fallback;
+
   const createMut = useMutation({
-    mutationFn: (payload: any) => apiRequest('POST', '/api/admin/popups', payload),
+    mutationFn: (payload: PopupPayload) => apiRequest('POST', '/api/admin/popups', payload),
     onSuccess: () => {
       toast({ title: 'Pop-up oluşturuldu' });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/popups'] });
       setIsCreateOpen(false);
       setForm(emptyForm);
     },
-    onError: (e: any) => toast({ title: 'Hata', description: e?.message || 'Oluşturulamadı', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Oluşturulamadı'), variant: 'destructive' }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: PopupPayload }) =>
       apiRequest('PUT', `/api/admin/popups/${id}`, payload),
     onSuccess: () => {
       toast({ title: 'Pop-up güncellendi' });
@@ -162,7 +178,7 @@ export default function AdminPopups() {
       setEditing(null);
       setForm(emptyForm);
     },
-    onError: (e: any) => toast({ title: 'Hata', description: e?.message || 'Güncellenemedi', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Güncellenemedi'), variant: 'destructive' }),
   });
 
   const deleteMut = useMutation({
@@ -171,7 +187,7 @@ export default function AdminPopups() {
       toast({ title: 'Pop-up silindi' });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/popups'] });
     },
-    onError: (e: any) => toast({ title: 'Hata', description: e?.message || 'Silinemedi', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Silinemedi'), variant: 'destructive' }),
   });
 
   const buildPayload = (s: FormState) => ({
@@ -232,8 +248,8 @@ export default function AdminPopups() {
       if (!url) throw new Error('URL not returned');
       setForm((f) => ({ ...f, imageUrl: url }));
       toast({ title: 'Görsel yüklendi' });
-    } catch (e: any) {
-      toast({ title: 'Yükleme hatası', description: e?.message || 'Yüklenemedi', variant: 'destructive' });
+    } catch (e: unknown) {
+      toast({ title: 'Yükleme hatası', description: errorMessage(e, 'Yüklenemedi'), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
