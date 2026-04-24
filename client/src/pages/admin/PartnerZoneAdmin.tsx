@@ -635,7 +635,7 @@ export default function PartnerZoneAdmin() {
               </Badge>
             </div>
           </div>
-          <div className="p-3 space-y-1">
+          <div className="p-3 space-y-2">
             <p className="font-semibold text-sm leading-tight line-clamp-2">{f.name}</p>
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
               {country ? (
@@ -659,6 +659,15 @@ export default function PartnerZoneAdmin() {
                 </span>
               </span>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={(e) => { e.stopPropagation(); navigate(`/admin/partner-zone/${f.id}`); }}
+              data-testid={`button-open-folder-${f.id}`}
+            >
+              Aç
+            </Button>
           </div>
         </div>
 
