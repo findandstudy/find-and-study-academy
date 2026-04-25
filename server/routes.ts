@@ -1688,13 +1688,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new user (admin only)
   app.post('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { username, password, name, email, role, status, country, profilePicture, companyName } = req.body;
+      const { username, password, name, email, role, status, country, profilePicture, companyName, phone, agencyId } = req.body;
 
       // Validate required fields
       if (!username || !password || !name || !email) {
         return res.status(400).json({
           success: false,
           message: 'Username, password, name, and email are required'
+        });
+      }
+
+      // Normalize required fields
+      const normalizedUsername = String(username).trim();
+      const normalizedEmail = String(email).trim().toLowerCase();
+      const normalizedName = String(name).trim();
+
+      // Validate username (≥3 chars, no whitespace)
+      if (normalizedUsername.length < 3 || /\s/.test(normalizedUsername)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username must be at least 3 characters and contain no spaces'
+        });
+      }
+
+      // Validate password (≥6 chars)
+      if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 6 characters'
+        });
+      }
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid email address'
         });
       }
 
@@ -1706,12 +1735,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate status
+      if (status && !['active', 'inactive'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Must be active or inactive.'
+        });
+      }
+
+      // Validate country (ISO alpha-2, must be a real country)
+      let normalizedCountry: string | undefined;
+      if (typeof country === 'string' && country.trim()) {
+        normalizedCountry = country.trim().toUpperCase();
+        if (!VALID_COUNTRY_CODES.has(normalizedCountry)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Country must be a valid ISO 3166-1 alpha-2 code (e.g. TR, US, DE)'
+          });
+        }
+      }
+
+      // Validate profile picture URL/path
+      let normalizedPicture: string | undefined;
+      if (typeof profilePicture === 'string' && profilePicture.trim()) {
+        normalizedPicture = profilePicture.trim();
+        if (!/^https?:\/\//i.test(normalizedPicture) && !normalizedPicture.startsWith('/uploads/')) {
+          return res.status(400).json({
+            success: false,
+            message: 'profilePicture must be an http(s) URL or a /uploads/... path'
+          });
+        }
+      }
+
+      // Validate phone (E.164: leading "+" and 6–18 digits)
+      let normalizedPhone: string | undefined;
+      if (typeof phone === 'string' && phone.trim()) {
+        const stripped = phone.replace(/\s+/g, '');
+        if (!/^\+\d{6,18}$/.test(stripped)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Phone must be in E.164 format (e.g. +905551234567)'
+          });
+        }
+        normalizedPhone = stripped;
+      }
+
+      // Validate agencyId (if provided, must reference an existing agency)
+      let normalizedAgencyId: string | undefined;
+      if (typeof agencyId === 'string' && agencyId.trim()) {
+        normalizedAgencyId = agencyId.trim();
+        const agency = await storage.getAgencyById(normalizedAgencyId);
+        if (!agency) {
+          return res.status(400).json({
+            success: false,
+            message: 'agencyId does not match any existing agency'
+          });
+        }
+      }
+
       // Check if username or email already exists
-      const existingUser = await storage.getUserByUsername(username);
+      const existingUser = await storage.getUserByUsername(normalizedUsername);
       if (existingUser) {
         return res.status(400).json({
           success: false,
           message: 'Username already exists'
+        });
+      }
+      const existingEmail = await storage.getUserByEmail(normalizedEmail);
+      if (existingEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email already exists'
         });
       }
 
@@ -1720,21 +1814,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create user
       const newUser = await storage.createUser({
-        username,
+        username: normalizedUsername,
         password: hashedPassword,
-        name,
-        email,
+        name: normalizedName,
+        email: normalizedEmail,
         role: role || 'agent'
       });
 
-      // Apply optional fields not on insertUserSchema (status, country, profilePicture, companyName)
+      // Apply optional fields not on insertUserSchema
       const optionalUpdates: Partial<typeof newUser> = {};
       if (status) optionalUpdates.status = status;
-      if (typeof country === 'string' && country.trim()) optionalUpdates.country = country.trim().toUpperCase();
-      if (typeof profilePicture === 'string' && profilePicture.trim()) optionalUpdates.profilePicture = profilePicture.trim();
+      if (normalizedCountry) optionalUpdates.country = normalizedCountry;
+      if (normalizedPicture) optionalUpdates.profilePicture = normalizedPicture;
       if (typeof companyName === 'string' && companyName.trim()) optionalUpdates.companyName = companyName.trim();
+      if (normalizedPhone) optionalUpdates.phone = normalizedPhone;
+      if (normalizedAgencyId) optionalUpdates.agencyId = normalizedAgencyId;
       if (Object.keys(optionalUpdates).length > 0) {
-        await storage.updateUser(newUser.id, optionalUpdates);
+        try {
+          await storage.updateUser(newUser.id, optionalUpdates);
+        } catch (updateErr) {
+          // Compensating delete so we don't leave a half-created row
+          try { await storage.deleteUser(newUser.id); } catch {}
+          throw updateErr;
+        }
       }
 
       // Remove password from response
@@ -1742,7 +1844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        user: userWithoutPassword
+        user: { ...userWithoutPassword, ...optionalUpdates }
       });
     } catch (error: any) {
       console.error('Create user error:', error);
@@ -1903,6 +2005,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Track in-batch duplicates so we surface a clear error instead of an opaque
+      // unique-constraint failure (the second matching row would otherwise crash createUser).
+      const seenEmails = new Set<string>();
+      const seenUsernames = new Set<string>();
+
       for (let i = 0; i < rawUsers.length; i++) {
         const row = rawUsers[i];
         const rowNum = i + 2; // Excel row (1-indexed header + 1)
@@ -1914,16 +2021,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Check email uniqueness
-        const existing = await storage.getUserByEmail(row.email);
+        // Normalize before any uniqueness or format check
+        const normEmail = String(row.email).trim().toLowerCase();
+        const normUsername = String(row.username).trim();
+        const normName = String(row.name).trim();
+        const normPassword = String(row.password);
+
+        // Email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normEmail)) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'email is not a valid address' });
+          errorCount++;
+          continue;
+        }
+
+        // Username (≥3 chars, no whitespace)
+        if (normUsername.length < 3 || /\s/.test(normUsername)) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'username must be at least 3 characters and contain no spaces' });
+          errorCount++;
+          continue;
+        }
+
+        // Password (≥6 chars)
+        if (normPassword.length < 6) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'password must be at least 6 characters' });
+          errorCount++;
+          continue;
+        }
+
+        // In-batch duplicates
+        if (seenEmails.has(normEmail)) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'Duplicate email in this file' });
+          errorCount++;
+          continue;
+        }
+        if (seenUsernames.has(normUsername.toLowerCase())) {
+          results.push({ row: rowNum, email: row.email, status: 'error', message: 'Duplicate username in this file' });
+          errorCount++;
+          continue;
+        }
+
+        // Check email uniqueness in DB
+        const existing = await storage.getUserByEmail(normEmail);
         if (existing) {
           results.push({ row: rowNum, email: row.email, status: 'error', message: 'Email already exists' });
           errorCount++;
           continue;
         }
 
-        // Check username uniqueness
-        const existingUsername = await storage.getUserByUsername(row.username);
+        // Check username uniqueness in DB
+        const existingUsername = await storage.getUserByUsername(normUsername);
         if (existingUsername) {
           results.push({ row: rowNum, email: row.email, status: 'error', message: 'Username already exists' });
           errorCount++;
@@ -1939,8 +2085,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (typeof row.country === 'string' && row.country.trim()) {
             const normalizedCountry = row.country.trim().toUpperCase();
-            if (!/^[A-Z]{2}$/.test(normalizedCountry)) {
-              results.push({ row: rowNum, email: row.email, status: 'error', message: 'country must be a 2-letter ISO 3166-1 alpha-2 code (e.g. TR, US)' });
+            if (!VALID_COUNTRY_CODES.has(normalizedCountry)) {
+              results.push({ row: rowNum, email: row.email, status: 'error', message: 'country must be a valid ISO 3166-1 alpha-2 code (e.g. TR, US, DE)' });
               errorCount++;
               continue;
             }
@@ -1956,6 +2102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             optionalUpdates.profilePicture = pp;
           }
+          if (typeof (row as any).phone === 'string' && (row as any).phone.trim()) {
+            const stripped = String((row as any).phone).replace(/\s+/g, '');
+            if (!/^\+\d{6,18}$/.test(stripped)) {
+              results.push({ row: rowNum, email: row.email, status: 'error', message: 'phone must be in E.164 format (e.g. +905551234567)' });
+              errorCount++;
+              continue;
+            }
+            optionalUpdates.phone = stripped;
+          }
           if (typeof row.agencyId === 'string' && row.agencyId.trim()) {
             const agencyIdTrim = row.agencyId.trim();
             if (!validAgencyIds.has(agencyIdTrim)) {
@@ -1966,14 +2121,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             optionalUpdates.agencyId = agencyIdTrim;
           }
 
-          const hashedPassword = await bcrypt.hash(row.password, 10);
+          const hashedPassword = await bcrypt.hash(normPassword, 10);
           const newUser = await storage.createUser({
-            username: row.username.trim(),
+            username: normUsername,
             password: hashedPassword,
-            name: row.name.trim(),
-            email: row.email.trim().toLowerCase(),
+            name: normName,
+            email: normEmail,
             role: ['admin', 'agent', 'staff'].includes(row.role) ? row.role : 'agent',
           });
+          seenEmails.add(normEmail);
+          seenUsernames.add(normUsername.toLowerCase());
           if (Object.keys(optionalUpdates).length > 0) {
             try {
               await storage.updateUser(newUser.id, optionalUpdates);

@@ -98,7 +98,7 @@ export default function AdminUsers() {
   // Bulk import state
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [importStep, setImportStep] = useState<1 | 2 | 3>(1);
-  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string; country: string; profilePicture: string; agencyId?: string };
+  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string; country: string; phone: string; profilePicture: string; agencyId?: string };
   type ImportResult = { row: number; email: string; status: 'success' | 'error'; message?: string };
   const [importData, setImportData] = useState<ImportRow[]>([]);
   const [importResults, setImportResults] = useState<{ successCount: number; errorCount: number; results: ImportResult[] } | null>(null);
@@ -380,28 +380,70 @@ export default function AdminUsers() {
   const downloadUserTemplate = () => {
     const wb = XLSX.utils.book_new();
     const instructionData = [
-      ['FIELD', 'REQUIRED', 'EXAMPLE', 'NOTES'],
-      ['name', 'Yes', 'John Smith', 'Full name of the user'],
-      ['email', 'Yes', 'john@agency.com', 'Must be unique'],
-      ['username', 'Yes', 'johnsmith', 'Must be unique, no spaces'],
-      ['password', 'Yes', 'SecurePass123', 'Minimum 6 characters'],
-      ['role', 'No', 'agent', 'admin | agent | staff (default: agent)'],
-      ['status', 'No', 'active', 'active | inactive (default: active)'],
-      ['companyName', 'No', 'ABC Agency', 'Agency or company name'],
-      ['country', 'No', 'TR', 'ISO 3166-1 alpha-2 country code (e.g. TR, US, DE, FR). Leave blank for none.'],
-      ['profilePicture', 'No', 'https://.../avatar.png', 'Optional URL to profile picture (PNG, JPG or JPEG). Must be a publicly reachable URL or an existing /uploads/... path.'],
-      ['agencyId', 'No', 'a1b2c3...', 'Optional agency UUID. Per-row value overrides the "Atanacak Acente" picker.'],
+      ['FIELD', 'REQUIRED', 'ALLOWED VALUES', 'EXAMPLE', 'NOTES'],
+      ['name', 'Yes', 'Free text', 'John Smith', 'Full name of the user / Kullanıcının tam adı.'],
+      ['email', 'Yes', 'name@domain.tld', 'john@agency.com', 'Must be a valid, unique email address. / Geçerli ve benzersiz bir e-posta olmalı.'],
+      ['username', 'Yes', '≥3 chars, no spaces', 'johnsmith', 'Must be unique. Letters, numbers, dot, underscore, dash. / Benzersiz, boşluksuz.'],
+      ['password', 'Yes', '≥6 characters', 'SecurePass123', 'Minimum 6 characters. Will be hashed on the server. / En az 6 karakter, sunucuda şifrelenir.'],
+      ['role', 'No', 'admin | agent | staff', 'agent', 'Default: agent. / Varsayılan: agent.'],
+      ['status', 'No', 'active | inactive', 'active', 'Default: active. / Varsayılan: active.'],
+      ['companyName', 'No', 'Free text', 'ABC Agency', 'Optional agency or company name. / Opsiyonel firma adı.'],
+      ['country', 'No', 'ISO 3166-1 alpha-2', 'TR', '2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none. / 2 harfli ülke kodu, boş bırakılabilir.'],
+      ['phone', 'No', 'E.164 format', '+905551234567', 'Optional. Must start with "+" and have 6–18 digits total. / Opsiyonel, "+" ile başlamalı, 6–18 rakam.'],
+      ['profilePicture', 'No', 'http(s) URL or /uploads/... path', 'https://example.com/avatar.png', 'Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path. / Genel erişime açık URL veya /uploads/... yolu.'],
+      ['agencyId', 'No', 'Existing agency UUID', 'a1b2c3d4-...', 'Optional. Overrides the "Atanacak Acente" picker. Leave blank to use the picker. / Boş bırakılırsa diyalogdaki seçici kullanılır.'],
     ];
     const instrSheet = XLSX.utils.aoa_to_sheet(instructionData);
-    instrSheet['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 60 }];
+    instrSheet['!cols'] = [{ wch: 16 }, { wch: 10 }, { wch: 32 }, { wch: 30 }, { wch: 80 }];
     XLSX.utils.book_append_sheet(wb, instrSheet, 'Instructions');
 
-    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName', 'country', 'profilePicture', 'agencyId'];
-    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency', 'TR', '', ''];
-    const dataSheet = XLSX.utils.aoa_to_sheet([headerRow, exampleRow]);
+    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName', 'country', 'phone', 'profilePicture', 'agencyId'];
+    const exampleRows = [
+      // A complete agent row with everything filled
+      ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency', 'TR', '+905551112233', '', ''],
+      // Minimal agent row — only required fields
+      ['Ali Yılmaz', 'ali@example.com', 'aliyilmaz', 'Pass1234', '', '', '', '', '', '', ''],
+      // Staff member, inactive on import
+      ['Mehmet Demir', 'mehmet@example.com', 'mdemir', 'StaffPass1', 'staff', 'inactive', 'Find And Study', 'TR', '', '', ''],
+      // Admin user with profile picture URL
+      ['Ayşe Kaya', 'ayse@example.com', 'aysekaya', 'AdminPass1', 'admin', 'active', '', 'TR', '+902121234567', 'https://i.pravatar.cc/150?u=ayse', ''],
+    ];
+    const dataSheet = XLSX.utils.aoa_to_sheet([headerRow, ...exampleRows]);
     dataSheet['!cols'] = headerRow.map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, dataSheet, 'Users');
     XLSX.writeFile(wb, 'user_bulk_import_template.xlsx');
+  };
+
+  // Set of valid ISO alpha-2 country codes — same source the server validates against.
+  const VALID_COUNTRY_SET = useMemo(() => new Set(WORLD_COUNTRIES.map(c => c.code)), []);
+
+  // Local pre-flight validation so the preview can flag rows before submitting.
+  // Mirrors the bulk-import server contract exactly: role/status are *permissive*
+  // on the server (unknown values fall back to the default), so we don't flag them
+  // as errors here even if they look unusual.
+  const validateImportRow = (row: ImportRow): string | null => {
+    if (!row.name || !row.email || !row.username || !row.password) {
+      return 'name, email, username, and password are required';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
+      return 'email is not a valid address';
+    }
+    if (row.username.length < 3 || /\s/.test(row.username)) {
+      return 'username must be ≥3 chars and contain no spaces';
+    }
+    if (row.password.length < 6) {
+      return 'password must be at least 6 characters';
+    }
+    if (row.country && !VALID_COUNTRY_SET.has(row.country)) {
+      return 'country must be a valid ISO alpha-2 code (e.g. TR, US, DE)';
+    }
+    if (row.profilePicture && !/^https?:\/\//i.test(row.profilePicture) && !row.profilePicture.startsWith('/uploads/')) {
+      return 'profilePicture must be an http(s) URL or /uploads/... path';
+    }
+    if (row.phone && !/^\+\d{6,18}$/.test(row.phone)) {
+      return 'phone must be in E.164 format (e.g. +905551234567)';
+    }
+    return null;
   };
 
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -415,18 +457,35 @@ export default function AdminUsers() {
         const wsName = wb.SheetNames.find(n => n.toLowerCase() !== 'instructions') || wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
         const json = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' });
-        const mapped = json.map(row => ({
-          name: String(row['name'] || row['Name'] || '').trim(),
-          email: String(row['email'] || row['Email'] || '').trim().toLowerCase(),
-          username: String(row['username'] || row['Username'] || '').trim(),
-          password: String(row['password'] || row['Password'] || '').trim(),
-          role: String(row['role'] || row['Role'] || 'agent').trim().toLowerCase(),
-          status: String(row['status'] || row['Status'] || 'active').trim().toLowerCase(),
-          companyName: String(row['companyName'] || row['CompanyName'] || row['company_name'] || '').trim(),
-          country: String(row['country'] || row['Country'] || '').trim().toUpperCase(),
-          profilePicture: String(row['profilePicture'] || row['ProfilePicture'] || row['profile_picture'] || row['profilePictureUrl'] || '').trim(),
-          agencyId: String(row['agencyId'] || row['AgencyId'] || row['agency_id'] || '').trim(),
-        }));
+
+        // Normalize header keys once per row so look-ups are truly case- and
+        // separator-insensitive (e.g. "EMAIL", "User Name", "company_name", "ProfilePictureURL").
+        const normalizeKey = (k: string) => k.toLowerCase().replace(/[\s_-]+/g, '');
+        const pick = (norm: Record<string, string>, ...candidates: string[]) => {
+          for (const c of candidates) {
+            const v = norm[normalizeKey(c)];
+            if (v !== undefined && v !== null && String(v).trim() !== '') return String(v);
+          }
+          return '';
+        };
+
+        const mapped = json.map(row => {
+          const norm: Record<string, string> = {};
+          for (const k of Object.keys(row)) norm[normalizeKey(k)] = row[k] as any;
+          return {
+            name: pick(norm, 'name').trim(),
+            email: pick(norm, 'email').trim().toLowerCase(),
+            username: pick(norm, 'username').trim(),
+            password: pick(norm, 'password'),
+            role: (pick(norm, 'role') || 'agent').trim().toLowerCase(),
+            status: (pick(norm, 'status') || 'active').trim().toLowerCase(),
+            companyName: pick(norm, 'companyName', 'company').trim(),
+            country: pick(norm, 'country').trim().toUpperCase(),
+            phone: pick(norm, 'phone', 'phoneNumber', 'mobile').replace(/\s+/g, ''),
+            profilePicture: pick(norm, 'profilePicture', 'profilePictureUrl', 'avatar').trim(),
+            agencyId: pick(norm, 'agencyId').trim(),
+          };
+        });
         setImportData(mapped);
         setImportStep(2);
       } catch {
@@ -1227,16 +1286,16 @@ export default function AdminUsers() {
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
                     <tr>
-                      {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company', 'Country', 'Photo'].map(h => (
+                      {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company', 'Country', 'Phone', 'Photo', 'Issue'].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {importData.slice(0, 100).map((row, i) => {
-                      const hasError = !row.name || !row.email || !row.username || !row.password;
+                      const issue = validateImportRow(row);
                       return (
-                        <tr key={i} className={`border-t ${hasError ? 'bg-destructive/5' : ''}`}>
+                        <tr key={i} className={`border-t ${issue ? 'bg-destructive/5' : ''}`} data-testid={`row-import-preview-${i}`}>
                           <td className="px-3 py-1.5 text-muted-foreground">{i + 2}</td>
                           <td className="px-3 py-1.5">{row.name || <span className="text-destructive">Missing</span>}</td>
                           <td className="px-3 py-1.5">{row.email || <span className="text-destructive">Missing</span>}</td>
@@ -1245,6 +1304,7 @@ export default function AdminUsers() {
                           <td className="px-3 py-1.5">{row.status || 'active'}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.companyName || '—'}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.country || '—'}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.phone || '—'}</td>
                           <td className="px-3 py-1.5">
                             {row.profilePicture ? (
                               <Avatar className="h-6 w-6">
@@ -1255,18 +1315,31 @@ export default function AdminUsers() {
                               <span className="text-muted-foreground">—</span>
                             )}
                           </td>
+                          <td className="px-3 py-1.5">
+                            {issue ? (
+                              <span className="text-destructive" data-testid={`text-import-issue-${i}`}>{issue}</span>
+                            ) : (
+                              <span className="text-green-600 dark:text-green-400">OK</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
                     {importData.length > 100 && (
-                      <tr className="border-t bg-muted/20"><td colSpan={9} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
+                      <tr className="border-t bg-muted/20"><td colSpan={11} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
-              {importData.some(r => !r.name || !r.email || !r.username || !r.password) && (
-                <p className="text-xs text-destructive">Rows highlighted in red are missing required fields and will be skipped.</p>
-              )}
+              {(() => {
+                const invalidCount = importData.filter(r => validateImportRow(r) !== null).length;
+                if (invalidCount === 0) return null;
+                return (
+                  <p className="text-xs text-destructive" data-testid="text-import-invalid-count">
+                    {invalidCount} row(s) have validation issues and will be skipped on import.
+                  </p>
+                );
+              })()}
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>Back</Button>
                 <Button
