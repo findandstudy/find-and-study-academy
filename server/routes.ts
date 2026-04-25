@@ -2674,28 +2674,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const settingData = {
-        key,
-        value: typeof value === 'string' ? value : JSON.stringify(value),
-        category: category || 'general',
-        type: type || 'string',
-        description,
-        isPublic: isPublic || false,
-        updatedBy: authenticatedUser.id
-      };
+      const normalizedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-      const newSetting = await storage.createSystemSetting(settingData);
+      // Upsert: a system setting key is unique, so re-saving the same key (e.g. saving
+      // "default_country_code" a second time from the Defaults panel) must update the
+      // existing row instead of failing on a unique-constraint violation.
+      const existing = await storage.getSystemSettingByKey(key);
+      let saved;
+      if (existing) {
+        saved = await storage.updateSystemSetting(key, {
+          value: normalizedValue,
+          ...(category !== undefined ? { category } : {}),
+          ...(type !== undefined ? { type } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(isPublic !== undefined ? { isPublic } : {}),
+          updatedBy: authenticatedUser.id,
+        });
+      } else {
+        saved = await storage.createSystemSetting({
+          key,
+          value: normalizedValue,
+          category: category || 'general',
+          type: type || 'string',
+          description,
+          isPublic: isPublic || false,
+          updatedBy: authenticatedUser.id,
+        });
+      }
 
       res.json({
         success: true,
-        message: 'Setting created successfully',
-        setting: newSetting
+        message: existing ? 'Setting updated successfully' : 'Setting created successfully',
+        setting: saved,
       });
     } catch (error) {
-      console.error('Create setting error:', error);
+      console.error('Save setting error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to create setting'
+        message: 'Failed to save setting'
       });
     }
   });
