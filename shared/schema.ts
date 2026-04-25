@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   agencyId: varchar("agency_id"),
   companyName: text("company_name"), // Free-text company name (optional)
   country: text("country"), // ISO 3166-1 alpha-2 country code (e.g. "TR", "US")
+  phone: text("phone"), // International mobile phone in E.164-ish format (e.g. "+90 5xx xxx xx xx")
   languagePreference: text("language_preference").default('en'), // 'en' | 'tr' | etc.
   profilePicture: text("profile_picture"), // URL to profile picture
   emailNotifications: boolean("email_notifications").notNull().default(true), // Email notification preference

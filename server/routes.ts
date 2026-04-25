@@ -23,6 +23,11 @@ import path from "path";
 import fs from "fs";
 import sharp from "sharp";
 import bcrypt from "bcryptjs";
+import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
+
+// Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
+// at module load (not per request).
+const VALID_COUNTRY_CODES = new Set(COUNTRY_DIAL_CODES.map((c) => c.code));
 import rateLimit from "express-rate-limit";
 
 // Server-side questions validation schema (matches frontend)
@@ -517,14 +522,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Signup endpoint - create new agent user and agency
   app.post('/api/signup', authRateLimit, async (req, res) => {
     try {
-      const { name, email, password, agencyName } = req.body;
+      const { name, email, password, agencyName, country, phone } = req.body;
 
-      if (!name || !email || !password || !agencyName) {
+      if (!name || !email || !password || !agencyName || !country || !phone) {
         return res.status(400).json({
           success: false,
           message: 'All fields are required'
         });
       }
+
+      // Validate country against the real ISO 3166-1 alpha-2 set we ship in
+      // shared/country-dial-codes.ts (computed once at module load above).
+      if (typeof country !== 'string' || !VALID_COUNTRY_CODES.has(country)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid country code'
+        });
+      }
+
+      // Validate phone: E.164-ish — leading "+", 6–18 digits total
+      if (typeof phone !== 'string' || !/^\+\d{6,18}$/.test(phone.replace(/\s+/g, ''))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid phone number'
+        });
+      }
+      const normalizedPhone = phone.replace(/\s+/g, '');
 
       // Check if email already exists
       const users = await storage.getUsers();
@@ -561,6 +584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: 'agent' as const,
         status: 'inactive' as const,
         agencyId: agencyId,
+        country: country,
+        phone: normalizedPhone,
         emailNotifications: true,
         courseCompletionNotif: true,
         certificateNotif: true,

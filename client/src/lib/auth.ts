@@ -12,6 +12,7 @@ export interface SignupData {
   password: string;
   agencyName: string;
   country: string;
+  phone: string;
 }
 
 export interface Session {
@@ -63,7 +64,9 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
         name: data.name,
         email: data.email,
         password: data.password,
-        agencyName: data.agencyName
+        agencyName: data.agencyName,
+        country: data.country,
+        phone: data.phone,
       }),
     });
 
