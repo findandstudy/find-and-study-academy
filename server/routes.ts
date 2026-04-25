@@ -1844,16 +1844,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         try {
+          // Validate optional fields BEFORE creating the user so we don't leave orphans
+          const optionalUpdates: Record<string, any> = {};
+          optionalUpdates.status = row.status === 'inactive' ? 'inactive' : 'active';
+          if (typeof row.companyName === 'string' && row.companyName.trim()) {
+            optionalUpdates.companyName = row.companyName.trim();
+          }
+          if (typeof row.country === 'string' && row.country.trim()) {
+            const normalizedCountry = row.country.trim().toUpperCase();
+            if (!/^[A-Z]{2}$/.test(normalizedCountry)) {
+              results.push({ row: rowNum, email: row.email, status: 'error', message: 'country must be a 2-letter ISO 3166-1 alpha-2 code (e.g. TR, US)' });
+              errorCount++;
+              continue;
+            }
+            optionalUpdates.country = normalizedCountry;
+          }
+          if (typeof row.profilePicture === 'string' && row.profilePicture.trim()) {
+            const pp = row.profilePicture.trim();
+            const isValidPicture = /^https?:\/\//i.test(pp) || pp.startsWith('/uploads/');
+            if (!isValidPicture) {
+              results.push({ row: rowNum, email: row.email, status: 'error', message: 'profilePicture must be an http(s) URL or a /uploads/... path' });
+              errorCount++;
+              continue;
+            }
+            optionalUpdates.profilePicture = pp;
+          }
+
           const hashedPassword = await bcrypt.hash(row.password, 10);
-          await storage.createUser({
+          const newUser = await storage.createUser({
             username: row.username.trim(),
             password: hashedPassword,
             name: row.name.trim(),
             email: row.email.trim().toLowerCase(),
             role: ['admin', 'agent', 'staff'].includes(row.role) ? row.role : 'agent',
-            status: row.status === 'inactive' ? 'inactive' : 'active',
-            companyName: row.companyName?.trim() || '',
           });
+          if (Object.keys(optionalUpdates).length > 0) {
+            try {
+              await storage.updateUser(newUser.id, optionalUpdates);
+            } catch (updateErr) {
+              // Compensating delete so the row is reported accurately and can be retried
+              try { await storage.deleteUser(newUser.id); } catch {}
+              throw updateErr;
+            }
+          }
           results.push({ row: rowNum, email: row.email, status: 'success' });
           successCount++;
         } catch (err: any) {

@@ -97,7 +97,7 @@ export default function AdminUsers() {
   // Bulk import state
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [importStep, setImportStep] = useState<1 | 2 | 3>(1);
-  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string };
+  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string; country: string; profilePicture: string };
   type ImportResult = { row: number; email: string; status: 'success' | 'error'; message?: string };
   const [importData, setImportData] = useState<ImportRow[]>([]);
   const [importResults, setImportResults] = useState<{ successCount: number; errorCount: number; results: ImportResult[] } | null>(null);
@@ -378,15 +378,17 @@ export default function AdminUsers() {
       ['role', 'No', 'agent', 'admin | agent | staff (default: agent)'],
       ['status', 'No', 'active', 'active | inactive (default: active)'],
       ['companyName', 'No', 'ABC Agency', 'Agency or company name'],
+      ['country', 'No', 'TR', 'ISO 3166-1 alpha-2 country code (e.g. TR, US, DE, FR). Leave blank for none.'],
+      ['profilePicture', 'No', 'https://.../avatar.png', 'Optional URL to profile picture (PNG, JPG or JPEG). Must be a publicly reachable URL or an existing /uploads/... path.'],
     ];
     const instrSheet = XLSX.utils.aoa_to_sheet(instructionData);
-    instrSheet['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 40 }];
+    instrSheet['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(wb, instrSheet, 'Instructions');
 
-    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName'];
-    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency'];
+    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName', 'country', 'profilePicture'];
+    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency', 'TR', ''];
     const dataSheet = XLSX.utils.aoa_to_sheet([headerRow, exampleRow]);
-    dataSheet['!cols'] = headerRow.map(() => ({ wch: 20 }));
+    dataSheet['!cols'] = headerRow.map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, dataSheet, 'Users');
     XLSX.writeFile(wb, 'user_bulk_import_template.xlsx');
   };
@@ -410,6 +412,8 @@ export default function AdminUsers() {
           role: String(row['role'] || row['Role'] || 'agent').trim().toLowerCase(),
           status: String(row['status'] || row['Status'] || 'active').trim().toLowerCase(),
           companyName: String(row['companyName'] || row['CompanyName'] || row['company_name'] || '').trim(),
+          country: String(row['country'] || row['Country'] || '').trim().toUpperCase(),
+          profilePicture: String(row['profilePicture'] || row['ProfilePicture'] || row['profile_picture'] || row['profilePictureUrl'] || '').trim(),
         }));
         setImportData(mapped);
         setImportStep(2);
@@ -1123,7 +1127,7 @@ export default function AdminUsers() {
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
                     <tr>
-                      {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company'].map(h => (
+                      {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company', 'Country', 'Photo'].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
                       ))}
                     </tr>
@@ -1140,11 +1144,22 @@ export default function AdminUsers() {
                           <td className="px-3 py-1.5"><Badge variant="outline" className="text-xs">{row.role || 'agent'}</Badge></td>
                           <td className="px-3 py-1.5">{row.status || 'active'}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.companyName || '—'}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.country || '—'}</td>
+                          <td className="px-3 py-1.5">
+                            {row.profilePicture ? (
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={row.profilePicture} alt="" />
+                                <AvatarFallback className="text-[10px]">?</AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
                     {importData.length > 100 && (
-                      <tr className="border-t bg-muted/20"><td colSpan={7} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
+                      <tr className="border-t bg-muted/20"><td colSpan={9} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
                     )}
                   </tbody>
                 </table>
