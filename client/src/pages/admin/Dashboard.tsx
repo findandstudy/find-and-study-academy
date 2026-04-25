@@ -1,39 +1,108 @@
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useDataStore } from '@/store/data';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/store/auth';
-import { Users, Award, Building, Megaphone, TrendingUp, BookOpen, Target } from 'lucide-react';
-import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
-import dayjs from 'dayjs';
+import { Users, Award, Megaphone, TrendingUp, BookOpen, Target } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+
+type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status?: string;
+  agencyId?: string | null;
+};
+
+type Agency = { id: string; name: string };
+
+type Announcement = {
+  id: string;
+  status: string;
+  expiresAt?: string | null;
+};
+
+type Certificate = {
+  id: string;
+  scorePercent: number;
+  userId: string;
+  courseId: string;
+};
+
+type Progress = {
+  id: string;
+  userId: string;
+  courseId: string;
+  percent: number;
+};
+
+type Course = { id: string; title: string };
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { users, certificates, agencies, announcements, progresses, courses } = useDataStore();
+
+  // Pull live data from the real admin endpoints (instead of the legacy
+  // localStorage-backed mock store, which was showing stale zero/two counts
+  // even though the production database had 26 agents, 19 agencies and 5
+  // certificates).
+  const usersQuery = useQuery<{ success: boolean; users: AdminUser[] }>({
+    queryKey: ['/api/admin/users'],
+  });
+  const agenciesQuery = useQuery<{ success: boolean; agencies: Agency[] }>({
+    queryKey: ['/api/admin/agencies'],
+  });
+  const announcementsQuery = useQuery<{ success: boolean; announcements: Announcement[] }>({
+    queryKey: ['/api/admin/announcements'],
+  });
+  const certificatesQuery = useQuery<{ success: boolean; certificates: Certificate[] }>({
+    queryKey: ['/api/admin/certificates'],
+  });
+  const progressesQuery = useQuery<{ success: boolean; progresses: Progress[] }>({
+    queryKey: ['/api/admin/progresses'],
+  });
+  const coursesQuery = useQuery<{ success: boolean; courses: Course[] }>({
+    queryKey: ['/api/courses'],
+  });
+
+  const isLoading =
+    usersQuery.isLoading ||
+    agenciesQuery.isLoading ||
+    announcementsQuery.isLoading ||
+    certificatesQuery.isLoading ||
+    progressesQuery.isLoading ||
+    coursesQuery.isLoading;
+
+  const users = usersQuery.data?.users ?? [];
+  const agencies = agenciesQuery.data?.agencies ?? [];
+  const announcements = announcementsQuery.data?.announcements ?? [];
+  const certificates = certificatesQuery.data?.certificates ?? [];
+  const progresses = progressesQuery.data?.progresses ?? [];
+  const courses = coursesQuery.data?.courses ?? [];
 
   const agents = users.filter(u => u.role === 'agent');
-  const activeAnnouncements = announcements.filter(a => 
-    a.status === 'published' && 
-    (!a.expiresAt || new Date(a.expiresAt) > new Date())
+  const activeAnnouncements = announcements.filter(
+    a => a.status === 'published' && (!a.expiresAt || new Date(a.expiresAt) > new Date())
   );
-  
+
   // Analytics calculations
   const totalAgents = agents.length;
   const totalCertificates = certificates.length;
-  const activeAgencies = agencies.length; // All agencies are considered active in frontend type
-  
+
   // Course completion rate
   const totalEnrollments = progresses.length;
   const completedCourses = progresses.filter(p => p.percent === 100).length;
-  const completionRate = totalEnrollments > 0 ? Math.round((completedCourses / totalEnrollments) * 100) : 0;
-  
+  const completionRate =
+    totalEnrollments > 0 ? Math.round((completedCourses / totalEnrollments) * 100) : 0;
+
   // Average score across all certificates
-  const avgCertificateScore = totalCertificates > 0
-    ? Math.round(certificates.reduce((sum, c) => sum + c.scorePercent, 0) / totalCertificates)
-    : 0;
+  const avgCertificateScore =
+    totalCertificates > 0
+      ? Math.round(certificates.reduce((sum, c) => sum + c.scorePercent, 0) / totalCertificates)
+      : 0;
 
   const stats = [
     {
@@ -43,7 +112,7 @@ export default function AdminDashboard() {
       icon: Users,
       change: t('admin.dashboard.stats.agenciesRegistered', { count: agencies.length }),
       color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10'
+      bgColor: 'bg-blue-500/10',
     },
     {
       key: 'certificates-issued',
@@ -52,16 +121,19 @@ export default function AdminDashboard() {
       icon: Award,
       change: t('admin.dashboard.stats.avgScore', { score: avgCertificateScore }),
       color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10'
+      bgColor: 'bg-yellow-500/10',
     },
     {
       key: 'completion-rate',
       title: t('admin.dashboard.stats.completionRate'),
       value: `${completionRate}%`,
       icon: Target,
-      change: t('admin.dashboard.stats.completedOfTotal', { completed: completedCourses, total: totalEnrollments }),
+      change: t('admin.dashboard.stats.completedOfTotal', {
+        completed: completedCourses,
+        total: totalEnrollments,
+      }),
       color: 'text-green-500',
-      bgColor: 'bg-green-500/10'
+      bgColor: 'bg-green-500/10',
     },
     {
       key: 'active-announcements',
@@ -70,52 +142,55 @@ export default function AdminDashboard() {
       icon: Megaphone,
       change: t('admin.dashboard.stats.currentlyActive'),
       color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10'
-    }
+      bgColor: 'bg-purple-500/10',
+    },
   ];
-  
+
   // Course enrollment data for charts
-  const courseEnrollmentData = courses.map(course => {
-    const enrollments = progresses.filter(p => p.courseId === course.id);
-    const completed = enrollments.filter(p => p.percent === 100).length;
-    return {
-      name: course.title.length > 20 ? course.title.substring(0, 20) + '...' : course.title,
-      enrolled: enrollments.length,
-      completed: completed,
-      inProgress: enrollments.length - completed
-    };
-  }).filter(d => d.enrolled > 0); // Only show courses with enrollments
-  
+  const courseEnrollmentData = courses
+    .map(course => {
+      const enrollments = progresses.filter(p => p.courseId === course.id);
+      const completed = enrollments.filter(p => p.percent === 100).length;
+      return {
+        name: course.title.length > 20 ? course.title.substring(0, 20) + '...' : course.title,
+        enrolled: enrollments.length,
+        completed,
+        inProgress: enrollments.length - completed,
+      };
+    })
+    .filter(d => d.enrolled > 0);
+
   // Certificate distribution by score
   const scoreRanges = [
     { range: '90-100%', min: 90, max: 100, count: 0, color: '#10b981' },
     { range: '80-89%', min: 80, max: 89, count: 0, color: '#3b82f6' },
     { range: '70-79%', min: 70, max: 79, count: 0, color: '#f59e0b' },
-    { range: '<70%', min: 0, max: 69, count: 0, color: '#ef4444' }
+    { range: '<70%', min: 0, max: 69, count: 0, color: '#ef4444' },
   ];
-  
   certificates.forEach(cert => {
     const range = scoreRanges.find(r => cert.scorePercent >= r.min && cert.scorePercent <= r.max);
     if (range) range.count++;
   });
-  
   const scoreDistributionData = scoreRanges.filter(r => r.count > 0);
-  
-  // Agent progress overview - calculate for all agents, then sort and slice
-  const agentProgressData = agents.map(agent => {
-    const agentProgress = progresses.filter(p => p.userId === agent.id);
-    const avgProgress = agentProgress.length > 0
-      ? Math.round(agentProgress.reduce((sum, p) => sum + p.percent, 0) / agentProgress.length)
-      : 0;
-    const agentCerts = certificates.filter(c => c.userId === agent.id);
-    
-    return {
-      name: agent.name.length > 15 ? agent.name.substring(0, 15) + '...' : agent.name,
-      progress: avgProgress,
-      certificates: agentCerts.length,
-      enrolled: agentProgress.length
-    };
-  }).sort((a, b) => b.progress - a.progress).slice(0, 10); // Sort first, then take top 10
+
+  // Agent progress overview
+  const agentProgressData = agents
+    .map(agent => {
+      const agentProgress = progresses.filter(p => p.userId === agent.id);
+      const avgProgress =
+        agentProgress.length > 0
+          ? Math.round(agentProgress.reduce((sum, p) => sum + p.percent, 0) / agentProgress.length)
+          : 0;
+      const agentCerts = certificates.filter(c => c.userId === agent.id);
+      return {
+        name: agent.name.length > 15 ? agent.name.substring(0, 15) + '...' : agent.name,
+        progress: avgProgress,
+        certificates: agentCerts.length,
+        enrolled: agentProgress.length,
+      };
+    })
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -123,36 +198,43 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3 mb-2">
           <Avatar className="w-10 h-10">
             <AvatarImage src={(user as any)?.profilePicture || ''} alt={t('common.profilePictureAlt')} />
-            <AvatarFallback className="text-sm font-medium">
-              {user?.name.charAt(0)}
-            </AvatarFallback>
+            <AvatarFallback className="text-sm font-medium">{user?.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <h1 className="text-3xl font-bold text-foreground">
             {t('admin.dashboard.welcome', { name: user?.name })}
           </h1>
         </div>
-        <p className="text-muted-foreground mt-1">
-          {t('admin.dashboard.subtitle')}
-        </p>
+        <p className="text-muted-foreground mt-1">{t('admin.dashboard.subtitle')}</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {stats.map(stat => (
           <Card key={stat.key} className="hover-elevate" data-testid={`card-admin-stat-${stat.key}`}>
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid={`text-admin-stat-value-${stat.key}`}>
-                    {stat.value}
-                  </p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-16 mt-1" />
+                  ) : (
+                    <p
+                      className="text-2xl font-bold text-foreground"
+                      data-testid={`text-admin-stat-value-${stat.key}`}
+                    >
+                      {stat.value}
+                    </p>
+                  )}
                 </div>
-                <div className={`w-12 h-12 ${stat.bgColor} rounded-full flex items-center justify-center`}>
+                <div className={`w-12 h-12 ${stat.bgColor} rounded-full flex items-center justify-center shrink-0`}>
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">{stat.change}</p>
+              {isLoading ? (
+                <Skeleton className="h-3 w-32 mt-2" />
+              ) : (
+                <p className="text-xs text-muted-foreground mt-2">{stat.change}</p>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -160,7 +242,6 @@ export default function AdminDashboard() {
 
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Course Enrollment Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -175,11 +256,11 @@ export default function AdminDashboard() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="name" className="text-xs" />
                   <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
                     }}
                   />
                   <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name={t('admin.dashboard.completed')} />
@@ -194,7 +275,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Certificate Score Distribution */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -234,7 +314,6 @@ export default function AdminDashboard() {
 
       {/* Top Performers & System Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Performing Agents */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -245,17 +324,21 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-3">
               {agentProgressData.slice(0, 5).map((agent, index) => (
-                <div key={agent.name} className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-primary text-sm font-bold">
-                        #{index + 1}
-                      </span>
+                <div
+                  key={agent.name}
+                  className="flex items-center justify-between gap-2 p-3 rounded-md bg-muted/50 hover-elevate"
+                >
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-primary text-sm font-bold">#{index + 1}</span>
                     </div>
-                    <div>
-                      <p className="font-medium">{agent.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{agent.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t('admin.dashboard.coursesAndCertificates', { courses: agent.enrolled, certificates: agent.certificates })}
+                        {t('admin.dashboard.coursesAndCertificates', {
+                          courses: agent.enrolled,
+                          certificates: agent.certificates,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -271,33 +354,30 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* System Status */}
         <Card>
           <CardHeader>
             <CardTitle>{t('admin.dashboard.systemStatus')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>{t('admin.dashboard.platformStatus')}</span>
               <Badge variant="default" className="bg-green-500 hover:bg-green-600">
                 {t('admin.dashboard.operational')}
               </Badge>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>{t('admin.dashboard.totalEnrollments')}</span>
               <Badge variant="secondary">{totalEnrollments}</Badge>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>{t('admin.dashboard.totalAgencies')}</span>
               <Badge variant="secondary">{agencies.length}</Badge>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>{t('admin.dashboard.completionRateLabel')}</span>
-              <Badge variant={completionRate >= 70 ? 'default' : 'secondary'}>
-                {completionRate}%
-              </Badge>
+              <Badge variant={completionRate >= 70 ? 'default' : 'secondary'}>{completionRate}%</Badge>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>{t('admin.dashboard.avgCertificateScore')}</span>
               <Badge variant={avgCertificateScore >= 80 ? 'default' : 'secondary'}>
                 {avgCertificateScore}%

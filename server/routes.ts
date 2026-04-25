@@ -1499,6 +1499,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin-only: get ALL progress rows across all users (for dashboard stats).
+  app.get('/api/admin/progresses', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const progresses = await storage.getProgresses();
+      res.json({ success: true, progresses });
+    } catch (error) {
+      console.error('Admin progresses retrieval error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve progresses',
+      });
+    }
+  });
+
   // Get user's progress for specific course
   app.get('/api/progress/:courseId', requireAuth, async (req, res) => {
     try {
@@ -5831,7 +5845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const u = (ch.metadata as any)?.Universities;
           if (u && typeof u === 'string') seenUnis.add(u);
         }
-        for (const u of seenUnis) {
+        for (const u of Array.from(seenUnis)) {
           const tokens = normTr(u).split(/\s+/).filter(t => t.length > 3);
           if (tokens.length === 0) continue;
           // Match if the user message mentions ALL discriminating tokens of
