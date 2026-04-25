@@ -1,0 +1,70 @@
+Sistemin ve web sitesinin ana dili İngilizce olacak şekilde tüm dil yapısını güncelle.
+
+Mevcut sistemde ve sitede yer alan tüm sabit alanlar, menüler, butonlar, formlar, başlıklar, uyarılar, dashboard metinleri, admin panel metinleri, acente paneli metinleri ve sistem mesajları İngilizceye çevrilmelidir.
+
+Önemli: Kullanıcı tarafından eklenen özel içerikler / content alanları bu otomatik çeviri kapsamına dahil edilmemelidir. Yani adminin manuel olarak eklediği HTML içerikler, duyurular, kurs içerikleri, açıklama metinleri gibi content verileri korunmalıdır.
+
+Bunun dışında sistem çok dilli yapıya çevrilmelidir.
+
+Ana dil:
+English
+
+Ek diller alfabetik sırayla şu şekilde olmalıdır:
+
+Arabic 🇸🇦
+Chinese 🇨🇳
+French 🇫🇷
+Indonesian 🇮🇩
+Persian 🇮🇷
+Russian 🇷🇺
+Spanish 🇪🇸
+Turkish 🇹🇷
+
+Dil seçici alanında diller bayraklarıyla birlikte gösterilmelidir. Dil seçimi hem web sitesinde hem de sistem panellerinde çalışmalıdır.
+
+Kullanıcı bir dili seçtiğinde tüm sistem arayüzü seçilen dile göre değişmelidir. Dil tercihi kullanıcının tarayıcısında / hesabında korunmalı ve tekrar giriş yaptığında aynı dilde devam etmelidir.
+
+Replit üzerinde bundan sonra yapılacak her yeni geliştirme, yeni buton, yeni menü, yeni form alanı, yeni hata mesajı veya yeni sistem metni için bu dillerin tamamında eksiksiz çeviri hazırlanmalıdır. Sisteme hard-coded metin eklenmemeli; tüm arayüz metinleri translation/i18n dosyalarından yönetilmelidir.
+
+Content / HTML içerik alanları da çok dilli yapıya uygun hale getirilmelidir.
+
+Admin bir HTML içerik eklediğinde, aynı içeriğin farklı dil versiyonlarını da ekleyebilmelidir. Örneğin bir eğitim sayfası veya duyuru için İngilizce, Türkçe, Arapça, Fransızca vb. ayrı HTML içerik alanları bulunmalıdır.
+
+Ön yüzde kullanıcı hangi dili seçtiyse, ilgili content alanının o dildeki versiyonu gösterilmelidir. Eğer seçilen dilde içerik girilmemişse sistem otomatik olarak İngilizce içeriği göstermelidir.
+
+HTML content yapısı şu mantıkla çalışmalıdır:
+
+content_en ana içerik alanı olmalıdır.
+Diğer diller için ayrı içerik alanları oluşturulmalıdır:
+content_ar
+content_zh
+content_fr
+content_id
+content_fa
+content_ru
+content_es
+content_tr
+
+Aynı yapı başlık, açıklama, kısa özet ve SEO alanları için de uygulanmalıdır:
+
+title_en, title_ar, title_zh, title_fr, title_id, title_fa, title_ru, title_es, title_tr
+description_en, description_ar, description_zh, description_fr, description_id, description_fa, description_ru, description_es, description_tr
+seo_title_en, seo_title_ar, vb.
+seo_description_en, seo_description_ar, vb.
+
+Çok dilli HTML içerikler yüklenirken görünüm bozulmamalıdır. HTML editöründe girilen içerikler güvenli şekilde render edilmeli, sayfa tasarımını bozmamalı ve responsive yapıya uyumlu olmalıdır.
+
+Arabic ve Persian dilleri için RTL desteği eklenmelidir. Bu diller seçildiğinde sistem sağdan sola yazım düzenine uygun çalışmalıdır. Diğer diller LTR olarak kalmalıdır.
+
+Tüm güncellemeler aşağıdaki platformlarda sorunsuz çalışmalıdır:
+
+MacOS cihazlar
+Windows / Microsoft tabanlı bilgisayarlar
+iPhone
+Android telefonlar
+iPad ve Android tabletler
+Farklı ekran boyutları
+Chrome, Safari, Edge ve Firefox tarayıcıları
+
+Genel hedef:
+Sistem ve web sitesi, ana dili İngilizce olan, profesyonel, çok dilli, bayrak destekli, responsive ve sürdürülebilir bir i18n yapısına dönüştürülmelidir. Yeni eklenecek tüm özelliklerde çok dilli çeviri sistemi zorunlu standart olarak kullanılmalıdır.
