@@ -51,6 +51,9 @@ export default function AdminAgencies() {
   const [importLoading, setImportLoading] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberRoleFilter, setMemberRoleFilter] = useState<string>('all');
+  const [pendingMemberIds, setPendingMemberIds] = useState<Set<string>>(new Set());
+  const [createMemberSearch, setCreateMemberSearch] = useState('');
+  const [createMemberRoleFilter, setCreateMemberRoleFilter] = useState<string>('all');
   const { toast } = useToast();
   
   // Handle view agency details
@@ -171,15 +174,40 @@ export default function AdminAgencies() {
   const createAgencyMutation = useMutation({
     mutationFn: async (data: AgencyForm) => {
       const response = await apiRequest('POST', '/api/admin/agencies', data);
-      return response.json();
+      const json = await response.json();
+      const newAgencyId: string | undefined = json?.agency?.id;
+      const memberIds = Array.from(pendingMemberIds);
+      let memberSuccess = 0;
+      let memberFailed = 0;
+      if (newAgencyId && memberIds.length > 0) {
+        const results = await Promise.allSettled(
+          memberIds.map(uid =>
+            apiRequest('PATCH', `/api/admin/users/${uid}`, { agencyId: newAgencyId })
+          )
+        );
+        results.forEach(r => (r.status === 'fulfilled' ? memberSuccess++ : memberFailed++));
+      }
+      return { json, memberSuccess, memberFailed, memberTotal: memberIds.length };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ memberSuccess, memberFailed, memberTotal }) => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
-      toast({ title: "Success", description: "Agency created successfully" });
+      if (memberTotal > 0) {
+        await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      }
+      const desc =
+        memberTotal === 0
+          ? 'Acente başarıyla oluşturuldu.'
+          : memberFailed === 0
+            ? `Acente oluşturuldu ve ${memberSuccess} üye atandı.`
+            : `Acente oluşturuldu. ${memberSuccess} üye atandı, ${memberFailed} atama başarısız.`;
+      toast({ title: 'Başarılı', description: desc });
       setDialogOpen(false);
       setEditingAgency(null);
       form.reset();
+      setPendingMemberIds(new Set());
+      setCreateMemberSearch('');
+      setCreateMemberRoleFilter('all');
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create agency", variant: "destructive" });
@@ -500,7 +528,15 @@ export default function AdminAgencies() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingAgency(null);
+              setPendingMemberIds(new Set());
+              setCreateMemberSearch('');
+              setCreateMemberRoleFilter('all');
+            }
+          }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-agency">
               <Plus className="w-4 h-4 mr-2" />
@@ -634,6 +670,102 @@ export default function AdminAgencies() {
                   )}
                 />
 
+                {/* Members to assign on create */}
+                {!editingAgency && (() => {
+                  const search = createMemberSearch.trim().toLowerCase();
+                  const candidates = allUsers.filter(u => {
+                    if (createMemberRoleFilter !== 'all' && u.role !== createMemberRoleFilter) return false;
+                    if (!search) return true;
+                    return (
+                      (u.name || '').toLowerCase().includes(search) ||
+                      (u.email || '').toLowerCase().includes(search) ||
+                      (u.username || '').toLowerCase().includes(search) ||
+                      (u.companyName || '').toLowerCase().includes(search)
+                    );
+                  });
+                  const togglePending = (uid: string) => {
+                    const next = new Set(pendingMemberIds);
+                    if (next.has(uid)) next.delete(uid); else next.add(uid);
+                    setPendingMemberIds(next);
+                  };
+                  return (
+                    <div className="rounded-md border p-3 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Users className="w-4 h-4" />
+                        Acente Üyeleri
+                        <Badge variant="secondary" className="ml-1" data-testid="badge-pending-member-count">
+                          {pendingMemberIds.size} seçildi
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Acente oluşturulduktan sonra seçili kullanıcılar bu acenteye atanır.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                          <Input
+                            placeholder="İsim, e-posta veya kullanıcı adı ile ara..."
+                            value={createMemberSearch}
+                            onChange={(e) => setCreateMemberSearch(e.target.value)}
+                            className="pl-9"
+                            data-testid="input-create-member-search"
+                          />
+                        </div>
+                        <Select value={createMemberRoleFilter} onValueChange={setCreateMemberRoleFilter}>
+                          <SelectTrigger className="w-full sm:w-40" data-testid="select-create-member-role">
+                            <SelectValue placeholder="Rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tüm roller</SelectItem>
+                            <SelectItem value="agent">Agent</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <ScrollArea className="h-48 rounded-md border">
+                        {candidates.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            Aramanızla eşleşen kullanıcı bulunamadı.
+                          </div>
+                        ) : (
+                          <div className="p-1">
+                            {candidates.map(u => {
+                              const checked = pendingMemberIds.has(u.id);
+                              return (
+                                <label
+                                  key={u.id}
+                                  className="flex items-center gap-3 rounded-md p-2 hover-elevate cursor-pointer"
+                                  data-testid={`row-create-candidate-${u.id}`}
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={() => togglePending(u.id)}
+                                    data-testid={`checkbox-create-member-${u.id}`}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-medium truncate">{u.name || u.username}</span>
+                                      <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                      {u.agency && (
+                                        <Badge variant="secondary" className="truncate max-w-[160px]">
+                                          {u.agency.name}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex justify-end gap-2 pt-4">
                   <Button 
                     type="button" 
@@ -642,6 +774,9 @@ export default function AdminAgencies() {
                       setDialogOpen(false);
                       setEditingAgency(null);
                       form.reset();
+                      setPendingMemberIds(new Set());
+                      setCreateMemberSearch('');
+                      setCreateMemberRoleFilter('all');
                     }}
                     data-testid="button-cancel"
                   >
