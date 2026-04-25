@@ -1583,12 +1583,79 @@ export class DatabaseStorage implements IStorage {
       .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
       .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
 
+    // Strip common Turkish suffixes (locative, ablative, dative, possessive,
+    // plural) so "burdurda" / "burdurdan" / "üniversitesinde" all collapse to
+    // their stems. Order matters — try the longest suffix first. We only
+    // strip when the remaining stem is at least 4 chars to avoid shredding
+    // short tokens like "var".
+    const TR_SUFFIXES = [
+      'larinda', 'lerinde', 'larindan', 'lerinden',
+      'larina', 'lerine', 'sinde', 'sinda', 'sinden', 'sindan',
+      'larin', 'lerin', 'lardan', 'lerden', 'larda', 'lerde',
+      'lari', 'leri', 'nden', 'ndan', 'nde', 'nda',
+      'nin', 'nun', 'nun', 'nin', 'sini', 'sinu',
+      'dir', 'tir', 'dur', 'tur',
+      'lar', 'ler', 'den', 'dan', 'ten', 'tan',
+      'de', 'da', 'te', 'ta', 'in', 'un', 'sı', 'si', 'su', 'le', 'la',
+    ];
+    const stripSuffix = (t: string): string => {
+      for (const sfx of TR_SUFFIXES) {
+        if (t.length >= sfx.length + 4 && t.endsWith(sfx)) {
+          return t.slice(0, -sfx.length);
+        }
+      }
+      return t;
+    };
+
+    // Small TR→EN dictionary for the highest-traffic vocabulary the user is
+    // likely to type in Turkish while the source data is in English. We add
+    // the EN equivalent as an extra search term — so a question about
+    // "üniversite" / "ücret" / "lisans" actually matches the English Excel
+    // rows. Keep this list focused on study-abroad nouns; this is a search
+    // hint, not a translation layer.
+    const TR_TO_EN: Record<string, string[]> = {
+      universite: ['university'], uni: ['university'],
+      universiteler: ['university', 'universities'],
+      fakulte: ['faculty'], bolum: ['department'],
+      muhendislik: ['engineering'], tip: ['medicine'], hukuk: ['law'],
+      isletme: ['business'], iktisat: ['economics'], egitim: ['education'],
+      mimarlik: ['architecture'], sanat: ['art'],
+      bilgisayar: ['computer'], yazilim: ['software'],
+      elektrik: ['electrical'], makine: ['mechanical'],
+      endustri: ['industrial'], insaat: ['civil'],
+      kimya: ['chemistry'], fizik: ['physics'], matematik: ['mathematics'],
+      biyoloji: ['biology'], psikoloji: ['psychology'], sosyoloji: ['sociology'],
+      iletisim: ['communication'], gazetecilik: ['journalism'],
+      hemsirelik: ['nursing'], veteriner: ['veterinary'],
+      eczacilik: ['pharmacy'], dis: ['dentistry'],
+      ucret: ['fee', 'tuition'], ucretler: ['fee', 'tuition'],
+      fiyat: ['fee', 'tuition'], burs: ['scholarship'],
+      lisans: ['bachelor'], onlisans: ['associate'],
+      doktora: ['phd', 'doctorate'], yuksek: ['master'],
+      sehir: ['city'], ulke: ['country'],
+      turkiye: ['turkey'], almanya: ['germany'], letonya: ['latvia'],
+      cin: ['china'], abd: ['usa', 'united states'],
+      ingilizce: ['english'], turkce: ['turkish'],
+      almanca: ['german'], rusca: ['russian'], cince: ['chinese'],
+      basvuru: ['application'], kabul: ['admission'],
+      baslangic: ['intake'], sure: ['duration'],
+      dil: ['language'], ay: ['month'], yil: ['year'],
+    };
+
     const normalized = normalize(query.trim());
-    // Drop very short tokens (stop-word-ish) and cap to 8 tokens to keep query
-    // selectivity sane on growing corpora.
-    const terms = Array.from(new Set(
-      normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2)
-    )).slice(0, 8);
+    const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
+
+    // Expand each token into: itself + stripped stem + EN translation(s).
+    const expanded = new Set<string>();
+    for (const t of rawTokens) {
+      expanded.add(t);
+      const stem = stripSuffix(t);
+      if (stem !== t && stem.length > 2) expanded.add(stem);
+      const enList = TR_TO_EN[t] || TR_TO_EN[stem];
+      if (enList) for (const en of enList) expanded.add(en);
+    }
+    // Cap so very long questions don't blow up SQL OR width.
+    const terms = Array.from(expanded).slice(0, 16);
     if (terms.length === 0) return [];
 
     // Each term may match either column; we OR them so chunks that mention any

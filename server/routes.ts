@@ -5849,7 +5849,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // (c) Uploaded knowledge — scored search, optionally pre-filtered by
-      // entity hints, capped to 12 chunks plus the global char budget.
+      // entity hints, capped to 12 chunks plus the global char budget. When
+      // the search returns zero rows, we still inject an explicit "no rows
+      // matched" marker so the model sees a clear signal and applies the
+      // grounding rule from the system prompt instead of inventing data.
       try {
         const chunks = await storage.searchKnowledgeChunks(message, 12, {
           university: universityHint,
@@ -5860,6 +5863,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint].filter(Boolean).join(' / ')}):`
             : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
           pushSection(label, chunks.map(c => '- ' + c.content).join('\n'));
+        } else {
+          // Empty result — make this very visible to the model so it doesn't
+          // try to fill the gap with prior knowledge.
+          pushSection(
+            'UPLOADED KNOWLEDGE BASE:',
+            '[NO MATCHING ROWS FOUND IN THE UPLOADED KNOWLEDGE BASE FOR THIS QUERY. Per system prompt rule #3, if the user named a specific university or program, reply that it is not in the system. Do NOT invent data.]'
+          );
         }
       } catch (err) {
         console.warn('RAG search failed (non-fatal):', err);
@@ -5889,10 +5899,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'STRICT GROUNDING RULES — read carefully:',
         '1. You may ONLY use the information provided in the DESTINATIONS, PLATFORM CONTENT, and UPLOADED KNOWLEDGE BASE sections below to answer questions about countries, universities, programs, courses, fees, intake dates, application requirements, or anything study-abroad specific.',
         '2. NEVER use your own prior knowledge about universities, programs, tuition fees, languages of instruction, intake dates, or application requirements. If the answer is not in the provided data, you MUST reply (in the user\'s language): "Bu bilgi şu anda sistemde mevcut değil. Lütfen Find And Study ekibiyle iletişime geçin." (Turkish) or the equivalent: "I don\'t have that information in the system right now. Please contact the Find And Study team."',
-        '3. NEVER invent universities, programs, fees, or numbers. NEVER suggest visiting external university or government websites. NEVER recommend external portals.',
-        '4. When you do answer, quote the specific values directly (e.g. exact tuition fee, exact program name, exact city, exact intake) from the provided data.',
-        '5. Always reply in the same language the user wrote in (default: Turkish).',
-        '6. Be concise. No filler. No marketing language.',
+        '3. SPECIFIC UNIVERSITY / PROGRAM CHECK: If the user names a specific university or program (e.g. "Sabancı Üniversitesi", "Beykent", "MIT"), check whether that exact name appears in the UPLOADED KNOWLEDGE BASE or PLATFORM CONTENT below. If it does NOT appear, reply: "[name] şu anda Find And Study sisteminde mevcut değil. Sistemimizdeki üniversiteler için lütfen Find And Study ekibiyle iletişime geçin." Do NOT describe the university\'s programs, location, history, language of instruction, fees, or anything else from your own knowledge. Do NOT redirect the user to that university\'s own website. Do NOT speculate.',
+        '4. NEVER invent universities, programs, fees, or numbers. NEVER suggest visiting external university or government websites. NEVER recommend external portals other than findandstudy.com.',
+        '5. When you do answer, quote the specific values directly (e.g. exact tuition fee, exact program name, exact city, exact intake) from the provided data. Do not paraphrase numbers.',
+        '6. If the question is "what universities are available?" or similar, list ONLY the distinct university names you can see in the UPLOADED KNOWLEDGE BASE section, grouped by country.',
+        '7. Always reply in the same language the user wrote in (default: Turkish).',
+        '8. Be concise. No filler. No marketing language.',
       ].join('\n');
       const systemPrompt = (cfg.system_prompt || '').trim() || defaultSystemPrompt;
 
