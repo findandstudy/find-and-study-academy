@@ -459,9 +459,20 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
       { key: 'ai_max_tokens', value: String(maxTokens) },
     ];
     if (isApiKey) {
+      // Persist the actual key so it can be used by the chat backend, plus the
+      // boolean flag the UI uses to render the "Configured" badge. The GET
+      // endpoint redacts `ai_api_key` so the value is never echoed back to the
+      // browser; the input is intentionally blank on reload (rotate by typing
+      // a new key).
+      configs.push({ key: 'ai_api_key', value: apiKey });
       configs.push({ key: 'ai_api_key_configured', value: 'true' });
     }
     onSave(configs);
+    if (isApiKey) {
+      // Clear the local input after a successful submit attempt so the next
+      // load shows "(configured)" rather than re-displaying the new key.
+      setApiKey('');
+    }
   };
 
   return (

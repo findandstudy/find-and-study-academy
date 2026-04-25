@@ -5156,10 +5156,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Chat API endpoint - Proxy to n8n webhook
   // ---- Findy AI Admin Routes ----
+  // Keys whose values are secrets and must never be returned to the browser.
+  // We still surface a sibling "<key>_configured" boolean flag so the UI can
+  // show whether a value is set without leaking the value itself.
+  const FINDY_SECRET_KEYS = new Set(['ai_api_key']);
+
   app.get('/api/admin/findy/config', requireAuth, requireAdminOrStaff, async (req, res) => {
     const configs = await storage.getFindyConfigs();
     const configMap: Record<string, string | null> = {};
-    for (const c of configs) configMap[c.key] = c.value;
+    for (const c of configs) {
+      if (FINDY_SECRET_KEYS.has(c.key)) {
+        // Redact the value but tell the UI whether one is on file.
+        configMap[`${c.key}_configured`] = c.value ? 'true' : 'false';
+      } else {
+        configMap[c.key] = c.value;
+      }
+    }
     res.json({ success: true, config: configMap });
   });
 
