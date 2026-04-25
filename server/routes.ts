@@ -1618,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new user (admin only)
   app.post('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { username, password, name, email, role, status } = req.body;
+      const { username, password, name, email, role, status, country, profilePicture, companyName } = req.body;
 
       // Validate required fields
       if (!username || !password || !name || !email) {
@@ -1656,10 +1656,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         role: role || 'agent'
       });
-      
-      // Update status if provided (status not in insertUserSchema but exists in User type)
-      if (status) {
-        await storage.updateUser(newUser.id, { status });
+
+      // Apply optional fields not on insertUserSchema (status, country, profilePicture, companyName)
+      const optionalUpdates: Partial<typeof newUser> = {};
+      if (status) optionalUpdates.status = status;
+      if (typeof country === 'string' && country.trim()) optionalUpdates.country = country.trim().toUpperCase();
+      if (typeof profilePicture === 'string' && profilePicture.trim()) optionalUpdates.profilePicture = profilePicture.trim();
+      if (typeof companyName === 'string' && companyName.trim()) optionalUpdates.companyName = companyName.trim();
+      if (Object.keys(optionalUpdates).length > 0) {
+        await storage.updateUser(newUser.id, optionalUpdates);
       }
 
       // Remove password from response

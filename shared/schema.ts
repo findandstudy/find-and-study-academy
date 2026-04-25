@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   status: text("status").notNull().default('active'), // 'active' | 'inactive'
   agencyId: varchar("agency_id"),
   companyName: text("company_name"), // Free-text company name (optional)
+  country: text("country"), // ISO 3166-1 alpha-2 country code (e.g. "TR", "US")
   languagePreference: text("language_preference").default('en'), // 'en' | 'tr' | etc.
   profilePicture: text("profile_picture"), // URL to profile picture
   emailNotifications: boolean("email_notifications").notNull().default(true), // Email notification preference

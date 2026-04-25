@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { WORLD_COUNTRIES } from '@/lib/world-countries';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Users, Search, Crown, UserCheck, Calendar, Edit3, Save, X, Trash2, UserPlus, CheckCircle2, XCircle, AlertCircle, Upload, Download, FileSpreadsheet, ChevronRight, RotateCcw } from 'lucide-react';
+import { Users, Search, Crown, UserCheck, Calendar, Edit3, Save, X, Trash2, UserPlus, CheckCircle2, XCircle, AlertCircle, Upload, Download, FileSpreadsheet, ChevronRight, RotateCcw, Camera, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -58,6 +59,8 @@ interface CreateUserForm {
   role: 'admin' | 'agent' | 'staff';
   status: 'active' | 'inactive';
   companyName: string;
+  country: string;
+  profilePicture: string;
 }
 
 export default function AdminUsers() {
@@ -81,7 +84,11 @@ export default function AdminUsers() {
     role: 'agent',
     status: 'active',
     companyName: '',
+    country: '',
+    profilePicture: '',
   });
+  const [createPhotoUploading, setCreatePhotoUploading] = useState(false);
+  const createPhotoInputRef = useRef<HTMLInputElement>(null);
   
   // Delete confirmation state
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -173,6 +180,8 @@ export default function AdminUsers() {
         role: 'agent',
         status: 'active',
         companyName: '',
+        country: '',
+        profilePicture: '',
       });
     },
     onError: (error: any) => {
@@ -183,6 +192,48 @@ export default function AdminUsers() {
       });
     },
   });
+
+  // Upload profile picture for the new user being created
+  const handleCreatePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowed.includes(file.type)) {
+      toast({ title: 'Geçersiz dosya', description: 'Sadece PNG, JPG veya JPEG yükleyebilirsiniz.', variant: 'destructive' });
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Dosya çok büyük', description: 'Profil fotoğrafı en fazla 5MB olabilir.', variant: 'destructive' });
+      e.target.value = '';
+      return;
+    }
+    setCreatePhotoUploading(true);
+    try {
+      const session = JSON.parse(localStorage.getItem('fas_session') || '{}');
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/uploads/content', {
+        method: 'POST',
+        headers: {
+          'x-user-id': session?.user?.id || '',
+          'x-user-role': session?.user?.role || '',
+        },
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success || !json.url) {
+        throw new Error(json.message || 'Yükleme başarısız');
+      }
+      setCreateForm((prev) => ({ ...prev, profilePicture: json.url }));
+      toast({ title: 'Yüklendi', description: 'Profil fotoğrafı yüklendi.' });
+    } catch (err: any) {
+      toast({ title: 'Yükleme hatası', description: err.message || 'Profil fotoğrafı yüklenemedi', variant: 'destructive' });
+    } finally {
+      setCreatePhotoUploading(false);
+      if (createPhotoInputRef.current) createPhotoInputRef.current.value = '';
+    }
+  };
 
   // Update user mutation
   const updateUserMutation = useMutation({
@@ -686,11 +737,63 @@ export default function AdminUsers() {
 
       {/* Create User Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent data-testid="dialog-create-user">
+        <DialogContent data-testid="dialog-create-user" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Profile picture upload */}
+            <div>
+              <Label>Profile Picture</Label>
+              <div className="mt-2 flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={createForm.profilePicture || undefined} alt="Profile preview" />
+                  <AvatarFallback>
+                    <Camera className="w-6 h-6 text-muted-foreground" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={createPhotoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={handleCreatePhotoSelect}
+                    data-testid="input-create-photo"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => createPhotoInputRef.current?.click()}
+                      disabled={createPhotoUploading}
+                      data-testid="button-upload-photo"
+                    >
+                      {createPhotoUploading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Yükleniyor...</>
+                      ) : (
+                        <><Upload className="w-4 h-4 mr-2" />Fotoğraf Yükle</>
+                      )}
+                    </Button>
+                    {createForm.profilePicture && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCreateForm({ ...createForm, profilePicture: '' })}
+                        data-testid="button-remove-photo"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Kaldır
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG, JPG veya JPEG · en fazla 5MB</p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="create-username">Username *</Label>
               <Input
@@ -757,6 +860,25 @@ export default function AdminUsers() {
               />
             </div>
             <div>
+              <Label htmlFor="create-country">Country</Label>
+              <Select
+                value={createForm.country || undefined}
+                onValueChange={(value) => setCreateForm({ ...createForm, country: value === 'none' ? '' : value })}
+              >
+                <SelectTrigger id="create-country" data-testid="select-create-country">
+                  <SelectValue placeholder="Select a country" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">— None —</SelectItem>
+                  {WORLD_COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code} data-testid={`option-country-${c.code}`}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="create-status">Status</Label>
               <Select value={createForm.status} onValueChange={(value: 'active' | 'inactive') => setCreateForm({ ...createForm, status: value })}>
                 <SelectTrigger data-testid="select-create-status">
@@ -780,7 +902,7 @@ export default function AdminUsers() {
             </Button>
             <Button
               onClick={handleCreateUser}
-              disabled={createUserMutation.isPending || !createForm.username || !createForm.password || !createForm.name || !createForm.email}
+              disabled={createUserMutation.isPending || createPhotoUploading || !createForm.username || !createForm.password || !createForm.name || !createForm.email}
               data-testid="button-submit-create"
             >
               <UserPlus className="w-4 h-4 mr-2" />
