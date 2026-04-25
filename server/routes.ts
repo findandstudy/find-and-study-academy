@@ -5474,24 +5474,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wb = XLSX.read(buffer, { type: 'buffer' });
       const chunks: Array<{ content: string; keywords: string; metadata: any }> = [];
       let totalRows = 0;
+
+      // Drop noisy/very-long fields entirely from the chunked content so each
+      // chunk stays small (~250-400 chars vs the previous ~1100). Course
+      // Details is multi-paragraph marketing copy that mostly hurts retrieval
+      // signal-to-noise; __EMPTY* are SheetJS placeholders for blank cells.
+      const SKIP_FIELDS = new Set(['Course Details']);
+      const PER_FIELD_CHAR_CAP = 120; // protect against accidentally huge cells
+
       for (const sheetName of wb.SheetNames) {
         const ws = wb.Sheets[sheetName];
         const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
         totalRows += rows.length;
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
-          // Build readable content line
-          const parts = Object.entries(row)
-            .filter(([k, v]) => !k.startsWith('__EMPTY') && String(v).trim())
-            .map(([k, v]) => `${k}: ${v}`);
+
+          // Build a compact "Field: value | Field: value" content string.
+          const parts: string[] = [];
+          const cleanMeta: Record<string, any> = { sheet: sheetName, rowIndex: i + 2 };
+          for (const [k, v] of Object.entries(row)) {
+            if (k.startsWith('__EMPTY')) continue;
+            if (SKIP_FIELDS.has(k)) continue;
+            const s = String(v ?? '').trim();
+            if (!s) continue;
+            const capped = s.length > PER_FIELD_CHAR_CAP ? s.slice(0, PER_FIELD_CHAR_CAP) + '…' : s;
+            parts.push(`${k}: ${capped}`);
+            cleanMeta[k] = capped;
+          }
           if (parts.length === 0) continue;
           const content = parts.join(' | ');
-          const keywords = parts
-            .flatMap(p => p.split(/[\s|:,]+/))
-            .filter(w => w.length > 2)
-            .join(' ')
-            .toLowerCase();
-          chunks.push({ content, keywords, metadata: { sheet: sheetName, rowIndex: i + 2, ...row } });
+
+          // Keywords are a small, high-signal index built from the columns we
+          // actually want to search over (university, course, country, city,
+          // study level, language). Stored as Turkish-normalized lowercase so
+          // "Bahçeşehir" and "Bahcesehir" both match. The chat-side searcher
+          // applies the same normalization to the query.
+          const KEY_FIELDS = ['Universities', 'Course', 'Country', 'City', 'Study Level', 'Language', 'University Type', 'Intake'];
+          const rawKeywords = KEY_FIELDS
+            .map(k => String(row[k] ?? '').trim())
+            .filter(Boolean)
+            .join(' ');
+          const keywords = rawKeywords.toLowerCase()
+            .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
+            .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+            .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+
+          chunks.push({ content, keywords, metadata: cleanMeta });
         }
       }
       return { chunks, rowCount: totalRows };
@@ -5705,69 +5733,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // ── Build RAG context from system data + uploaded knowledge base ─────────
-      // The chat must be strictly grounded: only data we inject here may be used
-      // by the model. We assemble three sections:
-      //   (a) DESTINATIONS — every active country row (compact, always included).
-      //   (b) PLATFORM CONTENT — published `contents` rows whose title/body
-      //       matches any keyword from the user message (cheap ILIKE filter).
-      //   (c) UPLOADED KNOWLEDGE — top chunks from `knowledge_chunks` matching
-      //       the user message (e.g. the admin's uploaded Excel of universities,
-      //       programs and fees).
-      // Each section is delimited so the model can cite where data came from.
-      let ragContext = '';
+      // The chat must be strictly grounded: only data we inject here may be
+      // used by the model. We assemble three sections inside a single token
+      // budget so the prompt size stays predictable as the corpus grows.
+      //
+      // Token budget: each section gets a hard character cap so that even
+      // with very large uploaded files the total RAG payload stays around
+      // ~6-8 KB (~1.5-2K tokens). Sections, in priority order:
+      //   (a) DESTINATIONS — all active countries (always cheap, ~few hundred
+      //       chars).
+      //   (b) PLATFORM CONTENT — at most 4 published `contents` rows whose
+      //       title/body matches user-message tokens, body capped to 400
+      //       chars each.
+      //   (c) UPLOADED KNOWLEDGE — at most 12 top-scored chunks from
+      //       `knowledge_chunks`, optionally pre-filtered by university or
+      //       country if the question mentions one. Each chunk is already
+      //       compact (~250-400 chars) thanks to the new parser.
+      const RAG_TOTAL_CHAR_BUDGET = 8000;
+      let charsUsed = 0;
       const sections: string[] = [];
+      const pushSection = (label: string, body: string) => {
+        const piece = label + '\n' + body;
+        if (charsUsed + piece.length > RAG_TOTAL_CHAR_BUDGET) {
+          // Truncate to fit, prefer leaving a clean line break.
+          const remaining = Math.max(0, RAG_TOTAL_CHAR_BUDGET - charsUsed - label.length - 10);
+          if (remaining < 200) return; // not enough room, skip
+          const trimmed = body.slice(0, remaining);
+          const cut = trimmed.lastIndexOf('\n');
+          sections.push(label + '\n' + (cut > 0 ? trimmed.slice(0, cut) : trimmed) + '\n…(truncated)');
+          charsUsed = RAG_TOTAL_CHAR_BUDGET;
+          return;
+        }
+        sections.push(piece);
+        charsUsed += piece.length;
+      };
 
+      // Turkish-aware normalize, used for both entity extraction and matching.
+      const normTr = (s: string) => (s || '').toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
+        .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+        .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+      const messageNorm = normTr(message);
+
+      // (a) Destinations — always include, also use them for entity extraction.
+      let countryHint: string | undefined;
+      let activeCountries: any[] = [];
       try {
         const allCountries = await storage.getCountries?.();
-        const activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
+        activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
         if (activeCountries.length > 0) {
           const lines = activeCountries.map((c: any) =>
-            `- ${c.name} (${c.code})${c.description ? ' — ' + c.description : ''}`
+            `- ${c.name} (${c.code})${c.description ? ' — ' + c.description.slice(0, 80) : ''}`
           );
-          sections.push('DESTINATIONS (countries available on Find And Study):\n' + lines.join('\n'));
+          pushSection('DESTINATIONS (countries available on Find And Study):', lines.join('\n'));
+          // Entity extraction: did the user mention any of these country names?
+          for (const c of activeCountries) {
+            if (c.name && messageNorm.includes(normTr(c.name))) { countryHint = c.name; break; }
+          }
         }
       } catch (err) {
         console.warn('Country lookup for RAG failed (non-fatal):', err);
       }
 
-      // Pull published contents that mention any token of the user's question.
+      // (b) Platform content — keyword match published rows, cap to 4 + 400ch.
       try {
         const allContents = await storage.getContents?.();
-        const tokens = message.toLowerCase().split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
+        const tokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
         const matches = (allContents || [])
           .filter((c: any) => c.status === 'published')
           .filter((c: any) => {
-            const hay = `${c.title || ''} ${c.description || ''} ${c.content || ''}`.toLowerCase();
+            const hay = normTr(`${c.title || ''} ${c.description || ''} ${c.content || ''}`);
             return tokens.some((t: string) => hay.includes(t));
           })
-          .slice(0, 6);
+          .slice(0, 4);
         if (matches.length > 0) {
           const lines = matches.map((c: any) => {
-            const body = (c.content || c.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600);
+            const body = (c.content || c.description || '')
+              .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
             return `- [${c.title}]${c.countryCode ? ' (' + c.countryCode + ')' : ''}: ${body}`;
           });
-          sections.push('PLATFORM CONTENT (lessons / documents matching the question):\n' + lines.join('\n'));
+          pushSection('PLATFORM CONTENT (lessons / documents matching the question):', lines.join('\n'));
         }
       } catch (err) {
         console.warn('Content lookup for RAG failed (non-fatal):', err);
       }
 
-      // Search the uploaded knowledge base (Excel/PDF/Word chunks).
+      // Entity extraction for the knowledge base pre-filter: scan the metadata
+      // of a small sample to discover universities present in the corpus, then
+      // see if the user mentioned any. This keeps token use down dramatically
+      // on large corpora ("Tell me about Bahçeşehir CS" filters 10000+ rows
+      // down to that one university's offerings).
+      let universityHint: string | undefined;
       try {
-        const chunks = await storage.searchKnowledgeChunks(message, 25);
+        const sampleChunks = await storage.searchKnowledgeChunks('university', 80);
+        const seenUnis = new Set<string>();
+        for (const ch of sampleChunks) {
+          const u = (ch.metadata as any)?.Universities;
+          if (u && typeof u === 'string') seenUnis.add(u);
+        }
+        for (const u of seenUnis) {
+          const tokens = normTr(u).split(/\s+/).filter(t => t.length > 3);
+          if (tokens.length === 0) continue;
+          // Match if the user message mentions ALL discriminating tokens of
+          // the university name (e.g. "anadolu" alone is enough; "bahcesehir
+          // istanbul" requires both). This avoids mis-matching short generic
+          // tokens like "university".
+          const distinctive = tokens.filter(t => !['university', 'college', 'institute', 'school'].includes(t));
+          if (distinctive.length > 0 && distinctive.every(t => messageNorm.includes(t))) {
+            universityHint = u;
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('University entity extraction failed (non-fatal):', err);
+      }
+
+      // (c) Uploaded knowledge — scored search, optionally pre-filtered by
+      // entity hints, capped to 12 chunks plus the global char budget.
+      try {
+        const chunks = await storage.searchKnowledgeChunks(message, 12, {
+          university: universityHint,
+          country: countryHint,
+        });
         if (chunks.length > 0) {
-          sections.push(
-            'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):\n' +
-            chunks.map(c => '- ' + c.content).join('\n')
-          );
+          const label = universityHint || countryHint
+            ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint].filter(Boolean).join(' / ')}):`
+            : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
+          pushSection(label, chunks.map(c => '- ' + c.content).join('\n'));
         }
       } catch (err) {
         console.warn('RAG search failed (non-fatal):', err);
       }
 
-      if (sections.length > 0) {
-        ragContext = '\n\n---\n' + sections.join('\n\n') + '\n---\n';
-      }
+      const ragContext = sections.length > 0
+        ? '\n\n---\n' + sections.join('\n\n') + '\n---\n'
+        : '';
 
       // ── Load admin AI config ──────────────────────────────────────────────────
       const cfgRows = await storage.getFindyConfigs();

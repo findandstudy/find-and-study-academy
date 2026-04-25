@@ -1572,23 +1572,70 @@ export class DatabaseStorage implements IStorage {
     await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, sourceId));
   }
 
-  async searchKnowledgeChunks(query: string, limit = 15): Promise<KnowledgeChunk[]> {
-    // Keyword-based full-text search using PostgreSQL ILIKE across content and keywords columns
-    const terms = query.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  async searchKnowledgeChunks(
+    query: string,
+    limit = 12,
+    opts?: { university?: string; country?: string }
+  ): Promise<KnowledgeChunk[]> {
+    // Turkish-aware normalization so "Bahçeşehir" matches "Bahcesehir" etc.
+    const normalize = (s: string) => (s || '').toLowerCase()
+      .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
+      .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+      .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+
+    const normalized = normalize(query.trim());
+    // Drop very short tokens (stop-word-ish) and cap to 8 tokens to keep query
+    // selectivity sane on growing corpora.
+    const terms = Array.from(new Set(
+      normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2)
+    )).slice(0, 8);
     if (terms.length === 0) return [];
 
-    // Build OR conditions: each term checked against content and keywords
+    // Each term may match either column; we OR them so chunks that mention any
+    // term become candidates. We deliberately fetch more than `limit` so we can
+    // rerank in JS by how many distinct terms each chunk matched (a cheap TF
+    // proxy that beats ILIKE-OR's "first found wins" behavior).
     const conditions = terms.map(t =>
       or(
         ilike(knowledgeChunks.content, `%${t}%`),
         ilike(knowledgeChunks.keywords, `%${t}%`)
       )
     );
-
-    return db.select()
+    const candidateLimit = Math.max(60, limit * 5);
+    const candidates = await db.select()
       .from(knowledgeChunks)
       .where(or(...conditions))
-      .limit(limit);
+      .limit(candidateLimit);
+
+    // Optional metadata pre-filter: when the caller already extracted an entity
+    // (e.g. a university or country mentioned in the question) we only keep
+    // rows whose metadata matches. This keeps token use down on large corpora.
+    let filtered = candidates;
+    if (opts?.university) {
+      const u = normalize(opts.university);
+      filtered = filtered.filter(c => {
+        const m: any = c.metadata;
+        return m?.Universities && normalize(String(m.Universities)).includes(u);
+      });
+    }
+    if (opts?.country) {
+      const co = normalize(opts.country);
+      filtered = filtered.filter(c => {
+        const m: any = c.metadata;
+        return m?.Country && normalize(String(m.Country)).includes(co);
+      });
+    }
+
+    // Score by number of distinct terms present in (normalized) keywords+content.
+    const scored = filtered.map(c => {
+      const hay = normalize(`${c.keywords || ''} ${c.content || ''}`);
+      let score = 0;
+      for (const t of terms) if (hay.includes(t)) score += 1;
+      return { c, score };
+    }).filter(x => x.score > 0);
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit).map(x => x.c);
   }
 
   async getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]> {
