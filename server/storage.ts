@@ -286,6 +286,162 @@ function bigramSim(a: string, b: string): number {
   return (2 * intersection) / (aSet.size + bSet.size);
 }
 
+// ── EN → TR keyword enrichment ──────────────────────────────────────────────
+// Maps lowercase English study-abroad terms (as they appear in Excel uploads)
+// to their Turkish equivalents. Used during chunk import to make the keywords
+// field searchable by Turkish-speaking agents without dictionary expansion.
+// Bidirectional companion to the TR_TO_EN map inside searchKnowledgeChunks().
+export const EN_TO_TR: Record<string, string> = {
+  // ── Universities / institutions ──────────────────────────────────────────
+  university: 'universite', universities: 'universiteler',
+  faculty: 'fakulte', department: 'bolum',
+  college: 'kolej', institute: 'enstitu', academy: 'akademi',
+  school: 'okul',
+  // ── Applied / management sciences ────────────────────────────────────────
+  applied: 'uygulamali',
+  management: 'yonetim',
+  administration: 'idare', administrative: 'idari',
+  business: 'isletme',
+  economics: 'iktisat ekonomi', economy: 'ekonomi',
+  accounting: 'muhasebe',
+  finance: 'finans',
+  banking: 'bankacilik', insurance: 'sigortacilik',
+  marketing: 'pazarlama', advertising: 'reklamcilik',
+  'public relations': 'halkla iliskiler',
+  'business administration': 'isletme yonetimi',
+  // ── Health sciences ───────────────────────────────────────────────────────
+  health: 'saglik',
+  medicine: 'tip', medical: 'tibbi',
+  nursing: 'hemsirelik',
+  pharmacy: 'eczacilik',
+  dentistry: 'dishekimligi', dental: 'dis',
+  veterinary: 'veteriner',
+  physiotherapy: 'fizyoterapi',
+  radiology: 'radyoloji',
+  nutrition: 'beslenme', dietetics: 'beslenme',
+  'health tourism': 'saglik turizm',
+  'health tourism management': 'saglik turizm yonetimi',
+  // ── Engineering & technology ──────────────────────────────────────────────
+  engineering: 'muhendislik',
+  computer: 'bilgisayar', computing: 'bilgisayar',
+  informatics: 'bilisim', 'information technology': 'bilisim teknoloji',
+  software: 'yazilim',
+  electrical: 'elektrik', electronics: 'elektronik',
+  mechanical: 'makine', mechatronics: 'mekatronik',
+  industrial: 'endustri', 'industrial engineering': 'endustri muhendislik',
+  civil: 'insaat', 'civil engineering': 'insaat muhendislik',
+  architecture: 'mimarlik',
+  'interior design': 'ic mimarlik tasarim',
+  environmental: 'cevre', 'environmental engineering': 'cevre muhendislik',
+  biomedical: 'biyomedikal', 'biomedical engineering': 'biyomedikal muhendislik',
+  'computer engineering': 'bilgisayar muhendislik',
+  'software engineering': 'yazilim muhendislik',
+  'electrical engineering': 'elektrik muhendislik',
+  'mechanical engineering': 'makine muhendislik',
+  // ── Natural & formal sciences ─────────────────────────────────────────────
+  chemistry: 'kimya', chemical: 'kimyasal',
+  biology: 'biyoloji', biochemistry: 'biyokimya',
+  microbiology: 'mikrobiyoloji', genetics: 'genetik',
+  mathematics: 'matematik', statistics: 'istatistik',
+  physics: 'fizik',
+  actuarial: 'aktuerya', data: 'veri',
+  'applied sciences': 'uygulamali bilimler',
+  'natural sciences': 'dogal bilimler',
+  // ── Social sciences & humanities ──────────────────────────────────────────
+  law: 'hukuk',
+  sociology: 'sosyoloji', social: 'sosyal',
+  psychology: 'psikoloji',
+  history: 'tarih', geography: 'cografya',
+  philosophy: 'felsefe',
+  archaeology: 'arkeoloji', anthropology: 'antropoloji',
+  // ── Education ─────────────────────────────────────────────────────────────
+  education: 'egitim', teaching: 'ogretmenlik',
+  guidance: 'rehberlik', counseling: 'rehberlik',
+  // ── Communication, media, arts ────────────────────────────────────────────
+  communication: 'iletisim', journalism: 'gazetecilik',
+  media: 'medya', television: 'televizyon', cinema: 'sinema',
+  'graphic design': 'grafik tasarim', design: 'tasarim',
+  music: 'muzik', theatre: 'tiyatro', theater: 'tiyatro',
+  art: 'sanat', painting: 'resim sanat',
+  // ── Tourism & hospitality ─────────────────────────────────────────────────
+  tourism: 'turizm', hospitality: 'otelcilik konaklama',
+  hotel: 'otel otelcilik', 'hotel management': 'otel yonetim',
+  gastronomy: 'gastronomi', culinary: 'mutfak',
+  'tourism management': 'turizm yonetimi',
+  // ── Agriculture, environment, sport ───────────────────────────────────────
+  agriculture: 'tarim', forestry: 'ormancilik',
+  aviation: 'havacilik', maritime: 'denizcilik',
+  sports: 'spor', sport: 'spor',
+  'physical education': 'beden egitimi',
+  coaching: 'antrenorlik', recreation: 'rekreasyon',
+  // ── Level / mode ──────────────────────────────────────────────────────────
+  bachelor: 'lisans', undergraduate: 'lisans',
+  master: 'yuksek lisans', masters: 'yuksek lisans',
+  phd: 'doktora', doctorate: 'doktora',
+  associate: 'onlisans',
+  distance: 'uzaktan', preparatory: 'hazirlik',
+  // ── Fees, process, duration ───────────────────────────────────────────────
+  fee: 'ucret', tuition: 'ucret', scholarship: 'burs',
+  discount: 'indirim', payment: 'odeme',
+  application: 'basvuru', admission: 'kabul',
+  enrollment: 'kayit', registration: 'kayit',
+  graduation: 'mezuniyet', diploma: 'diploma', certificate: 'sertifika',
+  semester: 'donem', term: 'donem',
+  // ── Locations ─────────────────────────────────────────────────────────────
+  city: 'sehir', country: 'ulke',
+  turkey: 'turkiye', germany: 'almanya',
+  latvia: 'letonya', china: 'cin',
+  usa: 'abd', 'united states': 'abd',
+  // ── Language ──────────────────────────────────────────────────────────────
+  language: 'dil', english: 'ingilizce', turkish: 'turkce',
+  german: 'almanca', russian: 'rusca', chinese: 'cince',
+  french: 'fransizca', spanish: 'ispanyolca',
+  // ── Misc ──────────────────────────────────────────────────────────────────
+  translation: 'tercume ceviri', linguistics: 'dilbilimi',
+  'public policy': 'kamu politikasi',
+  'political science': 'siyaset bilimi',
+  'international relations': 'uluslararasi iliskiler',
+  international: 'uluslararasi',
+  'supply chain': 'tedarik zinciri',
+  logistics: 'lojistik',
+  'real estate': 'gayrimenkul',
+  urban: 'sehir', planning: 'planlama',
+};
+
+// Build a sorted list of phrases (longest first so multi-word phrases match
+// before their constituent single words) for O(n·m) scanning.
+const _EN_TO_TR_PHRASES = Object.keys(EN_TO_TR).sort((a, b) => b.length - a.length);
+
+/**
+ * Scan `text` for known English study-abroad terms and append the Turkish
+ * equivalents to `existingKeywords`. Duplicate Turkish terms are deduplicated.
+ * Called during Excel/CSV chunk creation so agents searching in Turkish can
+ * find English-language knowledge-base entries without dictionary expansion.
+ */
+export function enrichWithTurkishKeywords(text: string, existingKeywords: string): string {
+  const lower = text.toLowerCase();
+  const added = new Set<string>();
+  const alreadyInKeywords = new Set(existingKeywords.split(/\s+/).filter(Boolean));
+
+  for (const phrase of _EN_TO_TR_PHRASES) {
+    if (!lower.includes(phrase)) continue;
+    // For single-word phrases use a word-boundary regex so ALL occurrences are
+    // tested at once — fixing a bug where only the first occurrence was checked
+    // and a mid-word hit caused a valid later occurrence to be skipped.
+    if (!phrase.includes(' ')) {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!new RegExp(`\\b${escaped}\\b`).test(lower)) continue;
+    }
+    const trWords = EN_TO_TR[phrase].split(/\s+/);
+    for (const w of trWords) {
+      if (w && !alreadyInKeywords.has(w) && !added.has(w)) added.add(w);
+    }
+  }
+
+  if (added.size === 0) return existingKeywords;
+  return (existingKeywords + ' ' + Array.from(added).join(' ')).trim();
+}
+
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));

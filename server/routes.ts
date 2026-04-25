@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, enrichWithTurkishKeywords } from "./storage";
 import { 
   insertCertificateSchema, 
   insertAgencySchema, 
@@ -5540,10 +5540,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .map(k => String(row[k] ?? '').trim())
             .filter(Boolean)
             .join(' ');
-          const keywords = rawKeywords.toLowerCase()
+          const baseKeywords = rawKeywords.toLowerCase()
             .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
             .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
             .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+          // Enrich keywords with Turkish equivalents of English study-abroad
+          // terms found in the chunk content so Turkish-language queries match
+          // without relying solely on the runtime TR→EN dictionary expansion.
+          const keywords = enrichWithTurkishKeywords(content, baseKeywords);
 
           chunks.push({ content, keywords, metadata: cleanMeta });
         }
