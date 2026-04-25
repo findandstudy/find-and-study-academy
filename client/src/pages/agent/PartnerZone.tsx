@@ -1,12 +1,15 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRoute, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2, ChevronRight, Folder, Download, FileText, Video, Image as ImageIcon, File,
-  ExternalLink, Search, Home,
+  ExternalLink, Search, Home, X, Archive,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/CountryFlag';
 
@@ -227,7 +230,18 @@ function FolderCard({
 
 // ─── Content card with dual Aç + İndir buttons ─────────────────────────────
 
-function ContentCard({ item }: { item: FolderContent }) {
+interface ContentCardProps {
+  item: FolderContent;
+  index: number;
+  isSelected: boolean;
+  // React.MouseEvent is the common base for both the card div's click event
+  // (MouseEvent<HTMLDivElement>) and the Radix Checkbox's click event
+  // (MouseEvent<HTMLButtonElement>), so both call sites pass the event
+  // through naturally — no casts required.
+  onSelectClick: (id: string, index: number, e: React.MouseEvent) => void;
+}
+
+function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProps) {
   const url = getContentUrl(item);
   const mt = getContentType(item);
 
@@ -248,11 +262,42 @@ function ContentCard({ item }: { item: FolderContent }) {
     document.body.removeChild(a);
   };
 
+  // Card-level click captures shift/ctrl for range/toggle selection. Plain
+  // clicks fall through to whatever the user actually clicked (Aç / İndir / etc).
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelectClick(item.id, index, e);
+    }
+  };
+
   return (
     <div
-      className="rounded-xl border bg-card overflow-hidden flex flex-col hover-elevate"
+      className={`relative rounded-xl border bg-card overflow-hidden flex flex-col hover-elevate ${
+        isSelected ? 'ring-2 ring-primary' : ''
+      }`}
+      onClick={handleCardClick}
+      data-state={isSelected ? 'selected' : undefined}
       data-testid={`content-card-${item.id}`}
     >
+      {/* Top-left selection checkbox overlay. Stops propagation so toggling
+          the checkbox doesn't also fire the card click handler. */}
+      <div
+        className="absolute top-2 left-2 z-10 rounded bg-background/90 p-1 shadow-sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={isSelected}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectClick(item.id, index, e);
+          }}
+          aria-label={`${item.displayName || item.title} seç`}
+          data-testid={`checkbox-content-${item.id}`}
+        />
+      </div>
+
       {mt === 'image' && url && (
         <div className="aspect-video overflow-hidden bg-muted">
           <img src={url} alt={item.displayName || item.title} className="w-full h-full object-cover" />
@@ -339,6 +384,25 @@ export default function AgentPartnerZone() {
   const [country, setCountry] = useState('all');
   const [fileType, setFileType] = useState<FileTypeFilter>('all');
   const [sort, setSort] = useState<SortKey>('newest');
+
+  // Multi-select state for bulk ZIP download. Cleared whenever the
+  // viewed folder changes so selections don't leak across navigation.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+  const [isZipping, setIsZipping] = useState(false);
+  const zipAbortRef = useRef<AbortController | null>(null);
+  const { toast } = useToast();
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setLastClickedIndex(null);
+    // Cancel any in-flight ZIP request when navigating between folders so a
+    // long-running download for the previous folder doesn't keep streaming
+    // (and doesn't surface a misleading toast for the new view).
+    return () => {
+      zipAbortRef.current?.abort();
+      zipAbortRef.current = null;
+    };
+  }, [folderId]);
 
   // Active countries (for country select)
   const { data: countriesData } = useQuery<{ countries: CountryItem[] }>({
@@ -434,6 +498,105 @@ export default function AgentPartnerZone() {
     );
   }, [detailContents, fileType, search, sort]);
 
+  // ─── Selection helpers (operate on filteredDetailContents) ────────────
+  // Plain checkbox click toggles a single id; shift+click extends a contiguous
+  // range from the last clicked anchor; ctrl/cmd+click is treated as a toggle.
+  const toggleSingleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const handleSelectClick = (id: string, index: number, e: React.MouseEvent) => {
+    if (e.shiftKey && lastClickedIndex !== null) {
+      const [lo, hi] = lastClickedIndex <= index
+        ? [lastClickedIndex, index]
+        : [index, lastClickedIndex];
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (let i = lo; i <= hi; i++) {
+          const it = filteredDetailContents[i];
+          if (it) next.add(it.id);
+        }
+        return next;
+      });
+    } else {
+      toggleSingleSelection(id);
+    }
+    setLastClickedIndex(index);
+  };
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setLastClickedIndex(null);
+  };
+  const selectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      filteredDetailContents.forEach((c) => next.add(c.id));
+      return next;
+    });
+    setLastClickedIndex(null);
+  };
+
+  // Stream the selected files as a single ZIP via the new public endpoint.
+  // Uses fetch+blob so we can attach the x-user-id auth header that anchor
+  // <a download> can't carry. Server-side response body still streams from
+  // archiver, so the server never holds the whole archive in memory.
+  const downloadSelectedZip = async () => {
+    if (!folderId || selectedIds.size === 0 || isZipping) return;
+    const ids = Array.from(selectedIds);
+    setIsZipping(true);
+    // Allow cancellation if the user navigates away while the request is open.
+    const controller = new AbortController();
+    zipAbortRef.current = controller;
+    try {
+      const r = await fetch(
+        `/api/partner-folders/${folderId}/zip?ids=${encodeURIComponent(ids.join(','))}`,
+        { headers: authHeaders(), signal: controller.signal },
+      );
+      if (!r.ok) {
+        let msg = 'ZIP indirilemedi';
+        try {
+          const ct = r.headers.get('content-type') ?? '';
+          if (ct.includes('application/json')) {
+            const j = await r.json();
+            if (j?.message) msg = j.message;
+          }
+        } catch { /* ignore */ }
+        toast({ title: 'İndirme başarısız', description: msg, variant: 'destructive' });
+        return;
+      }
+      const blob = await r.blob();
+      // Try to honor the server-supplied filename; fall back to folder name.
+      const cd = r.headers.get('content-disposition') ?? '';
+      const m = /filename="?([^";]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `${detailFolder?.name ?? 'partner-zone'}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: 'İndirme tamam',
+        description: `${ids.length} dosya ZIP olarak indirildi.`,
+      });
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') return;
+      toast({
+        title: 'İndirme başarısız',
+        description: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsZipping(false);
+      zipAbortRef.current = null;
+    }
+  };
+
   // ─── Folder detail view ───────────────────────────────────────────────────
 
   if (folderId) {
@@ -527,12 +690,65 @@ export default function AgentPartnerZone() {
             {/* Contents section */}
             {filteredDetailContents.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Dosyalar
-                </h2>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Dosyalar
+                  </h2>
+                  {/* Selection toolbar — visible only when there is at least one
+                      selected content. "Tümünü seç" picks every visible row
+                      (respecting the current filters) and "Temizle" clears. */}
+                  {selectedIds.size > 0 ? (
+                    <div
+                      className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
+                      data-testid="bulk-selection-toolbar"
+                    >
+                      <Badge variant="secondary" data-testid="bulk-selection-count">
+                        {selectedIds.size} dosya seçildi
+                      </Badge>
+                      <Button
+                        size="sm"
+                        onClick={downloadSelectedZip}
+                        disabled={isZipping}
+                        data-testid="button-download-zip"
+                      >
+                        {isZipping ? (
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                        ) : (
+                          <Archive className="w-4 h-4 mr-1.5" />
+                        )}
+                        {isZipping ? 'Hazırlanıyor...' : 'Seçilenleri ZIP olarak indir'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={clearSelection}
+                        disabled={isZipping}
+                        data-testid="button-clear-selection"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        Temizle
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={selectAllVisible}
+                      data-testid="button-select-all-visible"
+                    >
+                      Tümünü seç
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredDetailContents.map((item) => (
-                    <ContentCard key={item.id} item={item} />
+                  {filteredDetailContents.map((item, index) => (
+                    <ContentCard
+                      key={item.id}
+                      item={item}
+                      index={index}
+                      isSelected={selectedIds.has(item.id)}
+                      onSelectClick={handleSelectClick}
+                    />
                   ))}
                 </div>
               </div>

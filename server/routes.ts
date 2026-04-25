@@ -3557,6 +3557,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public: stream a ZIP of selected published files inside a published folder.
+  // Used by the agent Partner Zone "Seçilenleri ZIP olarak indir" toolbar.
+  // Query: ?ids=<uuid>,<uuid>,...   (1..200 ids)
+  // Only files (a) belonging to this folder, (b) status === 'published',
+  // and (c) whose URL points to a local /uploads/ asset are included.
+  // Remote URLs (e.g. YouTube videoUrls, http(s)://...) are skipped silently —
+  // there is no useful way to package those into a ZIP.
+  app.get('/api/partner-folders/:id/zip', requireAuth, async (req, res) => {
+    try {
+      const folderId = req.params.id;
+      const folder = await storage.getPartnerFolderById(folderId);
+      if (!folder || folder.status !== 'published') {
+        return res.status(404).json({ success: false, message: 'Folder not found' });
+      }
+
+      const idsRaw = typeof req.query.ids === 'string' ? req.query.ids : '';
+      const requestedIds = Array.from(new Set(
+        idsRaw.split(',').map(s => s.trim()).filter(Boolean)
+      ));
+      if (requestedIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'En az bir dosya seçmelisiniz' });
+      }
+      if (requestedIds.length > 200) {
+        return res.status(400).json({ success: false, message: 'Tek seferde en fazla 200 dosya indirilebilir' });
+      }
+
+      const allItems = await storage.getFolderContents(folderId);
+      const requestedSet = new Set(requestedIds);
+      // Authorization filter: belongs to folder + published + requested.
+      const eligible = allItems.filter(c =>
+        c.status === 'published' && requestedSet.has(c.id)
+      );
+
+      // Resolve URL → absolute disk path under public/uploads (path-traversal safe).
+      const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
+      type ZipEntry = { absPath: string; entryName: string };
+      const usedNames = new Set<string>();
+
+      // Sanitize a filename for use inside the ZIP. Strips control chars, slashes,
+      // and trims length; falls back to "dosya" when nothing usable remains.
+      const sanitizeName = (raw: string): string => {
+        const cleaned = raw
+          .replace(/[\x00-\x1f\x7f]/g, '')
+          .replace(/[\\/]/g, '_')
+          .replace(/^\.+/, '')
+          .trim();
+        return cleaned.length > 0 ? cleaned.slice(0, 180) : 'dosya';
+      };
+      // Ensure the entry name is unique within this archive (foo.pdf, foo (2).pdf, ...).
+      const uniqueName = (base: string): string => {
+        if (!usedNames.has(base)) { usedNames.add(base); return base; }
+        const dot = base.lastIndexOf('.');
+        const stem = dot > 0 ? base.slice(0, dot) : base;
+        const ext = dot > 0 ? base.slice(dot) : '';
+        for (let i = 2; i < 1000; i++) {
+          const candidate = `${stem} (${i})${ext}`;
+          if (!usedNames.has(candidate)) { usedNames.add(candidate); return candidate; }
+        }
+        const fallback = `${stem}-${Date.now()}${ext}`;
+        usedNames.add(fallback);
+        return fallback;
+      };
+
+      const entries: ZipEntry[] = [];
+      for (const item of eligible) {
+        const url = item.documentUrl ?? item.imageUrl ?? item.videoUrl ?? null;
+        if (!url || !url.startsWith('/uploads/')) continue; // skip remote/missing
+        const relative = url.replace(/^\/+/, ''); // uploads/...
+        const abs = path.resolve(process.cwd(), 'public', relative);
+        if (!abs.startsWith(uploadsRoot + path.sep) && abs !== uploadsRoot) continue;
+        if (!fs.existsSync(abs)) continue;
+        // Build entry name: prefer displayName, else title; preserve original extension when missing.
+        const baseLabel = (item.displayName ?? item.title ?? 'dosya').toString();
+        const labelHasExt = /\.[a-zA-Z0-9]{1,8}$/.test(baseLabel);
+        const urlExt = path.extname(relative);
+        const base = labelHasExt ? baseLabel : `${baseLabel}${urlExt}`;
+        entries.push({ absPath: abs, entryName: uniqueName(sanitizeName(base)) });
+      }
+
+      if (entries.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seçilen dosyalar arasında indirilebilir öğe bulunamadı',
+        });
+      }
+
+      // Build a safe download filename from the folder name (ASCII fallback only).
+      const folderSlug = folder.name
+        .replace(/[^\w\d-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 80) || 'partner-zone';
+      const zipName = `${folderSlug}.zip`;
+
+      // Streaming archive — does NOT buffer the whole ZIP in memory.
+      const archiver = (await import('archiver')).default;
+      const archive = archiver('zip', { zlib: { level: 6 } });
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+      // Disable nginx-style buffering if ever proxied; helps streaming.
+      res.setHeader('Cache-Control', 'no-store');
+
+      archive.on('warning', (err) => {
+        // Non-fatal warnings (missing entries etc.) — log but keep streaming.
+        console.warn('[partner-zip] archive warning:', err);
+      });
+      archive.on('error', (err) => {
+        console.error('[partner-zip] archive error:', err);
+        // Headers are already sent at this point; destroy the socket so the
+        // client sees a truncated download instead of a "200 OK" empty file.
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'ZIP oluşturulamadı' });
+        } else {
+          try { res.destroy(err); } catch { /* noop */ }
+        }
+      });
+
+      archive.pipe(res);
+      for (const e of entries) {
+        archive.file(e.absPath, { name: e.entryName });
+      }
+      await archive.finalize();
+    } catch (error) {
+      console.error('[partner-zip] route error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'ZIP oluşturulamadı' });
+      } else {
+        try { res.end(); } catch { /* noop */ }
+      }
+    }
+  });
+
   // Admin: list folders — supports ?parentId= (root by default if explicitly 'root')
   app.get('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
     try {
