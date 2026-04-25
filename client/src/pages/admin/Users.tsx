@@ -13,6 +13,7 @@ import { Users, Search, Crown, UserCheck, Calendar, Edit3, Save, X, Trash2, User
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import * as XLSX from 'xlsx';
 import { 
   AlertDialog,
@@ -97,11 +98,13 @@ export default function AdminUsers() {
   // Bulk import state
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [importStep, setImportStep] = useState<1 | 2 | 3>(1);
-  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string; country: string; profilePicture: string };
+  type ImportRow = { name: string; email: string; username: string; password: string; role: string; status: string; companyName: string; country: string; profilePicture: string; agencyId?: string };
   type ImportResult = { row: number; email: string; status: 'success' | 'error'; message?: string };
   const [importData, setImportData] = useState<ImportRow[]>([]);
   const [importResults, setImportResults] = useState<{ successCount: number; errorCount: number; results: ImportResult[] } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const [importAgencyId, setImportAgencyId] = useState<string>('');
+  const [importAgencySearch, setImportAgencySearch] = useState<string>('');
   
   const { toast } = useToast();
 
@@ -110,6 +113,13 @@ export default function AdminUsers() {
     queryKey: ['/api/admin/users'],
     staleTime: 30000,
   });
+
+  // Fetch agencies (used by the bulk-import "assign to agency" picker)
+  const { data: agenciesData } = useQuery<{ agencies?: Array<{ id: string; name: string; city?: string | null; country?: string | null; status?: string }> }>({
+    queryKey: ['/api/admin/agencies'],
+    staleTime: 30000,
+  });
+  const importAgencies = agenciesData?.agencies || [];
 
   const users: User[] = usersData?.users || [];
 
@@ -380,13 +390,14 @@ export default function AdminUsers() {
       ['companyName', 'No', 'ABC Agency', 'Agency or company name'],
       ['country', 'No', 'TR', 'ISO 3166-1 alpha-2 country code (e.g. TR, US, DE, FR). Leave blank for none.'],
       ['profilePicture', 'No', 'https://.../avatar.png', 'Optional URL to profile picture (PNG, JPG or JPEG). Must be a publicly reachable URL or an existing /uploads/... path.'],
+      ['agencyId', 'No', 'a1b2c3...', 'Optional agency UUID. Per-row value overrides the "Atanacak Acente" picker.'],
     ];
     const instrSheet = XLSX.utils.aoa_to_sheet(instructionData);
     instrSheet['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(wb, instrSheet, 'Instructions');
 
-    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName', 'country', 'profilePicture'];
-    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency', 'TR', ''];
+    const headerRow = ['name', 'email', 'username', 'password', 'role', 'status', 'companyName', 'country', 'profilePicture', 'agencyId'];
+    const exampleRow = ['Jane Doe', 'jane@example.com', 'janedoe', 'Pass1234', 'agent', 'active', 'My Agency', 'TR', '', ''];
     const dataSheet = XLSX.utils.aoa_to_sheet([headerRow, exampleRow]);
     dataSheet['!cols'] = headerRow.map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, dataSheet, 'Users');
@@ -414,6 +425,7 @@ export default function AdminUsers() {
           companyName: String(row['companyName'] || row['CompanyName'] || row['company_name'] || '').trim(),
           country: String(row['country'] || row['Country'] || '').trim().toUpperCase(),
           profilePicture: String(row['profilePicture'] || row['ProfilePicture'] || row['profile_picture'] || row['profilePictureUrl'] || '').trim(),
+          agencyId: String(row['agencyId'] || row['AgencyId'] || row['agency_id'] || '').trim(),
         }));
         setImportData(mapped);
         setImportStep(2);
@@ -444,6 +456,8 @@ export default function AdminUsers() {
     setImportStep(1);
     setImportData([]);
     setImportResults(null);
+    setImportAgencyId('');
+    setImportAgencySearch('');
     if (importFileRef.current) importFileRef.current.value = '';
   };
 
@@ -1085,6 +1099,92 @@ export default function AdminUsers() {
                   <li><strong>companyName</strong> — optional agency/company name</li>
                 </ul>
               </div>
+
+              {/* Optional: assign all imported users to an agency */}
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Users className="w-4 h-4" />
+                  Atanacak Acente
+                  <Badge variant="secondary" className="ml-1">Opsiyonel</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Seçilirse, içe aktarılan tüm kullanıcılar bu acenteye atanır. Excel dosyasında <code>agencyId</code> sütunu varsa o öncelik kazanır.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      placeholder="Acente ara: isim veya şehir..."
+                      value={importAgencySearch}
+                      onChange={(e) => setImportAgencySearch(e.target.value)}
+                      className="pl-9"
+                      data-testid="input-import-agency-search"
+                    />
+                  </div>
+                  {importAgencyId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setImportAgencyId('')}
+                      data-testid="button-clear-import-agency"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Seçimi Temizle
+                    </Button>
+                  )}
+                </div>
+                <ScrollArea className="h-40 rounded-md border">
+                  {(() => {
+                    const q = importAgencySearch.trim().toLowerCase();
+                    const list = importAgencies.filter(a => {
+                      if (!q) return true;
+                      return (
+                        (a.name || '').toLowerCase().includes(q) ||
+                        (a.city || '').toLowerCase().includes(q) ||
+                        (a.country || '').toLowerCase().includes(q)
+                      );
+                    });
+                    if (list.length === 0) {
+                      return (
+                        <div className="p-4 text-sm text-muted-foreground text-center">
+                          {q ? 'Aramanızla eşleşen acente bulunamadı.' : 'Henüz acente yok.'}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="p-1">
+                        {list.map(a => {
+                          const selected = importAgencyId === a.id;
+                          return (
+                            <button
+                              type="button"
+                              key={a.id}
+                              onClick={() => setImportAgencyId(selected ? '' : a.id)}
+                              className={`w-full flex items-center justify-between gap-2 rounded-md p-2 text-left hover-elevate ${selected ? 'bg-primary/5' : ''}`}
+                              data-testid={`row-import-agency-${a.id}`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium truncate">{a.name}</span>
+                                  {a.status && (
+                                    <Badge variant="outline" className="capitalize">{a.status}</Badge>
+                                  )}
+                                </div>
+                                {(a.city || a.country) && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {[a.city, a.country].filter(Boolean).join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                              {selected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </ScrollArea>
+              </div>
               <Button onClick={downloadUserTemplate} className="w-full" variant="outline" data-testid="button-download-user-template">
                 <Download className="w-4 h-4 mr-2" />
                 Download Excel Template
@@ -1170,7 +1270,13 @@ export default function AdminUsers() {
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>Back</Button>
                 <Button
-                  onClick={() => bulkImportMutation.mutate(importData)}
+                  onClick={() => {
+                    const payload = importData.map(r => ({
+                      ...r,
+                      agencyId: (r.agencyId && r.agencyId.trim()) ? r.agencyId.trim() : (importAgencyId || undefined),
+                    }));
+                    bulkImportMutation.mutate(payload);
+                  }}
                   disabled={bulkImportMutation.isPending || importData.length === 0}
                   data-testid="button-confirm-import"
                 >

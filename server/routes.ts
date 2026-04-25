@@ -1856,6 +1856,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let successCount = 0;
       let errorCount = 0;
 
+      // Pre-load valid agency ids in a single query so per-row validation is O(1)
+      const validAgencyIds = new Set<string>();
+      const requestedAgencyIds = Array.from(
+        new Set(
+          rawUsers
+            .map((r: any) => (typeof r?.agencyId === 'string' ? r.agencyId.trim() : ''))
+            .filter((s: string) => s.length > 0)
+        )
+      ) as string[];
+      if (requestedAgencyIds.length > 0) {
+        const allAgencies = await storage.getAgencies();
+        const allIds = new Set(allAgencies.map(a => a.id));
+        for (const id of requestedAgencyIds) {
+          if (allIds.has(id)) validAgencyIds.add(id);
+        }
+      }
+
       for (let i = 0; i < rawUsers.length; i++) {
         const row = rawUsers[i];
         const rowNum = i + 2; // Excel row (1-indexed header + 1)
@@ -1908,6 +1925,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
             optionalUpdates.profilePicture = pp;
+          }
+          if (typeof row.agencyId === 'string' && row.agencyId.trim()) {
+            const agencyIdTrim = row.agencyId.trim();
+            if (!validAgencyIds.has(agencyIdTrim)) {
+              results.push({ row: rowNum, email: row.email, status: 'error', message: 'agencyId does not match any existing agency' });
+              errorCount++;
+              continue;
+            }
+            optionalUpdates.agencyId = agencyIdTrim;
           }
 
           const hashedPassword = await bcrypt.hash(row.password, 10);
