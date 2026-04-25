@@ -5684,12 +5684,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //   3. If neither is configured but RAG context is available, return the
   //      raw context as a degraded answer.
   app.post('/api/chat', async (req, res) => {
+    // Declared outside the try so the outer catch can use it for admin-only
+    // verbose error messages without TS scoping errors.
+    let isAdmin = false;
     try {
       const { message, sessionId } = req.body;
 
       // Optional admin lookup so we can show verbose provider errors only to
       // admin users (regular agents see a friendly generic message).
-      let isAdmin = false;
       const callerId = req.header('x-user-id');
       if (callerId) {
         try {
@@ -5702,16 +5704,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'Message is required' });
       }
 
-      // ── Build RAG context from knowledge base ─────────────────────────────────
+      // ── Build RAG context from system data + uploaded knowledge base ─────────
+      // The chat must be strictly grounded: only data we inject here may be used
+      // by the model. We assemble three sections:
+      //   (a) DESTINATIONS — every active country row (compact, always included).
+      //   (b) PLATFORM CONTENT — published `contents` rows whose title/body
+      //       matches any keyword from the user message (cheap ILIKE filter).
+      //   (c) UPLOADED KNOWLEDGE — top chunks from `knowledge_chunks` matching
+      //       the user message (e.g. the admin's uploaded Excel of universities,
+      //       programs and fees).
+      // Each section is delimited so the model can cite where data came from.
       let ragContext = '';
+      const sections: string[] = [];
+
       try {
-        const chunks = await storage.searchKnowledgeChunks(message, 15);
+        const allCountries = await storage.getCountries?.();
+        const activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
+        if (activeCountries.length > 0) {
+          const lines = activeCountries.map((c: any) =>
+            `- ${c.name} (${c.code})${c.description ? ' — ' + c.description : ''}`
+          );
+          sections.push('DESTINATIONS (countries available on Find And Study):\n' + lines.join('\n'));
+        }
+      } catch (err) {
+        console.warn('Country lookup for RAG failed (non-fatal):', err);
+      }
+
+      // Pull published contents that mention any token of the user's question.
+      try {
+        const allContents = await storage.getContents?.();
+        const tokens = message.toLowerCase().split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
+        const matches = (allContents || [])
+          .filter((c: any) => c.status === 'published')
+          .filter((c: any) => {
+            const hay = `${c.title || ''} ${c.description || ''} ${c.content || ''}`.toLowerCase();
+            return tokens.some((t: string) => hay.includes(t));
+          })
+          .slice(0, 6);
+        if (matches.length > 0) {
+          const lines = matches.map((c: any) => {
+            const body = (c.content || c.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600);
+            return `- [${c.title}]${c.countryCode ? ' (' + c.countryCode + ')' : ''}: ${body}`;
+          });
+          sections.push('PLATFORM CONTENT (lessons / documents matching the question):\n' + lines.join('\n'));
+        }
+      } catch (err) {
+        console.warn('Content lookup for RAG failed (non-fatal):', err);
+      }
+
+      // Search the uploaded knowledge base (Excel/PDF/Word chunks).
+      try {
+        const chunks = await storage.searchKnowledgeChunks(message, 25);
         if (chunks.length > 0) {
-          ragContext = '\n\n---\nKNOWLEDGE BASE (use this data to answer accurately):\n' +
-            chunks.map(c => c.content).join('\n') + '\n---\n';
+          sections.push(
+            'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):\n' +
+            chunks.map(c => '- ' + c.content).join('\n')
+          );
         }
       } catch (err) {
         console.warn('RAG search failed (non-fatal):', err);
+      }
+
+      if (sections.length > 0) {
+        ragContext = '\n\n---\n' + sections.join('\n\n') + '\n---\n';
       }
 
       // ── Load admin AI config ──────────────────────────────────────────────────
@@ -5725,8 +5780,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = (cfg.ai_base_url || '').trim();
       const temperature = parseFloat(cfg.ai_temperature || '0.3') || 0.3;
       const maxTokens = parseInt(cfg.ai_max_tokens || '1200', 10) || 1200;
-      const systemPrompt = (cfg.system_prompt || '').trim()
-        || 'You are Findy, the AI assistant for Find And Study, an educational platform for study-abroad agents. Be concise, accurate, and helpful. When the knowledge base contains relevant information, prefer it over your prior knowledge.';
+      // Strict grounding prompt. The admin can still override via `system_prompt`
+      // in findy_config, but the default forbids the model from inventing
+      // university / program / fee information that isn't in the injected data.
+      const defaultSystemPrompt = [
+        'You are Findy, the official AI assistant for Find And Study, a study-abroad agent platform.',
+        '',
+        'STRICT GROUNDING RULES — read carefully:',
+        '1. You may ONLY use the information provided in the DESTINATIONS, PLATFORM CONTENT, and UPLOADED KNOWLEDGE BASE sections below to answer questions about countries, universities, programs, courses, fees, intake dates, application requirements, or anything study-abroad specific.',
+        '2. NEVER use your own prior knowledge about universities, programs, tuition fees, languages of instruction, intake dates, or application requirements. If the answer is not in the provided data, you MUST reply (in the user\'s language): "Bu bilgi şu anda sistemde mevcut değil. Lütfen Find And Study ekibiyle iletişime geçin." (Turkish) or the equivalent: "I don\'t have that information in the system right now. Please contact the Find And Study team."',
+        '3. NEVER invent universities, programs, fees, or numbers. NEVER suggest visiting external university or government websites. NEVER recommend external portals.',
+        '4. When you do answer, quote the specific values directly (e.g. exact tuition fee, exact program name, exact city, exact intake) from the provided data.',
+        '5. Always reply in the same language the user wrote in (default: Turkish).',
+        '6. Be concise. No filler. No marketing language.',
+      ].join('\n');
+      const systemPrompt = (cfg.system_prompt || '').trim() || defaultSystemPrompt;
 
       // ── 1. Direct provider call (preferred when configured) ──────────────────
       if (apiKey && provider && model) {
