@@ -3613,9 +3613,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public: stream a ZIP of selected published files inside a published folder.
-  // Used by the agent Partner Zone "Seçilenleri ZIP olarak indir" toolbar.
-  // Query: ?ids=<uuid>,<uuid>,...   (1..200 ids)
+  // Public: stream a ZIP of published files inside a published folder.
+  // Used by the agent Partner Zone toolbar in two modes:
+  //   1. Selected files: ?ids=<uuid>,<uuid>,...   (1..200 ids)
+  //   2. Whole folder:   ?all=true                (no ids needed)
   // Only files (a) belonging to this folder, (b) status === 'published',
   // and (c) whose URL points to a local /uploads/ asset are included.
   // Remote URLs (e.g. YouTube videoUrls, http(s)://...) are skipped silently —
@@ -3632,19 +3633,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedIds = Array.from(new Set(
         idsRaw.split(',').map(s => s.trim()).filter(Boolean)
       ));
-      if (requestedIds.length === 0) {
-        return res.status(400).json({ success: false, message: 'En az bir dosya seçmelisiniz' });
-      }
-      if (requestedIds.length > 200) {
+      const allMode = req.query.all === 'true' || req.query.all === '1' || requestedIds.length === 0;
+
+      if (!allMode && requestedIds.length > 200) {
         return res.status(400).json({ success: false, message: 'Tek seferde en fazla 200 dosya indirilebilir' });
       }
 
       const allItems = await storage.getFolderContents(folderId);
-      const requestedSet = new Set(requestedIds);
-      // Authorization filter: belongs to folder + published + requested.
-      const eligible = allItems.filter(c =>
-        c.status === 'published' && requestedSet.has(c.id)
-      );
+      // Authorization filter: belongs to folder + published (+ requested when in selection mode).
+      const eligible = allMode
+        ? allItems.filter(c => c.status === 'published')
+        : (() => {
+            const requestedSet = new Set(requestedIds);
+            return allItems.filter(c => c.status === 'published' && requestedSet.has(c.id));
+          })();
+
+      if (allMode && eligible.length > 200) {
+        return res.status(400).json({
+          success: false,
+          message: `Bu klasörde ${eligible.length} yayında dosya var. Tek seferde en fazla 200 dosya indirilebilir; lütfen filtre uygulayın veya seçim yaparak indirin.`,
+        });
+      }
 
       // Resolve URL → absolute disk path under public/uploads (path-traversal safe).
       const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
@@ -3695,7 +3704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (entries.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Seçilen dosyalar arasında indirilebilir öğe bulunamadı',
+          message: allMode
+            ? 'Bu klasörde indirilebilir yayında dosya bulunamadı'
+            : 'Seçilen dosyalar arasında indirilebilir öğe bulunamadı',
         });
       }
 

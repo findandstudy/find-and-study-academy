@@ -539,20 +539,26 @@ export default function AgentPartnerZone() {
     setLastClickedIndex(null);
   };
 
-  // Stream the selected files as a single ZIP via the new public endpoint.
+  // Stream a folder ZIP via the public endpoint. Two callsites share this:
+  //   - "Seçilenleri ZIP olarak indir" (selection mode → query string `?ids=...`)
+  //   - "Tüm klasörü ZIP olarak indir" (whole-folder mode → query string `?all=true`)
   // Uses fetch+blob so we can attach the x-user-id auth header that anchor
   // <a download> can't carry. Server-side response body still streams from
   // archiver, so the server never holds the whole archive in memory.
-  const downloadSelectedZip = async () => {
-    if (!folderId || selectedIds.size === 0 || isZipping) return;
-    const ids = Array.from(selectedIds);
+  const downloadFolderZip = async (mode: 'selection' | 'all') => {
+    if (!folderId || isZipping) return;
+    const ids = mode === 'selection' ? Array.from(selectedIds) : [];
+    if (mode === 'selection' && ids.length === 0) return;
     setIsZipping(true);
     // Allow cancellation if the user navigates away while the request is open.
     const controller = new AbortController();
     zipAbortRef.current = controller;
     try {
+      const qs = mode === 'selection'
+        ? `ids=${encodeURIComponent(ids.join(','))}`
+        : 'all=true';
       const r = await fetch(
-        `/api/partner-folders/${folderId}/zip?ids=${encodeURIComponent(ids.join(','))}`,
+        `/api/partner-folders/${folderId}/zip?${qs}`,
         { headers: authHeaders(), signal: controller.signal },
       );
       if (!r.ok) {
@@ -582,7 +588,9 @@ export default function AgentPartnerZone() {
       URL.revokeObjectURL(url);
       toast({
         title: 'İndirme tamam',
-        description: `${ids.length} dosya ZIP olarak indirildi.`,
+        description: mode === 'selection'
+          ? `${ids.length} dosya ZIP olarak indirildi.`
+          : 'Klasördeki tüm yayında dosyalar ZIP olarak indirildi.',
       });
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
@@ -596,6 +604,20 @@ export default function AgentPartnerZone() {
       zipAbortRef.current = null;
     }
   };
+  const downloadSelectedZip = () => downloadFolderZip('selection');
+  const downloadFullFolderZip = () => downloadFolderZip('all');
+
+  // Whether the folder header's "Tüm klasörü ZIP olarak indir" button is
+  // useful: only when there is at least one published file with a local
+  // /uploads/ asset (remote URLs are skipped server-side, so we mirror the
+  // same eligibility check here so the button doesn't tease an empty ZIP).
+  const downloadableContentCount = useMemo(
+    () => detailContents.filter((c) => {
+      const url = c.documentUrl ?? c.imageUrl ?? c.videoUrl ?? null;
+      return !!url && url.startsWith('/uploads/');
+    }).length,
+    [detailContents],
+  );
 
   // ─── Folder detail view ───────────────────────────────────────────────────
 
@@ -645,6 +667,23 @@ export default function AgentPartnerZone() {
               <p className="text-muted-foreground text-sm mt-1">{detailFolder.description}</p>
             )}
           </div>
+          {/* Whole-folder ZIP button. Hidden until the folder has at least one
+              downloadable published file (so we don't tease an empty ZIP).
+              The button is independent of the per-file selection toolbar. */}
+          {downloadableContentCount > 0 && (
+            <Button
+              onClick={downloadFullFolderZip}
+              disabled={isZipping}
+              data-testid="button-download-full-folder-zip"
+            >
+              {isZipping ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Archive className="w-4 h-4 mr-1.5" />
+              )}
+              {isZipping ? 'Hazırlanıyor...' : 'Tüm klasörü ZIP olarak indir'}
+            </Button>
+          )}
         </div>
 
         {/* Toolbar */}
