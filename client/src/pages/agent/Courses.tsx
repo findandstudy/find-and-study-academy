@@ -149,7 +149,7 @@ export default function AgentCourses() {
             : `<div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
                 <h2 class="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-3">${content.title}</h2>
                 <p class="text-yellow-700 dark:text-yellow-300">
-                  ${content.description || 'This lesson content is being prepared. Please check back later or contact your administrator.'}
+                  ${content.description || t('agent.courses.lessonContentPlaceholder')}
                 </p>
               </div>`,
           quizId: content.quizId || undefined

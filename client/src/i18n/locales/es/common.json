@@ -33,7 +33,8 @@
     "warning": "Advertencia",
     "continue": "Continuar",
     "start": "Comenzar",
-    "viewAll": "Ver todo"
+    "viewAll": "Ver todo",
+    "profilePictureAlt": "Foto de perfil"
   },
   "toast": {
     "saved": "Configuración guardada",
@@ -182,7 +183,8 @@
       "title": "Cursos",
       "subtitle": "Completa tu formación de agente y obtén certificados.",
       "noCourses": "No hay cursos disponibles",
-      "noContent": "No hay contenido disponible para {{country}}"
+      "noContent": "No hay contenido disponible para {{country}}",
+      "lessonContentPlaceholder": "El contenido de esta lección se está preparando. Por favor, vuelva más tarde o contacte con su administrador."
     },
     "certificates": {
       "title": "Mis certificados",

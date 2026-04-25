@@ -122,7 +122,7 @@ export default function AdminDashboard() {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+            <AvatarImage src={(user as any)?.profilePicture || ''} alt={t('common.profilePictureAlt')} />
             <AvatarFallback className="text-sm font-medium">
               {user?.name.charAt(0)}
             </AvatarFallback>

@@ -523,6 +523,22 @@ export const insertIntegrationEventSchema = createInsertSchema(integrationEvents
 export const insertIntegrationApiKeySchema = createInsertSchema(integrationApiKeys).omit({ id: true, createdAt: true });
 export const insertContentTranslationSchema = createInsertSchema(contentTranslations).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Announcement Translations table — per-language overrides for title and content
+export const announcementTranslations = pgTable("announcement_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  announcementId: varchar("announcement_id").notNull().references(() => announcements.id, { onDelete: 'cascade' }),
+  language: text("language").notNull(),
+  title: text("title"),
+  content: text("content"),
+  translatedBy: varchar("translated_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  announcementLangUnique: unique("announcement_lang_unique").on(table.announcementId, table.language),
+}));
+
+export const insertAnnouncementTranslationSchema = createInsertSchema(announcementTranslations).omit({ id: true, createdAt: true, updatedAt: true });
+
 export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
   id: true,
   updatedAt: true,
@@ -586,6 +602,8 @@ export type InsertIntegrationEvent = z.infer<typeof insertIntegrationEventSchema
 export type InsertIntegrationApiKey = z.infer<typeof insertIntegrationApiKeySchema>;
 export type ContentTranslation = typeof contentTranslations.$inferSelect;
 export type InsertContentTranslation = z.infer<typeof insertContentTranslationSchema>;
+export type AnnouncementTranslation = typeof announcementTranslations.$inferSelect;
+export type InsertAnnouncementTranslation = z.infer<typeof insertAnnouncementTranslationSchema>;
 
 // Frontend question types (matches client-side form)
 export const frontendQuestionSchema = z.discriminatedUnion('type', [

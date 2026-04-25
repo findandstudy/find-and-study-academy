@@ -2605,25 +2605,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Admin: list/upsert/delete per-language announcement translations ────────
+  app.get('/api/admin/announcements/:id/translations', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const translations = await storage.getAnnouncementTranslations(req.params.id);
+      res.json({ success: true, translations });
+    } catch (error) {
+      console.error('List announcement translations error:', error);
+      res.status(500).json({ success: false, message: 'Failed to retrieve translations' });
+    }
+  });
+
+  app.post('/api/admin/announcements/:id/translations', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { language, title, content } = req.body || {};
+      if (!language || typeof language !== 'string') {
+        return res.status(400).json({ success: false, message: 'language is required' });
+      }
+      const existing = await storage.getAnnouncementById(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ success: false, message: 'Announcement not found' });
+      }
+      const translation = await storage.upsertAnnouncementTranslation({
+        announcementId: req.params.id,
+        language,
+        title: title ?? null,
+        content: content ?? null,
+        translatedBy: user?.id ?? null,
+      });
+      res.json({ success: true, translation });
+    } catch (error) {
+      console.error('Upsert announcement translation error:', error);
+      res.status(500).json({ success: false, message: 'Failed to save translation' });
+    }
+  });
+
+  app.delete('/api/admin/announcements/:id/translations/:language', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const existing = await storage.getAnnouncementById(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ success: false, message: 'Announcement not found' });
+      }
+      await storage.deleteAnnouncementTranslation(req.params.id, req.params.language);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete announcement translation error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete translation' });
+    }
+  });
+
   // Agent announcements endpoint - public announcements for agents
   app.get('/api/announcements', requireAuth, async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
-      
+
       const announcements = await storage.getAnnouncements();
-      
+
       const activeAnnouncements = announcements.filter(a => {
         const isPublished = a.status === 'published';
-        const isTargeted = a.targetAudience === 'all' || 
+        const isTargeted = a.targetAudience === 'all' ||
                           (authenticatedUser.role === 'agent' && a.targetAudience === 'agents') ||
                           (authenticatedUser.role === 'admin' && a.targetAudience === 'admins');
         const notExpired = !a.expiresAt || new Date(a.expiresAt) > new Date();
         return isPublished && isTargeted && notExpired;
       });
 
+      // Apply per-user language preference: replace title/content with the
+      // translation in the caller's preferred language when present, otherwise
+      // fall back to the base record. ?lang=xx in the query string overrides.
+      // Bulk-fetch translations to avoid N+1 queries.
+      const queryLang = typeof req.query.lang === 'string' ? req.query.lang : '';
+      const preferredLang = queryLang || (authenticatedUser as any)?.languagePreference || 'en';
+
+      let localized = activeAnnouncements;
+      if (preferredLang && activeAnnouncements.length > 0) {
+        try {
+          const ids = activeAnnouncements.map(a => a.id);
+          const translations = await storage.getAnnouncementTranslationsForLanguage(ids, preferredLang);
+          const trMap = new Map(translations.map(t => [t.announcementId, t]));
+          localized = activeAnnouncements.map(a => {
+            const tr = trMap.get(a.id);
+            if (!tr) return a;
+            return {
+              ...a,
+              title: (tr.title && tr.title.trim()) ? tr.title : a.title,
+              content: (tr.content && tr.content.trim()) ? tr.content : a.content,
+            };
+          });
+        } catch (e) {
+          console.error('Bulk announcement translation lookup failed:', e);
+        }
+      }
+
       res.json({
         success: true,
-        announcements: activeAnnouncements
+        announcements: localized
       });
     } catch (error) {
       console.error('Agent announcements retrieval error:', error);

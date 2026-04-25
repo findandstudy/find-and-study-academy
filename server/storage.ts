@@ -66,6 +66,9 @@ import {
   contentTranslations,
   type ContentTranslation,
   type InsertContentTranslation,
+  announcementTranslations,
+  type AnnouncementTranslation,
+  type InsertAnnouncementTranslation,
   knowledgeSources,
   knowledgeChunks,
   type KnowledgeSource,
@@ -213,6 +216,13 @@ export interface IStorage {
   upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation>;
   deleteContentTranslation(contentId: string, language: string): Promise<void>;
   getAllTranslations(): Promise<ContentTranslation[]>;
+
+  // Announcement Translation methods
+  getAnnouncementTranslations(announcementId: string): Promise<AnnouncementTranslation[]>;
+  getAnnouncementTranslation(announcementId: string, language: string): Promise<AnnouncementTranslation | undefined>;
+  getAnnouncementTranslationsForLanguage(announcementIds: string[], language: string): Promise<AnnouncementTranslation[]>;
+  upsertAnnouncementTranslation(data: InsertAnnouncementTranslation): Promise<AnnouncementTranslation>;
+  deleteAnnouncementTranslation(announcementId: string, language: string): Promise<void>;
 
   // Partner Folder methods
   getPartnerFolders(parentFolderId?: string | null): Promise<PartnerFolder[]>;
@@ -1342,6 +1352,56 @@ export class DatabaseStorage implements IStorage {
   async getAllTranslations(): Promise<ContentTranslation[]> {
     return db.select().from(contentTranslations)
       .orderBy(contentTranslations.contentId, contentTranslations.language);
+  }
+
+  // Announcement Translation implementations
+  async getAnnouncementTranslations(announcementId: string): Promise<AnnouncementTranslation[]> {
+    return db.select().from(announcementTranslations)
+      .where(eq(announcementTranslations.announcementId, announcementId))
+      .orderBy(announcementTranslations.language);
+  }
+
+  async getAnnouncementTranslation(announcementId: string, language: string): Promise<AnnouncementTranslation | undefined> {
+    const [row] = await db.select().from(announcementTranslations)
+      .where(and(
+        eq(announcementTranslations.announcementId, announcementId),
+        eq(announcementTranslations.language, language)
+      ));
+    return row || undefined;
+  }
+
+  async getAnnouncementTranslationsForLanguage(announcementIds: string[], language: string): Promise<AnnouncementTranslation[]> {
+    if (announcementIds.length === 0) return [];
+    const { inArray } = await import("drizzle-orm");
+    return db.select().from(announcementTranslations)
+      .where(and(
+        inArray(announcementTranslations.announcementId, announcementIds),
+        eq(announcementTranslations.language, language)
+      ));
+  }
+
+  async upsertAnnouncementTranslation(data: InsertAnnouncementTranslation): Promise<AnnouncementTranslation> {
+    const [row] = await db.insert(announcementTranslations)
+      .values({ ...data, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [announcementTranslations.announcementId, announcementTranslations.language],
+        set: {
+          title: data.title,
+          content: data.content,
+          translatedBy: data.translatedBy,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async deleteAnnouncementTranslation(announcementId: string, language: string): Promise<void> {
+    await db.delete(announcementTranslations)
+      .where(and(
+        eq(announcementTranslations.announcementId, announcementId),
+        eq(announcementTranslations.language, language)
+      ));
   }
 
   // ── Partner Folder implementations ──────────────────────────────────────────

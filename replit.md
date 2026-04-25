@@ -34,6 +34,7 @@ The platform features a modular course structure with lessons and embedded quizz
 - **Quiz-to-Content Linking System:** Associates quizzes with specific lessons.
 - **Country-based Final Exam System:** Links final exams to specific countries and courses with rigorous validation.
 - **Multilingual Content System:** Supports 10 languages with a Tiptap rich-text editor and DOMPurify sanitization.
+- **Multilingual Announcements:** Per-language overrides for announcement title/content via `announcement_translations` table. Admin endpoints under `/api/admin/announcements/:id/translations` (GET list, POST upsert, DELETE per language). Agent fetch (`/api/announcements`) honors `?lang=xx` query param, falling back to caller's `languagePreference`, then to source-language record when no translation exists.
 - **FindyAI RAG Knowledge Sources:** Allows administrators to upload files (Excel, PDF, Word) or add URLs to create a knowledge base. Relevant chunks are injected into chat context for RAG, with background processing and status tracking.
 - **Security Hardening:** Implements rate limiting on critical authentication endpoints and employs security response headers.
 - **Content File Upload API:** Supports image uploads (profile/logo) and larger content files (PDF, DOCX, MP4) up to 50MB.

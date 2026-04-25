@@ -33,7 +33,8 @@
     "warning": "Uyarı",
     "continue": "Devam et",
     "start": "Başla",
-    "viewAll": "Tümünü gör"
+    "viewAll": "Tümünü gör",
+    "profilePictureAlt": "Profil resmi"
   },
   "toast": {
     "saved": "Ayarlar kaydedildi",
@@ -182,7 +183,8 @@
       "title": "Kurslar",
       "subtitle": "Temsilci eğitiminizi tamamlayın ve sertifika kazanın.",
       "noCourses": "Mevcut kurs bulunmuyor",
-      "noContent": "{{country}} için içerik bulunmuyor"
+      "noContent": "{{country}} için içerik bulunmuyor",
+      "lessonContentPlaceholder": "Bu ders içeriği hazırlanıyor. Lütfen daha sonra tekrar kontrol edin veya yöneticinizle iletişime geçin."
     },
     "certificates": {
       "title": "Sertifikalarım",

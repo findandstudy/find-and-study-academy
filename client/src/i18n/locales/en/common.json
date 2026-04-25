@@ -33,7 +33,8 @@
     "warning": "Warning",
     "continue": "Continue",
     "start": "Start",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "profilePictureAlt": "Profile picture"
   },
   "toast": {
     "saved": "Settings saved",
@@ -182,7 +183,8 @@
       "title": "Courses",
       "subtitle": "Complete your agent training and earn certificates.",
       "noCourses": "No courses available",
-      "noContent": "No content available for {{country}}"
+      "noContent": "No content available for {{country}}",
+      "lessonContentPlaceholder": "This lesson content is being prepared. Please check back later or contact your administrator."
     },
     "certificates": {
       "title": "My Certificates",

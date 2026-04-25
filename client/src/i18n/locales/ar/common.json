@@ -33,7 +33,8 @@
     "warning": "تحذير",
     "continue": "متابعة",
     "start": "ابدأ",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "profilePictureAlt": "صورة الملف الشخصي"
   },
   "toast": {
     "saved": "تم حفظ الإعدادات",
@@ -182,7 +183,8 @@
       "title": "الدورات",
       "subtitle": "أكمل تدريب الوكلاء واحصل على الشهادات.",
       "noCourses": "لا توجد دورات متاحة",
-      "noContent": "لا يوجد محتوى متاح لـ {{country}}"
+      "noContent": "لا يوجد محتوى متاح لـ {{country}}",
+      "lessonContentPlaceholder": "يتم تحضير محتوى هذا الدرس. يرجى المراجعة لاحقًا أو التواصل مع المسؤول."
     },
     "certificates": {
       "title": "شهاداتي",

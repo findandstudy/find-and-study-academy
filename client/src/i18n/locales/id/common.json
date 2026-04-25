@@ -33,7 +33,8 @@
     "warning": "Peringatan",
     "continue": "Lanjutkan",
     "start": "Mulai",
-    "viewAll": "Lihat semua"
+    "viewAll": "Lihat semua",
+    "profilePictureAlt": "Foto profil"
   },
   "toast": {
     "saved": "Pengaturan disimpan",
@@ -182,7 +183,8 @@
       "title": "Kursus",
       "subtitle": "Selesaikan pelatihan agen dan dapatkan sertifikat.",
       "noCourses": "Tidak ada kursus tersedia",
-      "noContent": "Tidak ada konten tersedia untuk {{country}}"
+      "noContent": "Tidak ada konten tersedia untuk {{country}}",
+      "lessonContentPlaceholder": "Konten pelajaran ini sedang disiapkan. Silakan periksa kembali nanti atau hubungi administrator Anda."
     },
     "certificates": {
       "title": "Sertifikat Saya",
