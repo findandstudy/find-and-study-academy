@@ -5862,6 +5862,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('University entity extraction failed (non-fatal):', err);
       }
 
+      // (c0) Listing intent — when the user is asking a *general* "which
+      // universities do you have / list universities / hangi üniversiteler
+      // var" question (and didn't name a specific university), the per-row
+      // similarity search will only surface a handful of programs from a
+      // couple of universities and the model ends up answering with a
+      // partial list. Inject the FULL distinct (country, university) list
+      // from the corpus so the model can answer accurately.
+      //
+      // The university word matcher is intentionally broad so it catches
+      // both English (university / universities) and Turkish surface forms
+      // (üniversite -> universite, üniversitesi -> universitesi) plus the
+      // most common Turkish typos (univerite / univeriste). All of these
+      // begin with "univer" after the diacritic-stripping done by normTr.
+      // We then REQUIRE a list/question marker so neutral statements like
+      // "universite cok pahali" don't dump the whole catalogue.
+      const uniWordRe = /\buniver[a-z]*\b/;
+      const listMarkerRe = /(hangi|kac\s|kacar|liste|listele|nelerdir|nedir\b|var\s*mi\b|\bvar\b|mevcut|sahip|\bmu\b|\bmı\b|\ball\b|\blist\b|\bwhich\b|\bwhat\b|how\s*many|do\s*you\s*have|are\s*available|available\b|sundugunuz|sundugu|teklif)/;
+      const wantsUniversityListing =
+        uniWordRe.test(messageNorm) && listMarkerRe.test(messageNorm);
+      if (wantsUniversityListing && !universityHint) {
+        try {
+          const groups = await storage.listKnowledgeUniversities();
+          if (groups.length > 0) {
+            const totalUnis = groups.reduce((s, g) => s + g.universities.length, 0);
+            const lines = groups.map(g =>
+              `${g.country} (${g.universities.length}): ${g.universities.join(', ')}`
+            );
+            pushSection(
+              `AVAILABLE UNIVERSITIES (complete list from the uploaded knowledge base — ${totalUnis} universities across ${groups.length} ${groups.length === 1 ? 'country' : 'countries'}):`,
+              lines.join('\n')
+            );
+          }
+        } catch (err) {
+          console.warn('University listing for RAG failed (non-fatal):', err);
+        }
+      }
+
       // (c) Uploaded knowledge — scored search, optionally pre-filtered by
       // entity hints, capped to 12 chunks plus the global char budget. When
       // the search returns zero rows, we still inject an explicit "no rows
@@ -5916,7 +5953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '3. SPECIFIC UNIVERSITY / PROGRAM CHECK: If the user names a specific university or program (e.g. "Sabancı Üniversitesi", "Beykent", "MIT"), check whether that exact name appears in the UPLOADED KNOWLEDGE BASE or PLATFORM CONTENT below. If it does NOT appear, reply: "[name] şu anda Find And Study sisteminde mevcut değil. Sistemimizdeki üniversiteler için lütfen Find And Study ekibiyle iletişime geçin." Do NOT describe the university\'s programs, location, history, language of instruction, fees, or anything else from your own knowledge. Do NOT redirect the user to that university\'s own website. Do NOT speculate.',
         '4. NEVER invent universities, programs, fees, or numbers. NEVER suggest visiting external university or government websites. NEVER recommend external portals other than findandstudy.com.',
         '5. When you do answer, quote the specific values directly (e.g. exact tuition fee, exact program name, exact city, exact intake) from the provided data. Do not paraphrase numbers.',
-        '6. If the question is "what universities are available?" or similar, list ONLY the distinct university names you can see in the UPLOADED KNOWLEDGE BASE section, grouped by country.',
+        '6. If the question is "what universities are available?" / "hangi üniversiteler var?" or similar, use the AVAILABLE UNIVERSITIES section when present (it contains the COMPLETE distinct list grouped by country) — list every name from it, do not truncate, do not omit any country. If that section is not present, fall back to the distinct university names visible in UPLOADED KNOWLEDGE BASE.',
         '7. Always reply in the same language the user wrote in (default: Turkish).',
         '8. Be concise. No filler. No marketing language.',
       ].join('\n');

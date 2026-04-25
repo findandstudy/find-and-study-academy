@@ -1717,7 +1717,7 @@ export class DatabaseStorage implements IStorage {
   // listing questions like "hangi üniversiteler var" / "list universities"
   // without hoping the per-row search picks up every distinct name.
   async listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]> {
-    const rows = await db.execute(sql`
+    const rows = await db.execute(sqlExpr`
       SELECT DISTINCT
         COALESCE(NULLIF(metadata->>'Country', ''), 'Unknown') AS country,
         metadata->>'Universities' AS uni

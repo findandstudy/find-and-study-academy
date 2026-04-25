@@ -819,8 +819,16 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
           let s = escape(text);
-          // Code spans first so we don't double-process their contents
-          s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+          // Stash code spans behind placeholder tokens so subsequent
+          // regexes (bold/italic/link/list) don't reformat their contents.
+          // We restore them at the very end.
+          const codeStash = [];
+          s = s.replace(/`([^`\n]+)`/g, (_m, body) => {
+            codeStash.push(body);
+            return '\u0001CODE' + (codeStash.length - 1) + '\u0001';
+          });
+
           // Headings
           s = s.replace(/^###\s+(.+)$/gm, '<h4>$1</h4>');
           s = s.replace(/^##\s+(.+)$/gm, '<h3>$1</h3>');
@@ -833,7 +841,11 @@
             /\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
             '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
           );
-          // Bullet lists (consecutive lines starting with -, *, •)
+
+          // Bullet lists (consecutive lines starting with -, *, •).
+          // Surround the produced <ul> with blank lines so the paragraph
+          // splitter treats it as its own block instead of swallowing it
+          // into a surrounding <p>...<ul></p>.
           s = s.replace(/(?:^|\n)((?:[ \t]*[-*•][ \t]+.+(?:\n|$))+)/g, function (_, block) {
             const items = block
               .trim()
@@ -841,7 +853,7 @@
               .map((l) => l.replace(/^[ \t]*[-*•][ \t]+/, ''))
               .map((l) => '<li>' + l + '</li>')
               .join('');
-            return '\n<ul>' + items + '</ul>';
+            return '\n\n<ul>' + items + '</ul>\n\n';
           });
           // Numbered lists (consecutive lines starting with N.)
           s = s.replace(/(?:^|\n)((?:[ \t]*\d+\.[ \t]+.+(?:\n|$))+)/g, function (_, block) {
@@ -851,8 +863,9 @@
               .map((l) => l.replace(/^[ \t]*\d+\.[ \t]+/, ''))
               .map((l) => '<li>' + l + '</li>')
               .join('');
-            return '\n<ol>' + items + '</ol>';
+            return '\n\n<ol>' + items + '</ol>\n\n';
           });
+
           // Paragraphs: split on blank lines, wrap leftover plain blocks in <p>
           const blocks = s.split(/\n{2,}/).map((b) => {
             const t = b.trim();
@@ -860,7 +873,14 @@
             if (/^<(h[1-6]|ul|ol|p|blockquote|pre)/i.test(t)) return t;
             return '<p>' + t.replace(/\n/g, '<br>') + '</p>';
           });
-          return blocks.filter(Boolean).join('\n');
+          let html = blocks.filter(Boolean).join('\n');
+
+          // Restore code spans last so their contents stay literal (the
+          // body was already HTML-escaped at the top).
+          html = html.replace(/\u0001CODE(\d+)\u0001/g, (_m, i) => {
+            return '<code>' + codeStash[Number(i)] + '</code>';
+          });
+          return html;
         }
 
         function formatTime() {
