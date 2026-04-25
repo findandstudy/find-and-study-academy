@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { db } from "./db";
+import { sql as sqlExpr } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import path from "path";
 
@@ -54,6 +56,27 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// ── pg_trgm setup (idempotent) ────────────────────────────────────────────────
+// Enables fuzzy / partial-word matching for the Findy RAG search.
+// All statements use IF NOT EXISTS so re-running is safe on every startup.
+async function initPgTrgm() {
+  try {
+    await db.execute(sqlExpr`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await db.execute(sqlExpr`
+      CREATE INDEX IF NOT EXISTS knowledge_chunks_content_trgm_idx
+        ON knowledge_chunks USING GIN (content gin_trgm_ops)
+    `);
+    await db.execute(sqlExpr`
+      CREATE INDEX IF NOT EXISTS knowledge_chunks_keywords_trgm_idx
+        ON knowledge_chunks USING GIN (keywords gin_trgm_ops)
+    `);
+    log('✓ pg_trgm extension and GIN indexes ready');
+  } catch (err: any) {
+    // Non-fatal: ILIKE fallback still works; log for visibility.
+    log('pg_trgm init warning (non-fatal):', err?.message || err);
+  }
+}
 
 // Auto-seed essential data on first deployment
 async function seedEssentialData() {
@@ -131,7 +154,10 @@ async function seedEssentialData() {
 
 (async () => {
   const server = await registerRoutes(app);
-  
+
+  // Enable pg_trgm for fuzzy RAG search (idempotent — safe every startup)
+  await initPgTrgm();
+
   // Seed essential data on startup (admin, countries, settings)
   await seedEssentialData();
 

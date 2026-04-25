@@ -1806,12 +1806,16 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Score by number of distinct terms present in (normalized) keywords+content.
+    // Chunks found only via trigram word_similarity (not ILIKE substring) may
+    // score 0 on the text-inclusion check — give them a small baseline (0.1)
+    // so they survive instead of being discarded. Direct substring matches
+    // will always score ≥ 1 and rank above them.
     const scored = filtered.map(c => {
       const hay = normalize(`${c.keywords || ''} ${c.content || ''}`);
       let score = 0;
       for (const t of terms) if (hay.includes(t)) score += 1;
-      return { c, score };
-    }).filter(x => x.score > 0);
+      return { c, score: Math.max(score, 0.1) };
+    });
 
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, limit).map(x => x.c);
