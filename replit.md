@@ -1,95 +1,87 @@
 # Find And Study - Agents Portal
 
 ## Overview
-Find And Study is an educational platform for study abroad agents, providing a comprehensive training and certification system. It enables agents to complete courses, take quizzes, earn certificates, and manage agency information. The platform supports role-based access for agents and administrators, offers interactive course content, a robust quiz system with certificate generation, and agency management capabilities. The project aims to become a leading platform for agent training in the study abroad sector, enhancing agent proficiency and streamlining the application process.
+Find And Study is an educational platform designed for study abroad agents, offering a comprehensive training and certification system. Its core purpose is to enhance agent proficiency and streamline the study abroad application process. The platform allows agents to complete courses, take quizzes, earn certificates, and manage agency information. It features role-based access for agents and administrators, interactive course content, a robust quiz system with certificate generation, and advanced agency management capabilities. The project aims to become a leading training platform in the study abroad sector.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend
-The application is a single-page application built with React, TypeScript, and Vite. It utilizes a component-based architecture with `shadcn/ui` and Tailwind CSS for a consistent, responsive, and accessible design system. Wouter handles client-side routing with role-based protection.
+### Frontend and UI/UX
+The application is a React-based single-page application, built with TypeScript and Vite. It employs a component-based architecture leveraging `shadcn/ui` and Tailwind CSS for a responsive, accessible, and consistent design. Wouter manages client-side routing with role-based protection. The UI includes custom layouts, toast notifications, modal dialogs, and a modern public landing page with WCAG-compliant contrast and a focus on key features.
 
-### State Management & Data Storage
-Zustand manages client-side state, separating authentication from application data. The system is designed for a seamless transition to a real backend using Drizzle ORM and PostgreSQL, currently using `localStorage` for mock data persistence. Progress tracking and certificates are persisted in the backend (PostgreSQL).
+### State Management and Data Storage
+Client-side state is managed using Zustand, separating authentication from application data. The system is designed to integrate with a PostgreSQL backend via Drizzle ORM, with mock data persistence currently handled by `localStorage`. Progress tracking and certificates are persistently stored in the backend.
 
-### Authentication & Authorization
-A mock authentication system provides role-based access control for agents and administrators, including session management via `localStorage` and automatic session restoration. It supports signup flows and automatic agency creation.
-
-**Closed-system signup approval:** Find And Study is a closed platform — new agents who self-register via `/signup` are created with `users.status = 'inactive'` and **cannot log in** until a super admin or staff member sets their status to `active` from `/admin/users`. The signup endpoint (`POST /api/signup`) returns `{ success: true, pending: true }` with a Turkish "Başvurunuz alındı" message and never auto-logs the applicant in. The login endpoint (`POST /api/login`) rejects inactive accounts with HTTP 403 and a Turkish "Hesabınız henüz onaylanmadı" message. The shared `requireAuth` middleware also blocks every authenticated request from non-active accounts with the same 403, so any user that gets deactivated mid-session is automatically signed out on their next request via `validateSession`. New-registration emails to admins (existing flow) act as the approval notification.
+### Authentication and Authorization
+A robust mock authentication system provides role-based access control for agents and administrators, including session management and automatic session restoration. New agent sign-ups are inactive by default and require administrator approval before login, ensuring a closed-system approach.
 
 ### Course and Assessment System
-The platform features a modular course structure with lessons and embedded quizzes. It tracks progress, generates certificates using `jsPDF` and `html2canvas` with QR codes for verification, and supports various quiz question types with automatic scoring. Final Exams are country-specific, require 100% course completion and all mini-quizzes passed before activation, and automatically generate certificates upon passing.
+The platform features a modular course structure with lessons and embedded quizzes. It tracks user progress, supports various quiz question types with automatic scoring, and generates certificates with QR codes for verification using `jsPDF` and `html2canvas`. Final Exams are country-specific, require course completion, and automatically generate certificates upon passing.
 
-### UI/UX & Features
-The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toast notifications, and modal dialogs. Key features include:
-- **Email Notification System:** Infrastructure for sending notifications (course completion, certificates).
-- **Analytics System:** Tracks user engagement (course_start, quiz_attempt, lesson_view) with reporting.
-- **Video Support:** Content table supports video URLs.
-- **Dashboards:** Advanced Agent Dashboard with progress charts and learning statistics; Admin Analytics Dashboard with enrollment trends.
+### Core Features
+- **Email Notification System:** Infrastructure for sending various notifications.
+- **Analytics System:** Tracks user engagement for reporting.
+- **Video Support:** Course content supports video integration.
+- **Dashboards:** Advanced Agent Dashboard with progress charts and an Admin Analytics Dashboard with enrollment trends.
 - **Export Features:** PDF export for admin reports and CSV export for agent data.
 - **Competitive Leaderboard System:** Point-based ranking with achievement badges.
 - **Object Storage Integration:** For profile pictures and agency logos using presigned URLs.
 - **Agent Menu Management System:** Admin control over agent sidebar menu visibility.
-- **Agency Location Updates:** Fields for Google Map and Yandex Map links.
-- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature. The launcher (`#findy-launcher`) is mounted statically in `client/index.html` with `style="display:none"` to prevent any flash on public routes. `FindyLauncherGate` in `App.tsx` reveals it ONLY when an authenticated user (`useAuthStore().user && role`) is on a panel route — i.e. `location.startsWith('/admin/')` or `location.startsWith('/agent/')` (allowlist, not denylist). When the gate transitions back to hidden and the chat panel is open, it dispatches a click on the widget's own `#findy-close` button to keep the inline script's internal `isChatOpen` flag in sync (falls back to `display:none` only if the close button is missing).
-- **Quiz-to-Content Linking System:** Allows associating quizzes with specific lessons.
-- **Country-based Final Exam System:** Final exams linked to specific countries and courses with rigorous validation.
-- **Multilingual Content System:** `contentTranslations` table with 10 languages (TR/EN/RU/UZ/KK/AZ/AR/ZH/ES/FR), Tiptap rich-text editor, DOMPurify sanitization, 5 API routes.
-- **FindyAI Extended Tabs:** ChannelsEmbedTab (widget embed), ApiWebhooksTab (webhook/API). Knowledge Base tab removed — replaced by Sources tab with built-in PostgreSQL RAG.
-- **FindyAI RAG Knowledge Sources:** `SourcesTab` in FindyAI admin — upload Excel/PDF/Word files or add URLs, parsed into `knowledge_sources`/`knowledge_chunks` tables; top-15 relevant chunks injected into chat context for token-efficient RAG. Background processing with status tracking (active/processing/error). Full CRUD API: GET/POST /api/admin/findy/sources, DELETE/POST reprocess per source.
-- **Integration Wizard:** 2-step visual create dialog with type-selection cards and step indicators.
-- **Security Hardening:** `express-rate-limit` on `/api/login` (20/15min), `/api/signup`, `/api/forgot-password` & `/api/reset-password` (5/hr); security response headers (X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, X-Frame-Options, Permissions-Policy); request body size capped at 10MB.
-- **Content File Upload API:** `POST /api/uploads/content` — multer-based endpoint for images (5MB profile/logo) and content files up to 50MB (PDF, DOCX, MP4, etc.), served statically via `/uploads/content/`.
-- **Partner Zone Folder System:** Google Drive-style folder management with **unlimited nesting** via `parent_folder_id` (self-referential, nullable). `partner_folders` table (id, name, description, coverImageUrl, countryCode, categoryTag, status, order, parentFolderId) + `folderId` FK on `contents`. Admin UI (`/admin/partner-zone` and `/admin/partner-zone/:folderId`) and Agent UI (`/agent/partner-zone` and `/agent/partner-zone/:folderId`) both support breadcrumb navigation, "Alt Klasör" creation inside any folder, and a shared toolbar with debounced search, country filter (with `CountryFlag`), file-type filter (Belge/Video/Görsel — only inside folder detail), and sort (Yeni→Eski / A→Z). Each content row exposes dual **"Aç"** (window.open) + **"İndir"** (anchor download) buttons for ALL file types. Cover image upload sends `purpose=cover`; server downsizes to **max 540×540** via Sharp (fit:'inside', withoutEnlargement, SVG skipped, fallback to original on resize error). Public API: `GET /api/partner-folders?parentId=root|<uuid>`, `GET /api/partner-folders/:id/contents` (returns `{folder, contents, subfolders, breadcrumb}`). Admin API: full CRUD on `/api/admin/partner-folders` (POST/PATCH accept `parentFolderId`; PATCH guards self-parenting and descendant cycles via `getFolderPath` depth-32 cycle-safe walk; DELETE returns 409 with Turkish "Klasör boş değil…" when subfolders/contents exist) + `PATCH /api/admin/contents/:id/folder` + **`POST /api/admin/contents/bulk-move`** (`{ ids: string[1..200], folderId: string|null }` → `{success, moved, failed, total, results[]}`, fan-out via `Promise.all` with per-id error reporting). Admin UI also supports **HTML5 drag-and-drop** to move folders/files: folder cards are both `draggable` and drop targets, content rows are draggable, and breadcrumb crumbs (root + ancestors) act as drop targets so items can be moved "up". Drop highlights via `ring-2 ring-primary`; no-op moves (same parent) and self-drops are skipped client-side, and backend cycle guard remains the source of truth. **Multi-select bulk move** (admin folder detail): each content-row table now has a checkbox column (`data-testid="checkbox-content-<id>"`) plus a header "select all visible" checkbox; click toggles single, **Shift+click** extends a contiguous range from the last clicked row, **Ctrl/Cmd+click** toggles individual rows. A selection toolbar (`data-testid="bulk-selection-toolbar"`) appears next to the "Dosyalar" heading showing "X öğe seçildi" + "Temizle" button. Dragging any selected row drags the entire selection together (DOM `dataTransfer` carries comma-separated ids); drop calls the bulk endpoint once. Selection auto-clears when navigating to another folder or after a successful move.
-- **Agency Bulk Export/Import:** Export button downloads all agencies to `.xlsx`; Bulk Import button opens dialog with template download, file picker (Excel/CSV), preview table, and `POST /api/admin/agencies/bulk-import` backend route.
-- **User Bulk Import Enhancements:** `/admin/users` Bulk Import dialog template (`user_bulk_import_template.xlsx`) and parser now also accept optional `country` (ISO 3166-1 alpha-2, e.g. `TR`/`US`) and `profilePicture` (http(s) URL or `/uploads/...` path) columns. Preview table renders Country + Photo columns (Avatar thumbnail). Backend `POST /api/admin/users/bulk-import` validates these per row server-side (regex `^[A-Z]{2}$` for country; `http(s)`/`/uploads/` prefix for picture) BEFORE creating the user, then applies them via `storage.updateUser` after `createUser` (mirroring the single-create endpoint). Failed `updateUser` triggers a compensating `deleteUser` so per-row results accurately reflect persisted state.
-- **Create User Dialog Enhancements:** Admin "Create New User" dialog at `/admin/users` now includes (1) a Profile Picture upload area at the top — Avatar preview + "Fotoğraf Yükle" button (PNG/JPG/JPEG only, max 5MB; uploads via `POST /api/uploads/content` and stores returned URL in `users.profile_picture`); and (2) a Country dropdown listing **all 249 ISO 3166-1 alpha-2 countries** (Turkish names, sorted via `tr` collator) backed by `client/src/lib/world-countries.ts`. New `users.country` text column stores the ISO code. `POST /api/admin/users` extended to accept `country`, `profilePicture`, and `companyName` (applied via `storage.updateUser` after `createUser`, mirroring the existing `status` pattern).
-- **Public Landing Page (`/`):** Modern marketing page with sticky nav, navy-blue hero (HSL 224 76%), feature grid (Eğitim/Sertifika/Partner Zone/Liderlik), latest 3 announcements (`GET /api/announcements/public`), bottom CTA, and footer. Logged-in users are auto-redirected to their dashboard; the route was previously a redirect to `/login`.
-- **Pop-up Reklam Sistemi:** `popups` table (title, content, imageUrl, linkUrl/Text, targetAudience [all/agents/specific], targetAgencyIds[], status, startsAt/expiresAt, frequency [every_session/every_login/once_per_user]) + `popup_dismissals` (popupId+userId unique, dontShowAgain). Admin CRUD at `/admin/popups`; client `PopupRenderer` mounted in `App.tsx` polls `/api/popups/active` for authenticated users and applies frequency rules via `sessionStorage` + server-side dismissal (`POST /api/popups/:id/dismiss`).
-- **Agent Duyurular Sayfası (`/agent/announcements`):** Dashboard now slices the announcements feed to the latest 3 (newest first via `desc(publishedAt), desc(createdAt)`) and shows a "Tümünü Gör" link to the dedicated full list page in the agent sidebar (Genel grubu).
-- **Grouped Sidebar Layouts:** Both `AdminLayout` and `AgentLayout` use a `navigationGroups` structure with small uppercase Turkish group labels (Genel, İçerik/Eğitim, Yönetim/Acente, Etkileşim/Hizmetler, Sistem/Bağlantılar). Compact `py-1.5` items, `flex-1 overflow-y-auto` nav region keeps logout always visible at the bottom; collapsed sidebar shows tooltips and a thin separator between groups instead of labels. Header reduced to `h-16`. Agent user section shows agency name inline with the badge to save vertical space.
+- **Agency Location Updates:** Integration with Google Maps and Yandex Maps.
+- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature. The launcher is conditionally displayed only for authenticated users on panel routes.
+- **Quiz-to-Content Linking System:** Associates quizzes with specific lessons.
+- **Country-based Final Exam System:** Links final exams to specific countries and courses with rigorous validation.
+- **Multilingual Content System:** Supports 10 languages with a Tiptap rich-text editor and DOMPurify sanitization.
+- **FindyAI RAG Knowledge Sources:** Allows administrators to upload files (Excel, PDF, Word) or add URLs to create a knowledge base. Relevant chunks are injected into chat context for RAG, with background processing and status tracking.
+- **Security Hardening:** Implements rate limiting on critical authentication endpoints and employs security response headers.
+- **Content File Upload API:** Supports image uploads (profile/logo) and larger content files (PDF, DOCX, MP4) up to 50MB.
+- **Partner Zone Folder System:** Google Drive-style folder management with unlimited nesting, enabling organization of contents. Includes admin and agent UIs with breadcrumb navigation, search, filtering, sorting, drag-and-drop for bulk moves, and multi-select for content management.
+- **Bulk Export/Import:** Supports exporting all agencies to `.xlsx` and bulk importing agencies and users via Excel/CSV, with server-side validation and enhanced user import options including country and profile pictures.
+- **Popup Ad System:** Manages targeted pop-up advertisements with configurable audience, timing, and dismissal options.
+- **Announcements System:** Dedicated agent announcements page with dashboard integration.
+- **Grouped Sidebar Layouts:** Both admin and agent layouts feature a structured sidebar with grouped navigation items.
 
 ## External Dependencies
 
 ### UI and Styling
--   **Tailwind CSS**: Styling framework.
--   **shadcn/ui**: Component library.
--   **Radix UI**: Accessible component primitives.
--   **Lucide React**: Icon system.
+-   Tailwind CSS
+-   shadcn/ui
+-   Radix UI
+-   Lucide React
 
 ### Development
--   **Vite**: Build tool.
--   **TypeScript**: Language.
--   **React**: Frontend framework.
+-   Vite
+-   TypeScript
+-   React
 
 ### State and Data
--   **Zustand**: Client-side state management.
--   **TanStack Query**: Server state management.
--   **React Hook Form**: Form handling.
--   **Zod**: Schema validation.
+-   Zustand
+-   TanStack Query
+-   React Hook Form
+-   Zod
 
 ### Database and Backend
--   **Drizzle ORM**: Type-safe database toolkit.
--   **Neon Database**: PostgreSQL hosting.
--   **Express.js**: Backend framework.
+-   Drizzle ORM
+-   Neon Database (PostgreSQL)
+-   Express.js
 
 ### Document and Certificate Generation
--   **jsPDF**: PDF generation.
--   **html2canvas**: HTML to canvas conversion.
--   **QRCode**: QR code generation.
+-   jsPDF
+-   html2canvas
+-   QRCode
 
 ### Security
--   **express-rate-limit**: Rate limiting for auth and API endpoints.
--   **bcryptjs**: Password hashing.
+-   express-rate-limit
+-   bcryptjs
 
 ### Content Editing
--   **Tiptap**: Rich-text editor for multilingual content.
--   **DOMPurify**: HTML sanitization for user-generated content.
+-   Tiptap
+-   DOMPurify
 
 ### Utilities
--   **Day.js**: Date manipulation.
--   **UUID**: Unique identifier generation.
--   **clsx/tailwind-merge**: CSS class management.
--   **Wouter**: Client-side routing.
+-   Day.js
+-   UUID
+-   clsx/tailwind-merge
+-   Wouter
