@@ -1646,13 +1646,26 @@ export class DatabaseStorage implements IStorage {
     const normalized = normalize(query.trim());
     const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
 
+    // Prefix-aware TR→EN lookup: first try exact match, then 6-char prefix
+    // so typos like "bilgisayr" (bilgisayar) and "muhendligi" (muhendislik)
+    // still resolve to their English equivalents.
+    const lookupTrEn = (tok: string): string[] | undefined => {
+      if (TR_TO_EN[tok]) return TR_TO_EN[tok];
+      if (tok.length < 6) return undefined;
+      const pre6 = tok.slice(0, 6);
+      for (const [k, v] of Object.entries(TR_TO_EN)) {
+        if (k.length >= 6 && k.slice(0, 6) === pre6) return v;
+      }
+      return undefined;
+    };
+
     // Expand each token into: itself + stripped stem + EN translation(s).
     const expanded = new Set<string>();
     for (const t of rawTokens) {
       expanded.add(t);
       const stem = stripSuffix(t);
       if (stem !== t && stem.length > 2) expanded.add(stem);
-      const enList = TR_TO_EN[t] || TR_TO_EN[stem];
+      const enList = lookupTrEn(t) || lookupTrEn(stem);
       if (enList) for (const en of enList) expanded.add(en);
     }
     // Cap so very long questions don't blow up SQL OR width.
