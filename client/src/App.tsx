@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -67,6 +67,55 @@ const FINDY_PANEL_BASES = ['/admin', '/agent'];
 function FindyLauncherGate() {
   const [location] = useLocation();
   const { user, role } = useAuthStore();
+  const [findyEnabled, setFindyEnabled] = useState<boolean>(() => {
+    // Optimistically use cached value to avoid a flash of "hidden" on first paint.
+    try {
+      const cached = localStorage.getItem('agent-menu-visibility');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return parsed?.findy !== false;
+      }
+    } catch {
+      // ignore
+    }
+    return true;
+  });
+
+  // Re-fetch the visibility setting whenever the auth state changes (login/logout).
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || !role) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/menu-visibility', {
+          headers: {
+            'x-user-id': user.id || '',
+            'x-user-role': role || '',
+          },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const enabled = data?.findy !== false;
+        setFindyEnabled(enabled);
+        try {
+          const cached = localStorage.getItem('agent-menu-visibility');
+          const parsed = cached ? JSON.parse(cached) : {};
+          localStorage.setItem(
+            'agent-menu-visibility',
+            JSON.stringify({ ...parsed, ...data })
+          );
+        } catch {
+          // ignore
+        }
+      } catch {
+        // network error: keep optimistic value
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, role]);
 
   useEffect(() => {
     const launcher = document.getElementById('findy-launcher');
@@ -75,7 +124,7 @@ function FindyLauncherGate() {
     const onPanelRoute = FINDY_PANEL_BASES.some(
       (p) => location === p || location.startsWith(p + '/')
     );
-    const shouldShow = !!user && !!role && onPanelRoute;
+    const shouldShow = !!user && !!role && onPanelRoute && findyEnabled;
 
     launcher.style.display = shouldShow ? '' : 'none';
 
@@ -92,7 +141,7 @@ function FindyLauncherGate() {
         }
       }
     }
-  }, [location, user, role]);
+  }, [location, user, role, findyEnabled]);
 
   return null;
 }

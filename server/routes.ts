@@ -4669,13 +4669,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Default: all visible
         res.json({
           dashboard: true,
+          announcements: true,
           courses: true,
           certificates: true,
           leaderboard: true,
           agency: true,
+          profile: true,
           'exams-orders': true,
           subscriptions: true,
-          profile: true,
+          'partner-zone': true,
+          findy: true,
         });
       }
     } catch (error) {

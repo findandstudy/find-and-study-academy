@@ -3,33 +3,84 @@ import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Award, 
-  User, 
-  Building, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Award,
+  User,
+  Building,
   ShoppingCart,
   Bell,
   Trophy,
   Save,
   RefreshCw,
-  Package
+  Package,
+  MessageCircle,
+  type LucideIcon,
 } from 'lucide-react';
 
-// Agent menu öğeleri
-const agentMenuItems = [
-  { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-  { id: 'courses', name: 'Courses', icon: BookOpen },
-  { id: 'certificates', name: 'Certificates', icon: Award },
-  { id: 'leaderboard', name: 'Leaderboard', icon: Trophy },
-  { id: 'agency', name: 'My Agency', icon: Building },
-  { id: 'partner-zone', name: 'Partner Zone', icon: Package },
-  { id: 'exams-orders', name: 'Exams/Orders', icon: ShoppingCart },
-  { id: 'subscriptions', name: 'Subscriptions', icon: Bell },
-  { id: 'profile', name: 'Profile', icon: User },
+type MenuItem = {
+  id: string;
+  name: string;
+  description?: string;
+  icon: LucideIcon;
+};
+
+type MenuGroup = {
+  label: string;
+  description?: string;
+  items: MenuItem[];
+};
+
+const agentMenuGroups: MenuGroup[] = [
+  {
+    label: 'Genel',
+    items: [
+      { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
+      { id: 'announcements', name: 'Duyurular', icon: Bell },
+    ],
+  },
+  {
+    label: 'Eğitim',
+    items: [
+      { id: 'courses', name: 'Kurslar', icon: BookOpen },
+      { id: 'certificates', name: 'Sertifikalar', icon: Award },
+      { id: 'leaderboard', name: 'Liderlik Tablosu', icon: Trophy },
+    ],
+  },
+  {
+    label: 'Acente',
+    items: [
+      { id: 'agency', name: 'Acentem', icon: Building },
+      { id: 'profile', name: 'Profil', icon: User },
+    ],
+  },
+  {
+    label: 'Hizmetler',
+    items: [
+      { id: 'exams-orders', name: 'Sınavlar / Siparişler', icon: ShoppingCart },
+      { id: 'subscriptions', name: 'Abonelikler', icon: Bell },
+      { id: 'partner-zone', name: 'İş Ortağı Bölgesi', icon: Package },
+    ],
+  },
+];
+
+const globalWidgets: MenuItem[] = [
+  {
+    id: 'findy',
+    name: 'Findy Asistan',
+    description:
+      'Tüm panellerin sağ alt köşesinde görünen sohbet widget\'ı. Kapatıldığında hem admin hem de agent panellerinde gizlenir.',
+    icon: MessageCircle,
+  },
+];
+
+const allTogglableIds: string[] = [
+  ...agentMenuGroups.flatMap((g) => g.items.map((i) => i.id)),
+  ...globalWidgets.map((w) => w.id),
 ];
 
 interface MenuVisibility {
@@ -43,10 +94,18 @@ export default function MenuManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load current settings
   useEffect(() => {
     loadMenuSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const buildVisibility = (data: Record<string, unknown>): MenuVisibility => {
+    const visibility: MenuVisibility = {};
+    allTogglableIds.forEach((id) => {
+      visibility[id] = data[id] !== false;
+    });
+    return visibility;
+  };
 
   const loadMenuSettings = async () => {
     try {
@@ -59,39 +118,22 @@ export default function MenuManagement() {
 
       if (response.ok) {
         const data = await response.json();
-        const visibility: MenuVisibility = {};
-        
-        // Set all items to visible by default
-        agentMenuItems.forEach(item => {
-          visibility[item.id] = data[item.id] !== false; // true if not explicitly false
-        });
-        
-        setMenuVisibility(visibility);
+        setMenuVisibility(buildVisibility(data || {}));
       } else {
-        // Default: all visible
-        const defaultVisibility: MenuVisibility = {};
-        agentMenuItems.forEach(item => {
-          defaultVisibility[item.id] = true;
-        });
-        setMenuVisibility(defaultVisibility);
+        setMenuVisibility(buildVisibility({}));
       }
     } catch (error) {
       console.error('Error loading menu settings:', error);
-      // Default: all visible
-      const defaultVisibility: MenuVisibility = {};
-      agentMenuItems.forEach(item => {
-        defaultVisibility[item.id] = true;
-      });
-      setMenuVisibility(defaultVisibility);
+      setMenuVisibility(buildVisibility({}));
     } finally {
       setLoading(false);
     }
   };
 
   const toggleMenuItem = (itemId: string) => {
-    setMenuVisibility(prev => ({
+    setMenuVisibility((prev) => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: !prev[itemId],
     }));
   };
 
@@ -109,9 +151,14 @@ export default function MenuManagement() {
       });
 
       if (response.ok) {
+        try {
+          localStorage.setItem('agent-menu-visibility', JSON.stringify(menuVisibility));
+        } catch {
+          // ignore quota / private mode errors
+        }
         toast({
-          title: 'Settings Saved',
-          description: 'Agent menu visibility settings have been updated successfully.',
+          title: 'Ayarlar Kaydedildi',
+          description: 'Menü görünürlük ayarları başarıyla güncellendi.',
         });
       } else {
         throw new Error('Failed to save settings');
@@ -119,8 +166,8 @@ export default function MenuManagement() {
     } catch (error) {
       console.error('Error saving menu settings:', error);
       toast({
-        title: 'Save Failed',
-        description: 'Failed to update menu settings. Please try again.',
+        title: 'Kaydedilemedi',
+        description: 'Menü ayarları güncellenemedi. Lütfen tekrar deneyin.',
         variant: 'destructive',
       });
     } finally {
@@ -130,18 +177,19 @@ export default function MenuManagement() {
 
   const handleReset = () => {
     const resetVisibility: MenuVisibility = {};
-    agentMenuItems.forEach(item => {
-      resetVisibility[item.id] = true;
+    allTogglableIds.forEach((id) => {
+      resetVisibility[id] = true;
     });
     setMenuVisibility(resetVisibility);
     toast({
-      title: 'Reset Complete',
-      description: 'All menu items have been enabled.',
+      title: 'Sıfırlandı',
+      description: 'Tüm menü öğeleri etkinleştirildi.',
     });
   };
 
-  const visibleCount = Object.values(menuVisibility).filter(Boolean).length;
-  const totalCount = agentMenuItems.length;
+  const totalCount = allTogglableIds.length;
+  const visibleCount = allTogglableIds.filter((id) => menuVisibility[id]).length;
+  const hiddenCount = totalCount - visibleCount;
 
   return (
     <div className="space-y-6">
@@ -150,122 +198,191 @@ export default function MenuManagement() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Menu Management
+            Menü Yönetimi
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Control which menu items are visible to agents in their sidebar.
+            Acente kenar çubuğunda hangi öğelerin görüneceğini ve Findy asistanının açık olup olmayacağını kontrol edin.
           </p>
         </div>
       </div>
 
-      {/* Stats Card */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-            <p className="text-sm text-muted-foreground">Total Menu Items</p>
+            <p className="text-sm text-muted-foreground">Toplam Öğe</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">{visibleCount}</div>
-            <p className="text-sm text-muted-foreground">Visible Items</p>
+            <p className="text-sm text-muted-foreground">Görünür</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">{totalCount - visibleCount}</div>
-            <p className="text-sm text-muted-foreground">Hidden Items</p>
+            <div className="text-2xl font-bold text-orange-600">{hiddenCount}</div>
+            <p className="text-sm text-muted-foreground">Gizli</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Menu Items */}
+      {/* Sidebar groups */}
       <Card>
         <CardHeader>
-          <CardTitle>Agent Sidebar Menu Items</CardTitle>
+          <CardTitle>Acente Kenar Çubuğu</CardTitle>
           <CardDescription>
-            Enable or disable menu items for agent users. Hidden items will not appear in the agent sidebar.
+            Acentenin kenar çubuğunda hangi öğelerin görüneceğini açıp kapatın. Gizlenen öğeler menüde gözükmez.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading menu settings...
-            </div>
+            <div className="text-center py-8 text-muted-foreground">Ayarlar yükleniyor...</div>
           ) : (
-            <>
-              <div className="space-y-4">
-                {agentMenuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isVisible = menuVisibility[item.id];
-                  
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border hover-elevate"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-md ${isVisible ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                          <Icon className="w-5 h-5" />
+            <div className="space-y-6">
+              {agentMenuGroups.map((group) => (
+                <div key={group.label} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </Label>
+                    <Badge variant="outline">{group.items.length}</Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isVisible = menuVisibility[item.id];
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 p-4 rounded-md border border-border hover-elevate"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2 rounded-md shrink-0 ${
+                                isVisible
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <Label
+                                htmlFor={`toggle-${item.id}`}
+                                className="text-base font-medium cursor-pointer"
+                              >
+                                {item.name}
+                              </Label>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {isVisible ? 'Acentelere görünür' : 'Acentelerden gizli'}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            id={`toggle-${item.id}`}
+                            checked={isVisible}
+                            onCheckedChange={() => toggleMenuItem(item.id)}
+                            data-testid={`toggle-${item.id}`}
+                          />
                         </div>
-                        <div>
-                          <Label 
-                            htmlFor={`toggle-${item.id}`}
-                            className="text-base font-medium cursor-pointer"
-                          >
-                            {item.name}
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            {isVisible ? 'Visible to agents' : 'Hidden from agents'}
-                          </p>
-                        </div>
-                      </div>
-                      <Switch
-                        id={`toggle-${item.id}`}
-                        checked={isVisible}
-                        onCheckedChange={() => toggleMenuItem(item.id)}
-                        data-testid={`toggle-${item.id}`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  data-testid="button-save-menu"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  data-testid="button-reset-menu"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Reset to Default
-                </Button>
-              </div>
-            </>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Global widgets (Findy) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Genel Widget'lar</CardTitle>
+          <CardDescription>
+            Tüm panellerde (admin ve agent) görünen widget'ları yönetin.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Ayarlar yükleniyor...</div>
+          ) : (
+            globalWidgets.map((item) => {
+              const Icon = item.icon;
+              const isVisible = menuVisibility[item.id];
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 p-4 rounded-md border border-border hover-elevate"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`p-2 rounded-md shrink-0 ${
+                        isVisible
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <Label
+                        htmlFor={`toggle-${item.id}`}
+                        className="text-base font-medium cursor-pointer"
+                      >
+                        {item.name}
+                      </Label>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isVisible ? 'Tüm panellerde açık' : 'Tüm panellerde kapalı'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id={`toggle-${item.id}`}
+                    checked={isVisible}
+                    onCheckedChange={() => toggleMenuItem(item.id)}
+                    data-testid={`toggle-${item.id}`}
+                  />
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        <Button onClick={handleSave} disabled={saving || loading} data-testid="button-save-menu">
+          <Save className="w-4 h-4 mr-2" />
+          {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleReset}
+          disabled={loading}
+          data-testid="button-reset-menu"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Varsayılana Dön
+        </Button>
+      </div>
+
       {/* Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Important Notes</CardTitle>
+          <CardTitle>Bilgilendirme</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Changes take effect immediately for all agent users after saving.</p>
-          <p>• Hidden menu items are still accessible if agents know the direct URL.</p>
-          <p>• At least one menu item should remain visible for agent navigation.</p>
-          <p>• The "Agent Portal" external link is not controlled by this setting.</p>
+          <p>• Değişiklikler kaydedildikten sonra tüm kullanıcılar için anında geçerli olur.</p>
+          <p>• Gizlenen menü öğelerine, doğrudan URL üzerinden hâlâ erişilebilir; tam erişim engelleme için rol/izin kullanın.</p>
+          <p>• Acentelerin gezinebilmesi için en az bir menü öğesinin açık kalması önerilir.</p>
+          <p>• "Agent Portal" ve "Dorm Booking" dış bağlantıları bu ayarlardan etkilenmez.</p>
+          <p>• Findy Asistan kapatıldığında, hem admin hem de agent panellerinde sohbet düğmesi gizlenir.</p>
         </CardContent>
       </Card>
     </div>
