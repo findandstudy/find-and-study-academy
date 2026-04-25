@@ -3925,6 +3925,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk delete: remove many contents in one call.
+  // Mirrors the bulk-move shape — per-id success/error so the UI can report
+  // partial failures and present a meaningful summary toast.
+  app.post('/api/admin/contents/bulk-delete', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const bulkSchema = z.object({
+        ids: z.array(z.string().min(1)).min(1).max(200),
+      });
+      const { ids } = bulkSchema.parse(req.body);
+      const uniqueIds = Array.from(new Set(ids));
+
+      const results = await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            const existing = await storage.getContentById(id);
+            if (!existing) {
+              return { id, success: false as const, message: 'Content not found' };
+            }
+            await storage.deleteContent(id);
+            return { id, success: true as const };
+          } catch (err) {
+            return {
+              id,
+              success: false as const,
+              message: err instanceof Error ? err.message : 'Delete failed',
+            };
+          }
+        }),
+      );
+
+      const deleted = results.filter((r) => r.success).length;
+      const failed = results.length - deleted;
+      res.json({ success: failed === 0, deleted, failed, total: results.length, results });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to bulk-delete contents';
+      res.status(400).json({ success: false, message: msg });
+    }
+  });
+
+  // Bulk status change: flip many contents between published/draft in one call.
+  // Returns per-id success/error so partial failures surface in the UI toast.
+  app.post('/api/admin/contents/bulk-status', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const bulkSchema = z.object({
+        ids: z.array(z.string().min(1)).min(1).max(200),
+        status: z.enum(['published', 'draft']),
+      });
+      const { ids, status } = bulkSchema.parse(req.body);
+      const uniqueIds = Array.from(new Set(ids));
+
+      const results = await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            // Existence check up-front so missing rows are reported as failures
+            // instead of being silently treated as successful no-ops (the
+            // underlying updateContent can resolve undefined for unknown ids).
+            const existing = await storage.getContentById(id);
+            if (!existing) {
+              return { id, success: false as const, message: 'Content not found' };
+            }
+            const content = await storage.updateContent(id, { status });
+            if (!content) {
+              return { id, success: false as const, message: 'Update returned no row' };
+            }
+            return { id, success: true as const, content };
+          } catch (err) {
+            return {
+              id,
+              success: false as const,
+              message: err instanceof Error ? err.message : 'Update failed',
+            };
+          }
+        }),
+      );
+
+      const updated = results.filter((r) => r.success).length;
+      const failed = results.length - updated;
+      res.json({ success: failed === 0, updated, failed, total: results.length, status, results });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to bulk-update content statuses';
+      res.status(400).json({ success: false, message: msg });
+    }
+  });
+
   // Bulk move: assign many contents to a single folder (or root) in one call.
   // Returns per-id success/error so the UI can report partial failures.
   app.post('/api/admin/contents/bulk-move', requireAuth, requireAdmin, async (req, res) => {

@@ -260,6 +260,9 @@ export default function PartnerZoneAdmin() {
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
   const [editingContent, setEditingContent] = useState<FolderContent | null>(null);
   const [deleteContent, setDeleteContent] = useState<FolderContent | null>(null);
+  // Bulk-delete confirmation dialog (uses current selectedContentIds at the time
+  // of action so the count stays accurate even if selection mutates afterwards).
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -674,6 +677,80 @@ export default function PartnerZoneAdmin() {
     onError: () => toast({ title: 'Hata', variant: 'destructive' }),
   });
 
+  // Bulk-delete many contents at once. Mirrors moveContentsMutation: invalidates
+  // the folder cache, drops handled ids from the selection, and surfaces
+  // partial failures in the toast so the admin sees exactly what happened.
+  const bulkDeleteContentsMutation = useMutation({
+    mutationFn: async ({ ids }: { ids: string[] }) => {
+      const r = await apiRequest('POST', '/api/admin/contents/bulk-delete', { ids });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(body?.message ?? 'Dosyalar silinemedi');
+      return body as { deleted: number; failed: number; total: number };
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
+      // Drop the handled ids from selection regardless of per-id outcome — a
+      // failed delete usually means the row no longer exists or is invalid;
+      // either way leaving them selected would be misleading.
+      setSelectedContentIds((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set(prev);
+        variables.ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setLastClickedIndex(null);
+      setBulkDeleteConfirmOpen(false);
+      const deleted = data?.deleted ?? variables.ids.length;
+      const failed = data?.failed ?? 0;
+      const desc = failed > 0
+        ? `${deleted} silindi, ${failed} başarısız`
+        : `${deleted} dosya silindi`;
+      toast({
+        title: failed > 0 ? 'Bazı dosyalar silinemedi' : 'Dosyalar silindi',
+        description: desc,
+        variant: failed > 0 ? 'destructive' : undefined,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Silme başarısız', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  // Bulk publish/draft toggle. Status is supplied by the toolbar button so the
+  // same mutation handles both directions.
+  const bulkUpdateStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: 'published' | 'draft' }) => {
+      const r = await apiRequest('POST', '/api/admin/contents/bulk-status', { ids, status });
+      const body = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(body?.message ?? 'Durum güncellenemedi');
+      return body as { updated: number; failed: number; total: number; status: 'published' | 'draft' };
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
+      setSelectedContentIds((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set(prev);
+        variables.ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setLastClickedIndex(null);
+      const updated = data?.updated ?? variables.ids.length;
+      const failed = data?.failed ?? 0;
+      const targetLabel = variables.status === 'published' ? 'Yayında' : 'Taslak';
+      const desc = failed > 0
+        ? `${updated} güncellendi, ${failed} başarısız`
+        : `${updated} dosya "${targetLabel}" olarak işaretlendi`;
+      toast({
+        title: failed > 0 ? 'Bazı dosyalar güncellenemedi' : 'Durum güncellendi',
+        description: desc,
+        variant: failed > 0 ? 'destructive' : undefined,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Güncelleme başarısız', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const onContentSubmit = (values: ContentFormValues) => {
     if (editingContent) updateContentMutation.mutate(values);
     else createContentMutation.mutate(values);
@@ -1073,15 +1150,63 @@ export default function PartnerZoneAdmin() {
                 {/* Selection summary appears only when at least one file is picked. */}
                 {selectedContentIds.size > 0 && (
                   <div
-                    className="flex items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
+                    className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
                     data-testid="bulk-selection-toolbar"
                   >
                     <Badge variant="secondary" data-testid="bulk-selection-count">
                       {selectedContentIds.size} öğe seçildi
                     </Badge>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      Sürükleyip bir klasöre bırakın veya breadcrumb ile üst klasöre taşıyın.
+                    <span className="text-xs text-muted-foreground hidden lg:inline">
+                      Sürükleyip taşıyın ya da aşağıdaki toplu işlemleri kullanın.
                     </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
+                      onClick={() =>
+                        bulkUpdateStatusMutation.mutate({
+                          ids: Array.from(selectedContentIds),
+                          status: 'published',
+                        })
+                      }
+                      data-testid="button-bulk-publish"
+                    >
+                      {bulkUpdateStatusMutation.isPending && bulkUpdateStatusMutation.variables?.status === 'published' ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Yayınla
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
+                      onClick={() =>
+                        bulkUpdateStatusMutation.mutate({
+                          ids: Array.from(selectedContentIds),
+                          status: 'draft',
+                        })
+                      }
+                      data-testid="button-bulk-draft"
+                    >
+                      {bulkUpdateStatusMutation.isPending && bulkUpdateStatusMutation.variables?.status === 'draft' ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <EyeOff className="w-3.5 h-3.5 mr-1" />
+                      )}
+                      Taslağa al
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
+                      onClick={() => setBulkDeleteConfirmOpen(true)}
+                      data-testid="button-bulk-delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Sil
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1318,6 +1443,48 @@ export default function PartnerZoneAdmin() {
                 className="bg-destructive text-destructive-foreground"
               >
                 Sil
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk delete confirm — explicit count in Turkish so the admin can
+            sanity-check before destroying many rows at once. */}
+        <AlertDialog
+          open={bulkDeleteConfirmOpen}
+          onOpenChange={(o) => {
+            // Don't allow closing while the request is in flight to avoid
+            // double-trigger via clicking the backdrop.
+            if (!o && bulkDeleteContentsMutation.isPending) return;
+            setBulkDeleteConfirmOpen(o);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Seçili dosyaları sil</AlertDialogTitle>
+              <AlertDialogDescription>
+                {selectedContentIds.size} dosya kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={bulkDeleteContentsMutation.isPending}>İptal</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={bulkDeleteContentsMutation.isPending || selectedContentIds.size === 0}
+                onClick={(e) => {
+                  // AlertDialogAction would auto-close; we control closure
+                  // from the mutation's onSuccess so failures keep the dialog
+                  // open with the spinner state.
+                  e.preventDefault();
+                  bulkDeleteContentsMutation.mutate({ ids: Array.from(selectedContentIds) });
+                }}
+                className="bg-destructive text-destructive-foreground"
+                data-testid="button-confirm-bulk-delete"
+              >
+                {bulkDeleteContentsMutation.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Siliniyor...</>
+                ) : (
+                  <>{selectedContentIds.size} dosyayı sil</>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
