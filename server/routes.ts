@@ -5754,30 +5754,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── 2. Legacy n8n webhook fallback ───────────────────────────────────────
       const webhookUrl = process.env.N8N_WEBHOOK_URL;
       if (webhookUrl) {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message,
-            context: ragContext,
-            sessionId: sessionId || crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-          }),
-          signal: AbortSignal.timeout(30000),
-        });
+        try {
+          const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message,
+              context: ragContext,
+              sessionId: sessionId || crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
 
-        if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
+          if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
 
-        const contentType = response.headers.get('content-type');
-        let botResponse: string;
-        if (contentType?.includes('application/json')) {
-          const data = await response.json();
-          botResponse = data.message || data.response || data.output || JSON.stringify(data);
-        } else {
-          botResponse = await response.text();
+          const contentType = response.headers.get('content-type');
+          let botResponse: string;
+          if (contentType?.includes('application/json')) {
+            const data = await response.json();
+            botResponse = data.message || data.response || data.output || JSON.stringify(data);
+          } else {
+            botResponse = await response.text();
+          }
+
+          return res.json({ success: true, message: botResponse, data: { message: botResponse } });
+        } catch (webhookErr: any) {
+          // Webhook failed AND no provider was configured — explain why for admins.
+          console.error('n8n webhook fallback failed:', webhookErr?.message || webhookErr);
+          const reason = !apiKey
+            ? 'No AI provider API key is configured (Findy AI > Provider & Model). The legacy n8n webhook also failed.'
+            : 'AI provider call did not run (provider/model missing) and the legacy n8n webhook also failed.';
+          const verboseMsg = `${reason} Webhook error: ${webhookErr?.message || 'unknown'}`;
+          const genericMsg = 'AI service is temporarily unavailable. Please try again.';
+          return res.status(502).json({
+            success: false,
+            message: isAdmin ? verboseMsg : genericMsg,
+          });
         }
-
-        return res.json({ success: true, message: botResponse, data: { message: botResponse } });
       }
 
       // ── 3. Degraded mode — only RAG context, no LLM ──────────────────────────
@@ -5788,10 +5802,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: { message: ragContext, hasContext: true }
         });
       }
-      return res.status(500).json({ success: false, message: 'Chat service is not configured' });
+      // No provider configured AND no webhook — be explicit for admins.
+      const noConfigMsg = isAdmin
+        ? 'Chat is not configured: no AI provider API key (Findy AI > Provider & Model) and no N8N_WEBHOOK_URL secret.'
+        : 'AI service is temporarily unavailable. Please try again.';
+      return res.status(500).json({ success: false, message: noConfigMsg });
     } catch (error: any) {
       console.error('Chat API error:', error?.message || error);
-      res.status(500).json({ success: false, message: 'Failed to process chat message' });
+      const msg = isAdmin
+        ? `Chat handler error: ${error?.message || 'unknown'}`
+        : 'AI service is temporarily unavailable. Please try again.';
+      res.status(500).json({ success: false, message: msg });
     }
   });
 
