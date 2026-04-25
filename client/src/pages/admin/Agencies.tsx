@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Eye, Mail, Phone, Globe, User, Clock, Download, Upload, FileSpreadsheet, AlertCircle, Loader2 } from 'lucide-react';
+import { Building, Plus, Edit2, Users, MapPin, Calendar, Search, Trash2, LayoutGrid, List, CheckCircle2, XCircle, Eye, Mail, Phone, Globe, User, Clock, Download, Upload, FileSpreadsheet, AlertCircle, Loader2, UserPlus, X as XIcon } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import * as XLSX from 'xlsx';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,6 +49,8 @@ export default function AdminAgencies() {
   const [importRows, setImportRows] = useState<any[]>([]);
   const [importParsing, setImportParsing] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberRoleFilter, setMemberRoleFilter] = useState<string>('all');
   const { toast } = useToast();
   
   // Handle view agency details
@@ -234,6 +237,38 @@ export default function AdminAgencies() {
         title: 'Error', 
         description: error.message || 'Failed to update agency statuses',
         variant: 'destructive' 
+      });
+    },
+  });
+
+  // ── Users (for member assignment) ─────────────────────────────────────────
+  const { data: usersResponse } = useQuery({
+    queryKey: ['/api/admin/users'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/users');
+      return response.json();
+    },
+  });
+  const allUsers: any[] = usersResponse?.users || [];
+
+  const assignUserMutation = useMutation({
+    mutationFn: async (data: { userId: string; agencyId: string | null }) => {
+      const response = await apiRequest('PATCH', `/api/admin/users/${data.userId}`, { agencyId: data.agencyId });
+      return response.json();
+    },
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
+      toast({
+        title: variables.agencyId ? 'Üye eklendi' : 'Üye kaldırıldı',
+        description: variables.agencyId ? 'Kullanıcı acenteye atandı.' : 'Kullanıcı acenteden çıkarıldı.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Hata',
+        description: error?.message || 'Üye atama işlemi başarısız oldu.',
+        variant: 'destructive',
       });
     },
   });
@@ -1190,6 +1225,145 @@ export default function AdminAgencies() {
                   })}</span>
                 </div>
               </div>
+
+              {/* Agency Members */}
+              {(() => {
+                const assignedMembers = allUsers.filter(u => u.agencyId === viewAgency.id);
+                const search = memberSearch.trim().toLowerCase();
+                const candidates = allUsers.filter(u => {
+                  if (u.agencyId === viewAgency.id) return false;
+                  if (memberRoleFilter !== 'all' && u.role !== memberRoleFilter) return false;
+                  if (!search) return true;
+                  return (
+                    (u.name || '').toLowerCase().includes(search) ||
+                    (u.email || '').toLowerCase().includes(search) ||
+                    (u.username || '').toLowerCase().includes(search) ||
+                    (u.companyName || '').toLowerCase().includes(search)
+                  );
+                });
+                return (
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Acente Üyeleri
+                      <Badge variant="secondary" className="ml-1" data-testid="badge-member-count">
+                        {assignedMembers.length}
+                      </Badge>
+                    </h4>
+
+                    {/* Currently assigned */}
+                    {assignedMembers.length > 0 ? (
+                      <div className="space-y-2 mb-4">
+                        {assignedMembers.map(u => (
+                          <div
+                            key={u.id}
+                            className="flex items-center justify-between gap-2 rounded-md border p-2"
+                            data-testid={`row-member-${u.id}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium truncate">{u.name || u.username}</span>
+                                <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                {u.status && u.status !== 'active' && (
+                                  <Badge variant="secondary" className="capitalize">{u.status}</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => assignUserMutation.mutate({ userId: u.id, agencyId: null })}
+                              disabled={assignUserMutation.isPending}
+                              data-testid={`button-remove-member-${u.id}`}
+                            >
+                              <XIcon className="w-4 h-4 mr-1" />
+                              Kaldır
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Bu acenteye henüz üye atanmamış.
+                      </p>
+                    )}
+
+                    {/* Add members */}
+                    <div className="rounded-md border p-3 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <UserPlus className="w-4 h-4" />
+                        Üye Ekle
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                          <Input
+                            placeholder="İsim, e-posta veya kullanıcı adı ile ara..."
+                            value={memberSearch}
+                            onChange={(e) => setMemberSearch(e.target.value)}
+                            className="pl-9"
+                            data-testid="input-member-search"
+                          />
+                        </div>
+                        <Select value={memberRoleFilter} onValueChange={setMemberRoleFilter}>
+                          <SelectTrigger className="w-full sm:w-40" data-testid="select-member-role">
+                            <SelectValue placeholder="Rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tüm roller</SelectItem>
+                            <SelectItem value="agent">Agent</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <ScrollArea className="h-56 rounded-md border">
+                        {candidates.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            {search || memberRoleFilter !== 'all'
+                              ? 'Aramanızla eşleşen kullanıcı bulunamadı.'
+                              : 'Atanabilecek başka kullanıcı yok.'}
+                          </div>
+                        ) : (
+                          <div className="p-1">
+                            {candidates.map(u => (
+                              <div
+                                key={u.id}
+                                className="flex items-center justify-between gap-2 rounded-md p-2 hover-elevate"
+                                data-testid={`row-candidate-${u.id}`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium truncate">{u.name || u.username}</span>
+                                    <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                    {u.agency && (
+                                      <Badge variant="secondary" className="truncate max-w-[160px]">
+                                        {u.agency.name}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => assignUserMutation.mutate({ userId: u.id, agencyId: viewAgency.id })}
+                                  disabled={assignUserMutation.isPending}
+                                  data-testid={`button-add-member-${u.id}`}
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Ekle
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4 border-t">
