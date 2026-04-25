@@ -44,6 +44,9 @@ interface PartnerFolder {
   parentFolderId: string | null;
   subfolderCount?: number;
   contentCount?: number;
+  // Distinct content types found anywhere in this folder's descendant tree.
+  // Values are normalized to 'document' | 'video' | 'image'.
+  contentTypes?: string[];
   updatedAt: string;
   createdAt: string;
 }
@@ -327,11 +330,21 @@ export default function PartnerZoneAdmin() {
 
   // ─── Filtering / sorting ───────────────────────────────────────────────
 
+  // Type filter for folders: a folder passes if its descendant tree contains
+  // at least one content of the selected type. Folders with an unknown
+  // contentTypes (legacy payload) are kept to avoid hiding content silently.
+  const folderMatchesType = (f: PartnerFolder) => {
+    if (fileType === 'all') return true;
+    if (!f.contentTypes) return true;
+    return f.contentTypes.includes(fileType);
+  };
+
   const filteredRootFolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
       rootFolders.filter((f) => {
         if (country !== 'all' && f.countryCode !== country) return false;
+        if (!folderMatchesType(f)) return false;
         if (q) {
           const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
           if (!hay.includes(q)) return false;
@@ -340,13 +353,15 @@ export default function PartnerZoneAdmin() {
       }),
       sort,
     );
-  }, [rootFolders, country, search, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootFolders, country, search, sort, fileType]);
 
   const filteredSubfolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
       folderSubfolders.filter((f) => {
         if (country !== 'all' && f.countryCode !== country) return false;
+        if (!folderMatchesType(f)) return false;
         if (q) {
           const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
           if (!hay.includes(q)) return false;
@@ -355,7 +370,8 @@ export default function PartnerZoneAdmin() {
       }),
       sort,
     );
-  }, [folderSubfolders, country, search, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folderSubfolders, country, search, sort, fileType]);
 
   const filteredFolderContents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1416,6 +1432,9 @@ export default function PartnerZoneAdmin() {
         country={country}
         onCountryChange={setCountry}
         countries={countries}
+        showFileType
+        fileType={fileType}
+        onFileTypeChange={setFileType}
         sort={sort}
         onSortChange={setSort}
       />

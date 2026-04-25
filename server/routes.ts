@@ -3695,10 +3695,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parentId = parseParentId(req.query.parentId);
       const folders = await storage.getPartnerFolders(parentId);
-      // Attach subfolder + content counts for cards
+      // Attach subfolder + content counts and the set of content types found
+      // anywhere in each folder's descendant tree (used for type filtering).
+      const typeMap = await storage.getDescendantContentTypes(folders.map(f => f.id));
       const foldersWithCounts = await Promise.all(folders.map(async folder => {
         const counts = await storage.countFolderChildren(folder.id);
-        return { ...folder, subfolderCount: counts.subfolders, contentCount: counts.contents };
+        return {
+          ...folder,
+          subfolderCount: counts.subfolders,
+          contentCount: counts.contents,
+          contentTypes: typeMap.get(folder.id) ?? [],
+        };
       }));
       res.json({ success: true, folders: foldersWithCounts });
     } catch (error) {
@@ -3716,9 +3723,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getPartnerFolders(req.params.id),
         storage.getFolderPath(req.params.id),
       ]);
+      const subTypeMap = await storage.getDescendantContentTypes(subfolders.map(f => f.id));
       const subWithCounts = await Promise.all(subfolders.map(async f => {
         const counts = await storage.countFolderChildren(f.id);
-        return { ...f, subfolderCount: counts.subfolders, contentCount: counts.contents };
+        return {
+          ...f,
+          subfolderCount: counts.subfolders,
+          contentCount: counts.contents,
+          contentTypes: subTypeMap.get(f.id) ?? [],
+        };
       }));
       res.json({ success: true, folder, contents: items, subfolders: subWithCounts, breadcrumb });
     } catch (error) {

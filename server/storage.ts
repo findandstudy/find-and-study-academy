@@ -223,6 +223,10 @@ export interface IStorage {
   getFolderContents(folderId: string): Promise<Content[]>;
   getFolderPath(folderId: string): Promise<PartnerFolder[]>;
   countFolderChildren(folderId: string): Promise<{ subfolders: number; contents: number }>;
+  // For each given folder id, returns the set of normalized content types
+  // ('document' | 'video' | 'image') found anywhere in its descendant tree
+  // (including direct contents and contents of nested subfolders).
+  getDescendantContentTypes(folderIds: string[]): Promise<Map<string, string[]>>;
 
   // Knowledge Source methods (Findy AI RAG)
   getKnowledgeSources(): Promise<KnowledgeSource[]>;
@@ -1417,6 +1421,55 @@ export class DatabaseStorage implements IStorage {
       subfolders: Number(subResult?.value ?? 0),
       contents: Number(contentResult?.value ?? 0),
     };
+  }
+
+  async getDescendantContentTypes(folderIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (folderIds.length === 0) return result;
+
+    // One-shot reads of the parent->child folder graph and the content rows
+    // that live in any folder. Sets are then computed in-memory.
+    const allFolders = await db
+      .select({ id: partnerFolders.id, parentFolderId: partnerFolders.parentFolderId })
+      .from(partnerFolders);
+    const allContents = await db
+      .select({ folderId: contents.folderId, type: contents.type, contentType: contents.contentType })
+      .from(contents);
+
+    const childMap = new Map<string, string[]>();
+    for (const f of allFolders) {
+      if (!f.parentFolderId) continue;
+      const list = childMap.get(f.parentFolderId);
+      if (list) list.push(f.id);
+      else childMap.set(f.parentFolderId, [f.id]);
+    }
+
+    const directTypes = new Map<string, Set<string>>();
+    for (const c of allContents) {
+      if (!c.folderId) continue;
+      const raw = (c.contentType ?? c.type ?? 'document').toLowerCase();
+      const norm = raw === 'video' ? 'video' : raw === 'image' ? 'image' : 'document';
+      const set = directTypes.get(c.folderId);
+      if (set) set.add(norm);
+      else directTypes.set(c.folderId, new Set([norm]));
+    }
+
+    for (const rootId of folderIds) {
+      const types = new Set<string>();
+      const stack: string[] = [rootId];
+      const seen = new Set<string>();
+      while (stack.length) {
+        const id = stack.pop()!;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const direct = directTypes.get(id);
+        if (direct) direct.forEach(t => types.add(t));
+        const kids = childMap.get(id);
+        if (kids) for (const k of kids) stack.push(k);
+      }
+      result.set(rootId, Array.from(types));
+    }
+    return result;
   }
 
   // ── Knowledge Source implementations ────────────────────────────────────────
