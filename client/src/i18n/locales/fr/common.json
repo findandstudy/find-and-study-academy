@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Find And Study",
-    "tagline": "Conseil éducatif"
+    "tagline": "Conseil pédagogique"
   },
   "language": {
     "label": "Langue",
@@ -26,19 +26,22 @@
     "no": "Non",
     "confirm": "Confirmer",
     "actions": "Actions",
-    "optional": "Optionnel",
+    "optional": "Facultatif",
     "required": "Obligatoire",
     "success": "Succès",
     "error": "Erreur",
-    "warning": "Avertissement"
+    "warning": "Avertissement",
+    "continue": "Continuer",
+    "start": "Démarrer",
+    "viewAll": "Tout voir"
   },
   "toast": {
     "saved": "Paramètres enregistrés",
     "savedDescription": "Vos modifications ont été enregistrées avec succès.",
     "failed": "Échec de l'enregistrement",
-    "failedDescription": "Impossible d'enregistrer les modifications. Veuillez réessayer.",
+    "failedDescription": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
     "languageChanged": "Langue modifiée",
-    "languageChangedDescription": "L'interface est désormais en {{name}}."
+    "languageChangedDescription": "L'interface est maintenant en {{name}}."
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -75,7 +78,7 @@
       "myAgency": "Mon agence",
       "examsOrders": "Examens / Commandes",
       "subscriptions": "Abonnements",
-      "partnerZone": "Espace partenaires",
+      "partnerZone": "Espace partenaire",
       "agentPortal": "Portail agent",
       "dormBooking": "Réservation de logement",
       "contentCountries": "Contenu / Pays",
@@ -83,11 +86,172 @@
       "agencies": "Agences",
       "users": "Utilisateurs",
       "reports": "Rapports",
-      "popups": "Annonces pop-up",
+      "popups": "Pop-ups",
       "findyAi": "Findy AI",
       "settingsPayments": "Paramètres / Paiements",
       "integrations": "Intégrations",
       "menuManagement": "Gestion du menu"
+    }
+  },
+  "agent": {
+    "dashboard": {
+      "welcome": "Bon retour, {{name}} !",
+      "subtitle": "Suivez votre progression et poursuivez votre formation d'agent.",
+      "viewAllAnnouncements": "Tout voir ({{count}})",
+      "announcementsTitle": "Annonces",
+      "stats": {
+        "coursesInProgress": "Cours en cours",
+        "coursesInProgressChange": "{{completed}} terminés • {{active}} actifs",
+        "certificatesEarned": "Certificats obtenus",
+        "avgScore": "Score moyen : {{score}} %",
+        "completeToEarn": "Terminez des cours pour obtenir un certificat",
+        "lessonsCompleted": "Leçons terminées",
+        "acrossCourses": "Sur {{count}} cours",
+        "startLearning": "Commencez à apprendre",
+        "overallProgress": "Progression globale",
+        "coursesDone": "{{done}}/{{total}} cours terminés"
+      },
+      "weeklyActivity": "Activité d'apprentissage hebdomadaire",
+      "lessonsSeries": "Leçons terminées",
+      "courseProgressOverview": "Vue d'ensemble de la progression",
+      "progressSeries": "Progression (%)",
+      "recentActivity": "Activité récente",
+      "certificateEarned": "Certificat obtenu",
+      "courseProgress": "Progression du cours",
+      "lessonsAndPercent": "{{lessons}} leçons • {{percent}} % terminé",
+      "noActivity": "Aucune activité récente",
+      "noActivityHint": "Commencez à apprendre pour voir votre activité ici",
+      "recentAchievements": "Réussites récentes",
+      "scoreAndDate": "Score : {{score}} % • {{date}}",
+      "certified": "Certifié",
+      "viewAllCertificates": "Voir tous les certificats",
+      "noCertificatesYet": "Aucun certificat pour le moment",
+      "completeToEarnCerts": "Terminez des cours pour gagner des certificats",
+      "detailedCourseProgress": "Détails de progression",
+      "lessonsCompletedSimple": "{{count}} leçons terminées"
+    },
+    "profile": {
+      "title": "Paramètres du profil",
+      "subtitle": "Gérez les informations de votre compte et la sécurité.",
+      "picture": "Photo de profil",
+      "uploadHint": "Téléversez une nouvelle photo de profil",
+      "choosePhoto": "Choisir une photo",
+      "uploading": "Téléversement...",
+      "fileLimits": "Taille maximale : 5 Mo\nFormats pris en charge : JPG, PNG, GIF",
+      "info": "Informations du profil",
+      "fullName": "Nom complet",
+      "fullNamePlaceholder": "Votre nom complet",
+      "email": "Adresse e-mail",
+      "emailReadonly": "L'e-mail ne peut pas être modifié. Contactez le support si nécessaire.",
+      "update": "Mettre à jour le profil",
+      "changePassword": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "currentPasswordPlaceholder": "Saisissez le mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "newPasswordPlaceholder": "Saisissez le nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "confirmPasswordPlaceholder": "Confirmez le nouveau mot de passe",
+      "changePasswordButton": "Changer le mot de passe",
+      "notifications": "Préférences de notifications par e-mail",
+      "emailNotificationsLabel": "Notifications par e-mail",
+      "emailNotificationsHint": "Recevez des notifications par e-mail concernant votre activité",
+      "courseCompletionLabel": "Cours terminé",
+      "courseCompletionHint": "Soyez notifié lorsque vous terminez un cours",
+      "certificateLabel": "Certificat obtenu",
+      "certificateHint": "Soyez notifié lorsque vous obtenez un certificat",
+      "announcementsLabel": "Annonces",
+      "announcementsHint": "Soyez notifié des annonces importantes",
+      "toast": {
+        "profileUpdated": "Profil mis à jour",
+        "profileUpdatedDescription": "Votre profil et vos préférences ont été mis à jour avec succès.",
+        "passwordMismatch": "Mots de passe différents",
+        "passwordMismatchDescription": "Le nouveau mot de passe et la confirmation ne correspondent pas.",
+        "passwordChanged": "Mot de passe modifié",
+        "passwordChangedDescription": "Votre mot de passe a été mis à jour avec succès.",
+        "invalidFileType": "Type de fichier invalide",
+        "invalidFileTypeDescription": "Veuillez sélectionner un fichier image.",
+        "fileTooLarge": "Fichier trop volumineux",
+        "fileTooLargeDescription": "Veuillez choisir une image inférieure à 5 Mo.",
+        "pictureUpdated": "Photo de profil mise à jour",
+        "pictureUpdatedDescription": "Votre photo de profil a été mise à jour avec succès.",
+        "uploadFailed": "Échec du téléversement",
+        "uploadFailedDescription": "Impossible de téléverser la photo de profil. Veuillez réessayer."
+      }
+    },
+    "courses": {
+      "title": "Cours",
+      "subtitle": "Terminez votre formation d'agent et obtenez des certificats.",
+      "noCourses": "Aucun cours disponible",
+      "noContent": "Aucun contenu disponible pour {{country}}"
+    },
+    "certificates": {
+      "title": "Mes certificats",
+      "subtitle": "Téléchargez et gérez vos certificats et badges d'agent.",
+      "loading": "Chargement des certificats...",
+      "noCertificatesYet": "Aucun certificat pour le moment",
+      "completeToEarn": "Terminez des cours pour gagner des certificats",
+      "certified": "Certifié",
+      "courseTitleFallback": "Titre du cours",
+      "code": "Code du certificat : {{code}}",
+      "score": "Score : {{score}} %",
+      "pdf": "PDF",
+      "badge": "Badge",
+      "agentBadge": "Badge agent",
+      "certifiedAgent": "Agent Find And Study certifié",
+      "downloadAgentBadge": "Téléchargez votre badge avec votre dernier code de certificat",
+      "downloadBadge": "Télécharger le badge",
+      "toast": {
+        "certificateDownloaded": "Certificat téléchargé",
+        "certificateDownloadedDescription": "Votre certificat a été téléchargé avec succès.",
+        "downloadFailed": "Échec du téléchargement",
+        "downloadFailedDescription": "Une erreur est survenue lors du téléchargement de votre certificat.",
+        "userNotFound": "Informations utilisateur introuvables.",
+        "badgeDownloaded": "Badge téléchargé",
+        "badgeDownloadedDescription": "Votre badge agent a été téléchargé avec succès.",
+        "badgeError": "Une erreur est survenue lors du téléchargement de votre badge."
+      }
+    },
+    "announcements": {
+      "title": "Toutes les annonces",
+      "subtitle": "Les annonces les plus récentes apparaissent en haut.",
+      "empty": "Aucune annonce n'a encore été publiée."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "welcome": "Bon retour, {{name}} !",
+      "subtitle": "Gérez la plateforme Find And Study et suivez l'activité des agents.",
+      "stats": {
+        "totalAgents": "Total des agents",
+        "agenciesRegistered": "{{count}} agences enregistrées",
+        "certificatesIssued": "Certificats émis",
+        "avgScore": "Score moyen : {{score}} %",
+        "completionRate": "Taux d'achèvement",
+        "completedOfTotal": "{{completed}}/{{total}} terminés",
+        "activeAnnouncements": "Annonces actives",
+        "currentlyActive": "Actives actuellement"
+      },
+      "courseEnrollment": "Inscriptions et achèvements",
+      "completed": "Terminé",
+      "inProgress": "En cours",
+      "noEnrollmentData": "Aucune donnée d'inscription",
+      "scoreDistribution": "Répartition des scores",
+      "noCertificateData": "Aucune donnée de certificat",
+      "topPerformingAgents": "Meilleurs agents",
+      "noAgentActivity": "Aucune activité d'agent",
+      "coursesAndCertificates": "{{courses}} cours • {{certificates}} certificats",
+      "systemStatus": "État du système",
+      "platformStatus": "État de la plateforme",
+      "operational": "Opérationnelle",
+      "totalEnrollments": "Total des inscriptions",
+      "totalAgencies": "Total des agences",
+      "completionRateLabel": "Taux d'achèvement",
+      "avgCertificateScore": "Score moyen des certificats"
+    },
+    "profile": {
+      "title": "Paramètres du profil administrateur",
+      "subtitle": "Gérez les informations et la sécurité du compte administrateur.",
+      "namePlaceholder": "Saisissez votre nom complet"
     }
   }
 }

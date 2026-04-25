@@ -7,8 +7,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Content, Country } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
+import { useTranslation } from 'react-i18next';
 
 export default function AgentCourses() {
+  const { t } = useTranslation();
   const { courses } = useDataStore();
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [defaultInitialized, setDefaultInitialized] = useState(false);
@@ -169,7 +171,7 @@ export default function AgentCourses() {
       <Card className="h-64 flex items-center justify-center">
         <div className="text-center">
           <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No courses available</p>
+          <p className="text-muted-foreground">{t('agent.courses.noCourses')}</p>
         </div>
       </Card>
     );
@@ -182,10 +184,10 @@ export default function AgentCourses() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Courses
+            {t('agent.courses.title')}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Complete your agent training and earn certificates.
+            {t('agent.courses.subtitle')}
           </p>
         </div>
       </div>
@@ -220,7 +222,7 @@ export default function AgentCourses() {
                 <div className="text-center">
                   <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">
-                    No content available for {country.name}
+                    {t('agent.courses.noContent', { country: country.name })}
                   </p>
                 </div>
               </Card>

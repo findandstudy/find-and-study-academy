@@ -6,7 +6,7 @@
   "language": {
     "label": "Dil",
     "select": "Dil seçin",
-    "current": "Geçerli dil: {{name}}"
+    "current": "Aktif dil: {{name}}"
   },
   "common": {
     "save": "Kaydet",
@@ -26,19 +26,22 @@
     "no": "Hayır",
     "confirm": "Onayla",
     "actions": "İşlemler",
-    "optional": "Opsiyonel",
+    "optional": "İsteğe bağlı",
     "required": "Zorunlu",
     "success": "Başarılı",
     "error": "Hata",
-    "warning": "Uyarı"
+    "warning": "Uyarı",
+    "continue": "Devam et",
+    "start": "Başla",
+    "viewAll": "Tümünü gör"
   },
   "toast": {
     "saved": "Ayarlar kaydedildi",
     "savedDescription": "Değişiklikleriniz başarıyla kaydedildi.",
-    "failed": "Kaydedilemedi",
-    "failedDescription": "Değişiklikler kaydedilemedi. Lütfen tekrar deneyin.",
+    "failed": "Kaydetme başarısız",
+    "failedDescription": "Değişiklikleriniz kaydedilemedi. Lütfen tekrar deneyin.",
     "languageChanged": "Dil değiştirildi",
-    "languageChangedDescription": "Arayüz artık {{name}} olarak görüntüleniyor."
+    "languageChangedDescription": "Arayüz artık {{name}} dilinde."
   },
   "auth": {
     "welcomeBack": "Tekrar Hoş Geldiniz",
@@ -48,10 +51,10 @@
     "password": "Şifre",
     "passwordPlaceholder": "Şifrenizi girin",
     "signIn": "Giriş Yap",
-    "newAgent": "Yeni acente?",
+    "newAgent": "Yeni temsilci misiniz?",
     "signUp": "Kayıt Ol",
-    "forgotPassword": "Şifremi unuttum?",
-    "logoutConfirm": "Çıkış yapmak istediğinizden emin misiniz?"
+    "forgotPassword": "Şifremi unuttum",
+    "logoutConfirm": "Çıkış yapmak istediğinize emin misiniz?"
   },
   "nav": {
     "groups": {
@@ -76,7 +79,7 @@
       "examsOrders": "Sınavlar / Siparişler",
       "subscriptions": "Abonelikler",
       "partnerZone": "İş Ortağı Bölgesi",
-      "agentPortal": "Acente Portalı",
+      "agentPortal": "Temsilci Portalı",
       "dormBooking": "Yurt Rezervasyonu",
       "contentCountries": "İçerik / Ülkeler",
       "quizzes": "Sınavlar",
@@ -88,6 +91,167 @@
       "settingsPayments": "Ayarlar / Ödemeler",
       "integrations": "Entegrasyonlar",
       "menuManagement": "Menü Yönetimi"
+    }
+  },
+  "agent": {
+    "dashboard": {
+      "welcome": "Tekrar hoş geldiniz, {{name}}!",
+      "subtitle": "İlerlemenizi takip edin ve temsilci eğitiminize devam edin.",
+      "viewAllAnnouncements": "Tümünü Gör ({{count}})",
+      "announcementsTitle": "Duyurular",
+      "stats": {
+        "coursesInProgress": "Devam Eden Kurslar",
+        "coursesInProgressChange": "{{completed}} tamamlandı • {{active}} aktif",
+        "certificatesEarned": "Kazanılan Sertifikalar",
+        "avgScore": "Ortalama puan: %{{score}}",
+        "completeToEarn": "Sertifika için kursları tamamlayın",
+        "lessonsCompleted": "Tamamlanan Dersler",
+        "acrossCourses": "{{count}} kurs içinde",
+        "startLearning": "Öğrenmeye başlayın",
+        "overallProgress": "Genel İlerleme",
+        "coursesDone": "{{done}}/{{total}} kurs tamamlandı"
+      },
+      "weeklyActivity": "Haftalık Öğrenme Etkinliği",
+      "lessonsSeries": "Tamamlanan Dersler",
+      "courseProgressOverview": "Kurs İlerleme Genel Bakışı",
+      "progressSeries": "İlerleme (%)",
+      "recentActivity": "Son Etkinlik",
+      "certificateEarned": "Sertifika Kazanıldı",
+      "courseProgress": "Kurs İlerlemesi",
+      "lessonsAndPercent": "{{lessons}} ders • %{{percent}} tamamlandı",
+      "noActivity": "Henüz etkinlik yok",
+      "noActivityHint": "Etkinliğinizi görmek için öğrenmeye başlayın",
+      "recentAchievements": "Son Başarılar",
+      "scoreAndDate": "Puan: %{{score}} • {{date}}",
+      "certified": "Sertifikalı",
+      "viewAllCertificates": "Tüm Sertifikaları Görüntüle",
+      "noCertificatesYet": "Henüz sertifika yok",
+      "completeToEarnCerts": "Sertifika kazanmak için kursları tamamlayın",
+      "detailedCourseProgress": "Ayrıntılı Kurs İlerlemesi",
+      "lessonsCompletedSimple": "{{count}} ders tamamlandı"
+    },
+    "profile": {
+      "title": "Profil Ayarları",
+      "subtitle": "Hesap bilgilerinizi ve güvenlik ayarlarınızı yönetin.",
+      "picture": "Profil Fotoğrafı",
+      "uploadHint": "Yeni bir profil fotoğrafı yükleyin",
+      "choosePhoto": "Fotoğraf Seç",
+      "uploading": "Yükleniyor...",
+      "fileLimits": "Maksimum dosya boyutu: 5 MB\nDesteklenen formatlar: JPG, PNG, GIF",
+      "info": "Profil Bilgileri",
+      "fullName": "Ad Soyad",
+      "fullNamePlaceholder": "Ad ve soyadınız",
+      "email": "E-posta Adresi",
+      "emailReadonly": "E-posta değiştirilemez. Gerekirse destekle iletişime geçin.",
+      "update": "Profili Güncelle",
+      "changePassword": "Şifre Değiştir",
+      "currentPassword": "Mevcut Şifre",
+      "currentPasswordPlaceholder": "Mevcut şifreyi girin",
+      "newPassword": "Yeni Şifre",
+      "newPasswordPlaceholder": "Yeni şifreyi girin",
+      "confirmPassword": "Yeni Şifre (Tekrar)",
+      "confirmPasswordPlaceholder": "Yeni şifreyi tekrar girin",
+      "changePasswordButton": "Şifreyi Değiştir",
+      "notifications": "E-posta Bildirim Tercihleri",
+      "emailNotificationsLabel": "E-posta Bildirimleri",
+      "emailNotificationsHint": "Etkinlikleriniz hakkında e-posta bildirimleri alın",
+      "courseCompletionLabel": "Kurs Tamamlama",
+      "courseCompletionHint": "Bir kursu tamamladığınızda bildirim alın",
+      "certificateLabel": "Sertifika Kazanımı",
+      "certificateHint": "Sertifika kazandığınızda bildirim alın",
+      "announcementsLabel": "Duyurular",
+      "announcementsHint": "Önemli duyurular hakkında bildirim alın",
+      "toast": {
+        "profileUpdated": "Profil Güncellendi",
+        "profileUpdatedDescription": "Profiliniz ve bildirim tercihleriniz başarıyla güncellendi.",
+        "passwordMismatch": "Şifreler Eşleşmiyor",
+        "passwordMismatchDescription": "Yeni şifre ile onay birbiriyle eşleşmiyor.",
+        "passwordChanged": "Şifre Değiştirildi",
+        "passwordChangedDescription": "Şifreniz başarıyla güncellendi.",
+        "invalidFileType": "Geçersiz Dosya Türü",
+        "invalidFileTypeDescription": "Lütfen bir görsel dosyası seçin.",
+        "fileTooLarge": "Dosya Çok Büyük",
+        "fileTooLargeDescription": "Lütfen 5 MB'den küçük bir görsel seçin.",
+        "pictureUpdated": "Profil Fotoğrafı Güncellendi",
+        "pictureUpdatedDescription": "Profil fotoğrafınız başarıyla güncellendi.",
+        "uploadFailed": "Yükleme Başarısız",
+        "uploadFailedDescription": "Profil fotoğrafı yüklenemedi. Lütfen tekrar deneyin."
+      }
+    },
+    "courses": {
+      "title": "Kurslar",
+      "subtitle": "Temsilci eğitiminizi tamamlayın ve sertifika kazanın.",
+      "noCourses": "Mevcut kurs bulunmuyor",
+      "noContent": "{{country}} için içerik bulunmuyor"
+    },
+    "certificates": {
+      "title": "Sertifikalarım",
+      "subtitle": "Kazandığınız sertifikaları ve temsilci rozetlerini indirin ve yönetin.",
+      "loading": "Sertifikalar yükleniyor...",
+      "noCertificatesYet": "Henüz sertifika yok",
+      "completeToEarn": "Sertifika kazanmak için kursları tamamlayın",
+      "certified": "Sertifikalı",
+      "courseTitleFallback": "Kurs Adı",
+      "code": "Sertifika Kodu: {{code}}",
+      "score": "Puan: %{{score}}",
+      "pdf": "PDF",
+      "badge": "Rozet",
+      "agentBadge": "Temsilci Rozeti",
+      "certifiedAgent": "Sertifikalı Find And Study Temsilcisi",
+      "downloadAgentBadge": "En son sertifika kodunuzla temsilci rozetinizi indirin",
+      "downloadBadge": "Rozeti İndir",
+      "toast": {
+        "certificateDownloaded": "Sertifika İndirildi",
+        "certificateDownloadedDescription": "Sertifikanız başarıyla indirildi.",
+        "downloadFailed": "İndirme Başarısız",
+        "downloadFailedDescription": "Sertifikanız indirilirken bir hata oluştu.",
+        "userNotFound": "Kullanıcı bilgisi bulunamadı.",
+        "badgeDownloaded": "Rozet İndirildi",
+        "badgeDownloadedDescription": "Temsilci rozetiniz başarıyla indirildi.",
+        "badgeError": "Rozetiniz indirilirken bir hata oluştu."
+      }
+    },
+    "announcements": {
+      "title": "Tüm Duyurular",
+      "subtitle": "En güncel duyurular en üstte gösterilir.",
+      "empty": "Henüz hiçbir duyuru yayınlanmamış."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "welcome": "Tekrar hoş geldiniz, {{name}}!",
+      "subtitle": "Find And Study platformunu yönetin ve temsilci etkinliklerini izleyin.",
+      "stats": {
+        "totalAgents": "Toplam Temsilci",
+        "agenciesRegistered": "{{count}} acente kayıtlı",
+        "certificatesIssued": "Verilen Sertifikalar",
+        "avgScore": "Ortalama puan: %{{score}}",
+        "completionRate": "Kurs Tamamlama Oranı",
+        "completedOfTotal": "{{completed}}/{{total}} tamamlandı",
+        "activeAnnouncements": "Aktif Duyurular",
+        "currentlyActive": "Şu anda aktif"
+      },
+      "courseEnrollment": "Kurs Kayıt ve Tamamlama",
+      "completed": "Tamamlandı",
+      "inProgress": "Devam Ediyor",
+      "noEnrollmentData": "Kayıt verisi bulunmuyor",
+      "scoreDistribution": "Sertifika Puan Dağılımı",
+      "noCertificateData": "Sertifika verisi bulunmuyor",
+      "topPerformingAgents": "En İyi Temsilciler",
+      "noAgentActivity": "Henüz temsilci etkinliği yok",
+      "coursesAndCertificates": "{{courses}} kurs • {{certificates}} sertifika",
+      "systemStatus": "Sistem Durumu",
+      "platformStatus": "Platform Durumu",
+      "operational": "Çalışıyor",
+      "totalEnrollments": "Toplam Kayıt",
+      "totalAgencies": "Toplam Acente",
+      "completionRateLabel": "Tamamlama Oranı",
+      "avgCertificateScore": "Ortalama Sertifika Puanı"
+    },
+    "profile": {
+      "title": "Yönetici Profil Ayarları",
+      "subtitle": "Yönetici hesabınızı ve güvenlik ayarlarınızı yönetin.",
+      "namePlaceholder": "Ad ve soyadınızı girin"
     }
   }
 }

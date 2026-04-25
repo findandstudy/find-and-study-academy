@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Find And Study",
-    "tagline": "Consultoría educativa"
+    "tagline": "Asesoría educativa"
   },
   "language": {
     "label": "Idioma",
@@ -30,12 +30,15 @@
     "required": "Obligatorio",
     "success": "Éxito",
     "error": "Error",
-    "warning": "Aviso"
+    "warning": "Advertencia",
+    "continue": "Continuar",
+    "start": "Comenzar",
+    "viewAll": "Ver todo"
   },
   "toast": {
-    "saved": "Ajustes guardados",
+    "saved": "Configuración guardada",
     "savedDescription": "Tus cambios se han guardado correctamente.",
-    "failed": "No se pudo guardar",
+    "failed": "Error al guardar",
     "failedDescription": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
     "languageChanged": "Idioma cambiado",
     "languageChangedDescription": "La interfaz ahora está en {{name}}."
@@ -44,13 +47,13 @@
     "welcomeBack": "Bienvenido de nuevo",
     "signInSubtitle": "Inicia sesión en tu cuenta de Find And Study",
     "email": "Correo electrónico",
-    "emailPlaceholder": "Introduce tu correo electrónico",
+    "emailPlaceholder": "Introduce tu correo",
     "password": "Contraseña",
     "passwordPlaceholder": "Introduce tu contraseña",
     "signIn": "Iniciar sesión",
     "newAgent": "¿Nuevo agente?",
     "signUp": "Registrarse",
-    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPassword": "¿Olvidaste la contraseña?",
     "logoutConfirm": "¿Seguro que quieres cerrar sesión?"
   },
   "nav": {
@@ -87,7 +90,168 @@
       "findyAi": "Findy AI",
       "settingsPayments": "Ajustes / Pagos",
       "integrations": "Integraciones",
-      "menuManagement": "Gestión de menú"
+      "menuManagement": "Gestión del menú"
+    }
+  },
+  "agent": {
+    "dashboard": {
+      "welcome": "Bienvenido de nuevo, {{name}}!",
+      "subtitle": "Sigue tu progreso y continúa tu formación de agente.",
+      "viewAllAnnouncements": "Ver todos ({{count}})",
+      "announcementsTitle": "Anuncios",
+      "stats": {
+        "coursesInProgress": "Cursos en curso",
+        "coursesInProgressChange": "{{completed}} completados • {{active}} activos",
+        "certificatesEarned": "Certificados obtenidos",
+        "avgScore": "Puntuación media: {{score}}%",
+        "completeToEarn": "Completa cursos para obtener certificados",
+        "lessonsCompleted": "Lecciones completadas",
+        "acrossCourses": "En {{count}} cursos",
+        "startLearning": "Empezar a aprender",
+        "overallProgress": "Progreso general",
+        "coursesDone": "{{done}}/{{total}} cursos completados"
+      },
+      "weeklyActivity": "Actividad semanal de aprendizaje",
+      "lessonsSeries": "Lecciones completadas",
+      "courseProgressOverview": "Resumen del progreso de cursos",
+      "progressSeries": "Progreso (%)",
+      "recentActivity": "Actividad reciente",
+      "certificateEarned": "Certificado obtenido",
+      "courseProgress": "Progreso del curso",
+      "lessonsAndPercent": "{{lessons}} lecciones • {{percent}}% completado",
+      "noActivity": "Sin actividad reciente",
+      "noActivityHint": "Empieza a aprender para ver tu actividad aquí",
+      "recentAchievements": "Logros recientes",
+      "scoreAndDate": "Puntuación: {{score}}% • {{date}}",
+      "certified": "Certificado",
+      "viewAllCertificates": "Ver todos los certificados",
+      "noCertificatesYet": "Aún no hay certificados",
+      "completeToEarnCerts": "Completa cursos para obtener certificados",
+      "detailedCourseProgress": "Progreso detallado del curso",
+      "lessonsCompletedSimple": "{{count}} lecciones completadas"
+    },
+    "profile": {
+      "title": "Ajustes del perfil",
+      "subtitle": "Gestiona la información de tu cuenta y la seguridad.",
+      "picture": "Foto de perfil",
+      "uploadHint": "Sube una nueva foto de perfil",
+      "choosePhoto": "Elegir foto",
+      "uploading": "Subiendo...",
+      "fileLimits": "Tamaño máximo: 5 MB\nFormatos compatibles: JPG, PNG, GIF",
+      "info": "Información del perfil",
+      "fullName": "Nombre completo",
+      "fullNamePlaceholder": "Tu nombre completo",
+      "email": "Correo electrónico",
+      "emailReadonly": "El correo no se puede cambiar. Contacta con soporte si lo necesitas.",
+      "update": "Actualizar perfil",
+      "changePassword": "Cambiar contraseña",
+      "currentPassword": "Contraseña actual",
+      "currentPasswordPlaceholder": "Introduce la contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "newPasswordPlaceholder": "Introduce la nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "confirmPasswordPlaceholder": "Confirma la nueva contraseña",
+      "changePasswordButton": "Cambiar contraseña",
+      "notifications": "Preferencias de notificaciones por correo",
+      "emailNotificationsLabel": "Notificaciones por correo",
+      "emailNotificationsHint": "Recibe notificaciones sobre tus actividades",
+      "courseCompletionLabel": "Finalización del curso",
+      "courseCompletionHint": "Recibe una notificación cuando completes un curso",
+      "certificateLabel": "Obtención de certificado",
+      "certificateHint": "Recibe una notificación cuando obtengas un certificado",
+      "announcementsLabel": "Anuncios",
+      "announcementsHint": "Recibe notificaciones de anuncios importantes",
+      "toast": {
+        "profileUpdated": "Perfil actualizado",
+        "profileUpdatedDescription": "Tu perfil y preferencias de notificaciones se actualizaron correctamente.",
+        "passwordMismatch": "Las contraseñas no coinciden",
+        "passwordMismatchDescription": "La nueva contraseña y la confirmación no coinciden.",
+        "passwordChanged": "Contraseña cambiada",
+        "passwordChangedDescription": "Tu contraseña se actualizó correctamente.",
+        "invalidFileType": "Tipo de archivo no válido",
+        "invalidFileTypeDescription": "Por favor selecciona un archivo de imagen.",
+        "fileTooLarge": "Archivo demasiado grande",
+        "fileTooLargeDescription": "Selecciona una imagen de menos de 5 MB.",
+        "pictureUpdated": "Foto de perfil actualizada",
+        "pictureUpdatedDescription": "Tu foto de perfil se actualizó correctamente.",
+        "uploadFailed": "Error al subir",
+        "uploadFailedDescription": "No se pudo subir la foto. Inténtalo de nuevo."
+      }
+    },
+    "courses": {
+      "title": "Cursos",
+      "subtitle": "Completa tu formación de agente y obtén certificados.",
+      "noCourses": "No hay cursos disponibles",
+      "noContent": "No hay contenido disponible para {{country}}"
+    },
+    "certificates": {
+      "title": "Mis certificados",
+      "subtitle": "Descarga y gestiona tus certificados e insignias de agente.",
+      "loading": "Cargando certificados...",
+      "noCertificatesYet": "Aún no hay certificados",
+      "completeToEarn": "Completa cursos para obtener certificados",
+      "certified": "Certificado",
+      "courseTitleFallback": "Título del curso",
+      "code": "Código de certificado: {{code}}",
+      "score": "Puntuación: {{score}}%",
+      "pdf": "PDF",
+      "badge": "Insignia",
+      "agentBadge": "Insignia de agente",
+      "certifiedAgent": "Agente certificado de Find And Study",
+      "downloadAgentBadge": "Descarga tu insignia de agente con el último código de certificado",
+      "downloadBadge": "Descargar insignia",
+      "toast": {
+        "certificateDownloaded": "Certificado descargado",
+        "certificateDownloadedDescription": "Tu certificado se ha descargado correctamente.",
+        "downloadFailed": "Error al descargar",
+        "downloadFailedDescription": "Hubo un error al descargar tu certificado.",
+        "userNotFound": "No se encontró información del usuario.",
+        "badgeDownloaded": "Insignia descargada",
+        "badgeDownloadedDescription": "Tu insignia de agente se ha descargado correctamente.",
+        "badgeError": "Hubo un error al descargar tu insignia."
+      }
+    },
+    "announcements": {
+      "title": "Todos los anuncios",
+      "subtitle": "Los anuncios más recientes aparecen arriba.",
+      "empty": "Aún no se ha publicado ningún anuncio."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "welcome": "Bienvenido de nuevo, {{name}}!",
+      "subtitle": "Gestiona la plataforma Find And Study y supervisa la actividad de los agentes.",
+      "stats": {
+        "totalAgents": "Total de agentes",
+        "agenciesRegistered": "{{count}} agencias registradas",
+        "certificatesIssued": "Certificados emitidos",
+        "avgScore": "Puntuación media: {{score}}%",
+        "completionRate": "Tasa de finalización de cursos",
+        "completedOfTotal": "{{completed}}/{{total}} completados",
+        "activeAnnouncements": "Anuncios activos",
+        "currentlyActive": "Activos ahora"
+      },
+      "courseEnrollment": "Inscripciones y finalización de cursos",
+      "completed": "Completado",
+      "inProgress": "En curso",
+      "noEnrollmentData": "No hay datos de inscripción",
+      "scoreDistribution": "Distribución de puntuaciones",
+      "noCertificateData": "No hay datos de certificados",
+      "topPerformingAgents": "Mejores agentes",
+      "noAgentActivity": "Aún no hay actividad de agentes",
+      "coursesAndCertificates": "{{courses}} cursos • {{certificates}} certificados",
+      "systemStatus": "Estado del sistema",
+      "platformStatus": "Estado de la plataforma",
+      "operational": "Operativa",
+      "totalEnrollments": "Total de inscripciones",
+      "totalAgencies": "Total de agencias",
+      "completionRateLabel": "Tasa de finalización",
+      "avgCertificateScore": "Puntuación media de certificados"
+    },
+    "profile": {
+      "title": "Ajustes del perfil de administrador",
+      "subtitle": "Gestiona la información del administrador y la seguridad.",
+      "namePlaceholder": "Introduce tu nombre completo"
     }
   }
 }

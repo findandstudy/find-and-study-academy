@@ -7,8 +7,10 @@ import { generateCertificatePDF, generateBadgePNG } from '@/lib/pdf';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Award, Download, FileDown, Calendar, TrendingUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AgentCertificates() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { courses, agencies } = useDataStore();
   const { toast } = useToast();
@@ -75,14 +77,14 @@ export default function AgentCertificates() {
         certificate.agency || null
       );
       toast({
-        title: 'Certificate Downloaded',
-        description: 'Your certificate has been downloaded successfully.'
+        title: t('agent.certificates.toast.certificateDownloaded'),
+        description: t('agent.certificates.toast.certificateDownloadedDescription')
       });
     } catch (error) {
       console.error('Certificate PDF generation error:', error);
       toast({
-        title: 'Download Failed',
-        description: error instanceof Error ? error.message : 'There was an error downloading your certificate.',
+        title: t('agent.certificates.toast.downloadFailed'),
+        description: error instanceof Error ? error.message : t('agent.certificates.toast.downloadFailedDescription'),
         variant: 'destructive'
       });
     }
@@ -91,8 +93,8 @@ export default function AgentCertificates() {
   const downloadBadge = (certificateCode?: string) => {
     if (!user) {
       toast({
-        title: 'Download Failed',
-        description: 'User information not found.',
+        title: t('agent.certificates.toast.downloadFailed'),
+        description: t('agent.certificates.toast.userNotFound'),
         variant: 'destructive'
       });
       return;
@@ -102,14 +104,14 @@ export default function AgentCertificates() {
       // Badge generation doesn't need course information, just user and code
       generateBadgePNG(user, certificateCode || 'FAS-AGENT');
       toast({
-        title: 'Badge Downloaded',
-        description: 'Your agent badge has been downloaded successfully.'
+        title: t('agent.certificates.toast.badgeDownloaded'),
+        description: t('agent.certificates.toast.badgeDownloadedDescription')
       });
     } catch (error) {
       console.error('Badge generation error:', error);
       toast({
-        title: 'Download Failed',
-        description: error instanceof Error ? error.message : 'There was an error downloading your badge.',
+        title: t('agent.certificates.toast.downloadFailed'),
+        description: error instanceof Error ? error.message : t('agent.certificates.toast.badgeError'),
         variant: 'destructive'
       });
     }
@@ -122,10 +124,10 @@ export default function AgentCertificates() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            My Certificates
+            {t('agent.certificates.title')}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Download and manage your earned certificates and agent badges.
+            {t('agent.certificates.subtitle')}
           </p>
         </div>
       </div>
@@ -134,15 +136,15 @@ export default function AgentCertificates() {
         <Card className="h-64 flex items-center justify-center">
           <div className="text-center">
             <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
-            <p className="text-muted-foreground">Loading certificates...</p>
+            <p className="text-muted-foreground">{t('agent.certificates.loading')}</p>
           </div>
         </Card>
       ) : userCertificates.length === 0 ? (
         <Card className="h-64 flex items-center justify-center">
           <div className="text-center">
             <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-2">No certificates yet</p>
-            <p className="text-sm text-muted-foreground">Complete courses to earn certificates</p>
+            <p className="text-muted-foreground mb-2">{t('agent.certificates.noCertificatesYet')}</p>
+            <p className="text-sm text-muted-foreground">{t('agent.certificates.completeToEarn')}</p>
           </div>
         </Card>
       ) : (
@@ -157,21 +159,21 @@ export default function AgentCertificates() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <Award className="w-8 h-8 text-primary" />
-                      <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Certified</Badge>
+                      <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{t('agent.certificates.certified')}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <h3 className="font-semibold">{course?.title || 'Course Title'}</h3>
+                      <h3 className="font-semibold">{course?.title || t('agent.certificates.courseTitleFallback')}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Certificate Code: {certificate.code}
+                        {t('agent.certificates.code', { code: certificate.code })}
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center text-muted-foreground">
                         <TrendingUp className="w-4 h-4 mr-1" />
-                        Score: {certificate.scorePercent}%
+                        {t('agent.certificates.score', { score: certificate.scorePercent })}
                       </div>
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="w-4 h-4 mr-1" />
@@ -186,7 +188,7 @@ export default function AgentCertificates() {
                         data-testid={`button-download-cert-${certificate.id}`}
                       >
                         <Download className="w-4 h-4 mr-1" />
-                        PDF
+                        {t('agent.certificates.pdf')}
                       </Button>
                       <Button
                         size="sm"
@@ -195,7 +197,7 @@ export default function AgentCertificates() {
                         data-testid={`button-download-badge-${certificate.id}`}
                       >
                         <FileDown className="w-4 h-4 mr-1" />
-                        Badge
+                        {t('agent.certificates.badge')}
                       </Button>
                     </div>
                   </CardContent>
@@ -207,14 +209,14 @@ export default function AgentCertificates() {
           {/* Agent Badge Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Agent Badge</CardTitle>
+              <CardTitle>{t('agent.certificates.agentBadge')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Certified Find And Study Agent</p>
+                  <p className="font-medium">{t('agent.certificates.certifiedAgent')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Download your agent badge with your latest certificate code
+                    {t('agent.certificates.downloadAgentBadge')}
                   </p>
                 </div>
                 <Button 
@@ -222,7 +224,7 @@ export default function AgentCertificates() {
                   data-testid="button-download-agent-badge"
                 >
                   <FileDown className="w-4 h-4 mr-2" />
-                  Download Badge
+                  {t('agent.certificates.downloadBadge')}
                 </Button>
               </div>
             </CardContent>

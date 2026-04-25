@@ -7,8 +7,10 @@ import { Users, Award, Building, Megaphone, TrendingUp, BookOpen, Target } from 
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { users, certificates, agencies, announcements, progresses, courses } = useDataStore();
 
@@ -35,34 +37,38 @@ export default function AdminDashboard() {
 
   const stats = [
     {
-      title: 'Total Agents',
+      key: 'total-agents',
+      title: t('admin.dashboard.stats.totalAgents'),
       value: totalAgents,
       icon: Users,
-      change: `${agencies.length} agencies registered`,
+      change: t('admin.dashboard.stats.agenciesRegistered', { count: agencies.length }),
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: 'Certificates Issued',
+      key: 'certificates-issued',
+      title: t('admin.dashboard.stats.certificatesIssued'),
       value: totalCertificates,
       icon: Award,
-      change: `Avg score: ${avgCertificateScore}%`,
+      change: t('admin.dashboard.stats.avgScore', { score: avgCertificateScore }),
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10'
     },
     {
-      title: 'Course Completion Rate',
+      key: 'completion-rate',
+      title: t('admin.dashboard.stats.completionRate'),
       value: `${completionRate}%`,
       icon: Target,
-      change: `${completedCourses}/${totalEnrollments} completed`,
+      change: t('admin.dashboard.stats.completedOfTotal', { completed: completedCourses, total: totalEnrollments }),
       color: 'text-green-500',
       bgColor: 'bg-green-500/10'
     },
     {
-      title: 'Active Announcements',
+      key: 'active-announcements',
+      title: t('admin.dashboard.stats.activeAnnouncements'),
       value: activeAnnouncements.length,
       icon: Megaphone,
-      change: 'Currently active',
+      change: t('admin.dashboard.stats.currentlyActive'),
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10'
     }
@@ -122,23 +128,23 @@ export default function AdminDashboard() {
             </AvatarFallback>
           </Avatar>
           <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, {user?.name}!
+            {t('admin.dashboard.welcome', { name: user?.name })}
           </h1>
         </div>
         <p className="text-muted-foreground mt-1">
-          Manage the Find And Study platform and monitor agent activities.
+          {t('admin.dashboard.subtitle')}
         </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="hover-elevate" data-testid={`card-admin-stat-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+          <Card key={stat.key} className="hover-elevate" data-testid={`card-admin-stat-${stat.key}`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid={`text-admin-stat-value-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <p className="text-2xl font-bold text-foreground" data-testid={`text-admin-stat-value-${stat.key}`}>
                     {stat.value}
                   </p>
                 </div>
@@ -159,7 +165,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
-              Course Enrollment & Completion
+              {t('admin.dashboard.courseEnrollment')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -176,13 +182,13 @@ export default function AdminDashboard() {
                       borderRadius: '8px'
                     }}
                   />
-                  <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name="Completed" />
-                  <Bar dataKey="inProgress" stackId="a" fill="hsl(var(--chart-2))" name="In Progress" />
+                  <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name={t('admin.dashboard.completed')} />
+                  <Bar dataKey="inProgress" stackId="a" fill="hsl(var(--chart-2))" name={t('admin.dashboard.inProgress')} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No enrollment data available
+                {t('admin.dashboard.noEnrollmentData')}
               </div>
             )}
           </CardContent>
@@ -193,7 +199,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
-              Certificate Score Distribution
+              {t('admin.dashboard.scoreDistribution')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -219,7 +225,7 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                No certificate data available
+                {t('admin.dashboard.noCertificateData')}
               </div>
             )}
           </CardContent>
@@ -233,7 +239,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              Top Performing Agents
+              {t('admin.dashboard.topPerformingAgents')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -249,7 +255,7 @@ export default function AdminDashboard() {
                     <div>
                       <p className="font-medium">{agent.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {agent.enrolled} courses • {agent.certificates} certificates
+                        {t('admin.dashboard.coursesAndCertificates', { courses: agent.enrolled, certificates: agent.certificates })}
                       </p>
                     </div>
                   </div>
@@ -258,7 +264,7 @@ export default function AdminDashboard() {
               ))}
               {agentProgressData.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No agent activity yet
+                  {t('admin.dashboard.noAgentActivity')}
                 </div>
               )}
             </div>
@@ -268,31 +274,31 @@ export default function AdminDashboard() {
         {/* System Status */}
         <Card>
           <CardHeader>
-            <CardTitle>System Status</CardTitle>
+            <CardTitle>{t('admin.dashboard.systemStatus')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span>Platform Status</span>
+              <span>{t('admin.dashboard.platformStatus')}</span>
               <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-                Operational
+                {t('admin.dashboard.operational')}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Total Enrollments</span>
+              <span>{t('admin.dashboard.totalEnrollments')}</span>
               <Badge variant="secondary">{totalEnrollments}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Total Agencies</span>
+              <span>{t('admin.dashboard.totalAgencies')}</span>
               <Badge variant="secondary">{agencies.length}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Completion Rate</span>
+              <span>{t('admin.dashboard.completionRateLabel')}</span>
               <Badge variant={completionRate >= 70 ? 'default' : 'secondary'}>
                 {completionRate}%
               </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Avg Certificate Score</span>
+              <span>{t('admin.dashboard.avgCertificateScore')}</span>
               <Badge variant={avgCertificateScore >= 80 ? 'default' : 'secondary'}>
                 {avgCertificateScore}%
               </Badge>

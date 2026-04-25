@@ -13,9 +13,11 @@ import { announcementTypeStyles, announcementPriorityVariants } from '@/lib/anno
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { Announcement } from '@/types';
 
 export default function AgentDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { courses } = useDataStore(); // Only get courses from localStorage (static data)
   
@@ -72,34 +74,38 @@ export default function AgentDashboard() {
   
   const stats = [
     {
-      title: 'Courses in Progress',
+      key: 'courses-in-progress',
+      title: t('agent.dashboard.stats.coursesInProgress'),
       value: enrolledCourses,
       icon: BookOpen,
-      change: `${completedCourses} completed • ${inProgressCourses} active`,
+      change: t('agent.dashboard.stats.coursesInProgressChange', { completed: completedCourses, active: inProgressCourses }),
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: 'Certificates Earned',
+      key: 'certificates-earned',
+      title: t('agent.dashboard.stats.certificatesEarned'),
       value: userCertificates.length,
       icon: Award,
-      change: avgScore > 0 ? `Avg score: ${avgScore}%` : 'Complete courses to earn',
+      change: avgScore > 0 ? t('agent.dashboard.stats.avgScore', { score: avgScore }) : t('agent.dashboard.stats.completeToEarn'),
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10'
     },
     {
-      title: 'Lessons Completed',
+      key: 'lessons-completed',
+      title: t('agent.dashboard.stats.lessonsCompleted'),
       value: totalLessonsCompleted,
       icon: CheckCircle2,
-      change: enrolledCourses > 0 ? `Across ${enrolledCourses} courses` : 'Start learning',
+      change: enrolledCourses > 0 ? t('agent.dashboard.stats.acrossCourses', { count: enrolledCourses }) : t('agent.dashboard.stats.startLearning'),
       color: 'text-green-500',
       bgColor: 'bg-green-500/10'
     },
     {
-      title: 'Overall Progress',
+      key: 'overall-progress',
+      title: t('agent.dashboard.stats.overallProgress'),
       value: enrolledCourses > 0 ? `${Math.round(userProgress.reduce((sum, p) => sum + p.percent, 0) / enrolledCourses)}%` : '0%',
       icon: TrendingUp,
-      change: `${completedCourses}/${enrolledCourses} courses done`,
+      change: t('agent.dashboard.stats.coursesDone', { done: completedCourses, total: enrolledCourses }),
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10'
     }
@@ -136,11 +142,11 @@ export default function AgentDashboard() {
             </AvatarFallback>
           </Avatar>
           <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, {user?.name}!
+            {t('agent.dashboard.welcome', { name: user?.name })}
           </h1>
         </div>
         <p className="text-muted-foreground mt-1">
-          Track your progress and continue your agent training journey.
+          {t('agent.dashboard.subtitle')}
         </p>
       </div>
 
@@ -150,11 +156,11 @@ export default function AgentDashboard() {
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" data-testid="icon-announcements" />
-              <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">Duyurular</h2>
+              <h2 className="text-lg font-semibold text-foreground" data-testid="heading-announcements">{t('agent.dashboard.announcementsTitle')}</h2>
             </div>
             <Link href="/agent/announcements">
               <Button variant="ghost" size="sm" data-testid="button-view-all-announcements">
-                Tümünü Gör ({activeAnnouncements.length})
+                {t('agent.dashboard.viewAllAnnouncements', { count: activeAnnouncements.length })}
               </Button>
             </Link>
           </div>
@@ -201,12 +207,12 @@ export default function AgentDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="hover-elevate" data-testid={`card-stat-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+          <Card key={stat.key} className="hover-elevate" data-testid={`card-stat-${stat.key}`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid={`text-stat-value-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <p className="text-2xl font-bold text-foreground" data-testid={`text-stat-value-${stat.key}`}>
                     {stat.value}
                   </p>
                 </div>
@@ -227,7 +233,7 @@ export default function AgentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              Weekly Learning Activity
+              {t('agent.dashboard.weeklyActivity')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -249,7 +255,7 @@ export default function AgentDashboard() {
                   stroke="hsl(var(--primary))" 
                   fill="hsl(var(--primary))" 
                   fillOpacity={0.6}
-                  name="Lessons Completed"
+                  name={t('agent.dashboard.lessonsSeries')}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -261,7 +267,7 @@ export default function AgentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
-              Course Progress Overview
+              {t('agent.dashboard.courseProgressOverview')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -281,7 +287,7 @@ export default function AgentDashboard() {
                   dataKey="progress" 
                   fill="hsl(var(--primary))" 
                   radius={[8, 8, 0, 0]}
-                  name="Progress (%)"
+                  name={t('agent.dashboard.progressSeries')}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -296,7 +302,7 @@ export default function AgentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              Recent Activity
+              {t('agent.dashboard.recentActivity')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -312,7 +318,7 @@ export default function AgentDashboard() {
                       {index < 2 && <div className="w-px h-full bg-border mt-2" />}
                     </div>
                     <div className="flex-1 pb-4">
-                      <p className="font-medium text-sm">Certificate Earned</p>
+                      <p className="font-medium text-sm">{t('agent.dashboard.certificateEarned')}</p>
                       <p className="text-sm text-muted-foreground">{course?.title}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {dayjs(cert.issuedAt).format('MMM D, YYYY • h:mm A')}
@@ -332,10 +338,10 @@ export default function AgentDashboard() {
                       {index < 1 && <div className="w-px h-full bg-border mt-2" />}
                     </div>
                     <div className="flex-1 pb-4">
-                      <p className="font-medium text-sm">Course Progress</p>
+                      <p className="font-medium text-sm">{t('agent.dashboard.courseProgress')}</p>
                       <p className="text-sm text-muted-foreground">{course?.title}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {progress.lessonCompletedIds.length} lessons • {progress.percent}% complete
+                        {t('agent.dashboard.lessonsAndPercent', { lessons: progress.lessonCompletedIds.length, percent: progress.percent })}
                       </p>
                     </div>
                   </div>
@@ -344,8 +350,8 @@ export default function AgentDashboard() {
               {userCertificates.length === 0 && userProgress.length === 0 && (
                 <div className="text-center py-8">
                   <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No recent activity</p>
-                  <p className="text-sm text-muted-foreground">Start learning to see your activity here</p>
+                  <p className="text-muted-foreground">{t('agent.dashboard.noActivity')}</p>
+                  <p className="text-sm text-muted-foreground">{t('agent.dashboard.noActivityHint')}</p>
                 </div>
               )}
             </div>
@@ -357,7 +363,7 @@ export default function AgentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
-              Recent Achievements
+              {t('agent.dashboard.recentAchievements')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -370,24 +376,24 @@ export default function AgentDashboard() {
                       <div>
                         <p className="font-medium">{course?.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          Score: {cert.scorePercent}% • {dayjs(cert.issuedAt).format('MMM D, YYYY')}
+                          {t('agent.dashboard.scoreAndDate', { score: cert.scorePercent, date: dayjs(cert.issuedAt).format('MMM D, YYYY') })}
                         </p>
                       </div>
-                      <Badge variant="default">Certified</Badge>
+                      <Badge variant="default">{t('agent.dashboard.certified')}</Badge>
                     </div>
                   );
                 })}
                 <Link href="/agent/certificates">
                   <Button variant="outline" className="w-full mt-2" data-testid="button-view-all-certificates">
-                    View All Certificates
+                    {t('agent.dashboard.viewAllCertificates')}
                   </Button>
                 </Link>
               </div>
             ) : (
               <div className="text-center py-8">
                 <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No certificates yet</p>
-                <p className="text-sm text-muted-foreground">Complete courses to earn certificates</p>
+                <p className="text-muted-foreground">{t('agent.dashboard.noCertificatesYet')}</p>
+                <p className="text-sm text-muted-foreground">{t('agent.dashboard.completeToEarnCerts')}</p>
               </div>
             )}
           </CardContent>
@@ -399,7 +405,7 @@ export default function AgentDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5" />
-            Detailed Course Progress
+            {t('agent.dashboard.detailedCourseProgress')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -418,11 +424,11 @@ export default function AgentDashboard() {
                 <Progress value={progressPercent} className="h-2" />
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
-                    {progress?.lessonCompletedIds.length || 0} lessons completed
+                    {t('agent.dashboard.lessonsCompletedSimple', { count: progress?.lessonCompletedIds.length || 0 })}
                   </span>
                   <Link href="/agent/courses">
                     <Button size="sm" variant="outline" data-testid={`button-view-course-${course.id}`}>
-                      {progressPercent > 0 ? 'Continue' : 'Start'}
+                      {progressPercent > 0 ? t('common.continue') : t('common.start')}
                     </Button>
                   </Link>
                 </div>

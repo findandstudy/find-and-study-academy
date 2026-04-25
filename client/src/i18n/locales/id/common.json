@@ -16,7 +16,7 @@
     "edit": "Ubah",
     "close": "Tutup",
     "back": "Kembali",
-    "next": "Lanjut",
+    "next": "Berikutnya",
     "submit": "Kirim",
     "search": "Cari",
     "loading": "Memuat...",
@@ -30,7 +30,10 @@
     "required": "Wajib",
     "success": "Berhasil",
     "error": "Kesalahan",
-    "warning": "Peringatan"
+    "warning": "Peringatan",
+    "continue": "Lanjutkan",
+    "start": "Mulai",
+    "viewAll": "Lihat semua"
   },
   "toast": {
     "saved": "Pengaturan disimpan",
@@ -38,7 +41,7 @@
     "failed": "Gagal menyimpan",
     "failedDescription": "Tidak dapat menyimpan perubahan. Silakan coba lagi.",
     "languageChanged": "Bahasa diubah",
-    "languageChangedDescription": "Antarmuka sekarang dalam {{name}}."
+    "languageChangedDescription": "Antarmuka kini dalam {{name}}."
   },
   "auth": {
     "welcomeBack": "Selamat Datang Kembali",
@@ -46,18 +49,18 @@
     "email": "Email",
     "emailPlaceholder": "Masukkan email Anda",
     "password": "Kata sandi",
-    "passwordPlaceholder": "Masukkan kata sandi Anda",
+    "passwordPlaceholder": "Masukkan kata sandi",
     "signIn": "Masuk",
     "newAgent": "Agen baru?",
     "signUp": "Daftar",
     "forgotPassword": "Lupa kata sandi?",
-    "logoutConfirm": "Yakin ingin keluar?"
+    "logoutConfirm": "Apakah Anda yakin ingin keluar?"
   },
   "nav": {
     "groups": {
       "general": "Umum",
       "education": "Pendidikan",
-      "agency": "Agen",
+      "agency": "Agensi",
       "services": "Layanan",
       "links": "Tautan",
       "content": "Konten",
@@ -72,7 +75,7 @@
       "courses": "Kursus",
       "certificates": "Sertifikat",
       "leaderboard": "Papan Peringkat",
-      "myAgency": "Agen Saya",
+      "myAgency": "Agensi Saya",
       "examsOrders": "Ujian / Pesanan",
       "subscriptions": "Langganan",
       "partnerZone": "Zona Mitra",
@@ -80,7 +83,7 @@
       "dormBooking": "Pemesanan Asrama",
       "contentCountries": "Konten / Negara",
       "quizzes": "Kuis",
-      "agencies": "Agen",
+      "agencies": "Agensi",
       "users": "Pengguna",
       "reports": "Laporan",
       "popups": "Iklan Pop-up",
@@ -88,6 +91,167 @@
       "settingsPayments": "Pengaturan / Pembayaran",
       "integrations": "Integrasi",
       "menuManagement": "Manajemen Menu"
+    }
+  },
+  "agent": {
+    "dashboard": {
+      "welcome": "Selamat datang kembali, {{name}}!",
+      "subtitle": "Pantau perkembangan dan lanjutkan pelatihan agen Anda.",
+      "viewAllAnnouncements": "Lihat semua ({{count}})",
+      "announcementsTitle": "Pengumuman",
+      "stats": {
+        "coursesInProgress": "Kursus Berjalan",
+        "coursesInProgressChange": "{{completed}} selesai • {{active}} aktif",
+        "certificatesEarned": "Sertifikat Diperoleh",
+        "avgScore": "Rata-rata: {{score}}%",
+        "completeToEarn": "Selesaikan kursus untuk memperoleh sertifikat",
+        "lessonsCompleted": "Pelajaran Selesai",
+        "acrossCourses": "Tersebar di {{count}} kursus",
+        "startLearning": "Mulai belajar",
+        "overallProgress": "Total Kemajuan",
+        "coursesDone": "{{done}}/{{total}} kursus selesai"
+      },
+      "weeklyActivity": "Aktivitas Belajar Mingguan",
+      "lessonsSeries": "Pelajaran Selesai",
+      "courseProgressOverview": "Ikhtisar Kemajuan Kursus",
+      "progressSeries": "Kemajuan (%)",
+      "recentActivity": "Aktivitas Terbaru",
+      "certificateEarned": "Sertifikat Diperoleh",
+      "courseProgress": "Kemajuan Kursus",
+      "lessonsAndPercent": "{{lessons}} pelajaran • {{percent}}% selesai",
+      "noActivity": "Belum ada aktivitas",
+      "noActivityHint": "Mulai belajar untuk melihat aktivitas Anda di sini",
+      "recentAchievements": "Pencapaian Terbaru",
+      "scoreAndDate": "Skor: {{score}}% • {{date}}",
+      "certified": "Tersertifikasi",
+      "viewAllCertificates": "Lihat Semua Sertifikat",
+      "noCertificatesYet": "Belum ada sertifikat",
+      "completeToEarnCerts": "Selesaikan kursus untuk memperoleh sertifikat",
+      "detailedCourseProgress": "Detail Kemajuan Kursus",
+      "lessonsCompletedSimple": "{{count}} pelajaran selesai"
+    },
+    "profile": {
+      "title": "Pengaturan Profil",
+      "subtitle": "Kelola informasi akun dan pengaturan keamanan Anda.",
+      "picture": "Foto Profil",
+      "uploadHint": "Unggah foto profil baru",
+      "choosePhoto": "Pilih Foto",
+      "uploading": "Mengunggah...",
+      "fileLimits": "Ukuran maksimum: 5MB\nFormat didukung: JPG, PNG, GIF",
+      "info": "Informasi Profil",
+      "fullName": "Nama Lengkap",
+      "fullNamePlaceholder": "Nama lengkap Anda",
+      "email": "Alamat Email",
+      "emailReadonly": "Email tidak dapat diubah. Hubungi dukungan jika perlu.",
+      "update": "Perbarui Profil",
+      "changePassword": "Ubah Kata Sandi",
+      "currentPassword": "Kata Sandi Saat Ini",
+      "currentPasswordPlaceholder": "Masukkan kata sandi saat ini",
+      "newPassword": "Kata Sandi Baru",
+      "newPasswordPlaceholder": "Masukkan kata sandi baru",
+      "confirmPassword": "Konfirmasi Kata Sandi Baru",
+      "confirmPasswordPlaceholder": "Konfirmasi kata sandi baru",
+      "changePasswordButton": "Ubah Kata Sandi",
+      "notifications": "Preferensi Notifikasi Email",
+      "emailNotificationsLabel": "Notifikasi Email",
+      "emailNotificationsHint": "Terima notifikasi email tentang aktivitas Anda",
+      "courseCompletionLabel": "Penyelesaian Kursus",
+      "courseCompletionHint": "Dapatkan notifikasi saat menyelesaikan kursus",
+      "certificateLabel": "Sertifikat Diperoleh",
+      "certificateHint": "Dapatkan notifikasi saat memperoleh sertifikat",
+      "announcementsLabel": "Pengumuman",
+      "announcementsHint": "Dapatkan notifikasi pengumuman penting",
+      "toast": {
+        "profileUpdated": "Profil Diperbarui",
+        "profileUpdatedDescription": "Profil dan preferensi notifikasi Anda berhasil diperbarui.",
+        "passwordMismatch": "Kata Sandi Tidak Cocok",
+        "passwordMismatchDescription": "Kata sandi baru dan konfirmasinya tidak cocok.",
+        "passwordChanged": "Kata Sandi Diubah",
+        "passwordChangedDescription": "Kata sandi Anda berhasil diperbarui.",
+        "invalidFileType": "Jenis Berkas Tidak Valid",
+        "invalidFileTypeDescription": "Silakan pilih berkas gambar.",
+        "fileTooLarge": "Berkas Terlalu Besar",
+        "fileTooLargeDescription": "Silakan pilih gambar lebih kecil dari 5MB.",
+        "pictureUpdated": "Foto Profil Diperbarui",
+        "pictureUpdatedDescription": "Foto profil Anda berhasil diperbarui.",
+        "uploadFailed": "Unggah Gagal",
+        "uploadFailedDescription": "Gagal mengunggah foto profil. Silakan coba lagi."
+      }
+    },
+    "courses": {
+      "title": "Kursus",
+      "subtitle": "Selesaikan pelatihan agen dan dapatkan sertifikat.",
+      "noCourses": "Tidak ada kursus tersedia",
+      "noContent": "Tidak ada konten tersedia untuk {{country}}"
+    },
+    "certificates": {
+      "title": "Sertifikat Saya",
+      "subtitle": "Unduh dan kelola sertifikat dan lencana agen Anda.",
+      "loading": "Memuat sertifikat...",
+      "noCertificatesYet": "Belum ada sertifikat",
+      "completeToEarn": "Selesaikan kursus untuk memperoleh sertifikat",
+      "certified": "Tersertifikasi",
+      "courseTitleFallback": "Judul Kursus",
+      "code": "Kode Sertifikat: {{code}}",
+      "score": "Skor: {{score}}%",
+      "pdf": "PDF",
+      "badge": "Lencana",
+      "agentBadge": "Lencana Agen",
+      "certifiedAgent": "Agen Find And Study Tersertifikasi",
+      "downloadAgentBadge": "Unduh lencana agen dengan kode sertifikat terbaru Anda",
+      "downloadBadge": "Unduh Lencana",
+      "toast": {
+        "certificateDownloaded": "Sertifikat Diunduh",
+        "certificateDownloadedDescription": "Sertifikat Anda berhasil diunduh.",
+        "downloadFailed": "Unduh Gagal",
+        "downloadFailedDescription": "Terjadi kesalahan saat mengunduh sertifikat.",
+        "userNotFound": "Informasi pengguna tidak ditemukan.",
+        "badgeDownloaded": "Lencana Diunduh",
+        "badgeDownloadedDescription": "Lencana agen Anda berhasil diunduh.",
+        "badgeError": "Terjadi kesalahan saat mengunduh lencana."
+      }
+    },
+    "announcements": {
+      "title": "Semua Pengumuman",
+      "subtitle": "Pengumuman terbaru ditampilkan di atas.",
+      "empty": "Belum ada pengumuman yang dipublikasikan."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "welcome": "Selamat datang kembali, {{name}}!",
+      "subtitle": "Kelola platform Find And Study dan pantau aktivitas agen.",
+      "stats": {
+        "totalAgents": "Total Agen",
+        "agenciesRegistered": "{{count}} agensi terdaftar",
+        "certificatesIssued": "Sertifikat Diterbitkan",
+        "avgScore": "Rata-rata: {{score}}%",
+        "completionRate": "Tingkat Penyelesaian Kursus",
+        "completedOfTotal": "{{completed}}/{{total}} selesai",
+        "activeAnnouncements": "Pengumuman Aktif",
+        "currentlyActive": "Saat ini aktif"
+      },
+      "courseEnrollment": "Pendaftaran & Penyelesaian Kursus",
+      "completed": "Selesai",
+      "inProgress": "Berlangsung",
+      "noEnrollmentData": "Tidak ada data pendaftaran",
+      "scoreDistribution": "Distribusi Skor Sertifikat",
+      "noCertificateData": "Tidak ada data sertifikat",
+      "topPerformingAgents": "Agen Berkinerja Terbaik",
+      "noAgentActivity": "Belum ada aktivitas agen",
+      "coursesAndCertificates": "{{courses}} kursus • {{certificates}} sertifikat",
+      "systemStatus": "Status Sistem",
+      "platformStatus": "Status Platform",
+      "operational": "Beroperasi",
+      "totalEnrollments": "Total Pendaftaran",
+      "totalAgencies": "Total Agensi",
+      "completionRateLabel": "Tingkat Penyelesaian",
+      "avgCertificateScore": "Rata-rata Skor Sertifikat"
+    },
+    "profile": {
+      "title": "Pengaturan Profil Admin",
+      "subtitle": "Kelola informasi akun admin dan pengaturan keamanan.",
+      "namePlaceholder": "Masukkan nama lengkap Anda"
     }
   }
 }

@@ -6,7 +6,7 @@
   "language": {
     "label": "语言",
     "select": "选择语言",
-    "current": "当前语言:{{name}}"
+    "current": "当前语言：{{name}}"
   },
   "common": {
     "save": "保存",
@@ -30,34 +30,37 @@
     "required": "必填",
     "success": "成功",
     "error": "错误",
-    "warning": "警告"
+    "warning": "警告",
+    "continue": "继续",
+    "start": "开始",
+    "viewAll": "查看全部"
   },
   "toast": {
     "saved": "设置已保存",
     "savedDescription": "您的更改已成功保存。",
     "failed": "保存失败",
-    "failedDescription": "无法保存更改,请重试。",
-    "languageChanged": "语言已切换",
-    "languageChangedDescription": "界面现在以 {{name}} 显示。"
+    "failedDescription": "无法保存您的更改，请重试。",
+    "languageChanged": "已切换语言",
+    "languageChangedDescription": "界面语言已切换为 {{name}}。"
   },
   "auth": {
     "welcomeBack": "欢迎回来",
     "signInSubtitle": "登录您的 Find And Study 账户",
     "email": "邮箱",
-    "emailPlaceholder": "请输入邮箱",
+    "emailPlaceholder": "输入邮箱地址",
     "password": "密码",
-    "passwordPlaceholder": "请输入密码",
+    "passwordPlaceholder": "输入密码",
     "signIn": "登录",
-    "newAgent": "新代理?",
+    "newAgent": "新代理？",
     "signUp": "注册",
-    "forgotPassword": "忘记密码?",
-    "logoutConfirm": "确定要退出登录吗?"
+    "forgotPassword": "忘记密码？",
+    "logoutConfirm": "确定要退出登录吗？"
   },
   "nav": {
     "groups": {
-      "general": "常规",
+      "general": "概览",
       "education": "教育",
-      "agency": "代理",
+      "agency": "机构",
       "services": "服务",
       "links": "链接",
       "content": "内容",
@@ -72,7 +75,7 @@
       "courses": "课程",
       "certificates": "证书",
       "leaderboard": "排行榜",
-      "myAgency": "我的代理",
+      "myAgency": "我的机构",
       "examsOrders": "考试 / 订单",
       "subscriptions": "订阅",
       "partnerZone": "合作伙伴专区",
@@ -80,7 +83,7 @@
       "dormBooking": "宿舍预订",
       "contentCountries": "内容 / 国家",
       "quizzes": "测验",
-      "agencies": "代理机构",
+      "agencies": "机构",
       "users": "用户",
       "reports": "报表",
       "popups": "弹窗广告",
@@ -88,6 +91,167 @@
       "settingsPayments": "设置 / 支付",
       "integrations": "集成",
       "menuManagement": "菜单管理"
+    }
+  },
+  "agent": {
+    "dashboard": {
+      "welcome": "欢迎回来，{{name}}！",
+      "subtitle": "跟踪您的进度，继续您的代理培训之旅。",
+      "viewAllAnnouncements": "查看全部 ({{count}})",
+      "announcementsTitle": "公告",
+      "stats": {
+        "coursesInProgress": "进行中的课程",
+        "coursesInProgressChange": "已完成 {{completed}} • 进行中 {{active}}",
+        "certificatesEarned": "已获得证书",
+        "avgScore": "平均分：{{score}}%",
+        "completeToEarn": "完成课程以获得证书",
+        "lessonsCompleted": "已完成课时",
+        "acrossCourses": "覆盖 {{count}} 门课程",
+        "startLearning": "开始学习",
+        "overallProgress": "总体进度",
+        "coursesDone": "已完成 {{done}}/{{total}} 门课程"
+      },
+      "weeklyActivity": "每周学习活动",
+      "lessonsSeries": "已完成课时",
+      "courseProgressOverview": "课程进度概览",
+      "progressSeries": "进度 (%)",
+      "recentActivity": "近期活动",
+      "certificateEarned": "已获得证书",
+      "courseProgress": "课程进度",
+      "lessonsAndPercent": "{{lessons}} 课时 • 完成 {{percent}}%",
+      "noActivity": "暂无近期活动",
+      "noActivityHint": "开始学习以在此查看您的活动",
+      "recentAchievements": "最近成就",
+      "scoreAndDate": "得分：{{score}}% • {{date}}",
+      "certified": "已认证",
+      "viewAllCertificates": "查看全部证书",
+      "noCertificatesYet": "暂无证书",
+      "completeToEarnCerts": "完成课程以获得证书",
+      "detailedCourseProgress": "课程进度详情",
+      "lessonsCompletedSimple": "已完成 {{count}} 课时"
+    },
+    "profile": {
+      "title": "个人资料设置",
+      "subtitle": "管理您的账户信息与安全设置。",
+      "picture": "头像",
+      "uploadHint": "上传新头像",
+      "choosePhoto": "选择照片",
+      "uploading": "上传中...",
+      "fileLimits": "最大文件大小：5MB\n支持格式：JPG、PNG、GIF",
+      "info": "个人资料",
+      "fullName": "姓名",
+      "fullNamePlaceholder": "您的姓名",
+      "email": "邮箱地址",
+      "emailReadonly": "邮箱无法更改，如需更改请联系客服。",
+      "update": "更新资料",
+      "changePassword": "修改密码",
+      "currentPassword": "当前密码",
+      "currentPasswordPlaceholder": "输入当前密码",
+      "newPassword": "新密码",
+      "newPasswordPlaceholder": "输入新密码",
+      "confirmPassword": "确认新密码",
+      "confirmPasswordPlaceholder": "再次输入新密码",
+      "changePasswordButton": "修改密码",
+      "notifications": "邮件通知偏好",
+      "emailNotificationsLabel": "邮件通知",
+      "emailNotificationsHint": "接收与您活动相关的邮件通知",
+      "courseCompletionLabel": "完成课程",
+      "courseCompletionHint": "完成课程时收到通知",
+      "certificateLabel": "获得证书",
+      "certificateHint": "获得证书时收到通知",
+      "announcementsLabel": "公告",
+      "announcementsHint": "重要公告通知",
+      "toast": {
+        "profileUpdated": "资料已更新",
+        "profileUpdatedDescription": "您的资料和通知偏好已成功更新。",
+        "passwordMismatch": "密码不一致",
+        "passwordMismatchDescription": "新密码与确认密码不一致。",
+        "passwordChanged": "密码已修改",
+        "passwordChangedDescription": "您的密码已成功更新。",
+        "invalidFileType": "文件类型无效",
+        "invalidFileTypeDescription": "请选择图片文件。",
+        "fileTooLarge": "文件过大",
+        "fileTooLargeDescription": "请选择小于 5MB 的图片。",
+        "pictureUpdated": "头像已更新",
+        "pictureUpdatedDescription": "您的头像已成功更新。",
+        "uploadFailed": "上传失败",
+        "uploadFailedDescription": "头像上传失败，请重试。"
+      }
+    },
+    "courses": {
+      "title": "课程",
+      "subtitle": "完成代理培训并获得证书。",
+      "noCourses": "暂无可用课程",
+      "noContent": "{{country}} 暂无可用内容"
+    },
+    "certificates": {
+      "title": "我的证书",
+      "subtitle": "下载并管理您获得的证书与代理徽章。",
+      "loading": "正在加载证书...",
+      "noCertificatesYet": "暂无证书",
+      "completeToEarn": "完成课程以获得证书",
+      "certified": "已认证",
+      "courseTitleFallback": "课程名称",
+      "code": "证书编号：{{code}}",
+      "score": "得分：{{score}}%",
+      "pdf": "PDF",
+      "badge": "徽章",
+      "agentBadge": "代理徽章",
+      "certifiedAgent": "认证 Find And Study 代理",
+      "downloadAgentBadge": "使用最新证书编号下载您的代理徽章",
+      "downloadBadge": "下载徽章",
+      "toast": {
+        "certificateDownloaded": "证书已下载",
+        "certificateDownloadedDescription": "您的证书已成功下载。",
+        "downloadFailed": "下载失败",
+        "downloadFailedDescription": "下载证书时出现错误。",
+        "userNotFound": "未找到用户信息。",
+        "badgeDownloaded": "徽章已下载",
+        "badgeDownloadedDescription": "您的代理徽章已成功下载。",
+        "badgeError": "下载徽章时出现错误。"
+      }
+    },
+    "announcements": {
+      "title": "全部公告",
+      "subtitle": "最新公告显示在最上方。",
+      "empty": "尚未发布任何公告。"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "welcome": "欢迎回来，{{name}}！",
+      "subtitle": "管理 Find And Study 平台并监控代理活动。",
+      "stats": {
+        "totalAgents": "代理总数",
+        "agenciesRegistered": "已注册机构 {{count}} 家",
+        "certificatesIssued": "已发证书",
+        "avgScore": "平均分：{{score}}%",
+        "completionRate": "课程完成率",
+        "completedOfTotal": "已完成 {{completed}}/{{total}}",
+        "activeAnnouncements": "进行中的公告",
+        "currentlyActive": "当前进行中"
+      },
+      "courseEnrollment": "课程报名与完成",
+      "completed": "已完成",
+      "inProgress": "进行中",
+      "noEnrollmentData": "暂无报名数据",
+      "scoreDistribution": "证书分数分布",
+      "noCertificateData": "暂无证书数据",
+      "topPerformingAgents": "表现最佳代理",
+      "noAgentActivity": "暂无代理活动",
+      "coursesAndCertificates": "{{courses}} 门课程 • {{certificates}} 张证书",
+      "systemStatus": "系统状态",
+      "platformStatus": "平台状态",
+      "operational": "运行中",
+      "totalEnrollments": "总报名数",
+      "totalAgencies": "机构总数",
+      "completionRateLabel": "完成率",
+      "avgCertificateScore": "平均证书分数"
+    },
+    "profile": {
+      "title": "管理员资料设置",
+      "subtitle": "管理管理员账户信息和安全设置。",
+      "namePlaceholder": "输入您的姓名"
     }
   }
 }

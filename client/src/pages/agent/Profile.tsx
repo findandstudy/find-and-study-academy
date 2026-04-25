@@ -9,8 +9,10 @@ import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Camera, Upload, Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AgentProfile() {
+  const { t } = useTranslation();
   const { user, updateUser: updateAuthUser } = useAuthStore();
   const { updateUser: updateDataUser } = useDataStore();
   const { toast } = useToast();
@@ -42,8 +44,8 @@ export default function AgentProfile() {
     updateDataUser(user.id, updates as any);
     updateAuthUser(updates as any);
     toast({
-      title: 'Profile Updated',
-      description: 'Your profile and notification preferences have been updated successfully.'
+      title: t('agent.profile.toast.profileUpdated'),
+      description: t('agent.profile.toast.profileUpdatedDescription')
     });
   };
 
@@ -52,8 +54,8 @@ export default function AgentProfile() {
     
     if (newPassword !== confirmPassword) {
       toast({
-        title: 'Password Mismatch',
-        description: 'New password and confirmation do not match.',
+        title: t('agent.profile.toast.passwordMismatch'),
+        description: t('agent.profile.toast.passwordMismatchDescription'),
         variant: 'destructive'
       });
       return;
@@ -63,8 +65,8 @@ export default function AgentProfile() {
     updateDataUser(user.id, { password: newPassword });
     updateAuthUser({ password: newPassword });
     toast({
-      title: 'Password Changed',
-      description: 'Your password has been updated successfully.'
+      title: t('agent.profile.toast.passwordChanged'),
+      description: t('agent.profile.toast.passwordChangedDescription')
     });
     
     setCurrentPassword('');
@@ -79,8 +81,8 @@ export default function AgentProfile() {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Invalid File Type',
-        description: 'Please select an image file.',
+        title: t('agent.profile.toast.invalidFileType'),
+        description: t('agent.profile.toast.invalidFileTypeDescription'),
         variant: 'destructive'
       });
       return;
@@ -89,8 +91,8 @@ export default function AgentProfile() {
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'File Too Large',
-        description: 'Please select an image smaller than 5MB.',
+        title: t('agent.profile.toast.fileTooLarge'),
+        description: t('agent.profile.toast.fileTooLargeDescription'),
         variant: 'destructive'
       });
       return;
@@ -128,14 +130,14 @@ export default function AgentProfile() {
       console.log('[PROFILE PICTURE] Updated user in stores, user now:', useAuthStore.getState().user);
       
       toast({
-        title: 'Profile Picture Updated',
-        description: 'Your profile picture has been updated successfully.'
+        title: t('agent.profile.toast.pictureUpdated'),
+        description: t('agent.profile.toast.pictureUpdatedDescription')
       });
     } catch (error) {
       console.error('Profile picture upload failed:', error);
       toast({
-        title: 'Upload Failed',
-        description: 'Failed to upload profile picture. Please try again.',
+        title: t('agent.profile.toast.uploadFailed'),
+        description: t('agent.profile.toast.uploadFailedDescription'),
         variant: 'destructive'
       });
     } finally {
@@ -150,10 +152,10 @@ export default function AgentProfile() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Profile Settings
+            {t('agent.profile.title')}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Manage your account information and security settings.
+            {t('agent.profile.subtitle')}
           </p>
         </div>
       </div>
@@ -164,13 +166,13 @@ export default function AgentProfile() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Camera className="w-5 h-5" />
-              Profile Picture
+              {t('agent.profile.picture')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col items-center space-y-4">
               <Avatar className="w-32 h-32">
-                <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile Picture" />
+                <AvatarImage src={(user as any)?.profilePicture || ''} alt={t('agent.profile.picture')} />
                 <AvatarFallback className="text-2xl">
                   {user?.name.charAt(0)}
                 </AvatarFallback>
@@ -178,7 +180,7 @@ export default function AgentProfile() {
               
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Upload a new profile picture
+                  {t('agent.profile.uploadHint')}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -194,13 +196,12 @@ export default function AgentProfile() {
                   data-testid="button-upload-profile-picture"
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  {uploading ? 'Uploading...' : 'Choose Photo'}
+                  {uploading ? t('agent.profile.uploading') : t('agent.profile.choosePhoto')}
                 </Button>
               </div>
               
-              <p className="text-xs text-muted-foreground text-center">
-                Maximum file size: 5MB<br />
-                Supported formats: JPG, PNG, GIF
+              <p className="text-xs text-muted-foreground text-center whitespace-pre-line">
+                {t('agent.profile.fileLimits')}
               </p>
             </div>
           </CardContent>
@@ -211,24 +212,24 @@ export default function AgentProfile() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Profile Information
+              {t('agent.profile.info')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">{t('agent.profile.fullName')}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
+                placeholder={t('agent.profile.fullNamePlaceholder')}
                 autoComplete="name"
                 data-testid="input-profile-name"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{t('agent.profile.email')}</Label>
               <Input
                 id="email"
                 value={user?.email || ''}
@@ -237,12 +238,12 @@ export default function AgentProfile() {
                 data-testid="input-profile-email"
               />
               <p className="text-xs text-muted-foreground">
-                Email cannot be changed. Contact support if needed.
+                {t('agent.profile.emailReadonly')}
               </p>
             </div>
 
             <Button onClick={handleUpdateProfile} data-testid="button-update-profile">
-              Update Profile
+              {t('agent.profile.update')}
             </Button>
           </CardContent>
         </Card>
@@ -252,44 +253,44 @@ export default function AgentProfile() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5" />
-              Change Password
+              {t('agent.profile.changePassword')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+              <Label htmlFor="currentPassword">{t('agent.profile.currentPassword')}</Label>
               <Input
                 id="currentPassword"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder={t('agent.profile.currentPasswordPlaceholder')}
                 autoComplete="current-password"
                 data-testid="input-current-password"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="newPassword">{t('agent.profile.newPassword')}</Label>
               <Input
                 id="newPassword"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder={t('agent.profile.newPasswordPlaceholder')}
                 autoComplete="new-password"
                 data-testid="input-new-password"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">{t('agent.profile.confirmPassword')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={t('agent.profile.confirmPasswordPlaceholder')}
                 autoComplete="new-password"
                 data-testid="input-confirm-password"
               />
@@ -300,7 +301,7 @@ export default function AgentProfile() {
               disabled={!currentPassword || !newPassword || !confirmPassword}
               data-testid="button-change-password"
             >
-              Change Password
+              {t('agent.profile.changePasswordButton')}
             </Button>
           </CardContent>
         </Card>
@@ -311,17 +312,17 @@ export default function AgentProfile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5" />
-            Email Notification Preferences
+            {t('agent.profile.notifications')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="emailNotifications" className="text-base font-medium">
-                Email Notifications
+                {t('agent.profile.emailNotificationsLabel')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive email notifications about your activities
+                {t('agent.profile.emailNotificationsHint')}
               </p>
             </div>
             <Switch
@@ -335,10 +336,10 @@ export default function AgentProfile() {
           <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
             <div className="space-y-0.5">
               <Label htmlFor="courseCompletionNotif" className="text-base font-medium">
-                Course Completion
+                {t('agent.profile.courseCompletionLabel')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Get notified when you complete a course
+                {t('agent.profile.courseCompletionHint')}
               </p>
             </div>
             <Switch
@@ -353,10 +354,10 @@ export default function AgentProfile() {
           <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
             <div className="space-y-0.5">
               <Label htmlFor="certificateNotif" className="text-base font-medium">
-                Certificate Earned
+                {t('agent.profile.certificateLabel')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Get notified when you earn a certificate
+                {t('agent.profile.certificateHint')}
               </p>
             </div>
             <Switch
@@ -371,10 +372,10 @@ export default function AgentProfile() {
           <div className="flex items-center justify-between" style={{ opacity: emailNotifications ? 1 : 0.5 }}>
             <div className="space-y-0.5">
               <Label htmlFor="announcementNotif" className="text-base font-medium">
-                Announcements
+                {t('agent.profile.announcementsLabel')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Get notified about important announcements
+                {t('agent.profile.announcementsHint')}
               </p>
             </div>
             <Switch
