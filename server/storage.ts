@@ -254,7 +254,7 @@ export interface IStorage {
   // Knowledge Chunk methods
   addKnowledgeChunks(chunks: InsertKnowledgeChunk[]): Promise<void>;
   deleteChunksBySourceId(sourceId: string): Promise<void>;
-  searchKnowledgeChunks(query: string, limit?: number, opts?: { university?: string; country?: string }): Promise<ScoredKnowledgeChunk[]>;
+  searchKnowledgeChunks(query: string, limit?: number, opts?: { university?: string; country?: string; city?: string }): Promise<ScoredKnowledgeChunk[]>;
   listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]>;
   getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
 }
@@ -2024,15 +2024,32 @@ export class DatabaseStorage implements IStorage {
     }
     // City pre-filter: when the caller provides a reference city (from a
     // proximity query like "İstanbul'a en yakın"), prefer chunks whose
-    // metadata City field matches. If filtering would leave nothing, fall
-    // back to the full candidate set so the model still gets context.
+    // metadata City field matches.
+    // Fallback strategy (most-specific → least-specific):
+    //   1. Exact city match in metadata.City
+    //   2. Country-bounded: chunks that match the country hint (if any) —
+    //      "same country, different city" is better than unrelated results
+    //   3. Full candidate set as last resort
     if (opts?.city) {
       const ci = normalize(opts.city);
       const cityFiltered = filtered.filter(c => {
         const m: any = c.metadata;
         return m?.City && normalize(String(m.City)).includes(ci);
       });
-      if (cityFiltered.length > 0) filtered = cityFiltered;
+      if (cityFiltered.length > 0) {
+        filtered = cityFiltered;
+      } else if (opts?.country) {
+        // City not found — narrow to same country so proximity intent at least
+        // stays within the requested region rather than returning global results.
+        const co = normalize(opts.country);
+        const countryFiltered = filtered.filter(c => {
+          const m: any = c.metadata;
+          return m?.Country && normalize(String(m.Country)).includes(co);
+        });
+        if (countryFiltered.length > 0) filtered = countryFiltered;
+        // else fall through to full candidate set
+      }
+      // If neither city nor country yields matches, filtered stays as-is (full set).
     }
 
     // Score by number of distinct terms present in (normalized) keywords+content.
