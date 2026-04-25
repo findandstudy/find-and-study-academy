@@ -1017,7 +1017,23 @@
           } catch (error) {
             removeTypingIndicator();
             console.error('Findy message error:', error);
-            addMessage('Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.', false);
+            // Use the server's error message when one was returned (it is already
+            // gated server-side: admins get a verbose diagnostic, regular users
+            // get the generic friendly message). Only fall back to the hardcoded
+            // Turkish string for pure network failures where no server message
+            // is available (fetch failed, request timed out, etc.).
+            const serverMsg = error instanceof Error ? error.message : '';
+            const isNetworkLevel = !serverMsg
+              || serverMsg === 'Request failed'
+              || serverMsg === 'Failed to fetch'
+              || serverMsg.toLowerCase().includes('networkerror')
+              || serverMsg.toLowerCase().includes('timeout');
+            addMessage(
+              isNetworkLevel
+                ? 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.'
+                : serverMsg,
+              false
+            );
           }
         }
 
