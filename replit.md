@@ -17,6 +17,8 @@ Zustand manages client-side state, separating authentication from application da
 ### Authentication & Authorization
 A mock authentication system provides role-based access control for agents and administrators, including session management via `localStorage` and automatic session restoration. It supports signup flows and automatic agency creation.
 
+**Closed-system signup approval:** Find And Study is a closed platform — new agents who self-register via `/signup` are created with `users.status = 'inactive'` and **cannot log in** until a super admin or staff member sets their status to `active` from `/admin/users`. The signup endpoint (`POST /api/signup`) returns `{ success: true, pending: true }` with a Turkish "Başvurunuz alındı" message and never auto-logs the applicant in. The login endpoint (`POST /api/login`) rejects inactive accounts with HTTP 403 and a Turkish "Hesabınız henüz onaylanmadı" message. The shared `requireAuth` middleware also blocks every authenticated request from non-active accounts with the same 403, so any user that gets deactivated mid-session is automatically signed out on their next request via `validateSession`. New-registration emails to admins (existing flow) act as the approval notification.
+
 ### Course and Assessment System
 The platform features a modular course structure with lessons and embedded quizzes. It tracks progress, generates certificates using `jsPDF` and `html2canvas` with QR codes for verification, and supports various quiz question types with automatic scoring. Final Exams are country-specific, require 100% course completion and all mini-quizzes passed before activation, and automatically generate certificates upon passing.
 

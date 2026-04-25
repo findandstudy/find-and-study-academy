@@ -118,6 +118,15 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
       });
     }
 
+    // Block inactive (pending-approval or deactivated) accounts on every authenticated request.
+    // Strict check: anything other than 'active' (including null/undefined/empty string) is denied.
+    if (user.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: 'Hesabınız henüz onaylanmadı veya pasif durumda. Lütfen yöneticinizle iletişime geçin.'
+      });
+    }
+
     // Add VERIFIED user info to request (role comes from server, not client)
     (req as any).user = { 
       id: user.id, 
@@ -475,6 +484,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Block login for accounts that have not been approved by an admin/staff yet.
+      // Strict check: anything other than 'active' (including null/undefined/empty string) is denied.
+      if (user.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          pending: true,
+          message: 'Hesabınız henüz onaylanmadı. Yöneticilerimiz başvurunuzu inceledikten sonra giriş yapabileceksiniz.'
+        });
+      }
+
       res.json({
         success: true,
         user: {
@@ -532,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password before storing
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
+      // Create user — closed system: new agents start as INACTIVE and require admin/staff approval
       const newUser = {
         id: userId,
         username: email,
@@ -540,6 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: name,
         email: email,
         role: 'agent' as const,
+        status: 'inactive' as const,
         agencyId: agencyId,
         emailNotifications: true,
         courseCompletionNotif: true,
@@ -593,16 +613,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
 
+      // Closed system — do NOT return a session/user. The applicant must wait for admin/staff approval.
       res.status(201).json({
         success: true,
-        user: {
-          id: createdUser.id,
-          name: createdUser.name,
-          email: createdUser.email,
-          role: createdUser.role,
-          agencyId: createdUser.agencyId
-        },
-        agency: createdAgency
+        pending: true,
+        message: 'Başvurunuz alındı. Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz.'
       });
     } catch (error) {
       console.error('Signup error:', error);

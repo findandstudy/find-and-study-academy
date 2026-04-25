@@ -47,7 +47,12 @@ export const login = async (credentials: LoginCredentials): Promise<Session | nu
   }
 };
 
-export const signupAgent = async (data: SignupData): Promise<Session> => {
+export interface SignupResult {
+  pending: boolean;
+  message?: string;
+}
+
+export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
   try {
     const response = await fetch('/api/signup', {
       method: 'POST',
@@ -68,19 +73,12 @@ export const signupAgent = async (data: SignupData): Promise<Session> => {
     }
 
     const result = await response.json();
-    if (result.success && result.user) {
-      const session: Session = { user: result.user, role: result.user.role };
-      storage.setSession(session);
-      
-      // Add agency to localStorage if returned from backend
-      if (result.agency) {
-        storage.addAgency(result.agency);
-      }
-      
-      return session;
+    // Closed system: signup never auto-logs the user in. Account is pending admin/staff approval.
+    if (result.success) {
+      return { pending: true, message: result.message };
     }
 
-    throw new Error('Signup failed');
+    throw new Error(result.message || 'Signup failed');
   } catch (error) {
     console.error('Signup error:', error);
     throw error;

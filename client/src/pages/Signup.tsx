@@ -23,22 +23,26 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const success = await signup(formData);
-    if (success) {
-      // Reload data store to include newly created agency
+
+    const result = await signup(formData);
+    if (result?.pending) {
+      // Closed system: account is created but pending admin/staff approval — do NOT auto-login.
+      // Refresh data store so admins viewing the page see the new agency on next load.
       initializeData();
-      
+
       toast({
-        title: 'Account Created',
-        description: 'Welcome to Find And Study! Redirecting to your dashboard...'
+        title: 'Başvurunuz Alındı',
+        description:
+          result.message ||
+          'Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz. Onay e-postası adresinize gönderilecektir.',
+        duration: 8000,
       });
-      setLocation('/agent/dashboard');
+      setLocation('/login');
     } else {
       toast({
-        title: 'Signup Failed',
-        description: 'There was an error creating your account. Please try again.',
-        variant: 'destructive'
+        title: 'Kayıt Başarısız',
+        description: 'Hesap oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.',
+        variant: 'destructive',
       });
     }
   };

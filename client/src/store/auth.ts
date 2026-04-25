@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User, Role } from '../types';
-import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session } from '../lib/auth';
+import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session, SignupResult } from '../lib/auth';
 import { storage } from '../lib/storage';
 
 interface AuthState {
@@ -8,7 +8,7 @@ interface AuthState {
   role: Role | null;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<boolean>;
-  signup: (data: SignupData) => Promise<boolean>;
+  signup: (data: SignupData) => Promise<SignupResult | null>;
   logout: () => void;
   initialize: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
@@ -41,14 +41,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   signup: async (data: SignupData) => {
     set({ isLoading: true });
     try {
-      const session = await authSignup(data);
-      try { sessionStorage.removeItem('fas_popups_seen_login'); } catch {}
-      set({ user: session.user, role: session.role, isLoading: false });
-      return true;
+      const result = await authSignup(data);
+      // Closed system: signup never logs the user in. Account is pending admin/staff approval.
+      set({ isLoading: false });
+      return result;
     } catch (error) {
       console.error('Signup failed:', error);
       set({ isLoading: false });
-      return false;
+      return null;
     }
   },
 
