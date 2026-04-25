@@ -3558,6 +3558,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: one-shot job — downsize legacy partner folder cover images that were
+  // uploaded BEFORE server-side 540x540 resize was introduced. Iterates every
+  // partner_folders.cover_image_url, resizes (fit:'inside', no enlargement) and
+  // overwrites the original file in place so URLs stay valid. SVGs and remote
+  // URLs are skipped. Idempotent — files already <=540px on both sides are skipped.
+  app.post('/api/admin/partner-folders/resize-covers', requireAuth, requireAdmin, async (req, res) => {
+    const report = {
+      total: 0,
+      resized: 0,
+      skippedAlreadySmall: 0,
+      skippedSvg: 0,
+      skippedMissing: 0,
+      skippedRemote: 0,
+      errors: 0,
+      bytesBefore: 0,
+      bytesAfter: 0,
+      details: [] as Array<{ folderId: string; url: string; status: string; before?: number; after?: number; error?: string }>,
+    };
+    // Hard-anchor allowed root for path safety: must always live under public/uploads/
+    const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
+    try {
+      const folders = await storage.getPartnerFolders(); // undefined → all folders flat
+      const withCovers = folders.filter(f => f.coverImageUrl && f.coverImageUrl.trim().length > 0);
+      report.total = withCovers.length;
+
+      for (const folder of withCovers) {
+        const url = folder.coverImageUrl as string;
+        // Only handle locally-served uploads. Anything else (http(s)://, data:, etc.) is skipped.
+        if (!url.startsWith('/uploads/')) {
+          report.skippedRemote++;
+          report.details.push({ folderId: folder.id, url, status: 'skipped-remote' });
+          continue;
+        }
+        // Resolve to disk path under public/, then ensure the resolved path stays
+        // inside uploadsRoot (defends against path-traversal via crafted DB values).
+        const relative = url.replace(/^\/+/, ''); // strip leading slash → uploads/content/images/foo.jpg
+        const diskPath = path.resolve(process.cwd(), 'public', relative);
+        if (!diskPath.startsWith(uploadsRoot + path.sep)) {
+          report.skippedRemote++;
+          report.details.push({ folderId: folder.id, url, status: 'skipped-outside-uploads' });
+          continue;
+        }
+
+        if (!fs.existsSync(diskPath)) {
+          report.skippedMissing++;
+          report.details.push({ folderId: folder.id, url, status: 'missing' });
+          continue;
+        }
+
+        // Skip SVGs — sharp can't safely raster-resize them without rasterise option.
+        if (/\.svg$/i.test(diskPath)) {
+          report.skippedSvg++;
+          report.details.push({ folderId: folder.id, url, status: 'skipped-svg' });
+          continue;
+        }
+
+        try {
+          const before = fs.statSync(diskPath).size;
+          report.bytesBefore += before;
+          const original = await fs.promises.readFile(diskPath);
+          const meta = await sharp(original).metadata();
+          const w = meta.width ?? 0;
+          const h = meta.height ?? 0;
+
+          // Already within target — leave it alone (idempotent reruns are cheap).
+          if (w > 0 && h > 0 && w <= 540 && h <= 540) {
+            report.skippedAlreadySmall++;
+            report.bytesAfter += before;
+            report.details.push({ folderId: folder.id, url, status: 'already-small', before, after: before });
+            continue;
+          }
+
+          const resized = await sharp(original)
+            .rotate() // honour EXIF orientation
+            .resize({ width: 540, height: 540, fit: 'inside', withoutEnlargement: true })
+            .toBuffer();
+          await fs.promises.writeFile(diskPath, resized);
+          const after = resized.length;
+          report.bytesAfter += after;
+          report.resized++;
+          report.details.push({ folderId: folder.id, url, status: 'resized', before, after });
+        } catch (err) {
+          report.errors++;
+          const msg = err instanceof Error ? err.message : 'resize failed';
+          report.bytesAfter += fs.existsSync(diskPath) ? fs.statSync(diskPath).size : 0;
+          report.details.push({ folderId: folder.id, url, status: 'error', error: msg });
+          console.warn(`[resize-covers] Failed for folder ${folder.id} (${url}):`, err);
+        }
+      }
+
+      const savedBytes = report.bytesBefore - report.bytesAfter;
+      const savedMB = (savedBytes / (1024 * 1024)).toFixed(2);
+      console.log(
+        `[resize-covers] Done. total=${report.total} resized=${report.resized} ` +
+        `already-small=${report.skippedAlreadySmall} svg=${report.skippedSvg} ` +
+        `missing=${report.skippedMissing} remote=${report.skippedRemote} errors=${report.errors} ` +
+        `saved=${savedMB} MB (before=${(report.bytesBefore / 1024 / 1024).toFixed(2)} MB, after=${(report.bytesAfter / 1024 / 1024).toFixed(2)} MB)`
+      );
+      // Full per-folder details are kept in server logs; only error rows are
+      // returned to the client to keep payloads small on large datasets.
+      const errorDetails = report.details.filter(d => d.status === 'error' || d.status === 'missing');
+      if (report.details.length > 0) {
+        console.log('[resize-covers] Per-folder details:', JSON.stringify(report.details));
+      }
+
+      res.json({
+        success: true,
+        summary: {
+          total: report.total,
+          resized: report.resized,
+          skippedAlreadySmall: report.skippedAlreadySmall,
+          skippedSvg: report.skippedSvg,
+          skippedMissing: report.skippedMissing,
+          skippedRemote: report.skippedRemote,
+          errors: report.errors,
+          bytesBefore: report.bytesBefore,
+          bytesAfter: report.bytesAfter,
+          bytesSaved: savedBytes,
+          mbSaved: savedMB,
+        },
+        // Only error/missing rows surface to the client; full report stays in server logs.
+        errorDetails,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Resize job failed';
+      console.error('[resize-covers] Fatal error:', error);
+      res.status(500).json({ success: false, message: msg, partialReport: report });
+    }
+  });
+
   // Admin: assign content to a folder (or unassign by passing folderId: null)
   app.patch('/api/admin/contents/:id/folder', requireAuth, requireAdmin, async (req, res) => {
     try {

@@ -21,7 +21,7 @@ import {
   Package, Plus, Edit2, Trash2, Upload, Folder, FolderOpen,
   FileText, CheckCircle2, XCircle, Loader2, Eye, EyeOff,
   Video, Image as ImageIcon, File, Link2, Download,
-  ChevronRight, Home, Search, ExternalLink,
+  ChevronRight, Home, Search, ExternalLink, Minimize2,
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -246,6 +246,8 @@ export default function PartnerZoneAdmin() {
   const [deleteFolder, setDeleteFolder] = useState<PartnerFolder | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  // One-shot maintenance: confirmation dialog for the cover-resize job
+  const [resizeConfirmOpen, setResizeConfirmOpen] = useState(false);
   // Pending uploaded cover URL kept in component state instead of window globals
   const [pendingCoverUrl, setPendingCoverUrl] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -489,6 +491,34 @@ export default function PartnerZoneAdmin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
+    },
+  });
+
+  // One-shot maintenance: downsize all legacy cover images to 540x540.
+  const resizeCoversMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest('POST', '/api/admin/partner-folders/resize-covers');
+      return r.json();
+    },
+    onSuccess: (data) => {
+      const s = data?.summary;
+      if (!s) {
+        toast({ title: 'Tamamlandı', description: 'Kapak görselleri işlendi.' });
+        return;
+      }
+      toast({
+        title: 'Kapak görselleri küçültüldü',
+        description:
+          `${s.resized}/${s.total} dosya küçültüldü • ${s.mbSaved} MB kazanıldı ` +
+          `(zaten küçük: ${s.skippedAlreadySmall}, eksik: ${s.skippedMissing}, hata: ${s.errors})`,
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: 'İşlem başarısız',
+        description: err instanceof Error ? err.message : 'Bilinmeyen hata',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -1152,10 +1182,50 @@ export default function PartnerZoneAdmin() {
             Acentelerin göreceği klasörleri ve içerikleri yönetin.
           </p>
         </div>
-        <Button onClick={openCreateFolder} data-testid="button-new-folder">
-          <Plus className="w-4 h-4 mr-2" />
-          Yeni Klasör
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <AlertDialog open={resizeConfirmOpen} onOpenChange={setResizeConfirmOpen}>
+            <Button
+              variant="outline"
+              onClick={() => setResizeConfirmOpen(true)}
+              disabled={resizeCoversMutation.isPending}
+              data-testid="button-resize-covers"
+              title="Eski kapak görsellerini 540x540 boyutuna küçültür"
+            >
+              {resizeCoversMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Minimize2 className="w-4 h-4 mr-2" />
+              )}
+              Eski Kapakları Küçült
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eski kapak görsellerini küçült</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tüm partner klasörlerinin kapak görselleri 540×540 boyutuna küçültülerek
+                  orijinal dosyaların üzerine yazılır. Bu işlem geri alınamaz, ancak URL'ler
+                  değişmez. Zaten küçük olan dosyalar atlanır. Devam edilsin mi?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-resize">İptal</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setResizeConfirmOpen(false);
+                    resizeCoversMutation.mutate();
+                  }}
+                  data-testid="button-confirm-resize"
+                >
+                  Küçült
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button onClick={openCreateFolder} data-testid="button-new-folder">
+            <Plus className="w-4 h-4 mr-2" />
+            Yeni Klasör
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
