@@ -5866,7 +5866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const sampleChunks = await storage.searchKnowledgeChunks('university', 80);
         const seenUnis = new Set<string>();
-        for (const ch of sampleChunks) {
+        for (const { chunk: ch } of sampleChunks) {
           const u = (ch.metadata as any)?.Universities;
           if (u && typeof u === 'string') seenUnis.add(u);
         }
@@ -5929,16 +5929,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // the search returns zero rows, we still inject an explicit "no rows
       // matched" marker so the model sees a clear signal and applies the
       // grounding rule from the system prompt instead of inventing data.
+      let ragDebugChunks: Array<{ id: string; preview: string; score: number; matchedTerms: string[] }> = [];
       try {
-        const chunks = await storage.searchKnowledgeChunks(message, 12, {
+        const scoredChunks = await storage.searchKnowledgeChunks(message, 12, {
           university: universityHint,
           country: countryHint,
         });
-        if (chunks.length > 0) {
+        if (scoredChunks.length > 0) {
           const label = universityHint || countryHint
             ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint].filter(Boolean).join(' / ')}):`
             : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
-          pushSection(label, chunks.map(c => '- ' + c.content).join('\n'));
+          pushSection(label, scoredChunks.map(x => '- ' + x.chunk.content).join('\n'));
+          if (isAdmin) {
+            ragDebugChunks = scoredChunks.map(x => ({
+              id: x.chunk.id,
+              preview: x.chunk.content.slice(0, 80),
+              score: x.score,
+              matchedTerms: x.matchedTerms,
+            }));
+          }
         } else {
           // Empty result — make this very visible to the model so it doesn't
           // try to fill the gap with prior knowledge.
@@ -5992,7 +6001,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             provider, apiKey, model, baseUrl, temperature, maxTokens,
             systemPrompt, userMessage: message, ragContext, history,
           });
-          return res.json({ success: true, message: botResponse, data: { message: botResponse } });
+          return res.json({
+            success: true,
+            message: botResponse,
+            data: { message: botResponse },
+            ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
+          });
         } catch (providerErr: any) {
           // Surface a concise reason so the admin can debug from the chat reply
           // (the n8n fallback is intentionally NOT used here — if the admin
@@ -6035,7 +6049,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             botResponse = await response.text();
           }
 
-          return res.json({ success: true, message: botResponse, data: { message: botResponse } });
+          return res.json({
+            success: true,
+            message: botResponse,
+            data: { message: botResponse },
+            ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
+          });
         } catch (webhookErr: any) {
           // Webhook failed AND no provider was configured — explain why for admins.
           console.error('n8n webhook fallback failed:', webhookErr?.message || webhookErr);
@@ -6056,7 +6075,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           success: true,
           message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
-          data: { message: ragContext, hasContext: true }
+          data: { message: ragContext, hasContext: true },
+          ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
         });
       }
       // No provider configured AND no webhook — be explicit for admins.

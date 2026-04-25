@@ -82,6 +82,12 @@ import {
 import { db } from "./db";
 import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike, isNull } from "drizzle-orm";
 
+export interface ScoredKnowledgeChunk {
+  chunk: KnowledgeChunk;
+  score: number;
+  matchedTerms: string[];
+}
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -248,7 +254,7 @@ export interface IStorage {
   // Knowledge Chunk methods
   addKnowledgeChunks(chunks: InsertKnowledgeChunk[]): Promise<void>;
   deleteChunksBySourceId(sourceId: string): Promise<void>;
-  searchKnowledgeChunks(query: string, limit?: number): Promise<KnowledgeChunk[]>;
+  searchKnowledgeChunks(query: string, limit?: number, opts?: { university?: string; country?: string }): Promise<ScoredKnowledgeChunk[]>;
   listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]>;
   getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
 }
@@ -1604,7 +1610,7 @@ export class DatabaseStorage implements IStorage {
     query: string,
     limit = 12,
     opts?: { university?: string; country?: string }
-  ): Promise<KnowledgeChunk[]> {
+  ): Promise<ScoredKnowledgeChunk[]> {
     // Turkish-aware normalization so "Bahçeşehir" matches "Bahcesehir" etc.
     const normalize = (s: string) => (s || '').toLowerCase()
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
@@ -1845,21 +1851,30 @@ export class DatabaseStorage implements IStorage {
       // Tokenise chunk into individual words for per-word fuzzy scoring.
       const hayWords = hay.split(/\s+/).filter(w => w.length >= 3);
       let score = 0;
+      const matchedTerms: string[] = [];
       for (const t of terms) {
         if (hay.includes(t)) {
           score += 1; // Strong: direct substring match
+          matchedTerms.push(t);
         } else if (pgTrgmAvailable && hayWords.length > 0) {
           // Fuzzy: max Dice bigram sim against any single word in the chunk.
           // e.g. "uyuglam" vs "uygulamali" ≈ 0.40 → 0.20 contribution.
           const maxSim = Math.max(...hayWords.map(w => bigramSim(t, w)));
-          if (maxSim > 0.15) score += maxSim * 0.5;
+          if (maxSim > 0.15) {
+            score += maxSim * 0.5;
+            matchedTerms.push(`~${t}`);
+          }
         }
       }
-      return { c, score };
+      return { c, score, matchedTerms };
     }).filter(x => x.score > 0);
 
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit).map(x => x.c);
+    return scored.slice(0, limit).map(x => ({
+      chunk: x.c,
+      score: Math.round(x.score * 100) / 100,
+      matchedTerms: x.matchedTerms,
+    }));
   }
 
   async getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]> {

@@ -21,7 +21,8 @@ import {
   TrendingUp, Clock, ThumbsUp, ThumbsDown, ChevronRight,
   BookOpen, Code2, Webhook, Upload, FileText, Trash2, Plus,
   Copy, Globe, Shield, Key, Link, ExternalLink,
-  Download, Database, FileSpreadsheet, FileQuestion, RotateCcw, X
+  Download, Database, FileSpreadsheet, FileQuestion, RotateCcw, X,
+  Search
 } from 'lucide-react';
 import dayjs from 'dayjs';
 
@@ -1374,6 +1375,18 @@ interface KnowledgeSource {
   updatedAt: string;
 }
 
+interface DebugChunk {
+  id: string;
+  preview: string;
+  score: number;
+  matchedTerms: string[];
+}
+
+interface DebugResult {
+  query: string;
+  chunks: DebugChunk[];
+}
+
 function SourcesTab() {
   const { toast } = useToast();
   const { user } = useAuthStore();
@@ -1383,6 +1396,33 @@ function SourcesTab() {
   const [urlForm, setUrlForm] = useState({ url: '', name: '' });
   const [uploadName, setUploadName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [testQuery, setTestQuery] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
+  const [debugResult, setDebugResult] = useState<DebugResult | null>(null);
+
+  const handleDebugSearch = async () => {
+    if (!testQuery.trim()) return;
+    setTestLoading(true);
+    setDebugResult(null);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user?.id || '' },
+        body: JSON.stringify({ message: testQuery }),
+      });
+      const json = await res.json();
+      if (json.debug?.chunks) {
+        setDebugResult({ query: testQuery, chunks: json.debug.chunks });
+      } else {
+        setDebugResult({ query: testQuery, chunks: [] });
+        toast({ title: 'No debug data', description: json.success ? 'No chunks were retrieved for this query.' : (json.message || 'Request failed'), variant: json.success ? 'default' : 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setTestLoading(false);
+    }
+  };
 
   const { data, isLoading, refetch } = useQuery<{ success: boolean; sources: KnowledgeSource[] }>({
     queryKey: ['/api/admin/findy/sources'],
@@ -1651,6 +1691,73 @@ function SourcesTab() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Debug test panel */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Search className="w-4 h-4" />
+            Last Search Debug
+          </CardTitle>
+          <CardDescription>
+            Send a test query to see which knowledge chunks are retrieved and their match scores. Only visible to admins.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Type a test query (e.g. computer engineering Latvia fees)..."
+              value={testQuery}
+              onChange={e => setTestQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleDebugSearch()}
+              data-testid="input-debug-query"
+            />
+            <Button onClick={handleDebugSearch} disabled={testLoading || !testQuery.trim()} data-testid="button-debug-search">
+              {testLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {debugResult && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                Query: <span className="text-foreground font-semibold">"{debugResult.query}"</span>
+                {' — '}
+                <span>{debugResult.chunks.length === 0 ? 'No chunks retrieved' : `${debugResult.chunks.length} chunk${debugResult.chunks.length !== 1 ? 's' : ''} retrieved`}</span>
+              </p>
+              {debugResult.chunks.length > 0 ? (
+                <div className="space-y-2">
+                  {debugResult.chunks.map((chunk, i) => (
+                    <div key={chunk.id} className="rounded-md border p-3 space-y-1.5 bg-muted/20">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground font-mono">#{i + 1} · {chunk.id.slice(0, 8)}…</span>
+                        <Badge variant="outline" className="text-xs font-mono">
+                          score: {chunk.score.toFixed(2)}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-foreground leading-snug">
+                        {chunk.preview}{chunk.preview.length >= 80 ? '…' : ''}
+                      </p>
+                      {chunk.matchedTerms.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {chunk.matchedTerms.map(term => (
+                            <Badge key={term} variant="secondary" className="text-xs font-mono">
+                              {term}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border p-4 text-center text-sm text-muted-foreground bg-muted/20">
+                  No knowledge chunks matched this query. Try different keywords or check that sources are uploaded and active.
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
