@@ -5237,13 +5237,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // ── Excel / CSV ─────────────────────────────────────────────────────────────
     if (['xlsx', 'xls', 'csv'].includes(extLower)) {
-      const XLSX = await import('xlsx');
-      const wb = XLSX.readFile(filePath);
+      // SheetJS ships both named and default exports depending on the loader, and
+      // its `readFile()` helper is only available when the Node `fs` shim is wired
+      // in. To stay portable across CJS/ESM contexts we read the file ourselves
+      // and feed the buffer to `XLSX.read()`, which is always present.
+      const XLSXMod = await import('xlsx');
+      const XLSX: any = (XLSXMod as any).default ?? XLSXMod;
+      const buffer = fs.readFileSync(filePath);
+      const wb = XLSX.read(buffer, { type: 'buffer' });
       const chunks: Array<{ content: string; keywords: string; metadata: any }> = [];
       let totalRows = 0;
       for (const sheetName of wb.SheetNames) {
         const ws = wb.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
         totalRows += rows.length;
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
