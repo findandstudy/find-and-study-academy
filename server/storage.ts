@@ -1833,22 +1833,26 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Score by number of distinct terms present in (normalized) keywords+content.
-    // Primary score: +1 per term that appears as a literal substring (ILIKE match).
-    // Fuzzy bonus: for terms that don't appear as a substring, add the JS-bigram
-    // overlap similarity (Dice coefficient over character bigrams) * 0.5.
-    // This ensures trigram-only matches rank proportionally to how close the
-    // query token is to the chunk text, rather than all tying at a flat baseline.
+    // Primary: +1 per term that appears as a literal substring (ILIKE match, strong).
+    // Fuzzy: for terms that don't appear as a substring, compute the Dice bigram
+    // similarity against each *individual word* in the chunk (mirroring what
+    // PostgreSQL word_similarity() does internally — best-match over word spans,
+    // NOT over the full chunk string which would dilute the score to near-zero).
+    // Contribution is capped at 0.5 so a single fuzzy hit never outranks a direct
+    // substring match (which scores 1).
     const scored = filtered.map(c => {
       const hay = normalize(`${c.keywords || ''} ${c.content || ''}`);
+      // Tokenise chunk into individual words for per-word fuzzy scoring.
+      const hayWords = hay.split(/\s+/).filter(w => w.length >= 3);
       let score = 0;
       for (const t of terms) {
         if (hay.includes(t)) {
-          score += 1;
-        } else if (pgTrgmAvailable) {
-          // Approximate DB word_similarity in JS (same Dice bigram metric).
-          // Scale to max 0.5 so fuzzy hits never outscore a single direct hit.
-          const sim = bigramSim(t, hay);
-          if (sim > 0.1) score += sim * 0.5;
+          score += 1; // Strong: direct substring match
+        } else if (pgTrgmAvailable && hayWords.length > 0) {
+          // Fuzzy: max Dice bigram sim against any single word in the chunk.
+          // e.g. "uyuglam" vs "uygulamali" ≈ 0.40 → 0.20 contribution.
+          const maxSim = Math.max(...hayWords.map(w => bigramSim(t, w)));
+          if (maxSim > 0.15) score += maxSim * 0.5;
         }
       }
       return { c, score };
