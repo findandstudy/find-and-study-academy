@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { WORLD_COUNTRIES } from '@/lib/world-countries';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,12 @@ export default function AdminAgencies() {
   const [memberRoleFilter, setMemberRoleFilter] = useState<string>('all');
   const [pendingMemberIds, setPendingMemberIds] = useState<Set<string>>(new Set());
   const [createMemberSearch, setCreateMemberSearch] = useState('');
+
+  // Sorted list of all world countries (Turkish names) for the Country dropdown.
+  const sortedCountries = useMemo(
+    () => [...WORLD_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
+    [],
+  );
   const [createMemberRoleFilter, setCreateMemberRoleFilter] = useState<string>('all');
   const { toast } = useToast();
   
@@ -162,7 +169,7 @@ export default function AdminAgencies() {
     resolver: zodResolver(insertAgencySchema),
     defaultValues: {
       name: '',
-      country: 'Turkey',
+      country: 'Türkiye',
       city: '',
       contactEmail: '',
       contactPhone: '',
@@ -597,10 +604,32 @@ export default function AdminAgencies() {
                     name="country"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input {...field} value={field.value || ''} data-testid="input-country" />
-                        </FormControl>
+                        <FormLabel>Ülke</FormLabel>
+                        <Select
+                          value={field.value || ''}
+                          onValueChange={(v) => field.onChange(v)}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-country">
+                              <SelectValue placeholder="Ülke seçin" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-72">
+                            {/* Legacy fallback: if the saved value isn't in the canonical list
+                                (e.g. older "Turkey" records), surface it so the dropdown still
+                                shows the current value while editing. */}
+                            {field.value && !sortedCountries.some((c) => c.name === field.value) && (
+                              <SelectItem value={field.value} data-testid="option-country-legacy">
+                                {field.value} (mevcut)
+                              </SelectItem>
+                            )}
+                            {sortedCountries.map((c) => (
+                              <SelectItem key={c.code} value={c.name} data-testid={`option-country-${c.code}`}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
