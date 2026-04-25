@@ -66,17 +66,140 @@ const AI_PROVIDERS = [
   { value: 'n8n', label: 'n8n Webhook (current)' },
 ];
 
-const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const ANTHROPIC_MODELS = ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'claude-3-opus-20240229'];
-const GEMINI_MODELS = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
-const MISTRAL_MODELS = ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'];
+// Comprehensive model catalogue per provider. Lists are intentionally broad and
+// include both the latest flagship releases and older still-supported models so
+// admins can pick whichever the customer's API key has access to. A "custom"
+// sentinel is appended to every list so a free-text input is always reachable
+// for brand-new model names that haven't shipped here yet.
+const CUSTOM_MODEL_OPTION = '__custom__';
 
-function getModelsForProvider(provider: string) {
+const OPENAI_MODELS = [
+  'gpt-5',
+  'gpt-5-mini',
+  'gpt-5-nano',
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4o-2024-11-20',
+  'gpt-4o-2024-08-06',
+  'gpt-4o-2024-05-13',
+  'chatgpt-4o-latest',
+  'gpt-4-turbo',
+  'gpt-4-turbo-2024-04-09',
+  'gpt-4',
+  'gpt-4-32k',
+  'gpt-3.5-turbo',
+  'gpt-3.5-turbo-16k',
+  'o4-mini',
+  'o3',
+  'o3-mini',
+  'o3-pro',
+  'o1',
+  'o1-mini',
+  'o1-pro',
+  'o1-preview',
+];
+
+const ANTHROPIC_MODELS = [
+  'claude-opus-4-5',
+  'claude-sonnet-4-5',
+  'claude-opus-4',
+  'claude-sonnet-4',
+  'claude-3-7-sonnet-latest',
+  'claude-3-5-sonnet-latest',
+  'claude-3-5-sonnet-20241022',
+  'claude-3-5-sonnet-20240620',
+  'claude-3-5-haiku-latest',
+  'claude-3-5-haiku-20241022',
+  'claude-3-opus-20240229',
+  'claude-3-sonnet-20240229',
+  'claude-3-haiku-20240307',
+];
+
+const GEMINI_MODELS = [
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-pro',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash-thinking-exp',
+  'gemini-1.5-pro',
+  'gemini-1.5-pro-002',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-002',
+  'gemini-1.5-flash-8b',
+  'gemini-1.0-pro',
+];
+
+const MISTRAL_MODELS = [
+  'mistral-large-latest',
+  'mistral-large-2411',
+  'mistral-medium-latest',
+  'mistral-small-latest',
+  'mistral-small-2503',
+  'ministral-8b-latest',
+  'ministral-3b-latest',
+  'codestral-latest',
+  'codestral-mamba-latest',
+  'pixtral-large-latest',
+  'pixtral-12b',
+  'open-mistral-7b',
+  'open-mixtral-8x7b',
+  'open-mixtral-8x22b',
+  'open-mistral-nemo',
+];
+
+const OPENROUTER_MODELS = [
+  // OpenAI on OpenRouter
+  'openai/gpt-5',
+  'openai/gpt-5-mini',
+  'openai/gpt-4.1',
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'openai/o3',
+  'openai/o3-mini',
+  'openai/o1',
+  // Anthropic on OpenRouter
+  'anthropic/claude-opus-4-5',
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-3.7-sonnet',
+  'anthropic/claude-3.5-sonnet',
+  'anthropic/claude-3.5-haiku',
+  // Google on OpenRouter
+  'google/gemini-2.5-pro',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.0-flash',
+  // Meta Llama
+  'meta-llama/llama-3.3-70b-instruct',
+  'meta-llama/llama-3.1-405b-instruct',
+  'meta-llama/llama-3.1-70b-instruct',
+  'meta-llama/llama-3.1-8b-instruct',
+  // DeepSeek
+  'deepseek/deepseek-r1',
+  'deepseek/deepseek-v3',
+  'deepseek/deepseek-chat',
+  // xAI Grok
+  'x-ai/grok-4',
+  'x-ai/grok-3',
+  'x-ai/grok-2-1212',
+  // Mistral on OpenRouter
+  'mistralai/mistral-large',
+  'mistralai/mixtral-8x22b-instruct',
+  // Qwen
+  'qwen/qwen-2.5-72b-instruct',
+  'qwen/qwq-32b-preview',
+];
+
+function getModelsForProvider(provider: string): string[] {
   switch (provider) {
     case 'openai': return OPENAI_MODELS;
     case 'anthropic': return ANTHROPIC_MODELS;
     case 'google_gemini': return GEMINI_MODELS;
     case 'mistral': return MISTRAL_MODELS;
+    case 'openrouter': return OPENROUTER_MODELS;
     default: return [];
   }
 }
@@ -356,14 +479,47 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
             <div className="space-y-2">
               <Label>Model</Label>
               {models.length > 0 ? (
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger data-testid="select-ai-model">
-                    <SelectValue placeholder="Select model..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <>
+                  {/* If the saved model isn't in the curated list (custom name typed previously),
+                      we treat the dropdown as being in "Custom" mode and show the free-text input. */}
+                  {(() => {
+                    const isCustom = !!model && !models.includes(model);
+                    return (
+                      <>
+                        <Select
+                          value={isCustom ? CUSTOM_MODEL_OPTION : model}
+                          onValueChange={(v) => {
+                            if (v === CUSTOM_MODEL_OPTION) {
+                              // Clear so the input becomes editable rather than showing the
+                              // previously-selected curated model.
+                              setModel('');
+                            } else {
+                              setModel(v);
+                            }
+                          }}
+                        >
+                          <SelectTrigger data-testid="select-ai-model">
+                            <SelectValue placeholder="Select model..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            <SelectItem value={CUSTOM_MODEL_OPTION} data-testid="option-model-custom">
+                              Custom… (type model name)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {isCustom && (
+                          <Input
+                            value={model}
+                            onChange={e => setModel(e.target.value)}
+                            placeholder="e.g. my-fine-tuned-model"
+                            data-testid="input-ai-model-custom"
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
               ) : (
                 <Input value={model} onChange={e => setModel(e.target.value)} placeholder="e.g. gpt-4o" data-testid="input-ai-model" />
               )}
