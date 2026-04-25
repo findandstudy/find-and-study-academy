@@ -33,7 +33,7 @@ The UI is built on `shadcn/ui`, featuring custom layouts, responsive design, toa
 - **Object Storage Integration:** For profile pictures and agency logos using presigned URLs.
 - **Agent Menu Management System:** Admin control over agent sidebar menu visibility.
 - **Agency Location Updates:** Fields for Google Map and Yandex Map links.
-- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature.
+- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature. The launcher (`#findy-launcher`) is mounted statically in `client/index.html` with `style="display:none"` to prevent any flash on public routes. `FindyLauncherGate` in `App.tsx` reveals it ONLY when an authenticated user (`useAuthStore().user && role`) is on a panel route — i.e. `location.startsWith('/admin/')` or `location.startsWith('/agent/')` (allowlist, not denylist). When the gate transitions back to hidden and the chat panel is open, it dispatches a click on the widget's own `#findy-close` button to keep the inline script's internal `isChatOpen` flag in sync (falls back to `display:none` only if the close button is missing).
 - **Quiz-to-Content Linking System:** Allows associating quizzes with specific lessons.
 - **Country-based Final Exam System:** Final exams linked to specific countries and courses with rigorous validation.
 - **Multilingual Content System:** `contentTranslations` table with 10 languages (TR/EN/RU/UZ/KK/AZ/AR/ZH/ES/FR), Tiptap rich-text editor, DOMPurify sanitization, 5 API routes.

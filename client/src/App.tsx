@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Switch, Route, Redirect } from 'wouter';
+import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -58,6 +58,44 @@ import AgentAnnouncements from './pages/agent/Announcements';
 // Error Pages
 import NotFound404 from './pages/errors/NotFound404';
 import Forbidden403 from './pages/errors/Forbidden403';
+
+// The Findy chat launcher is mounted statically in client/index.html with
+// `display:none` by default. It is only revealed by FindyLauncherGate when an
+// authenticated user is on a panel route (/admin or /agent and any nested path).
+const FINDY_PANEL_BASES = ['/admin', '/agent'];
+
+function FindyLauncherGate() {
+  const [location] = useLocation();
+  const { user, role } = useAuthStore();
+
+  useEffect(() => {
+    const launcher = document.getElementById('findy-launcher');
+    if (!launcher) return;
+
+    const onPanelRoute = FINDY_PANEL_BASES.some(
+      (p) => location === p || location.startsWith(p + '/')
+    );
+    const shouldShow = !!user && !!role && onPanelRoute;
+
+    launcher.style.display = shouldShow ? '' : 'none';
+
+    if (!shouldShow) {
+      // If the chat panel was open, dispatch its own close button so the
+      // widget's internal isChatOpen flag stays in sync with the DOM.
+      const chat = document.getElementById('findy-chat') as HTMLElement | null;
+      if (chat && chat.style.display !== 'none') {
+        const closeBtn = document.getElementById('findy-close') as HTMLButtonElement | null;
+        if (closeBtn) {
+          closeBtn.click();
+        } else {
+          chat.style.display = 'none';
+        }
+      }
+    }
+  }, [location, user, role]);
+
+  return null;
+}
 
 // Route Guards
 function ProtectedRoute({ 
@@ -374,6 +412,7 @@ export default function App() {
         <div className="min-h-screen bg-background">
           <Router />
           <PopupRenderer />
+          <FindyLauncherGate />
         </div>
         <Toaster />
       </TooltipProvider>
