@@ -1608,53 +1608,131 @@ export class DatabaseStorage implements IStorage {
       return t;
     };
 
-    // Small TR→EN dictionary for the highest-traffic vocabulary the user is
-    // likely to type in Turkish while the source data is in English. We add
-    // the EN equivalent as an extra search term — so a question about
-    // "üniversite" / "ücret" / "lisans" actually matches the English Excel
-    // rows. Keep this list focused on study-abroad nouns; this is a search
-    // hint, not a translation layer.
+    // TR→EN dictionary — maps Turkish study-abroad vocabulary to the English
+    // equivalents that appear in the uploaded Excel knowledge base. Covers
+    // full words, common suffixed forms, AND partial stems so that a user
+    // typing "yönetim", "yönet", or even "yöne" can still resolve to
+    // "management". Keep focused on study-abroad nouns.
     const TR_TO_EN: Record<string, string[]> = {
+      // ── Universities / institutions ──────────────────────────────────────
       universite: ['university'], uni: ['university'],
       universiteler: ['university', 'universities'],
+      universitesi: ['university'], universiteleri: ['universities'],
+      yuksekokul: ['school', 'college'], enstitu: ['institute'],
+      akademi: ['academy'], kolej: ['college'],
       fakulte: ['faculty'], bolum: ['department'],
-      muhendislik: ['engineering'], tip: ['medicine'], hukuk: ['law'],
-      isletme: ['business'], iktisat: ['economics'], egitim: ['education'],
-      mimarlik: ['architecture'], sanat: ['art'],
-      bilgisayar: ['computer'], yazilim: ['software'],
-      elektrik: ['electrical'], makine: ['mechanical'],
-      endustri: ['industrial'], insaat: ['civil'],
-      kimya: ['chemistry'], fizik: ['physics'], matematik: ['mathematics'],
-      biyoloji: ['biology'], psikoloji: ['psychology'], sosyoloji: ['sociology'],
+      // ── Applied / management sciences (very common in TR uni names) ──────
+      uygulamali: ['applied'], uygulama: ['applied', 'application'],
+      yonetim: ['management'], yonetimi: ['management'],
+      idari: ['administrative'], idare: ['administration'],
+      isletme: ['business'], isletmesi: ['business'],
+      iktisat: ['economics'], ekonomi: ['economics'],
+      muhasebe: ['accounting'], muhasebesi: ['accounting'],
+      finans: ['finance'], finansman: ['finance'],
+      bankacilik: ['banking'], sigortacilik: ['insurance'],
+      pazarlama: ['marketing'], reklamcilik: ['advertising'],
+      halkla: ['public relations'], iliskiler: ['relations'],
+      kamu: ['public'], siyaset: ['political', 'politics'],
+      // ── Health sciences ───────────────────────────────────────────────────
+      saglik: ['health'], saglikli: ['health'],
+      tip: ['medicine'], tibbi: ['medical'],
+      hemsirelik: ['nursing'], hemsire: ['nursing'],
+      eczacilik: ['pharmacy'], eczaci: ['pharmacy'],
+      dis: ['dentistry'], dishekimligi: ['dentistry'],
+      veteriner: ['veterinary'],
+      fizyoterapi: ['physiotherapy'], fizik: ['physics'],
+      radyoloji: ['radiology'], beslenme: ['nutrition', 'dietetics'],
+      // ── Engineering & technology ──────────────────────────────────────────
+      muhendislik: ['engineering'], muhendis: ['engineer'],
+      bilgisayar: ['computer'], bilisim: ['informatics', 'information technology'],
+      yazilim: ['software'], donanim: ['hardware'],
+      elektrik: ['electrical'], elektronik: ['electronics'],
+      makine: ['mechanical'], mekatronik: ['mechatronics'],
+      endustri: ['industrial'], endustriyel: ['industrial'],
+      insaat: ['civil'], insaati: ['civil'],
+      mimarlik: ['architecture'], ic: ['interior'],
+      cevre: ['environmental'], cevresi: ['environmental'],
+      biyomedikal: ['biomedical'], biyomuhendislik: ['biomedical engineering'],
+      // ── Natural & formal sciences ─────────────────────────────────────────
+      kimya: ['chemistry'], kimyasal: ['chemical'],
+      biyoloji: ['biology'], biyokimya: ['biochemistry'],
+      mikrobiyoloji: ['microbiology'], genetik: ['genetics'],
+      matematik: ['mathematics'], istatistik: ['statistics'],
+      aktuerya: ['actuarial'], veri: ['data'],
+      // ── Social sciences & humanities ──────────────────────────────────────
+      hukuk: ['law'], hukuku: ['law'],
+      sosyoloji: ['sociology'], sosyal: ['social'],
+      psikoloji: ['psychology'],
+      tarih: ['history'], cografya: ['geography'],
+      felsefe: ['philosophy'], felsefesi: ['philosophy'],
+      arkeoloji: ['archaeology'], antropoloji: ['anthropology'],
+      // ── Education ─────────────────────────────────────────────────────────
+      egitim: ['education'], egitimi: ['education'],
+      ogretmenlik: ['teaching', 'education'], ogretmen: ['teacher'],
+      rehberlik: ['guidance', 'counseling'], pdr: ['counseling'],
+      // ── Communication, media, arts ────────────────────────────────────────
       iletisim: ['communication'], gazetecilik: ['journalism'],
-      hemsirelik: ['nursing'], veteriner: ['veterinary'],
-      eczacilik: ['pharmacy'], dis: ['dentistry'],
+      medya: ['media'], radyo: ['radio'], televizyon: ['television'],
+      sinema: ['cinema', 'film'], grafik: ['graphic'], tasarim: ['design'],
+      muzik: ['music'], tiyatro: ['theatre', 'theater'],
+      sanat: ['art'], resim: ['painting', 'art'],
+      // ── Tourism & hospitality ─────────────────────────────────────────────
+      turizm: ['tourism'], turistik: ['tourism'],
+      otel: ['hotel', 'hospitality'], otelcilik: ['hotel management'],
+      konaklama: ['hospitality', 'accommodation'],
+      gastronomi: ['gastronomy'], mutfak: ['culinary'],
+      // ── Agriculture, environment, sport ───────────────────────────────────
+      tarim: ['agriculture'], orman: ['forestry'],
+      havacilik: ['aviation'], denizcilik: ['maritime'],
+      spor: ['sports'], beden: ['physical education'],
+      antrenorlik: ['coaching'], rekreasyon: ['recreation'],
+      // ── Fees, duration, process ───────────────────────────────────────────
       ucret: ['fee', 'tuition'], ucretler: ['fee', 'tuition'],
-      fiyat: ['fee', 'tuition'], burs: ['scholarship'],
-      lisans: ['bachelor'], onlisans: ['associate'],
-      doktora: ['phd', 'doctorate'], yuksek: ['master'],
-      sehir: ['city'], ulke: ['country'],
-      turkiye: ['turkey'], almanya: ['germany'], letonya: ['latvia'],
-      cin: ['china'], abd: ['usa', 'united states'],
-      ingilizce: ['english'], turkce: ['turkish'],
-      almanca: ['german'], rusca: ['russian'], cince: ['chinese'],
+      fiyat: ['fee', 'tuition'], odeme: ['payment', 'fee'],
+      burs: ['scholarship'], burslu: ['scholarship'],
+      indirim: ['discount'],
+      sure: ['duration'], donem: ['semester', 'term'],
+      ay: ['month'], yil: ['year'],
       basvuru: ['application'], kabul: ['admission'],
-      baslangic: ['intake'], sure: ['duration'],
-      dil: ['language'], ay: ['month'], yil: ['year'],
+      baslangic: ['intake'], giris: ['intake', 'entry'],
+      kayit: ['enrollment', 'registration'],
+      mezuniyet: ['graduation'], diploma: ['diploma', 'degree'],
+      sertifika: ['certificate'],
+      // ── Level / mode ──────────────────────────────────────────────────────
+      lisans: ['bachelor'], onlisans: ['associate'],
+      yukseklisans: ['master'], yuksek: ['master'],
+      doktora: ['phd', 'doctorate'],
+      uzaktan: ['distance'], hazirlik: ['preparatory'],
+      // ── Locations ─────────────────────────────────────────────────────────
+      sehir: ['city'], ulke: ['country'],
+      turkiye: ['turkey'], almanya: ['germany'],
+      letonya: ['latvia'], cin: ['china'],
+      abd: ['usa', 'united states'],
+      // ── Language ──────────────────────────────────────────────────────────
+      dil: ['language'], ingilizce: ['english'], turkce: ['turkish'],
+      almanca: ['german'], rusca: ['russian'], cince: ['chinese'],
+      fransizca: ['french'], ispanyolca: ['spanish'],
+      // ── Misc ──────────────────────────────────────────────────────────────
+      tercume: ['translation'], ceviri: ['translation'],
+      dilbilimi: ['linguistics'],
     };
 
     const normalized = normalize(query.trim());
     const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
 
-    // Prefix-aware TR→EN lookup: first try exact match, then 6-char prefix
-    // so typos like "bilgisayr" (bilgisayar) and "muhendligi" (muhendislik)
+    // Prefix-aware TR→EN lookup: first try exact match, then shrinking prefix
+    // (4-char minimum) so truncated words like "uygul" (uygulamalı→applied),
+    // "yönet" (yönetim→management) and typos like "bilgisayr" (bilgisayar)
     // still resolve to their English equivalents.
     const lookupTrEn = (tok: string): string[] | undefined => {
       if (TR_TO_EN[tok]) return TR_TO_EN[tok];
-      if (tok.length < 6) return undefined;
-      const pre6 = tok.slice(0, 6);
-      for (const [k, v] of Object.entries(TR_TO_EN)) {
-        if (k.length >= 6 && k.slice(0, 6) === pre6) return v;
+      // Try 6-char prefix first (higher precision), then 5, then 4.
+      for (const preLen of [6, 5, 4]) {
+        if (tok.length < preLen) continue;
+        const pre = tok.slice(0, preLen);
+        for (const [k, v] of Object.entries(TR_TO_EN)) {
+          if (k.length >= preLen && k.slice(0, preLen) === pre) return v;
+        }
       }
       return undefined;
     };
@@ -1676,13 +1754,33 @@ export class DatabaseStorage implements IStorage {
     // term become candidates. We deliberately fetch more than `limit` so we can
     // rerank in JS by how many distinct terms each chunk matched (a cheap TF
     // proxy that beats ILIKE-OR's "first found wins" behavior).
-    const conditions = terms.map(t =>
-      or(
+    //
+    // For tokens >= 5 chars that don't have a TR→EN dictionary mapping,
+    // we ALSO add a pg_trgm word_similarity condition. This catches:
+    //   • Partial Turkish words whose stem is in the content
+    //     ("uygulama" → word_similarity ≈ 0.89 against "Uygulamalı")
+    //   • Transposition typos within the same language
+    //     ("uyuglam" → word_similarity = 0.25 against "uygulamalı")
+    // ILIKE '%term%' is kept for all tokens (handles substrings & EN content).
+    const candidateLimit = Math.max(60, limit * 5);
+    const conditions = terms.map(t => {
+      const base = or(
         ilike(knowledgeChunks.content, `%${t}%`),
         ilike(knowledgeChunks.keywords, `%${t}%`)
-      )
-    );
-    const candidateLimit = Math.max(60, limit * 5);
+      );
+      // Add trigram only for longer tokens without a direct EN translation —
+      // shorter tokens and translated ones are already well-handled by ILIKE.
+      const stem = stripSuffix(t);
+      const hasDictMatch = lookupTrEn(t) || lookupTrEn(stem);
+      if (!hasDictMatch && t.length >= 5) {
+        return or(
+          base,
+          sqlExpr`word_similarity(${t}, content) > 0.25`,
+          sqlExpr`word_similarity(${t}, COALESCE(keywords, '')) > 0.25`
+        );
+      }
+      return base;
+    });
     const candidates = await db.select()
       .from(knowledgeChunks)
       .where(or(...conditions))
