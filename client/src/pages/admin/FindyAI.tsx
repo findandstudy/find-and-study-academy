@@ -428,13 +428,23 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(1000);
   const [showKey, setShowKey] = useState(false);
+  // Tracks whether the user has explicitly opted into the free-text custom-model
+  // input. Decoupled from `model.length === 0` so picking "Custom…" from the
+  // dropdown keeps the input visible even before any character is typed.
+  const [customMode, setCustomMode] = useState(false);
 
   useEffect(() => {
-    setProvider(config.ai_provider || 'n8n');
-    setModel(config.ai_model || '');
+    const nextProvider = config.ai_provider || 'n8n';
+    const nextModel = config.ai_model || '';
+    setProvider(nextProvider);
+    setModel(nextModel);
     setBaseUrl(config.ai_base_url || '');
     setTemperature(parseFloat(config.ai_temperature || '0.7'));
     setMaxTokens(parseInt(config.ai_max_tokens || '1000'));
+    // Auto-detect custom mode on load: a saved value that doesn't appear in the
+    // curated list for its provider must be a custom / fine-tuned model name.
+    const curated = getModelsForProvider(nextProvider);
+    setCustomMode(!!nextModel && curated.length > 0 && !curated.includes(nextModel));
   }, [config]);
 
   const models = getModelsForProvider(provider);
@@ -465,7 +475,16 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Provider</Label>
-              <Select value={provider} onValueChange={(v) => { setProvider(v); setModel(''); }}>
+              <Select
+                value={provider}
+                onValueChange={(v) => {
+                  setProvider(v);
+                  // Clear stale model + custom mode whenever the provider changes,
+                  // since each provider has its own model namespace.
+                  setModel('');
+                  setCustomMode(false);
+                }}
+              >
                 <SelectTrigger data-testid="select-ai-provider">
                   <SelectValue placeholder="Select provider..." />
                 </SelectTrigger>
@@ -480,45 +499,37 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
               <Label>Model</Label>
               {models.length > 0 ? (
                 <>
-                  {/* If the saved model isn't in the curated list (custom name typed previously),
-                      we treat the dropdown as being in "Custom" mode and show the free-text input. */}
-                  {(() => {
-                    const isCustom = !!model && !models.includes(model);
-                    return (
-                      <>
-                        <Select
-                          value={isCustom ? CUSTOM_MODEL_OPTION : model}
-                          onValueChange={(v) => {
-                            if (v === CUSTOM_MODEL_OPTION) {
-                              // Clear so the input becomes editable rather than showing the
-                              // previously-selected curated model.
-                              setModel('');
-                            } else {
-                              setModel(v);
-                            }
-                          }}
-                        >
-                          <SelectTrigger data-testid="select-ai-model">
-                            <SelectValue placeholder="Select model..." />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                            <SelectItem value={CUSTOM_MODEL_OPTION} data-testid="option-model-custom">
-                              Custom… (type model name)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {isCustom && (
-                          <Input
-                            value={model}
-                            onChange={e => setModel(e.target.value)}
-                            placeholder="e.g. my-fine-tuned-model"
-                            data-testid="input-ai-model-custom"
-                          />
-                        )}
-                      </>
-                    );
-                  })()}
+                  <Select
+                    value={customMode ? CUSTOM_MODEL_OPTION : model}
+                    onValueChange={(v) => {
+                      if (v === CUSTOM_MODEL_OPTION) {
+                        setCustomMode(true);
+                        setModel('');
+                      } else {
+                        setCustomMode(false);
+                        setModel(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-ai-model">
+                      <SelectValue placeholder="Select model..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      <SelectItem value={CUSTOM_MODEL_OPTION} data-testid="option-model-custom">
+                        Custom… (type model name)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customMode && (
+                    <Input
+                      value={model}
+                      onChange={e => setModel(e.target.value)}
+                      placeholder="e.g. my-fine-tuned-model"
+                      data-testid="input-ai-model-custom"
+                      autoFocus
+                    />
+                  )}
                 </>
               ) : (
                 <Input value={model} onChange={e => setModel(e.target.value)} placeholder="e.g. gpt-4o" data-testid="input-ai-model" />

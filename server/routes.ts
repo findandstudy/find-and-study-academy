@@ -5156,14 +5156,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Chat API endpoint - Proxy to n8n webhook
   // ---- Findy AI Admin Routes ----
-  app.get('/api/admin/findy/config', requireAdminOrStaff, async (req, res) => {
+  app.get('/api/admin/findy/config', requireAuth, requireAdminOrStaff, async (req, res) => {
     const configs = await storage.getFindyConfigs();
     const configMap: Record<string, string | null> = {};
     for (const c of configs) configMap[c.key] = c.value;
     res.json({ success: true, config: configMap });
   });
 
-  app.post('/api/admin/findy/config', requireAdmin, async (req, res) => {
+  app.post('/api/admin/findy/config', requireAuth, requireAdmin, async (req, res) => {
     const { key, value } = req.body;
     if (!key) return res.status(400).json({ success: false, message: 'key is required' });
     const user = (req as any).user;
@@ -5171,7 +5171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, config });
   });
 
-  app.post('/api/admin/findy/config/bulk', requireAdmin, async (req, res) => {
+  app.post('/api/admin/findy/config/bulk', requireAuth, requireAdmin, async (req, res) => {
     const { configs } = req.body; // { key: string, value: string }[]
     if (!Array.isArray(configs)) return res.status(400).json({ success: false, message: 'configs must be an array' });
     const user = (req as any).user;
@@ -5182,20 +5182,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, updated: results.length });
   });
 
-  app.get('/api/admin/findy/conversations', requireAdminOrStaff, async (req, res) => {
+  app.get('/api/admin/findy/conversations', requireAuth, requireAdminOrStaff, async (req, res) => {
     const limit = parseInt(String(req.query.limit || '100'));
     const conversations = await storage.getFindyConversations(limit);
     res.json({ success: true, conversations });
   });
 
-  app.get('/api/admin/findy/conversations/:id', requireAdminOrStaff, async (req, res) => {
+  app.get('/api/admin/findy/conversations/:id', requireAuth, requireAdminOrStaff, async (req, res) => {
     const conversation = await storage.getFindyConversationById(req.params.id);
     if (!conversation) return res.status(404).json({ success: false, message: 'Conversation not found' });
     const messages = await storage.getFindyMessages(req.params.id);
     res.json({ success: true, conversation, messages });
   });
 
-  app.get('/api/admin/findy/analytics', requireAdminOrStaff, async (req, res) => {
+  app.get('/api/admin/findy/analytics', requireAuth, requireAdminOrStaff, async (req, res) => {
     const analytics = await storage.getFindyAnalytics();
     res.json({ success: true, analytics });
   });
