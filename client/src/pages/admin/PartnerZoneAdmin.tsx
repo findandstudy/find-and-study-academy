@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,7 +22,7 @@ import {
   Package, Plus, Edit2, Trash2, Upload, Folder, FolderOpen,
   FileText, CheckCircle2, XCircle, Loader2, Eye, EyeOff,
   Video, Image as ImageIcon, File, Link2, Download,
-  ChevronRight, Home, Search, ExternalLink, Minimize2,
+  ChevronRight, Home, Search, ExternalLink, Minimize2, X,
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -261,13 +262,25 @@ export default function PartnerZoneAdmin() {
 
   // ─── Drag & drop state ──────────────────────────────────────────────────
   // Holds the item currently being dragged; null when no drag is active.
+  // For 'content' the drag may carry multiple ids when started from a row that
+  // is part of an active multi-selection.
   const [dragItem, setDragItem] = useState<
     | { kind: 'folder'; id: string; name: string; currentParentId: string | null }
-    | { kind: 'content'; id: string; name: string; currentFolderId: string | null }
+    | { kind: 'content'; ids: string[]; primaryId: string; name: string; currentFolderId: string | null }
     | null
   >(null);
   // Identifier of the drop target currently being hovered (folderId or 'root').
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+
+  // ─── Multi-select state (folder detail content table) ───────────────────
+  // Set of selected content ids. Cleared whenever the open folder changes.
+  const [selectedContentIds, setSelectedContentIds] = useState<Set<string>>(new Set());
+  // Index of the last clicked row, used to anchor shift-range selection.
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setSelectedContentIds(new Set());
+    setLastClickedIndex(null);
+  }, [folderId]);
 
   // ─── Queries ────────────────────────────────────────────────────────────
 
@@ -676,16 +689,37 @@ export default function PartnerZoneAdmin() {
     },
   });
 
-  const moveContentMutation = useMutation({
-    mutationFn: async ({ id, folderId: targetFolderId }: { id: string; folderId: string | null }) => {
-      const r = await apiRequest('PATCH', `/api/admin/contents/${id}/folder`, { folderId: targetFolderId });
+  // Move many contents at once via the bulk endpoint. Single-file moves still
+  // funnel through here so behavior stays identical regardless of selection.
+  const moveContentsMutation = useMutation({
+    mutationFn: async ({ ids, folderId: targetFolderId }: { ids: string[]; folderId: string | null }) => {
+      const r = await apiRequest('POST', '/api/admin/contents/bulk-move', {
+        ids,
+        folderId: targetFolderId,
+      });
       const body = await r.json().catch(() => null);
       if (!r.ok) throw new Error(body?.message ?? 'Dosya taşınamadı');
-      return body;
+      return body as { moved: number; failed: number; total: number };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidatePartnerFolders();
-      toast({ title: 'Dosya taşındı' });
+      // Drop the moved ids from the active selection to avoid stale highlights.
+      setSelectedContentIds((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set(prev);
+        variables.ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      const moved = data?.moved ?? variables.ids.length;
+      const failed = data?.failed ?? 0;
+      const desc = failed > 0
+        ? `${moved} taşındı, ${failed} başarısız`
+        : `${moved} dosya taşındı`;
+      toast({
+        title: failed > 0 ? 'Bazı dosyalar taşınamadı' : 'Dosya(lar) taşındı',
+        description: desc,
+        variant: failed > 0 ? 'destructive' : undefined,
+      });
     },
     onError: (err: Error) => {
       toast({ title: 'Taşıma başarısız', description: err.message, variant: 'destructive' });
@@ -706,8 +740,64 @@ export default function PartnerZoneAdmin() {
       moveFolderMutation.mutate({ id: dragItem.id, parentFolderId: targetFolderId });
     } else {
       if (dragItem.currentFolderId === targetFolderId) return;
-      moveContentMutation.mutate({ id: dragItem.id, folderId: targetFolderId });
+      moveContentsMutation.mutate({ ids: dragItem.ids, folderId: targetFolderId });
     }
+  };
+
+  // ─── Selection helpers (operate on filteredFolderContents) ──────────────
+  // Toggles a single content row's selection without affecting others.
+  const toggleSingleSelection = (id: string) => {
+    setSelectedContentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  // Adds [start..end] (inclusive) from the visible list to the current set.
+  const extendRangeSelection = (startIndex: number, endIndex: number) => {
+    const [lo, hi] = startIndex <= endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+    setSelectedContentIds((prev) => {
+      const next = new Set(prev);
+      for (let i = lo; i <= hi; i++) {
+        const item = filteredFolderContents[i];
+        if (item) next.add(item.id);
+      }
+      return next;
+    });
+  };
+  // Click handler for a row's checkbox: shift-click extends a range from the
+  // last anchor; ctrl/cmd or plain checkbox click toggles a single item.
+  const handleRowSelectClick = (id: string, index: number, e: React.MouseEvent) => {
+    if (e.shiftKey && lastClickedIndex !== null) {
+      extendRangeSelection(lastClickedIndex, index);
+    } else {
+      toggleSingleSelection(id);
+    }
+    setLastClickedIndex(index);
+  };
+  // Master "select all visible" checkbox toggles between all-visible and none.
+  const allVisibleSelected =
+    filteredFolderContents.length > 0 &&
+    filteredFolderContents.every((c) => selectedContentIds.has(c.id));
+  const someVisibleSelected =
+    !allVisibleSelected &&
+    filteredFolderContents.some((c) => selectedContentIds.has(c.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedContentIds((prev) => {
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        filteredFolderContents.forEach((c) => next.delete(c.id));
+        return next;
+      }
+      const next = new Set(prev);
+      filteredFolderContents.forEach((c) => next.add(c.id));
+      return next;
+    });
+    setLastClickedIndex(null);
+  };
+  const clearSelection = () => {
+    setSelectedContentIds(new Set());
+    setLastClickedIndex(null);
   };
 
   // Drop targets accept the move only when the dragged item is meaningful
@@ -960,9 +1050,34 @@ export default function PartnerZoneAdmin() {
 
             {/* Contents table */}
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Dosyalar
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Dosyalar
+                </h2>
+                {/* Selection summary appears only when at least one file is picked. */}
+                {selectedContentIds.size > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
+                    data-testid="bulk-selection-toolbar"
+                  >
+                    <Badge variant="secondary" data-testid="bulk-selection-count">
+                      {selectedContentIds.size} öğe seçildi
+                    </Badge>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      Sürükleyip bir klasöre bırakın veya breadcrumb ile üst klasöre taşıyın.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={clearSelection}
+                      data-testid="button-clear-selection"
+                    >
+                      <X className="w-3.5 h-3.5 mr-1" />
+                      Temizle
+                    </Button>
+                  </div>
+                )}
+              </div>
               <Card>
                 <CardContent className="p-0">
                   {filteredFolderContents.length === 0 ? (
@@ -978,6 +1093,20 @@ export default function PartnerZoneAdmin() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={
+                                allVisibleSelected
+                                  ? true
+                                  : someVisibleSelected
+                                    ? 'indeterminate'
+                                    : false
+                              }
+                              onCheckedChange={toggleSelectAllVisible}
+                              aria-label="Tüm görünen dosyaları seç"
+                              data-testid="checkbox-select-all"
+                            />
+                          </TableHead>
                           <TableHead>İçerik</TableHead>
                           <TableHead>Tür</TableHead>
                           <TableHead>Boyut</TableHead>
@@ -987,28 +1116,63 @@ export default function PartnerZoneAdmin() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredFolderContents.map((item) => {
+                        {filteredFolderContents.map((item, index) => {
                           const mt = getContentType(item);
                           const url = getContentUrl(item);
-                          const isDraggingThis = dragItem?.kind === 'content' && dragItem.id === item.id;
+                          const isSelected = selectedContentIds.has(item.id);
+                          // Drag visual feedback covers all rows participating in
+                          // the active drag, not just the row that started it.
+                          const isInActiveDrag =
+                            dragItem?.kind === 'content' && dragItem.ids.includes(item.id);
                           return (
                             <TableRow
                               key={item.id}
                               draggable
                               onDragStart={(e) => {
                                 e.dataTransfer.effectAllowed = 'move';
-                                e.dataTransfer.setData('text/plain', item.id);
+                                // If the dragged row is part of the current
+                                // selection, drag the entire selection together;
+                                // otherwise drag just this row.
+                                const ids = isSelected && selectedContentIds.size > 0
+                                  ? Array.from(selectedContentIds)
+                                  : [item.id];
+                                e.dataTransfer.setData('text/plain', ids.join(','));
                                 setDragItem({
                                   kind: 'content',
-                                  id: item.id,
-                                  name: item.displayName || item.title,
+                                  ids,
+                                  primaryId: item.id,
+                                  name: ids.length > 1
+                                    ? `${ids.length} dosya`
+                                    : item.displayName || item.title,
                                   currentFolderId: item.folderId,
                                 });
                               }}
                               onDragEnd={() => { setDragItem(null); setDropTargetId(null); }}
-                              className={`cursor-grab ${isDraggingThis ? 'opacity-40' : ''}`}
+                              className={`cursor-grab ${isInActiveDrag ? 'opacity-40' : ''}`}
+                              data-state={isSelected ? 'selected' : undefined}
                               data-testid={`content-row-${item.id}`}
                             >
+                              <TableCell
+                                onClick={(e) => {
+                                  // Catch shift/ctrl clicks anywhere on the cell so
+                                  // ranges can be created without precisely hitting
+                                  // the small checkbox target.
+                                  if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    handleRowSelectClick(item.id, index, e);
+                                  }
+                                }}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRowSelectClick(item.id, index, e);
+                                  }}
+                                  aria-label={`${item.displayName || item.title} seç`}
+                                  data-testid={`checkbox-content-${item.id}`}
+                                />
+                              </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <ContentIcon type={mt} className="w-7 h-7 text-primary opacity-70 shrink-0" />

@@ -3754,6 +3754,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk move: assign many contents to a single folder (or root) in one call.
+  // Returns per-id success/error so the UI can report partial failures.
+  app.post('/api/admin/contents/bulk-move', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const bulkSchema = z.object({
+        ids: z.array(z.string().min(1)).min(1).max(200),
+        folderId: z.string().nullable(),
+      });
+      const { ids, folderId } = bulkSchema.parse(req.body);
+      const uniqueIds = Array.from(new Set(ids));
+
+      const results = await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            const content = await storage.updateContent(id, { folderId });
+            return { id, success: true as const, content };
+          } catch (err) {
+            return {
+              id,
+              success: false as const,
+              message: err instanceof Error ? err.message : 'Update failed',
+            };
+          }
+        }),
+      );
+
+      const moved = results.filter((r) => r.success).length;
+      const failed = results.length - moved;
+      res.json({ success: failed === 0, moved, failed, total: results.length, results });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to bulk-move contents';
+      res.status(400).json({ success: false, message: msg });
+    }
+  });
+
   // Quiz management routes (admin only)
   app.get('/api/admin/quizzes', requireAuth, requireAdmin, async (req, res) => {
     try {
