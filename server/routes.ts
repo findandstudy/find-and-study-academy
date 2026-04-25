@@ -5928,6 +5928,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Proximity intent detection — e.g. "İstanbul'a en yakın bilgisayar
+      // mühendisliği olan üniversite". When detected, extract the reference city
+      // so knowledge chunks can be pre-filtered by their City metadata field.
+      // The city list covers the most commonly mentioned Turkish cities in the
+      // study-abroad context; it is intentionally kept small to avoid false
+      // positives and is applied only when a proximity keyword is present.
+      let cityHint: string | undefined;
+      {
+        const proximityRe = /\ben\s+yakin\b|yakinin(da|daki|dan)\b|yakindaki\b|yakininda\b|yakinindaki\b|en\s+yakin/;
+        if (proximityRe.test(messageNorm)) {
+          const trCities: { norm: string; canonical: string }[] = [
+            { norm: 'istanbul', canonical: 'Istanbul' },
+            { norm: 'ankara', canonical: 'Ankara' },
+            { norm: 'izmir', canonical: 'Izmir' },
+            { norm: 'bursa', canonical: 'Bursa' },
+            { norm: 'antalya', canonical: 'Antalya' },
+            { norm: 'adana', canonical: 'Adana' },
+            { norm: 'konya', canonical: 'Konya' },
+            { norm: 'gaziantep', canonical: 'Gaziantep' },
+            { norm: 'mersin', canonical: 'Mersin' },
+            { norm: 'kayseri', canonical: 'Kayseri' },
+            { norm: 'eskisehir', canonical: 'Eskisehir' },
+            { norm: 'diyarbakir', canonical: 'Diyarbakir' },
+            { norm: 'samsun', canonical: 'Samsun' },
+            { norm: 'denizli', canonical: 'Denizli' },
+            { norm: 'trabzon', canonical: 'Trabzon' },
+            { norm: 'malatya', canonical: 'Malatya' },
+            { norm: 'erzurum', canonical: 'Erzurum' },
+            { norm: 'van', canonical: 'Van' },
+            { norm: 'bolu', canonical: 'Bolu' },
+          ];
+          for (const { norm, canonical } of trCities) {
+            if (messageNorm.includes(norm)) {
+              cityHint = canonical;
+              break;
+            }
+          }
+        }
+      }
+
       // (c) Uploaded knowledge — scored search, optionally pre-filtered by
       // entity hints, capped to 12 chunks plus the global char budget. When
       // the search returns zero rows, we still inject an explicit "no rows
@@ -5938,10 +5978,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const scoredChunks = await storage.searchKnowledgeChunks(message, 12, {
           university: universityHint,
           country: countryHint,
+          city: cityHint,
         });
         if (scoredChunks.length > 0) {
-          const label = universityHint || countryHint
-            ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint].filter(Boolean).join(' / ')}):`
+          const label = universityHint || countryHint || cityHint
+            ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint, cityHint ? 'near ' + cityHint : undefined].filter(Boolean).join(' / ')}):`
             : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
           pushSection(label, scoredChunks.map(x => '- ' + x.chunk.content).join('\n'));
           if (isAdmin) {

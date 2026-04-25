@@ -1765,7 +1765,7 @@ export class DatabaseStorage implements IStorage {
   async searchKnowledgeChunks(
     query: string,
     limit = 12,
-    opts?: { university?: string; country?: string }
+    opts?: { university?: string; country?: string; city?: string }
   ): Promise<ScoredKnowledgeChunk[]> {
     // Turkish-aware normalization so "Bahçeşehir" matches "Bahcesehir" etc.
     const normalize = (s: string) => (s || '').toLowerCase()
@@ -1779,14 +1779,36 @@ export class DatabaseStorage implements IStorage {
     // strip when the remaining stem is at least 4 chars to avoid shredding
     // short tokens like "var".
     const TR_SUFFIXES = [
+      // 7-char suffixes
       'larinda', 'lerinde', 'larindan', 'lerinden',
-      'larina', 'lerine', 'sinde', 'sinda', 'sinden', 'sindan',
+      // 6-char suffixes
+      'larina', 'lerine', 'sinden', 'sindan',
+      // ğ-ending ablative (normalized ğ→g): "mühendisliğinden" → "muhendisliginden" → strip "ginden"
+      'ginden', 'gunden',
+      // 5-char suffixes
+      'sinde', 'sinda',
+      // ğ-ending locative: "mühendisliğinde" → strip "ginde"
+      'ginde', 'gunde',
+      // ğ-ending instrumental: "olduğuyla" → strip "guyla"
+      'giyle', 'guyle',
+      // 4-char suffixes
       'larin', 'lerin', 'lardan', 'lerden', 'larda', 'lerde',
+      // ğ-ending accusative: "bilgisayarı" → already covered; "olduğunu" → strip "gunu"
+      'gini', 'gunu',
+      // ğ-ending dative: "mühendisliğine" → strip "gine"
+      'gine', 'gune',
+      // 3-char suffixes
       'lari', 'leri', 'nden', 'ndan', 'nde', 'nda',
-      'nin', 'nun', 'nun', 'nin', 'sini', 'sinu',
+      'nin', 'nun', 'sini', 'sinu',
+      // ğ-ending genitive: "mühendisliğin" → strip "gin"
+      'gin', 'gun',
       'dir', 'tir', 'dur', 'tur',
       'lar', 'ler', 'den', 'dan', 'ten', 'tan',
+      // 2-char suffixes
       'de', 'da', 'te', 'ta', 'in', 'un', 'sı', 'si', 'su', 'le', 'la',
+      // ğ-ending bare possessive: "mühendisliği" → "muhendisligi" → strip "gi" → "muhendisli"
+      // adjective-forming suffix (burslu→burs, bilgisayarlı→bilgisayar)
+      'gi', 'gu', 'li', 'lu',
     ];
     const stripSuffix = (t: string): string => {
       for (const sfx of TR_SUFFIXES) {
@@ -1833,7 +1855,14 @@ export class DatabaseStorage implements IStorage {
       radyoloji: ['radiology'], beslenme: ['nutrition', 'dietetics'],
       // ── Engineering & technology ──────────────────────────────────────────
       muhendislik: ['engineering'], muhendis: ['engineer'],
+      // ğ-ending inflected forms of "mühendislik" that don't strip cleanly:
+      muhendisligi: ['engineering'], muhendisligini: ['engineering'],
+      muhendisliginde: ['engineering'], muhendisliginden: ['engineering'],
+      muhendisligine: ['engineering'], muhendisligin: ['engineering'],
       bilgisayar: ['computer'], bilisim: ['informatics', 'information technology'],
+      // common inflected forms of "bilgisayar":
+      bilgisayarla: ['computer'], bilgisayarli: ['computer', 'computerized'],
+      bilgisayarin: ['computer'],
       yazilim: ['software'], donanim: ['hardware'],
       elektrik: ['electrical'], elektronik: ['electronics'],
       makine: ['mechanical'], mekatronik: ['mechatronics'],
@@ -1993,6 +2022,18 @@ export class DatabaseStorage implements IStorage {
         return m?.Country && normalize(String(m.Country)).includes(co);
       });
     }
+    // City pre-filter: when the caller provides a reference city (from a
+    // proximity query like "İstanbul'a en yakın"), prefer chunks whose
+    // metadata City field matches. If filtering would leave nothing, fall
+    // back to the full candidate set so the model still gets context.
+    if (opts?.city) {
+      const ci = normalize(opts.city);
+      const cityFiltered = filtered.filter(c => {
+        const m: any = c.metadata;
+        return m?.City && normalize(String(m.City)).includes(ci);
+      });
+      if (cityFiltered.length > 0) filtered = cityFiltered;
+    }
 
     // Score by number of distinct terms present in (normalized) keywords+content.
     // Primary: +1 per term that appears as a literal substring (ILIKE match, strong).
@@ -2002,16 +2043,25 @@ export class DatabaseStorage implements IStorage {
     // NOT over the full chunk string which would dilute the score to near-zero).
     // Contribution is capped at 0.5 so a single fuzzy hit never outranks a direct
     // substring match (which scores 1).
+    //
+    // Proximity bonus: when 2+ distinct terms all appear as direct substrings
+    // AND their first occurrences are within 80 characters of each other (i.e.
+    // they are truly co-located in the same cell/sentence), add +1.5. This
+    // ensures "Computer Engineering" chunks rank above "Computer and
+    // Instructional Technologies Teaching" chunks where only one term is adjacent
+    // to the other content word.
     const scored = filtered.map(c => {
       const hay = normalize(`${c.keywords || ''} ${c.content || ''}`);
       // Tokenise chunk into individual words for per-word fuzzy scoring.
       const hayWords = hay.split(/\s+/).filter(w => w.length >= 3);
       let score = 0;
       const matchedTerms: string[] = [];
+      const directMatches: string[] = [];
       for (const t of terms) {
         if (hay.includes(t)) {
           score += 1; // Strong: direct substring match
           matchedTerms.push(t);
+          directMatches.push(t);
         } else if (pgTrgmAvailable && hayWords.length > 0) {
           // Fuzzy: max Dice bigram sim against any single word in the chunk.
           // e.g. "uyuglam" vs "uygulamali" ≈ 0.40 → 0.20 contribution.
@@ -2020,6 +2070,14 @@ export class DatabaseStorage implements IStorage {
             score += maxSim * 0.5;
             matchedTerms.push(`~${t}`);
           }
+        }
+      }
+      // Proximity bonus: 2+ direct matches close together in the chunk.
+      if (directMatches.length >= 2) {
+        const positions = directMatches.map(t => hay.indexOf(t)).filter(p => p >= 0);
+        if (positions.length >= 2) {
+          const span = Math.max(...positions) - Math.min(...positions);
+          if (span <= 80) score += 1.5;
         }
       }
       return { c, score, matchedTerms };
