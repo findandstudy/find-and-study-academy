@@ -299,6 +299,7 @@ const contentUpload = multer({
 // Supports: openai, anthropic, gemini, mistral, openrouter, plus an
 // "openai-compatible" fallback when an explicit base_url is provided.
 // Returns the assistant text reply or throws an Error with a concise reason.
+type HistoryMessage = { role: 'user' | 'assistant'; content: string };
 type AiCallArgs = {
   provider: string;
   apiKey: string;
@@ -309,6 +310,7 @@ type AiCallArgs = {
   systemPrompt: string;
   userMessage: string;
   ragContext: string;
+  history?: HistoryMessage[];
 };
 
 async function callAiProvider(a: AiCallArgs): Promise<string> {
@@ -347,6 +349,7 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
         max_tokens: a.maxTokens,
         messages: [
           { role: 'system', content: a.systemPrompt },
+          ...(a.history || []).map(h => ({ role: h.role, content: h.content })),
           { role: 'user', content: userContent },
         ],
       }),
@@ -387,7 +390,10 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
           max_tokens: a.maxTokens,
           temperature: a.temperature,
           system: a.systemPrompt,
-          messages: [{ role: 'user', content: userContent }],
+          messages: [
+            ...(a.history || []).map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: userContent },
+          ],
         }),
         signal: timeout,
       });
@@ -410,7 +416,13 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
           // systemInstruction is a Content object — DO NOT include `role`,
           // it's implicitly system and some Gemini API versions reject it.
           systemInstruction: { parts: [{ text: a.systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userContent }] }],
+          contents: [
+            ...(a.history || []).map(h => ({
+              role: h.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: h.content }],
+            })),
+            { role: 'user', parts: [{ text: userContent }] },
+          ],
           generationConfig: {
             temperature: a.temperature,
             maxOutputTokens: a.maxTokens,
@@ -5730,7 +5742,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // verbose error messages without TS scoping errors.
     let isAdmin = false;
     try {
-      const { message, sessionId } = req.body;
+      const { message, sessionId, history: rawHistory } = req.body;
+
+      // Validate & cap conversation history to last 10 turns (5 exchanges).
+      // Each item must be { role: 'user'|'assistant', content: string }.
+      const history: HistoryMessage[] = [];
+      if (Array.isArray(rawHistory)) {
+        for (const h of rawHistory) {
+          if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string') {
+            history.push({ role: h.role, content: h.content.slice(0, 2000) });
+          }
+        }
+        // Cap to most-recent 10 messages (5 user + 5 assistant turns).
+        if (history.length > 10) history.splice(0, history.length - 10);
+      }
 
       // Optional admin lookup so we can show verbose provider errors only to
       // admin users (regular agents see a friendly generic message).
@@ -5965,7 +5990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const botResponse = await callAiProvider({
             provider, apiKey, model, baseUrl, temperature, maxTokens,
-            systemPrompt, userMessage: message, ragContext,
+            systemPrompt, userMessage: message, ragContext, history,
           });
           return res.json({ success: true, message: botResponse, data: { message: botResponse } });
         } catch (providerErr: any) {

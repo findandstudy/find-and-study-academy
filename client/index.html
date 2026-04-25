@@ -745,6 +745,8 @@
         let sessionId = generateSessionId();
         let isChatOpen = false;
         let isMinimized = localStorage.getItem('findy-minimized') === 'true';
+        // Rolling conversation history sent to the backend (max 10 messages = 5 exchanges).
+        let conversationHistory = [];
         
         // Apply minimized state on load
         if (isMinimized) {
@@ -988,7 +990,8 @@
               },
               body: JSON.stringify({
                 message: message,
-                sessionId: sessionId
+                sessionId: sessionId,
+                history: conversationHistory
               }),
               signal: AbortSignal.timeout(30000) // 30 second timeout
             });
@@ -1000,6 +1003,13 @@
               // Backend returns { success: true, message: "...", data: {...} }
               const botMessage = result.data?.message || result.data?.response || result.message || 'No response received';
               addMessage(botMessage, false);
+
+              // Update rolling history (keep last 10 = 5 exchanges).
+              conversationHistory.push({ role: 'user', content: message });
+              conversationHistory.push({ role: 'assistant', content: botMessage });
+              if (conversationHistory.length > 10) {
+                conversationHistory = conversationHistory.slice(conversationHistory.length - 10);
+              }
             } else {
               const errorData = await response.json().catch(() => ({}));
               throw new Error(errorData.message || 'Request failed');
