@@ -249,6 +249,7 @@ export interface IStorage {
   addKnowledgeChunks(chunks: InsertKnowledgeChunk[]): Promise<void>;
   deleteChunksBySourceId(sourceId: string): Promise<void>;
   searchKnowledgeChunks(query: string, limit?: number): Promise<KnowledgeChunk[]>;
+  listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]>;
   getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
 }
 
@@ -1709,6 +1710,34 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(knowledgeChunks)
       .where(eq(knowledgeChunks.sourceId, sourceId))
       .limit(10);
+  }
+
+  // Returns the distinct (Country, Universities) pairs that exist in the
+  // uploaded knowledge base, grouped by country. Used to answer generic
+  // listing questions like "hangi üniversiteler var" / "list universities"
+  // without hoping the per-row search picks up every distinct name.
+  async listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]> {
+    const rows = await db.execute(sql`
+      SELECT DISTINCT
+        COALESCE(NULLIF(metadata->>'Country', ''), 'Unknown') AS country,
+        metadata->>'Universities' AS uni
+      FROM knowledge_chunks
+      WHERE metadata->>'Universities' IS NOT NULL
+        AND metadata->>'Universities' <> ''
+      ORDER BY 1, 2
+    `);
+    const byCountry = new Map<string, Set<string>>();
+    for (const r of (rows as any).rows ?? rows ?? []) {
+      const country = String(r.country || 'Unknown');
+      const uni = String(r.uni || '').trim();
+      if (!uni) continue;
+      if (!byCountry.has(country)) byCountry.set(country, new Set());
+      byCountry.get(country)!.add(uni);
+    }
+    return Array.from(byCountry.entries()).map(([country, set]) => ({
+      country,
+      universities: Array.from(set).sort(),
+    }));
   }
 }
 

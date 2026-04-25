@@ -520,9 +520,35 @@
         padding: 12px 16px;
         border-radius: 12px;
         font-size: 14px;
-        line-height: 1.5;
+        line-height: 1.55;
         word-wrap: break-word;
       }
+
+      /* Markdown rendering inside bot bubbles */
+      .findy-message.bot .findy-message-content > *:first-child { margin-top: 0; }
+      .findy-message.bot .findy-message-content > *:last-child { margin-bottom: 0; }
+      .findy-message.bot .findy-message-content p { margin: 0 0 8px 0; }
+      .findy-message.bot .findy-message-content h3 {
+        font-size: 15px; font-weight: 700; margin: 10px 0 6px 0; color: #111827;
+      }
+      .findy-message.bot .findy-message-content h4 {
+        font-size: 14px; font-weight: 600; margin: 8px 0 4px 0; color: #111827;
+      }
+      .findy-message.bot .findy-message-content ul,
+      .findy-message.bot .findy-message-content ol {
+        margin: 4px 0 8px 0; padding-left: 20px;
+      }
+      .findy-message.bot .findy-message-content li { margin: 2px 0; }
+      .findy-message.bot .findy-message-content strong { font-weight: 600; color: #111827; }
+      .findy-message.bot .findy-message-content em { font-style: italic; }
+      .findy-message.bot .findy-message-content code {
+        background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+      }
+      .findy-message.bot .findy-message-content a {
+        color: #ED1C24; text-decoration: underline; word-break: break-all;
+      }
+      .findy-message.bot .findy-message-content a:hover { text-decoration: none; }
 
       .findy-message.user .findy-message-content {
         background: var(--findy-message-user-bg);
@@ -780,6 +806,63 @@
         }
 
         // Format time
+        // Minimal markdown -> HTML renderer for bot replies. Whitelist:
+        //   ### / ## / # headings, **bold**, *italic*, `code`, [text](url),
+        //   bullet lists (-, *, •), numbered lists, paragraphs.
+        // We escape the input first so the model can't sneak raw HTML through.
+        function renderMarkdown(raw) {
+          const text = String(raw == null ? '' : raw);
+          const escape = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+          let s = escape(text);
+          // Code spans first so we don't double-process their contents
+          s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+          // Headings
+          s = s.replace(/^###\s+(.+)$/gm, '<h4>$1</h4>');
+          s = s.replace(/^##\s+(.+)$/gm, '<h3>$1</h3>');
+          s = s.replace(/^#\s+(.+)$/gm, '<h3>$1</h3>');
+          // Bold + italic
+          s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+          s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+          // Links: [text](url) — only http/https/mailto
+          s = s.replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+          );
+          // Bullet lists (consecutive lines starting with -, *, •)
+          s = s.replace(/(?:^|\n)((?:[ \t]*[-*•][ \t]+.+(?:\n|$))+)/g, function (_, block) {
+            const items = block
+              .trim()
+              .split(/\n/)
+              .map((l) => l.replace(/^[ \t]*[-*•][ \t]+/, ''))
+              .map((l) => '<li>' + l + '</li>')
+              .join('');
+            return '\n<ul>' + items + '</ul>';
+          });
+          // Numbered lists (consecutive lines starting with N.)
+          s = s.replace(/(?:^|\n)((?:[ \t]*\d+\.[ \t]+.+(?:\n|$))+)/g, function (_, block) {
+            const items = block
+              .trim()
+              .split(/\n/)
+              .map((l) => l.replace(/^[ \t]*\d+\.[ \t]+/, ''))
+              .map((l) => '<li>' + l + '</li>')
+              .join('');
+            return '\n<ol>' + items + '</ol>';
+          });
+          // Paragraphs: split on blank lines, wrap leftover plain blocks in <p>
+          const blocks = s.split(/\n{2,}/).map((b) => {
+            const t = b.trim();
+            if (!t) return '';
+            if (/^<(h[1-6]|ul|ol|p|blockquote|pre)/i.test(t)) return t;
+            return '<p>' + t.replace(/\n/g, '<br>') + '</p>';
+          });
+          return blocks.filter(Boolean).join('\n');
+        }
+
         function formatTime() {
           const now = new Date();
           return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -810,7 +893,14 @@
           const contentWrapper = document.createElement('div');
           const contentDiv = document.createElement('div');
           contentDiv.className = 'findy-message-content';
-          contentDiv.textContent = text;
+          if (isUser) {
+            contentDiv.textContent = text;
+          } else {
+            // Bot replies often contain markdown (headings, bold, lists,
+            // links). Render a small whitelist via renderMarkdown(). User
+            // input goes through textContent so it can never inject HTML.
+            contentDiv.innerHTML = renderMarkdown(text);
+          }
           
           const timeDiv = document.createElement('div');
           timeDiv.className = 'findy-message-time';
