@@ -295,6 +295,144 @@ const contentUpload = multer({
   fileFilter: contentFileFilter,
 });
 
+// ─── AI provider call helper (used by /api/chat) ───────────────────────────────
+// Supports: openai, anthropic, gemini, mistral, openrouter, plus an
+// "openai-compatible" fallback when an explicit base_url is provided.
+// Returns the assistant text reply or throws an Error with a concise reason.
+type AiCallArgs = {
+  provider: string;
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+  temperature: number;
+  maxTokens: number;
+  systemPrompt: string;
+  userMessage: string;
+  ragContext: string;
+};
+
+async function callAiProvider(a: AiCallArgs): Promise<string> {
+  const userContent = a.ragContext
+    ? `${a.userMessage}\n${a.ragContext}`
+    : a.userMessage;
+  // Keep below the chat widget's 30s client-side timeout so any provider error
+  // is surfaced as a real reply rather than swallowed by an aborted fetch.
+  const timeout = AbortSignal.timeout(25000);
+
+  // NOTE: explicitly typed as `any` because Express also exports a `Response`
+  // type into this module's scope, which collides with the global fetch
+  // `Response`. We only need a couple of properties (.status / .text()).
+  const readErr = async (r: any, label: string): Promise<string> => {
+    let body = '';
+    try { body = await r.text(); } catch { /* ignore */ }
+    // Trim large HTML pages so the chat reply stays short.
+    const snippet = body.slice(0, 280);
+    return `${label} returned ${r.status}${snippet ? ` — ${snippet}` : ''}`;
+  };
+
+  // ── OpenAI-compatible (openai, mistral, openrouter, custom) ──────────────────
+  const openaiCompatible = async (defaultBase: string, extraHeaders: Record<string, string> = {}) => {
+    const base = (a.baseUrl || defaultBase).replace(/\/+$/, '');
+    const url = `${base}/chat/completions`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${a.apiKey}`,
+        ...extraHeaders,
+      },
+      body: JSON.stringify({
+        model: a.model,
+        temperature: a.temperature,
+        max_tokens: a.maxTokens,
+        messages: [
+          { role: 'system', content: a.systemPrompt },
+          { role: 'user', content: userContent },
+        ],
+      }),
+      signal: timeout,
+    });
+    if (!r.ok) throw new Error(await readErr(r, 'OpenAI-compatible API'));
+    const j: any = await r.json();
+    const text = j?.choices?.[0]?.message?.content;
+    if (!text) throw new Error('Empty response from provider');
+    return String(text);
+  };
+
+  switch (a.provider) {
+    case 'openai':
+      return openaiCompatible('https://api.openai.com/v1');
+
+    case 'mistral':
+      return openaiCompatible('https://api.mistral.ai/v1');
+
+    case 'openrouter':
+      return openaiCompatible('https://openrouter.ai/api/v1', {
+        // OpenRouter recommends these for attribution; harmless if missing.
+        'HTTP-Referer': 'https://findandstudy.com',
+        'X-Title': 'Find And Study Findy AI',
+      });
+
+    case 'anthropic': {
+      const base = (a.baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
+      const r = await fetch(`${base}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': a.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: a.model,
+          max_tokens: a.maxTokens,
+          temperature: a.temperature,
+          system: a.systemPrompt,
+          messages: [{ role: 'user', content: userContent }],
+        }),
+        signal: timeout,
+      });
+      if (!r.ok) throw new Error(await readErr(r, 'Anthropic API'));
+      const j: any = await r.json();
+      const text = Array.isArray(j?.content)
+        ? j.content.filter((p: any) => p?.type === 'text').map((p: any) => p.text).join('\n\n')
+        : '';
+      if (!text) throw new Error('Empty response from Anthropic');
+      return text;
+    }
+
+    case 'gemini': {
+      const base = (a.baseUrl || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/+$/, '');
+      const url = `${base}/models/${encodeURIComponent(a.model)}:generateContent?key=${encodeURIComponent(a.apiKey)}`;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // systemInstruction is a Content object — DO NOT include `role`,
+          // it's implicitly system and some Gemini API versions reject it.
+          systemInstruction: { parts: [{ text: a.systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userContent }] }],
+          generationConfig: {
+            temperature: a.temperature,
+            maxOutputTokens: a.maxTokens,
+          },
+        }),
+        signal: timeout,
+      });
+      if (!r.ok) throw new Error(await readErr(r, 'Gemini API'));
+      const j: any = await r.json();
+      const text = j?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('') || '';
+      if (!text) throw new Error('Empty response from Gemini');
+      return text;
+    }
+
+    default: {
+      // Unknown provider — try OpenAI-compatible IF a base_url was supplied.
+      if (a.baseUrl) return openaiCompatible(a.baseUrl);
+      throw new Error(`Unsupported provider "${a.provider}"`);
+    }
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // PUBLIC API endpoints for agents (no authentication required for published content)
   
@@ -5461,9 +5599,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── Chat endpoint with RAG ────────────────────────────────────────────────────
+  // Routing rules:
+  //   1. If an AI provider has been configured in admin (provider + api_key),
+  //      call that provider directly using the saved model / temperature /
+  //      max_tokens / system_prompt.
+  //   2. Otherwise, fall back to the legacy N8N webhook proxy.
+  //   3. If neither is configured but RAG context is available, return the
+  //      raw context as a degraded answer.
   app.post('/api/chat', async (req, res) => {
     try {
       const { message, sessionId } = req.body;
+
+      // Optional admin lookup so we can show verbose provider errors only to
+      // admin users (regular agents see a friendly generic message).
+      let isAdmin = false;
+      const callerId = req.header('x-user-id');
+      if (callerId) {
+        try {
+          const caller = await storage.getUser(callerId);
+          isAdmin = caller?.role === 'admin';
+        } catch { /* ignore */ }
+      }
 
       if (!message || typeof message !== 'string') {
         return res.status(400).json({ success: false, message: 'Message is required' });
@@ -5481,46 +5637,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('RAG search failed (non-fatal):', err);
       }
 
-      const webhookUrl = process.env.N8N_WEBHOOK_URL;
-      
-      if (!webhookUrl) {
-        // If no webhook, return a direct answer from RAG if available
-        if (ragContext) {
-          return res.json({
-            success: true,
-            message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
-            data: { message: ragContext, hasContext: true }
+      // ── Load admin AI config ──────────────────────────────────────────────────
+      const cfgRows = await storage.getFindyConfigs();
+      const cfg: Record<string, string | null> = {};
+      for (const c of cfgRows) cfg[c.key] = c.value;
+
+      const provider = (cfg.ai_provider || '').toLowerCase().trim();
+      const apiKey = (cfg.ai_api_key || '').trim();
+      const model = (cfg.ai_model || '').trim();
+      const baseUrl = (cfg.ai_base_url || '').trim();
+      const temperature = parseFloat(cfg.ai_temperature || '0.3') || 0.3;
+      const maxTokens = parseInt(cfg.ai_max_tokens || '1200', 10) || 1200;
+      const systemPrompt = (cfg.system_prompt || '').trim()
+        || 'You are Findy, the AI assistant for Find And Study, an educational platform for study-abroad agents. Be concise, accurate, and helpful. When the knowledge base contains relevant information, prefer it over your prior knowledge.';
+
+      // ── 1. Direct provider call (preferred when configured) ──────────────────
+      if (apiKey && provider && model) {
+        try {
+          const botResponse = await callAiProvider({
+            provider, apiKey, model, baseUrl, temperature, maxTokens,
+            systemPrompt, userMessage: message, ragContext,
+          });
+          return res.json({ success: true, message: botResponse, data: { message: botResponse } });
+        } catch (providerErr: any) {
+          // Surface a concise reason so the admin can debug from the chat reply
+          // (the n8n fallback is intentionally NOT used here — if the admin
+          // configured a provider we want failures to be visible, not silently
+          // routed elsewhere).
+          console.error('AI provider call failed:', providerErr?.message || providerErr);
+          const verboseMsg = `AI provider error: ${providerErr?.message || 'unknown error'}`;
+          const genericMsg = 'AI service is temporarily unavailable. Please try again.';
+          return res.status(502).json({
+            success: false,
+            message: isAdmin ? verboseMsg : genericMsg,
           });
         }
-        return res.status(500).json({ success: false, message: 'Chat service is not configured' });
       }
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          context: ragContext, // Inject knowledge context
-          sessionId: sessionId || crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
+      // ── 2. Legacy n8n webhook fallback ───────────────────────────────────────
+      const webhookUrl = process.env.N8N_WEBHOOK_URL;
+      if (webhookUrl) {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            context: ragContext,
+            sessionId: sessionId || crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
 
-      if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
+        if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
 
-      const contentType = response.headers.get('content-type');
-      let botResponse: string;
-      if (contentType?.includes('application/json')) {
-        const data = await response.json();
-        botResponse = data.message || data.response || data.output || JSON.stringify(data);
-      } else {
-        botResponse = await response.text();
+        const contentType = response.headers.get('content-type');
+        let botResponse: string;
+        if (contentType?.includes('application/json')) {
+          const data = await response.json();
+          botResponse = data.message || data.response || data.output || JSON.stringify(data);
+        } else {
+          botResponse = await response.text();
+        }
+
+        return res.json({ success: true, message: botResponse, data: { message: botResponse } });
       }
 
-      res.json({ success: true, message: botResponse, data: { message: botResponse } });
-    } catch (error) {
-      console.error('Chat API error:', error);
+      // ── 3. Degraded mode — only RAG context, no LLM ──────────────────────────
+      if (ragContext) {
+        return res.json({
+          success: true,
+          message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
+          data: { message: ragContext, hasContext: true }
+        });
+      }
+      return res.status(500).json({ success: false, message: 'Chat service is not configured' });
+    } catch (error: any) {
+      console.error('Chat API error:', error?.message || error);
       res.status(500).json({ success: false, message: 'Failed to process chat message' });
     }
   });

@@ -30,7 +30,7 @@ The platform features a modular course structure with lessons and embedded quizz
 - **Object Storage Integration:** For profile pictures and agency logos using presigned URLs.
 - **Agent Menu Management System:** Admin control over agent sidebar menu visibility.
 - **Agency Location Updates:** Integration with Google Maps and Yandex Maps.
-- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, designed for AI integration, and includes a minimize feature. The launcher is conditionally displayed only for authenticated users on panel routes.
+- **Findy Chat Interface:** Modern, accessible chat widget with real-time messaging, typing indicators, and session management, with a minimize feature. The launcher is conditionally displayed only for authenticated users on panel routes. Chat backend routes in three tiers: (1) direct call to the configured AI provider (OpenAI, Anthropic, Gemini, Mistral, OpenRouter, or any OpenAI-compatible base URL) using the admin's saved provider/model/API key, (2) legacy n8n webhook fallback, (3) RAG-only degraded mode. Provider API keys are write-only — the saved key is redacted from `GET /api/admin/findy/config`. Provider error messages are gated to admins only; regular users see a generic friendly message.
 - **Quiz-to-Content Linking System:** Associates quizzes with specific lessons.
 - **Country-based Final Exam System:** Links final exams to specific countries and courses with rigorous validation.
 - **Multilingual Content System:** Supports 10 languages with a Tiptap rich-text editor and DOMPurify sanitization.
