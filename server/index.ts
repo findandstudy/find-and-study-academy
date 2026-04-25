@@ -64,18 +64,11 @@ app.use((req, res, next) => {
 async function initPgTrgm() {
   try {
     await db.execute(sqlExpr`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
-    // Verify the extension is actually present (the CREATE above may silently
-    // no-op if the DB user lacks superuser rights to install extensions).
-    const verifyResult = await db.execute(
-      sqlExpr`SELECT 1 AS ok FROM pg_extension WHERE extname = 'pg_trgm'`
-    );
-    const trgmReady = (verifyResult as any).rows?.length > 0 ||
-                      (verifyResult as any).rowCount > 0 ||
-                      (Array.isArray(verifyResult) && verifyResult.length > 0);
-    if (!trgmReady) {
-      log('pg_trgm not available — fuzzy search: ILIKE-only fallback');
-      return;
-    }
+    // Verify pg_trgm functions are actually callable — the CREATE above may
+    // silently no-op when DB user lacks superuser rights to install extensions.
+    // Calling word_similarity() directly confirms the function exists; if not,
+    // it throws and we stay in ILIKE-only mode.
+    await db.execute(sqlExpr`SELECT word_similarity('test', 'test') AS ws`);
     await db.execute(sqlExpr`
       CREATE INDEX IF NOT EXISTS knowledge_chunks_content_trgm_idx
         ON knowledge_chunks USING GIN (content gin_trgm_ops)
@@ -86,10 +79,11 @@ async function initPgTrgm() {
     `);
     setPgTrgmAvailable(true);
     log('✓ pg_trgm extension and GIN indexes ready — fuzzy search: ENABLED');
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Non-fatal: ILIKE path still works; fuzzy conditions are gated by
     // pgTrgmAvailable=false so no word_similarity() SQL will be emitted.
-    log('pg_trgm init warning — fuzzy search: ILIKE-only fallback:', err?.message || err);
+    const msg = err instanceof Error ? err.message : String(err);
+    log('pg_trgm init warning — fuzzy search: ILIKE-only fallback:', msg);
   }
 }
 

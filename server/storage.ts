@@ -261,6 +261,25 @@ export function setPgTrgmAvailable(val: boolean): void {
   pgTrgmAvailable = val;
 }
 
+// JS-side bigram overlap similarity [0,1].
+// Used in reranking to give trigram-only matches a score proportional to
+// how closely the query token overlaps the chunk text (rather than a flat 0.1).
+// This is the standard Dice coefficient over character bigrams — same metric
+// PostgreSQL pg_trgm uses internally, computed cheaply without a second query.
+function bigramSim(a: string, b: string): number {
+  if (!a || !b || a.length < 2 || b.length < 2) return 0;
+  const bigrams = (s: string): Set<string> => {
+    const set = new Set<string>();
+    for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2));
+    return set;
+  };
+  const aSet = bigrams(a);
+  const bSet = bigrams(b);
+  let intersection = 0;
+  for (const bg of aSet) if (bSet.has(bg)) intersection++;
+  return (2 * intersection) / (aSet.size + bSet.size);
+}
+
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -1783,8 +1802,8 @@ export class DatabaseStorage implements IStorage {
       if (pgTrgmAvailable && !hasDictMatch && t.length >= 5) {
         return or(
           base,
-          sqlExpr`word_similarity(${t}, content) > 0.25`,
-          sqlExpr`word_similarity(${t}, COALESCE(keywords, '')) > 0.25`
+          sqlExpr`word_similarity(${t}, content) >= 0.25`,
+          sqlExpr`word_similarity(${t}, COALESCE(keywords, '')) >= 0.25`
         );
       }
       return base;
@@ -1814,16 +1833,26 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Score by number of distinct terms present in (normalized) keywords+content.
-    // Chunks found only via trigram word_similarity (not ILIKE substring) may
-    // score 0 on the text-inclusion check — give them a small baseline (0.1)
-    // so they survive instead of being discarded. Direct substring matches
-    // will always score ≥ 1 and rank above them.
+    // Primary score: +1 per term that appears as a literal substring (ILIKE match).
+    // Fuzzy bonus: for terms that don't appear as a substring, add the JS-bigram
+    // overlap similarity (Dice coefficient over character bigrams) * 0.5.
+    // This ensures trigram-only matches rank proportionally to how close the
+    // query token is to the chunk text, rather than all tying at a flat baseline.
     const scored = filtered.map(c => {
       const hay = normalize(`${c.keywords || ''} ${c.content || ''}`);
       let score = 0;
-      for (const t of terms) if (hay.includes(t)) score += 1;
-      return { c, score: Math.max(score, 0.1) };
-    });
+      for (const t of terms) {
+        if (hay.includes(t)) {
+          score += 1;
+        } else if (pgTrgmAvailable) {
+          // Approximate DB word_similarity in JS (same Dice bigram metric).
+          // Scale to max 0.5 so fuzzy hits never outscore a single direct hit.
+          const sim = bigramSim(t, hay);
+          if (sim > 0.1) score += sim * 0.5;
+        }
+      }
+      return { c, score };
+    }).filter(x => x.score > 0);
 
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, limit).map(x => x.c);
