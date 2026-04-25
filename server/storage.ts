@@ -253,6 +253,14 @@ export interface IStorage {
   getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
 }
 
+// Whether pg_trgm extension is confirmed available at startup.
+// Set to true by server/index.ts initPgTrgm() only after successful verification.
+// When false, word_similarity() SQL conditions are skipped to avoid runtime errors.
+let pgTrgmAvailable = false;
+export function setPgTrgmAvailable(val: boolean): void {
+  pgTrgmAvailable = val;
+}
+
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -1768,11 +1776,11 @@ export class DatabaseStorage implements IStorage {
         ilike(knowledgeChunks.content, `%${t}%`),
         ilike(knowledgeChunks.keywords, `%${t}%`)
       );
-      // Add trigram only for longer tokens without a direct EN translation —
-      // shorter tokens and translated ones are already well-handled by ILIKE.
+      // Add trigram only when pg_trgm is confirmed available, for longer tokens
+      // without a direct EN translation (shorter/translated ones are handled by ILIKE).
       const stem = stripSuffix(t);
       const hasDictMatch = lookupTrEn(t) || lookupTrEn(stem);
-      if (!hasDictMatch && t.length >= 5) {
+      if (pgTrgmAvailable && !hasDictMatch && t.length >= 5) {
         return or(
           base,
           sqlExpr`word_similarity(${t}, content) > 0.25`,
