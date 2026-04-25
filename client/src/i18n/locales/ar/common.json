@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "الاستشارات التعليمية"
+  },
+  "language": {
+    "label": "اللغة",
+    "select": "اختر اللغة",
+    "current": "اللغة الحالية: {{name}}"
+  },
+  "common": {
+    "save": "حفظ",
+    "saveChanges": "حفظ التغييرات",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "search": "بحث",
+    "loading": "جارٍ التحميل...",
+    "saving": "جارٍ الحفظ...",
+    "logout": "تسجيل الخروج",
+    "yes": "نعم",
+    "no": "لا",
+    "confirm": "تأكيد",
+    "actions": "إجراءات",
+    "optional": "اختياري",
+    "required": "مطلوب",
+    "success": "نجاح",
+    "error": "خطأ",
+    "warning": "تحذير"
+  },
+  "toast": {
+    "saved": "تم حفظ الإعدادات",
+    "savedDescription": "تم حفظ تغييراتك بنجاح.",
+    "failed": "فشل الحفظ",
+    "failedDescription": "تعذّر حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+    "languageChanged": "تم تغيير اللغة",
+    "languageChangedDescription": "أصبحت الواجهة الآن باللغة {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "مرحبًا بعودتك",
+    "signInSubtitle": "سجّل الدخول إلى حسابك في Find And Study",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "newAgent": "وكيل جديد؟",
+    "signUp": "إنشاء حساب",
+    "forgotPassword": "هل نسيت كلمة المرور؟",
+    "logoutConfirm": "هل أنت متأكد أنك تريد تسجيل الخروج؟"
+  },
+  "nav": {
+    "groups": {
+      "general": "عام",
+      "education": "التعليم",
+      "agency": "الوكالة",
+      "services": "الخدمات",
+      "links": "روابط",
+      "content": "المحتوى",
+      "management": "الإدارة",
+      "engagement": "التفاعل",
+      "system": "النظام"
+    },
+    "items": {
+      "dashboard": "لوحة التحكم",
+      "profile": "الملف الشخصي",
+      "announcements": "الإعلانات",
+      "courses": "الدورات",
+      "certificates": "الشهادات",
+      "leaderboard": "لوحة المتصدرين",
+      "myAgency": "وكالتي",
+      "examsOrders": "الامتحانات / الطلبات",
+      "subscriptions": "الاشتراكات",
+      "partnerZone": "منطقة الشركاء",
+      "agentPortal": "بوابة الوكلاء",
+      "dormBooking": "حجز السكن",
+      "contentCountries": "المحتوى / الدول",
+      "quizzes": "الاختبارات",
+      "agencies": "الوكالات",
+      "users": "المستخدمون",
+      "reports": "التقارير",
+      "popups": "الإعلانات المنبثقة",
+      "findyAi": "Findy AI",
+      "settingsPayments": "الإعدادات / المدفوعات",
+      "integrations": "التكاملات",
+      "menuManagement": "إدارة القائمة"
+    }
+  }
+}

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/store/auth';
 import {
   LayoutDashboard,
@@ -31,68 +33,84 @@ interface AdminLayoutProps {
 }
 
 interface NavItem {
-  name: string;
+  /** i18n key under `nav.items.*` */
+  i18nKey: string;
+  /** Fallback label if a translation is missing */
+  fallback: string;
   href: string;
   icon: React.ElementType;
   adminOnly?: boolean;
 }
 
 interface NavGroup {
-  label: string;
+  /** i18n key under `nav.groups.*` */
+  i18nKey: string;
+  fallback: string;
   items: NavItem[];
 }
 
-// Logical grouping of navigation
+// Logical grouping of navigation. Labels are resolved at render time via i18n.
 const navigationGroups: NavGroup[] = [
   {
-    label: 'Genel',
+    i18nKey: 'general',
+    fallback: 'General',
     items: [
-      { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-      { name: 'Profile', href: '/admin/profile', icon: User },
+      { i18nKey: 'dashboard', fallback: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { i18nKey: 'profile', fallback: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
   {
-    label: 'İçerik',
+    i18nKey: 'content',
+    fallback: 'Content',
     items: [
-      { name: 'Content/Countries', href: '/admin/content/countries', icon: FileText },
-      { name: 'Quizzes', href: '/admin/quizzes', icon: Award },
-      { name: 'Certificates', href: '/admin/certificates', icon: Award },
-      { name: 'Partner Zone', href: '/admin/partner-zone', icon: Package },
+      { i18nKey: 'contentCountries', fallback: 'Content / Countries', href: '/admin/content/countries', icon: FileText },
+      { i18nKey: 'quizzes', fallback: 'Quizzes', href: '/admin/quizzes', icon: Award },
+      { i18nKey: 'certificates', fallback: 'Certificates', href: '/admin/certificates', icon: Award },
+      { i18nKey: 'partnerZone', fallback: 'Partner Zone', href: '/admin/partner-zone', icon: Package },
     ],
   },
   {
-    label: 'Yönetim',
+    i18nKey: 'management',
+    fallback: 'Management',
     items: [
-      { name: 'Agencies', href: '/admin/agencies', icon: Building },
-      { name: 'Users', href: '/admin/users', icon: Users },
-      { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+      { i18nKey: 'agencies', fallback: 'Agencies', href: '/admin/agencies', icon: Building },
+      { i18nKey: 'users', fallback: 'Users', href: '/admin/users', icon: Users },
+      { i18nKey: 'reports', fallback: 'Reports', href: '/admin/reports', icon: BarChart3 },
     ],
   },
   {
-    label: 'Etkileşim',
+    i18nKey: 'engagement',
+    fallback: 'Engagement',
     items: [
-      { name: 'Announcements', href: '/admin/announcements', icon: Megaphone },
-      { name: 'Pop-up Reklamlar', href: '/admin/popups', icon: Megaphone, adminOnly: true },
-      { name: 'Findy AI', href: '/admin/findy-ai', icon: Bot },
+      { i18nKey: 'announcements', fallback: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+      { i18nKey: 'popups', fallback: 'Pop-up Ads', href: '/admin/popups', icon: Megaphone, adminOnly: true },
+      { i18nKey: 'findyAi', fallback: 'Findy AI', href: '/admin/findy-ai', icon: Bot },
     ],
   },
   {
-    label: 'Sistem',
+    i18nKey: 'system',
+    fallback: 'System',
     items: [
-      { name: 'Settings/Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
-      { name: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
-      { name: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
+      { i18nKey: 'settingsPayments', fallback: 'Settings / Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
+      { i18nKey: 'integrations', fallback: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
+      { i18nKey: 'menuManagement', fallback: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
     ],
   },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('admin-sidebar-collapsed') === 'true';
   });
   const [location] = useLocation();
   const { user, role, logout } = useAuthStore();
+
+  const tNavGroup = (key: string, fallback: string) =>
+    t(`nav.groups.${key}`, { defaultValue: fallback });
+  const tNavItem = (key: string, fallback: string) =>
+    t(`nav.items.${key}`, { defaultValue: fallback });
 
   // Filter groups based on role — staff cannot see admin-only items
   const visibleGroups = navigationGroups
@@ -107,6 +125,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const renderItem = (item: NavItem) => {
     const isActive = location === item.href;
+    const label = tNavItem(item.i18nKey, item.fallback);
     const content = (
       <div
         className={`
@@ -116,18 +135,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         `}
       >
         <item.icon className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`} />
-        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{label}</span>
       </div>
     );
 
     return (
-      <div key={item.name}>
+      <div key={item.i18nKey}>
         {sidebarCollapsed && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href={item.href} className="hidden lg:block">{content}</Link>
             </TooltipTrigger>
-            <TooltipContent side="right">{item.name}</TooltipContent>
+            <TooltipContent side="right">{label}</TooltipContent>
           </Tooltip>
         )}
         <Link href={item.href} className={sidebarCollapsed ? 'lg:hidden' : ''}>
@@ -184,11 +203,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* Navigation — scrollable, grouped */}
           <nav className="flex-1 overflow-y-auto px-3 py-3">
             {visibleGroups.map((group, idx) => (
-              <div key={group.label} className={idx === 0 ? '' : 'mt-3'}>
+              <div key={group.i18nKey} className={idx === 0 ? '' : 'mt-3'}>
                 {/* Group label (hidden when collapsed) */}
                 <div className={`px-3 mb-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {group.label}
+                    {tNavGroup(group.i18nKey, group.fallback)}
                   </span>
                 </div>
                 {/* Separator when collapsed */}
@@ -230,7 +249,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 data-testid="button-logout"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Sign out
+                {t('common.logout')}
               </Button>
             </div>
 
@@ -253,7 +272,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     <LogOut className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Sign out</TooltipContent>
+                <TooltipContent side="right">{t('common.logout')}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -287,7 +306,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               Find And Study - Admin Portal
             </h1>
           </div>
-          <div className="w-10 lg:hidden" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         {/* Page content */}

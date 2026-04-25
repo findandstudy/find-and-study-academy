@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import type { User, Role } from '../types';
 import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session, SignupResult } from '../lib/auth';
 import { storage } from '../lib/storage';
+import i18n from '../i18n';
+import { isSupportedLanguage } from '../i18n/languages';
+
+/** Sync the active i18n language with the user's saved preference, if any. */
+function syncLanguageFromUser(user: User | null) {
+  if (!user) return;
+  const pref = user.languagePreference;
+  if (pref && isSupportedLanguage(pref) && i18n.language !== pref) {
+    i18n.changeLanguage(pref).catch(() => { /* non-fatal */ });
+  }
+}
 
 interface AuthState {
   user: User | null;
@@ -26,6 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session) {
         // Reset per-login popup tracking so 'every_login' popups re-show this login
         try { sessionStorage.removeItem('fas_popups_seen_login'); } catch {}
+        syncLanguageFromUser(session.user);
         set({ user: session.user, role: session.role, isLoading: false });
         return true;
       }
@@ -64,10 +76,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     const session = getSession();
     if (session) {
-      // Validate session against backend
+      // Validate session against backend; this also refreshes server-side
+      // fields (e.g. languagePreference) into the cached session.
       const isValid = await validateSession();
       if (isValid) {
-        set({ user: session.user, role: session.role });
+        // Re-read session AFTER validateSession so we pick up rehydrated
+        // fields rather than the stale local copy captured above.
+        const fresh = getSession() ?? session;
+        syncLanguageFromUser(fresh.user);
+        set({ user: fresh.user, role: fresh.role });
       } else {
         // Session was invalid and cleared by validateSession
         set({ user: null, role: null });

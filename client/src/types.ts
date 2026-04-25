@@ -7,6 +7,8 @@ export interface User {
   role: Role;
   agencyId?: string;
   password?: string; // Only for storage
+  languagePreference?: string; // ISO 639-1 (e.g. 'en', 'tr', 'ar')
+  profilePicture?: string;
 }
 
 export interface Agency {

@@ -101,7 +101,10 @@ export const currentUser = (): { user: User; role: Role } | null => {
   return session ? { user: session.user, role: session.role } : null;
 };
 
-// Validate session against backend - returns true if valid, false if invalid
+// Validate session against backend - returns true if valid, false if invalid.
+// On success, also re-hydrates fields that may have changed server-side
+// (e.g. languagePreference) into the local session cache so the UI reflects
+// the latest persisted preferences across devices.
 export const validateSession = async (): Promise<boolean> => {
   const session = getSession();
   if (!session) return false;
@@ -120,6 +123,19 @@ export const validateSession = async (): Promise<boolean> => {
       console.log('[SESSION VALIDATION] Invalid session, logging out');
       logout();
       return false;
+    }
+
+    try {
+      const data = await response.json();
+      if (data?.success && data.user) {
+        const refreshed: Session = {
+          user: { ...session.user, ...data.user },
+          role: data.user.role || session.role,
+        };
+        storage.setSession(refreshed);
+      }
+    } catch {
+      // Non-JSON or unexpected payload — keep cached session as-is
     }
 
     return true;

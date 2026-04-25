@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Conseil éducatif"
+  },
+  "language": {
+    "label": "Langue",
+    "select": "Choisir la langue",
+    "current": "Langue actuelle : {{name}}"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "saveChanges": "Enregistrer les modifications",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "submit": "Envoyer",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "saving": "Enregistrement...",
+    "logout": "Se déconnecter",
+    "yes": "Oui",
+    "no": "Non",
+    "confirm": "Confirmer",
+    "actions": "Actions",
+    "optional": "Optionnel",
+    "required": "Obligatoire",
+    "success": "Succès",
+    "error": "Erreur",
+    "warning": "Avertissement"
+  },
+  "toast": {
+    "saved": "Paramètres enregistrés",
+    "savedDescription": "Vos modifications ont été enregistrées avec succès.",
+    "failed": "Échec de l'enregistrement",
+    "failedDescription": "Impossible d'enregistrer les modifications. Veuillez réessayer.",
+    "languageChanged": "Langue modifiée",
+    "languageChangedDescription": "L'interface est désormais en {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "Bon retour",
+    "signInSubtitle": "Connectez-vous à votre compte Find And Study",
+    "email": "E-mail",
+    "emailPlaceholder": "Saisissez votre e-mail",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Saisissez votre mot de passe",
+    "signIn": "Se connecter",
+    "newAgent": "Nouvel agent ?",
+    "signUp": "S'inscrire",
+    "forgotPassword": "Mot de passe oublié ?",
+    "logoutConfirm": "Voulez-vous vraiment vous déconnecter ?"
+  },
+  "nav": {
+    "groups": {
+      "general": "Général",
+      "education": "Éducation",
+      "agency": "Agence",
+      "services": "Services",
+      "links": "Liens",
+      "content": "Contenu",
+      "management": "Gestion",
+      "engagement": "Engagement",
+      "system": "Système"
+    },
+    "items": {
+      "dashboard": "Tableau de bord",
+      "profile": "Profil",
+      "announcements": "Annonces",
+      "courses": "Cours",
+      "certificates": "Certificats",
+      "leaderboard": "Classement",
+      "myAgency": "Mon agence",
+      "examsOrders": "Examens / Commandes",
+      "subscriptions": "Abonnements",
+      "partnerZone": "Espace partenaires",
+      "agentPortal": "Portail agent",
+      "dormBooking": "Réservation de logement",
+      "contentCountries": "Contenu / Pays",
+      "quizzes": "Quiz",
+      "agencies": "Agences",
+      "users": "Utilisateurs",
+      "reports": "Rapports",
+      "popups": "Annonces pop-up",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Paramètres / Paiements",
+      "integrations": "Intégrations",
+      "menuManagement": "Gestion du menu"
+    }
+  }
+}

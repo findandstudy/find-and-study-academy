@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Eğitim danışmanlığı"
+  },
+  "language": {
+    "label": "Dil",
+    "select": "Dil seçin",
+    "current": "Geçerli dil: {{name}}"
+  },
+  "common": {
+    "save": "Kaydet",
+    "saveChanges": "Değişiklikleri kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "back": "Geri",
+    "next": "İleri",
+    "submit": "Gönder",
+    "search": "Ara",
+    "loading": "Yükleniyor...",
+    "saving": "Kaydediliyor...",
+    "logout": "Çıkış yap",
+    "yes": "Evet",
+    "no": "Hayır",
+    "confirm": "Onayla",
+    "actions": "İşlemler",
+    "optional": "Opsiyonel",
+    "required": "Zorunlu",
+    "success": "Başarılı",
+    "error": "Hata",
+    "warning": "Uyarı"
+  },
+  "toast": {
+    "saved": "Ayarlar kaydedildi",
+    "savedDescription": "Değişiklikleriniz başarıyla kaydedildi.",
+    "failed": "Kaydedilemedi",
+    "failedDescription": "Değişiklikler kaydedilemedi. Lütfen tekrar deneyin.",
+    "languageChanged": "Dil değiştirildi",
+    "languageChangedDescription": "Arayüz artık {{name}} olarak görüntüleniyor."
+  },
+  "auth": {
+    "welcomeBack": "Tekrar Hoş Geldiniz",
+    "signInSubtitle": "Find And Study hesabınıza giriş yapın",
+    "email": "E-posta",
+    "emailPlaceholder": "E-posta adresinizi girin",
+    "password": "Şifre",
+    "passwordPlaceholder": "Şifrenizi girin",
+    "signIn": "Giriş Yap",
+    "newAgent": "Yeni acente?",
+    "signUp": "Kayıt Ol",
+    "forgotPassword": "Şifremi unuttum?",
+    "logoutConfirm": "Çıkış yapmak istediğinizden emin misiniz?"
+  },
+  "nav": {
+    "groups": {
+      "general": "Genel",
+      "education": "Eğitim",
+      "agency": "Acente",
+      "services": "Hizmetler",
+      "links": "Bağlantılar",
+      "content": "İçerik",
+      "management": "Yönetim",
+      "engagement": "Etkileşim",
+      "system": "Sistem"
+    },
+    "items": {
+      "dashboard": "Panel",
+      "profile": "Profil",
+      "announcements": "Duyurular",
+      "courses": "Kurslar",
+      "certificates": "Sertifikalar",
+      "leaderboard": "Liderlik Tablosu",
+      "myAgency": "Acentem",
+      "examsOrders": "Sınavlar / Siparişler",
+      "subscriptions": "Abonelikler",
+      "partnerZone": "İş Ortağı Bölgesi",
+      "agentPortal": "Acente Portalı",
+      "dormBooking": "Yurt Rezervasyonu",
+      "contentCountries": "İçerik / Ülkeler",
+      "quizzes": "Sınavlar",
+      "agencies": "Acenteler",
+      "users": "Kullanıcılar",
+      "reports": "Raporlar",
+      "popups": "Pop-up Reklamlar",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Ayarlar / Ödemeler",
+      "integrations": "Entegrasyonlar",
+      "menuManagement": "Menü Yönetimi"
+    }
+  }
+}

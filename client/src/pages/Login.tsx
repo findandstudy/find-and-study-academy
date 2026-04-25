@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const success = await login({ email, password });
     if (success) {
       // Role-based redirect happens in App.tsx after login
@@ -28,7 +30,7 @@ export default function Login() {
       }
     } else {
       toast({
-        title: 'Login Failed',
+        title: t('common.error'),
         description: 'Invalid email or password. Please try again.',
         variant: 'destructive'
       });
@@ -37,62 +39,62 @@ export default function Login() {
 
   return (
     <AuthCard
-      title="Welcome Back"
-      description="Sign in to your Find And Study account"
+      title={t('auth.welcomeBack')}
+      description={t('auth.signInSubtitle')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('auth.email')}</Label>
           <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
+            placeholder={t('auth.emailPlaceholder')}
             required
             autoComplete="email"
             data-testid="input-email"
           />
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder={t('auth.passwordPlaceholder')}
             required
             autoComplete="current-password"
             data-testid="input-password"
           />
         </div>
 
-        <Button 
-          type="submit" 
-          className="w-full" 
+        <Button
+          type="submit"
+          className="w-full"
           disabled={isLoading}
           data-testid="button-submit"
         >
-          {isLoading ? 'Signing in...' : 'Sign In'}
+          {isLoading ? t('common.loading') : t('auth.signIn')}
         </Button>
       </form>
 
       <div className="mt-6 text-center space-y-2">
         <p className="text-sm text-muted-foreground">
-          New agent?{' '}
+          {t('auth.newAgent')}{' '}
           <Link href="/signup">
             <span className="text-primary hover:underline cursor-pointer">
-              Sign Up
+              {t('auth.signUp')}
             </span>
           </Link>
         </p>
-        
+
         <p className="text-sm text-muted-foreground">
           <Link href="/forgot-password">
             <span className="text-primary hover:underline cursor-pointer">
-              Forgot password?
+              {t('auth.forgotPassword')}
             </span>
           </Link>
         </p>

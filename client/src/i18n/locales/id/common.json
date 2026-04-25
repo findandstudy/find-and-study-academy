@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Konsultasi pendidikan"
+  },
+  "language": {
+    "label": "Bahasa",
+    "select": "Pilih bahasa",
+    "current": "Bahasa saat ini: {{name}}"
+  },
+  "common": {
+    "save": "Simpan",
+    "saveChanges": "Simpan perubahan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Ubah",
+    "close": "Tutup",
+    "back": "Kembali",
+    "next": "Lanjut",
+    "submit": "Kirim",
+    "search": "Cari",
+    "loading": "Memuat...",
+    "saving": "Menyimpan...",
+    "logout": "Keluar",
+    "yes": "Ya",
+    "no": "Tidak",
+    "confirm": "Konfirmasi",
+    "actions": "Tindakan",
+    "optional": "Opsional",
+    "required": "Wajib",
+    "success": "Berhasil",
+    "error": "Kesalahan",
+    "warning": "Peringatan"
+  },
+  "toast": {
+    "saved": "Pengaturan disimpan",
+    "savedDescription": "Perubahan Anda berhasil disimpan.",
+    "failed": "Gagal menyimpan",
+    "failedDescription": "Tidak dapat menyimpan perubahan. Silakan coba lagi.",
+    "languageChanged": "Bahasa diubah",
+    "languageChangedDescription": "Antarmuka sekarang dalam {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "Selamat Datang Kembali",
+    "signInSubtitle": "Masuk ke akun Find And Study Anda",
+    "email": "Email",
+    "emailPlaceholder": "Masukkan email Anda",
+    "password": "Kata sandi",
+    "passwordPlaceholder": "Masukkan kata sandi Anda",
+    "signIn": "Masuk",
+    "newAgent": "Agen baru?",
+    "signUp": "Daftar",
+    "forgotPassword": "Lupa kata sandi?",
+    "logoutConfirm": "Yakin ingin keluar?"
+  },
+  "nav": {
+    "groups": {
+      "general": "Umum",
+      "education": "Pendidikan",
+      "agency": "Agen",
+      "services": "Layanan",
+      "links": "Tautan",
+      "content": "Konten",
+      "management": "Manajemen",
+      "engagement": "Interaksi",
+      "system": "Sistem"
+    },
+    "items": {
+      "dashboard": "Dasbor",
+      "profile": "Profil",
+      "announcements": "Pengumuman",
+      "courses": "Kursus",
+      "certificates": "Sertifikat",
+      "leaderboard": "Papan Peringkat",
+      "myAgency": "Agen Saya",
+      "examsOrders": "Ujian / Pesanan",
+      "subscriptions": "Langganan",
+      "partnerZone": "Zona Mitra",
+      "agentPortal": "Portal Agen",
+      "dormBooking": "Pemesanan Asrama",
+      "contentCountries": "Konten / Negara",
+      "quizzes": "Kuis",
+      "agencies": "Agen",
+      "users": "Pengguna",
+      "reports": "Laporan",
+      "popups": "Iklan Pop-up",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Pengaturan / Pembayaran",
+      "integrations": "Integrasi",
+      "menuManagement": "Manajemen Menu"
+    }
+  }
+}

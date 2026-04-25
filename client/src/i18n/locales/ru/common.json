@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Образовательный консалтинг"
+  },
+  "language": {
+    "label": "Язык",
+    "select": "Выберите язык",
+    "current": "Текущий язык: {{name}}"
+  },
+  "common": {
+    "save": "Сохранить",
+    "saveChanges": "Сохранить изменения",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "close": "Закрыть",
+    "back": "Назад",
+    "next": "Далее",
+    "submit": "Отправить",
+    "search": "Поиск",
+    "loading": "Загрузка...",
+    "saving": "Сохранение...",
+    "logout": "Выйти",
+    "yes": "Да",
+    "no": "Нет",
+    "confirm": "Подтвердить",
+    "actions": "Действия",
+    "optional": "Необязательно",
+    "required": "Обязательно",
+    "success": "Успех",
+    "error": "Ошибка",
+    "warning": "Предупреждение"
+  },
+  "toast": {
+    "saved": "Настройки сохранены",
+    "savedDescription": "Ваши изменения успешно сохранены.",
+    "failed": "Не удалось сохранить",
+    "failedDescription": "Не удалось сохранить изменения. Попробуйте еще раз.",
+    "languageChanged": "Язык изменён",
+    "languageChangedDescription": "Интерфейс теперь на языке {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "С возвращением",
+    "signInSubtitle": "Войдите в свою учётную запись Find And Study",
+    "email": "Электронная почта",
+    "emailPlaceholder": "Введите электронную почту",
+    "password": "Пароль",
+    "passwordPlaceholder": "Введите пароль",
+    "signIn": "Войти",
+    "newAgent": "Новый агент?",
+    "signUp": "Зарегистрироваться",
+    "forgotPassword": "Забыли пароль?",
+    "logoutConfirm": "Вы уверены, что хотите выйти?"
+  },
+  "nav": {
+    "groups": {
+      "general": "Общие",
+      "education": "Обучение",
+      "agency": "Агентство",
+      "services": "Сервисы",
+      "links": "Ссылки",
+      "content": "Контент",
+      "management": "Управление",
+      "engagement": "Взаимодействие",
+      "system": "Система"
+    },
+    "items": {
+      "dashboard": "Панель",
+      "profile": "Профиль",
+      "announcements": "Объявления",
+      "courses": "Курсы",
+      "certificates": "Сертификаты",
+      "leaderboard": "Рейтинг",
+      "myAgency": "Моё агентство",
+      "examsOrders": "Экзамены / Заказы",
+      "subscriptions": "Подписки",
+      "partnerZone": "Зона партнёров",
+      "agentPortal": "Портал агента",
+      "dormBooking": "Бронирование общежития",
+      "contentCountries": "Контент / Страны",
+      "quizzes": "Тесты",
+      "agencies": "Агентства",
+      "users": "Пользователи",
+      "reports": "Отчёты",
+      "popups": "Всплывающая реклама",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Настройки / Платежи",
+      "integrations": "Интеграции",
+      "menuManagement": "Управление меню"
+    }
+  }
+}

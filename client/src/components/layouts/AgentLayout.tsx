@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import {
@@ -30,7 +32,10 @@ interface AgentLayoutProps {
 
 interface NavItem {
   id?: string;
-  name: string;
+  /** i18n key under `nav.items.*` */
+  i18nKey: string;
+  /** Fallback English label if translation is missing */
+  fallback: string;
   href: string;
   icon?: React.ElementType;
   customIcon?: string;
@@ -38,52 +43,64 @@ interface NavItem {
 }
 
 interface NavGroup {
-  label: string;
+  /** i18n key under `nav.groups.*` */
+  i18nKey: string;
+  fallback: string;
   items: NavItem[];
 }
 
-// Logical grouping of navigation
+// Logical grouping of navigation. Labels are resolved at render time via i18n.
 const navigationGroups: NavGroup[] = [
   {
-    label: 'Genel',
+    i18nKey: 'general',
+    fallback: 'General',
     items: [
-      { id: 'dashboard', name: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
-      { id: 'announcements', name: 'Duyurular', href: '/agent/announcements', icon: Bell },
+      { id: 'dashboard', i18nKey: 'dashboard', fallback: 'Dashboard', href: '/agent/dashboard', icon: LayoutDashboard },
+      { id: 'announcements', i18nKey: 'announcements', fallback: 'Announcements', href: '/agent/announcements', icon: Bell },
     ],
   },
   {
-    label: 'Eğitim',
+    i18nKey: 'education',
+    fallback: 'Education',
     items: [
-      { id: 'courses', name: 'Courses', href: '/agent/courses', icon: BookOpen },
-      { id: 'certificates', name: 'Certificates', href: '/agent/certificates', icon: Award },
-      { id: 'leaderboard', name: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
+      { id: 'courses', i18nKey: 'courses', fallback: 'Courses', href: '/agent/courses', icon: BookOpen },
+      { id: 'certificates', i18nKey: 'certificates', fallback: 'Certificates', href: '/agent/certificates', icon: Award },
+      { id: 'leaderboard', i18nKey: 'leaderboard', fallback: 'Leaderboard', href: '/agent/leaderboard', icon: Trophy },
     ],
   },
   {
-    label: 'Acente',
+    i18nKey: 'agency',
+    fallback: 'Agency',
     items: [
-      { id: 'agency', name: 'My Agency', href: '/agent/agency', icon: Building },
-      { id: 'profile', name: 'Profile', href: '/agent/profile', icon: User },
+      { id: 'agency', i18nKey: 'myAgency', fallback: 'My Agency', href: '/agent/agency', icon: Building },
+      { id: 'profile', i18nKey: 'profile', fallback: 'Profile', href: '/agent/profile', icon: User },
     ],
   },
   {
-    label: 'Hizmetler',
+    i18nKey: 'services',
+    fallback: 'Services',
     items: [
-      { id: 'exams-orders', name: 'Exams/Orders', href: '/agent/exams-orders', icon: ShoppingCart },
-      { id: 'subscriptions', name: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
-      { id: 'partner-zone', name: 'Partner Zone', href: '/agent/partner-zone', icon: Package },
+      { id: 'exams-orders', i18nKey: 'examsOrders', fallback: 'Exams / Orders', href: '/agent/exams-orders', icon: ShoppingCart },
+      { id: 'subscriptions', i18nKey: 'subscriptions', fallback: 'Subscriptions', href: '/agent/subscriptions', icon: Bell },
+      { id: 'partner-zone', i18nKey: 'partnerZone', fallback: 'Partner Zone', href: '/agent/partner-zone', icon: Package },
     ],
   },
   {
-    label: 'Bağlantılar',
+    i18nKey: 'links',
+    fallback: 'Links',
     items: [
-      { name: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
-      { name: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
+      { i18nKey: 'agentPortal', fallback: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
+      { i18nKey: 'dormBooking', fallback: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
     ],
   },
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
+  const { t } = useTranslation();
+  const tNavGroup = (key: string, fallback: string) =>
+    t(`nav.groups.${key}`, { defaultValue: fallback });
+  const tNavItem = (key: string, fallback: string) =>
+    t(`nav.items.${key}`, { defaultValue: fallback });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('agent-sidebar-collapsed') === 'true';
@@ -138,6 +155,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
 
   const renderItem = (item: NavItem) => {
     const isActive = location === item.href;
+    const label = tNavItem(item.i18nKey, item.fallback);
     const content = (
       <div
         className={`
@@ -149,18 +167,18 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         {item.customIcon ? (
           <img
             src={item.customIcon}
-            alt={`${item.name} icon`}
+            alt={`${label} icon`}
             className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
           />
         ) : item.icon ? (
           <item.icon className={`h-5 w-5 ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`} />
         ) : null}
-        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.name}</span>
+        <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{label}</span>
       </div>
     );
 
     const linkProps = {
-      'data-testid': `link-${item.name.toLowerCase().replace(/\s+/g, '-')}`,
+      'data-testid': `link-${item.i18nKey.toLowerCase()}`,
     };
 
     const Wrapper = item.external
@@ -176,13 +194,13 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         );
 
     return (
-      <div key={item.name}>
+      <div key={item.i18nKey}>
         {sidebarCollapsed && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Wrapper className="hidden lg:block">{content}</Wrapper>
             </TooltipTrigger>
-            <TooltipContent side="right">{item.name}</TooltipContent>
+            <TooltipContent side="right">{label}</TooltipContent>
           </Tooltip>
         )}
         <Wrapper className={sidebarCollapsed ? 'lg:hidden' : ''}>{content}</Wrapper>
@@ -239,11 +257,11 @@ export function AgentLayout({ children }: AgentLayoutProps) {
           {/* Navigation — scrollable, grouped */}
           <nav className="flex-1 overflow-y-auto px-3 py-3">
             {visibleGroups.map((group, idx) => (
-              <div key={group.label} className={idx === 0 ? '' : 'mt-3'}>
+              <div key={group.i18nKey} className={idx === 0 ? '' : 'mt-3'}>
                 {/* Group label (hidden when collapsed) */}
                 <div className={`px-3 mb-1 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {group.label}
+                    {tNavGroup(group.i18nKey, group.fallback)}
                   </span>
                 </div>
                 {/* Separator when collapsed */}
@@ -288,7 +306,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                 data-testid="button-logout"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Sign out
+                {t('common.logout')}
               </Button>
             </div>
 
@@ -317,7 +335,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                     <LogOut className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Sign out</TooltipContent>
+                <TooltipContent side="right">{t('common.logout')}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -351,7 +369,9 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               Find And Study Academy
             </h1>
           </div>
-          <div className="w-10 lg:hidden" />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         {/* Page content */}

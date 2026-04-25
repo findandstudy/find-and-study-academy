@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Consultoría educativa"
+  },
+  "language": {
+    "label": "Idioma",
+    "select": "Seleccionar idioma",
+    "current": "Idioma actual: {{name}}"
+  },
+  "common": {
+    "save": "Guardar",
+    "saveChanges": "Guardar cambios",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "saving": "Guardando...",
+    "logout": "Cerrar sesión",
+    "yes": "Sí",
+    "no": "No",
+    "confirm": "Confirmar",
+    "actions": "Acciones",
+    "optional": "Opcional",
+    "required": "Obligatorio",
+    "success": "Éxito",
+    "error": "Error",
+    "warning": "Aviso"
+  },
+  "toast": {
+    "saved": "Ajustes guardados",
+    "savedDescription": "Tus cambios se han guardado correctamente.",
+    "failed": "No se pudo guardar",
+    "failedDescription": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+    "languageChanged": "Idioma cambiado",
+    "languageChangedDescription": "La interfaz ahora está en {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "signInSubtitle": "Inicia sesión en tu cuenta de Find And Study",
+    "email": "Correo electrónico",
+    "emailPlaceholder": "Introduce tu correo electrónico",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Introduce tu contraseña",
+    "signIn": "Iniciar sesión",
+    "newAgent": "¿Nuevo agente?",
+    "signUp": "Registrarse",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "logoutConfirm": "¿Seguro que quieres cerrar sesión?"
+  },
+  "nav": {
+    "groups": {
+      "general": "General",
+      "education": "Educación",
+      "agency": "Agencia",
+      "services": "Servicios",
+      "links": "Enlaces",
+      "content": "Contenido",
+      "management": "Gestión",
+      "engagement": "Interacción",
+      "system": "Sistema"
+    },
+    "items": {
+      "dashboard": "Panel",
+      "profile": "Perfil",
+      "announcements": "Anuncios",
+      "courses": "Cursos",
+      "certificates": "Certificados",
+      "leaderboard": "Clasificación",
+      "myAgency": "Mi agencia",
+      "examsOrders": "Exámenes / Pedidos",
+      "subscriptions": "Suscripciones",
+      "partnerZone": "Zona de socios",
+      "agentPortal": "Portal del agente",
+      "dormBooking": "Reserva de residencia",
+      "contentCountries": "Contenido / Países",
+      "quizzes": "Cuestionarios",
+      "agencies": "Agencias",
+      "users": "Usuarios",
+      "reports": "Informes",
+      "popups": "Anuncios emergentes",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Ajustes / Pagos",
+      "integrations": "Integraciones",
+      "menuManagement": "Gestión de menú"
+    }
+  }
+}

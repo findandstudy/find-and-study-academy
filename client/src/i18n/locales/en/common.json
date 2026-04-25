@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "Educational consulting"
+  },
+  "language": {
+    "label": "Language",
+    "select": "Select language",
+    "current": "Current language: {{name}}"
+  },
+  "common": {
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "logout": "Log out",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "optional": "Optional",
+    "required": "Required",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning"
+  },
+  "toast": {
+    "saved": "Settings saved",
+    "savedDescription": "Your changes have been saved successfully.",
+    "failed": "Save failed",
+    "failedDescription": "Could not save your changes. Please try again.",
+    "languageChanged": "Language changed",
+    "languageChangedDescription": "The interface is now in {{name}}."
+  },
+  "auth": {
+    "welcomeBack": "Welcome Back",
+    "signInSubtitle": "Sign in to your Find And Study account",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In",
+    "newAgent": "New agent?",
+    "signUp": "Sign Up",
+    "forgotPassword": "Forgot password?",
+    "logoutConfirm": "Are you sure you want to log out?"
+  },
+  "nav": {
+    "groups": {
+      "general": "General",
+      "education": "Education",
+      "agency": "Agency",
+      "services": "Services",
+      "links": "Links",
+      "content": "Content",
+      "management": "Management",
+      "engagement": "Engagement",
+      "system": "System"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "profile": "Profile",
+      "announcements": "Announcements",
+      "courses": "Courses",
+      "certificates": "Certificates",
+      "leaderboard": "Leaderboard",
+      "myAgency": "My Agency",
+      "examsOrders": "Exams / Orders",
+      "subscriptions": "Subscriptions",
+      "partnerZone": "Partner Zone",
+      "agentPortal": "Agent Portal",
+      "dormBooking": "Dorm Booking",
+      "contentCountries": "Content / Countries",
+      "quizzes": "Quizzes",
+      "agencies": "Agencies",
+      "users": "Users",
+      "reports": "Reports",
+      "popups": "Pop-up Ads",
+      "findyAi": "Findy AI",
+      "settingsPayments": "Settings / Payments",
+      "integrations": "Integrations",
+      "menuManagement": "Menu Management"
+    }
+  }
+}

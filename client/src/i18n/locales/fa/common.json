@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "Find And Study",
+    "tagline": "مشاوره آموزشی"
+  },
+  "language": {
+    "label": "زبان",
+    "select": "انتخاب زبان",
+    "current": "زبان فعلی: {{name}}"
+  },
+  "common": {
+    "save": "ذخیره",
+    "saveChanges": "ذخیره تغییرات",
+    "cancel": "لغو",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "close": "بستن",
+    "back": "بازگشت",
+    "next": "بعدی",
+    "submit": "ارسال",
+    "search": "جستجو",
+    "loading": "در حال بارگذاری...",
+    "saving": "در حال ذخیره...",
+    "logout": "خروج",
+    "yes": "بله",
+    "no": "خیر",
+    "confirm": "تأیید",
+    "actions": "اقدامات",
+    "optional": "اختیاری",
+    "required": "ضروری",
+    "success": "موفقیت",
+    "error": "خطا",
+    "warning": "هشدار"
+  },
+  "toast": {
+    "saved": "تنظیمات ذخیره شد",
+    "savedDescription": "تغییرات شما با موفقیت ذخیره شد.",
+    "failed": "ذخیره ناموفق بود",
+    "failedDescription": "ذخیره تغییرات ممکن نشد. لطفاً دوباره تلاش کنید.",
+    "languageChanged": "زبان تغییر کرد",
+    "languageChangedDescription": "رابط کاربری اکنون به {{name}} نمایش داده می‌شود."
+  },
+  "auth": {
+    "welcomeBack": "خوش آمدید",
+    "signInSubtitle": "به حساب کاربری Find And Study خود وارد شوید",
+    "email": "ایمیل",
+    "emailPlaceholder": "ایمیل خود را وارد کنید",
+    "password": "رمز عبور",
+    "passwordPlaceholder": "رمز عبور خود را وارد کنید",
+    "signIn": "ورود",
+    "newAgent": "نماینده جدید؟",
+    "signUp": "ثبت‌نام",
+    "forgotPassword": "رمز عبور را فراموش کرده‌اید؟",
+    "logoutConfirm": "آیا مطمئن هستید که می‌خواهید خارج شوید؟"
+  },
+  "nav": {
+    "groups": {
+      "general": "عمومی",
+      "education": "آموزش",
+      "agency": "نمایندگی",
+      "services": "خدمات",
+      "links": "پیوندها",
+      "content": "محتوا",
+      "management": "مدیریت",
+      "engagement": "تعامل",
+      "system": "سیستم"
+    },
+    "items": {
+      "dashboard": "داشبورد",
+      "profile": "پروفایل",
+      "announcements": "اطلاعیه‌ها",
+      "courses": "دوره‌ها",
+      "certificates": "گواهی‌نامه‌ها",
+      "leaderboard": "جدول رده‌بندی",
+      "myAgency": "نمایندگی من",
+      "examsOrders": "آزمون‌ها / سفارش‌ها",
+      "subscriptions": "اشتراک‌ها",
+      "partnerZone": "منطقه شرکا",
+      "agentPortal": "پورتال نماینده",
+      "dormBooking": "رزرو خوابگاه",
+      "contentCountries": "محتوا / کشورها",
+      "quizzes": "آزمون‌ها",
+      "agencies": "نمایندگی‌ها",
+      "users": "کاربران",
+      "reports": "گزارش‌ها",
+      "popups": "تبلیغات پاپ‌آپ",
+      "findyAi": "Findy AI",
+      "settingsPayments": "تنظیمات / پرداخت‌ها",
+      "integrations": "یکپارچه‌سازی‌ها",
+      "menuManagement": "مدیریت منو"
+    }
+  }
+}

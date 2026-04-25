@@ -139,6 +139,9 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
       email: user.email,
       name: user.name,
       agencyId: user.agencyId,
+      // i18n: surface persisted language preference so /api/me can return it
+      languagePreference: user.languagePreference,
+      profilePicture: user.profilePicture,
       // Include notification preferences for email triggers
       emailNotifications: user.emailNotifications,
       certificateNotif: user.certificateNotif,
@@ -507,7 +510,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           role: user.role,
           agencyId: user.agencyId,
-          profilePicture: user.profilePicture
+          profilePicture: user.profilePicture,
+          languagePreference: user.languagePreference || 'en',
         }
       });
     } catch (error) {
@@ -516,6 +520,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: 'Login failed'
       });
+    }
+  });
+
+  // Self-update language preference. Anyone with a valid session can change
+  // their own language; mirrored to the user record so it persists across devices.
+  app.patch('/api/me/language', requireAuth, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const { languagePreference } = req.body || {};
+
+      const supported = ['en', 'ar', 'zh', 'fr', 'id', 'fa', 'ru', 'es', 'tr'];
+      if (typeof languagePreference !== 'string' || !supported.includes(languagePreference)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unsupported language',
+        });
+      }
+
+      await storage.updateUser(authenticatedUser.id, { languagePreference });
+      res.json({ success: true, languagePreference });
+    } catch (error) {
+      console.error('Failed to update language preference:', error);
+      res.status(500).json({ success: false, message: 'Failed to update language preference' });
     }
   });
 
@@ -784,14 +811,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/me', requireAuth, async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
-      
+
       res.json({
         success: true,
         user: {
           id: authenticatedUser.id,
+          name: authenticatedUser.name,
           email: authenticatedUser.email,
           role: authenticatedUser.role,
-          agencyId: authenticatedUser.agencyId
+          agencyId: authenticatedUser.agencyId,
+          languagePreference: authenticatedUser.languagePreference || 'en',
+          profilePicture: authenticatedUser.profilePicture,
         }
       });
     } catch (error) {
