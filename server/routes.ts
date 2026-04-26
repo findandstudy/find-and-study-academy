@@ -5701,6 +5701,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/findy/sources/reprocess-all — bulk reprocess all sources sequentially
+  app.post('/api/admin/findy/sources/reprocess-all', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const allSources = await storage.getKnowledgeSources();
+      if (allSources.length === 0) return res.json({ success: true, total: 0 });
+      // Mark every source as processing immediately so the frontend can start showing progress
+      await Promise.all(allSources.map(src =>
+        storage.updateKnowledgeSource(src.id, { status: 'processing', errorMessage: null })
+      ));
+      res.json({ success: true, total: allSources.length });
+      // Process sequentially in the background
+      setImmediate(async () => {
+        for (const src of allSources) {
+          try {
+            if (src.type === 'file' && src.filePath) {
+              const ext = path.extname(src.originalName || '').replace('.', '');
+              const { chunks, rowCount } = await parseKnowledgeFile(src.filePath, ext);
+              await storage.deleteChunksBySourceId(src.id);
+              await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: src.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+              await storage.updateKnowledgeSource(src.id, { status: 'active', rowCount, chunkCount: chunks.length });
+            } else if (src.type === 'url' && src.url) {
+              const fetchRes = await fetch(src.url, { signal: AbortSignal.timeout(15000) });
+              const html = await fetchRes.text();
+              const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+              const chunks = splitTextToChunks(text, 600).map((c, i) => ({ content: c, keywords: c.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3).join(' '), metadata: { url: src.url, chunkIndex: i } }));
+              await storage.deleteChunksBySourceId(src.id);
+              await storage.addKnowledgeChunks(chunks.map(c => ({ sourceId: src.id, content: c.content, keywords: c.keywords, metadata: c.metadata })));
+              await storage.updateKnowledgeSource(src.id, { status: 'active', rowCount: chunks.length, chunkCount: chunks.length });
+            } else {
+              // Unknown type — mark back to active without changes
+              await storage.updateKnowledgeSource(src.id, { status: 'active' });
+            }
+          } catch (err: any) {
+            await storage.updateKnowledgeSource(src.id, { status: 'error', errorMessage: err.message });
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Bulk reprocess failed' });
+    }
+  });
+
   // POST /api/admin/findy/sources/:id/reprocess — reparse the file
   app.post('/api/admin/findy/sources/:id/reprocess', requireAuth, requireAdmin, async (req, res) => {
     try {

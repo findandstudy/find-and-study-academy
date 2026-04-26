@@ -1655,6 +1655,53 @@ function SourcesTab() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  // Bulk reprocess state machine:
+  //   'idle'    → no bulk job running
+  //   'started' → API call succeeded, waiting for sources to reflect 'processing'
+  //   'running' → at least one source is in 'processing' state (job confirmed active)
+  const [bulkPhase, setBulkPhase] = useState<'idle' | 'started' | 'running'>('idle');
+  const [bulkTotal, setBulkTotal] = useState(0);
+
+  const reprocessAllMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest('POST', '/api/admin/findy/sources/reprocess-all') as Promise<{ success: boolean; total: number }>,
+    onSuccess: (data: any) => {
+      const total = data.total ?? 0;
+      if (total === 0) return;
+      setBulkTotal(total);
+      setBulkPhase('started');
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const processingCount = sources.filter(s => s.status === 'processing').length;
+  const bulkDone = bulkPhase !== 'idle' ? Math.max(0, bulkTotal - processingCount) : null;
+  const isBulkRunning = bulkPhase === 'started' || bulkPhase === 'running';
+
+  // Transition the phase based on observed processingCount changes
+  useEffect(() => {
+    if (bulkPhase === 'started' && processingCount > 0) {
+      // Sources are now reflecting the processing state — job is confirmed active
+      setBulkPhase('running');
+    } else if (bulkPhase === 'running' && processingCount === 0) {
+      // All sources finished — job is complete
+      const errorCount = sources.filter(s => s.status === 'error').length;
+      const successCount = bulkTotal - errorCount;
+      if (errorCount > 0) {
+        toast({
+          title: 'Reprocessing finished with errors',
+          description: `${successCount} of ${bulkTotal} sources reprocessed successfully. ${errorCount} failed — check the error badges below.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Reprocessing complete', description: `All ${bulkTotal} sources have been reprocessed.` });
+      }
+      setBulkPhase('idle');
+      setBulkTotal(0);
+    }
+  }, [processingCount, bulkPhase, sources, bulkTotal]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -1784,14 +1831,34 @@ function SourcesTab() {
 
       {/* Sources list */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
             Uploaded Sources ({sources.length})
           </CardTitle>
-          <Button size="sm" variant="ghost" onClick={() => refetch()}>
-            <RotateCcw className="w-3 h-3 mr-1" />Refresh
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(isBulkRunning || reprocessAllMutation.isPending) && bulkTotal > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>{Math.max(0, bulkDone ?? 0)} / {bulkTotal} sources done</span>
+              </div>
+            )}
+            {sources.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => reprocessAllMutation.mutate()}
+                disabled={reprocessAllMutation.isPending || isBulkRunning || sources.some(s => s.status === 'processing')}
+                title="Reprocess all sources with the latest parser"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Reprocess All Sources
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => refetch()}>
+              <RotateCcw className="w-3 h-3 mr-1" />Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
