@@ -262,6 +262,9 @@ export default function AdminFindyAI() {
           <TabsTrigger value="sources" data-testid="tab-findy-sources">
             <BookOpen className="w-4 h-4 mr-1" /> Sources
           </TabsTrigger>
+          <TabsTrigger value="search-terms" data-testid="tab-findy-search-terms">
+            <Search className="w-4 h-4 mr-1" /> Search Terms
+          </TabsTrigger>
           <TabsTrigger value="conversations" data-testid="tab-findy-conversations">
             <MessageSquare className="w-4 h-4 mr-1" /> Conversations
           </TabsTrigger>
@@ -389,6 +392,11 @@ export default function AdminFindyAI() {
         {/* SOURCES */}
         <TabsContent value="sources" className="space-y-4">
           <SourcesTab />
+        </TabsContent>
+
+        {/* CUSTOM SEARCH TERMS */}
+        <TabsContent value="search-terms" className="space-y-4">
+          <CustomSearchTermsTab />
         </TabsContent>
 
         {/* CONVERSATIONS */}
@@ -1355,6 +1363,166 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
           {saving ? 'Saving...' : 'Save API & Webhook Settings'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ── CUSTOM SEARCH TERMS TAB ──────────────────────────────────────────────────
+interface KeywordMapping {
+  id: string;
+  turkishPhrase: string;
+  englishEquivalents: string;
+  createdAt: string;
+}
+
+function CustomSearchTermsTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [phrase, setPhrase] = useState('');
+  const [equivalents, setEquivalents] = useState('');
+
+  const { data, isLoading } = useQuery<{ success: boolean; mappings: KeywordMapping[] }>({
+    queryKey: ['/api/admin/findy/keyword-mappings'],
+  });
+
+  const mappings = data?.mappings || [];
+
+  const addMutation = useMutation({
+    mutationFn: async (body: { turkishPhrase: string; englishEquivalents: string }) =>
+      apiRequest('POST', '/api/admin/findy/keyword-mappings', body) as Promise<any>,
+    onSuccess: () => {
+      toast({ title: 'Mapping added', description: 'The custom search term is now active.' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/keyword-mappings'] });
+      setPhrase('');
+      setEquivalents('');
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest('DELETE', `/api/admin/findy/keyword-mappings/${id}`) as Promise<any>,
+    onSuccess: () => {
+      toast({ title: 'Mapping removed' });
+      qc.invalidateQueries({ queryKey: ['/api/admin/findy/keyword-mappings'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const handleAdd = () => {
+    const trimmedPhrase = phrase.trim();
+    const trimmedEquivalents = equivalents.trim();
+    if (!trimmedPhrase || !trimmedEquivalents) return;
+    addMutation.mutate({ turkishPhrase: trimmedPhrase, englishEquivalents: trimmedEquivalents });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Plus className="w-4 h-4" />
+            Add Custom Search Term
+          </CardTitle>
+          <CardDescription>
+            Map a Turkish word or phrase to one or more English equivalents. Changes take effect immediately on the next search — no redeployment needed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="tr-phrase">Turkish phrase</Label>
+              <Input
+                id="tr-phrase"
+                placeholder="e.g. spor bilimleri"
+                value={phrase}
+                onChange={e => setPhrase(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                data-testid="input-tr-phrase"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="en-equivalents">English equivalents (comma-separated)</Label>
+              <Input
+                id="en-equivalents"
+                placeholder="e.g. sports science, kinesiology"
+                value={equivalents}
+                onChange={e => setEquivalents(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                data-testid="input-en-equivalents"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              onClick={handleAdd}
+              disabled={!phrase.trim() || !equivalents.trim() || addMutation.isPending}
+              data-testid="button-add-keyword-mapping"
+            >
+              {addMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Add mapping
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Search className="w-4 h-4" />
+            Custom Mappings
+          </CardTitle>
+          <CardDescription>
+            These custom entries are merged with the built-in Turkish dictionary at query time. Built-in entries with the same key are overridden.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+              <RefreshCw className="w-4 h-4 animate-spin" /> Loading mappings…
+            </div>
+          ) : mappings.length === 0 ? (
+            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground bg-muted/20">
+              No custom mappings yet. Add one above to extend the Turkish search dictionary.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Turkish phrase</TableHead>
+                  <TableHead>English equivalents</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mappings.map(m => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-mono text-sm font-medium">{m.turkishPhrase}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {m.englishEquivalents.split(',').map(v => v.trim()).filter(Boolean).map(v => (
+                          <Badge key={v} variant="secondary" className="text-xs font-mono">{v}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteMutation.mutate(m.id)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-mapping-${m.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

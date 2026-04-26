@@ -517,6 +517,17 @@ export const insertPartnerFolderSchema = createInsertSchema(partnerFolders).omit
 export type PartnerFolder = typeof partnerFolders.$inferSelect;
 export type InsertPartnerFolder = z.infer<typeof insertPartnerFolderSchema>;
 
+export const findyKeywordMappings = pgTable("findy_keyword_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  turkishPhrase: text("turkish_phrase").notNull().unique(),
+  englishEquivalents: text("english_equivalents").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertFindyKeywordMappingSchema = createInsertSchema(findyKeywordMappings).omit({ id: true, createdAt: true });
+export type FindyKeywordMapping = typeof findyKeywordMappings.$inferSelect;
+export type InsertFindyKeywordMapping = z.infer<typeof insertFindyKeywordMappingSchema>;
+
 export const insertFindyConversationSchema = createInsertSchema(findyConversations).omit({ id: true, startedAt: true, lastMessageAt: true });
 export const insertFindyMessageSchema = createInsertSchema(findyMessages).omit({ id: true, createdAt: true });
 export const insertIntegrationEventSchema = createInsertSchema(integrationEvents).omit({ id: true, createdAt: true });

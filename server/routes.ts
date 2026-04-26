@@ -7,6 +7,7 @@ import {
   insertCountrySchema,
   insertContentSchema,
   insertQuizSchema,
+  insertFindyKeywordMappingSchema,
   type Agency, 
   type InsertAgency,
   type Country,
@@ -5730,6 +5731,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Reprocess failed' });
+    }
+  });
+
+  // ── Custom Keyword Mapping routes ────────────────────────────────────────────
+  // GET /api/admin/findy/keyword-mappings
+  app.get('/api/admin/findy/keyword-mappings', requireAuth, requireAdminOrStaff, async (req, res) => {
+    try {
+      const mappings = await storage.getKeywordMappings();
+      res.json({ success: true, mappings });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch keyword mappings' });
+    }
+  });
+
+  // POST /api/admin/findy/keyword-mappings
+  app.post('/api/admin/findy/keyword-mappings', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const keywordMappingSchema = insertFindyKeywordMappingSchema.extend({
+        turkishPhrase: insertFindyKeywordMappingSchema.shape.turkishPhrase
+          .trim().min(2, 'Turkish phrase must be at least 2 characters').max(200, 'Turkish phrase too long'),
+        englishEquivalents: insertFindyKeywordMappingSchema.shape.englishEquivalents
+          .trim().min(2, 'English equivalents must be at least 2 characters').max(500, 'English equivalents too long'),
+      });
+      const parsed = keywordMappingSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message || 'Invalid data' });
+      // Normalize the Turkish phrase (lowercase + strip diacritics + collapse whitespace)
+      // for consistent lookup and to avoid near-duplicate keys.
+      const normalizeTr = (s: string) => s.toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
+        .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+        .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u')
+        .replace(/\s+/g, ' ').trim();
+      const data = { ...parsed.data, turkishPhrase: normalizeTr(parsed.data.turkishPhrase) };
+      const mapping = await storage.createKeywordMapping(data);
+      res.json({ success: true, mapping });
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(409).json({ success: false, message: 'A mapping for this Turkish phrase already exists' });
+      }
+      res.status(500).json({ success: false, message: 'Failed to create keyword mapping' });
+    }
+  });
+
+  // DELETE /api/admin/findy/keyword-mappings/:id
+  app.delete('/api/admin/findy/keyword-mappings/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteKeywordMapping(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to delete keyword mapping' });
     }
   });
 

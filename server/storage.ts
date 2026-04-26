@@ -78,6 +78,9 @@ import {
   partnerFolders,
   type PartnerFolder,
   type InsertPartnerFolder,
+  findyKeywordMappings,
+  type FindyKeywordMapping,
+  type InsertFindyKeywordMapping,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, count, and, gte, lte, desc, sql as sqlExpr, like, or, ilike, isNull } from "drizzle-orm";
@@ -257,6 +260,11 @@ export interface IStorage {
   searchKnowledgeChunks(query: string, limit?: number, opts?: { university?: string; country?: string; city?: string }): Promise<ScoredKnowledgeChunk[]>;
   listKnowledgeUniversities(): Promise<{ country: string; universities: string[] }[]>;
   getChunksBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
+
+  // Findy Keyword Mapping methods
+  getKeywordMappings(): Promise<FindyKeywordMapping[]>;
+  createKeywordMapping(data: InsertFindyKeywordMapping): Promise<FindyKeywordMapping>;
+  deleteKeywordMapping(id: string): Promise<void>;
 }
 
 // Whether pg_trgm extension is confirmed available at startup.
@@ -1935,6 +1943,23 @@ export class DatabaseStorage implements IStorage {
       dilbilimi: ['linguistics'],
     };
 
+    // Merge admin-managed custom mappings (fetched from DB) into TR_TO_EN.
+    // Custom mappings take precedence over built-in entries for the same key.
+    try {
+      const customMappings = await this.getKeywordMappings();
+      for (const m of customMappings) {
+        const key = normalize(m.turkishPhrase.trim());
+        if (!key) continue;
+        const vals = m.englishEquivalents
+          .split(',')
+          .map(v => v.trim().toLowerCase())
+          .filter(Boolean);
+        if (vals.length > 0) TR_TO_EN[key] = vals;
+      }
+    } catch {
+      // Non-fatal — proceed with built-in dictionary only
+    }
+
     const normalized = normalize(query.trim());
     const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
 
@@ -1964,8 +1989,20 @@ export class DatabaseStorage implements IStorage {
       const enList = lookupTrEn(t) || lookupTrEn(stem);
       if (enList) for (const en of enList) expanded.add(en);
     }
+
+    // Phrase-level lookup: scan the normalized query for multi-word (or any)
+    // dictionary keys that appear as substrings. This handles admin-added
+    // mappings like "spor bilimleri" → "sports science" which span multiple
+    // tokens and are never matched by the per-token lookup above.
+    for (const [k, vList] of Object.entries(TR_TO_EN)) {
+      const normKey = normalize(k);
+      if (normKey.length >= 4 && normalized.includes(normKey)) {
+        for (const en of vList) expanded.add(en);
+      }
+    }
+
     // Cap so very long questions don't blow up SQL OR width.
-    const terms = Array.from(expanded).slice(0, 16);
+    const terms = Array.from(expanded).slice(0, 20);
     if (terms.length === 0) return [];
 
     // Each term may match either column; we OR them so chunks that mention any
@@ -2112,6 +2149,19 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(knowledgeChunks)
       .where(eq(knowledgeChunks.sourceId, sourceId))
       .limit(10);
+  }
+
+  async getKeywordMappings(): Promise<FindyKeywordMapping[]> {
+    return db.select().from(findyKeywordMappings).orderBy(findyKeywordMappings.createdAt);
+  }
+
+  async createKeywordMapping(data: InsertFindyKeywordMapping): Promise<FindyKeywordMapping> {
+    const [row] = await db.insert(findyKeywordMappings).values(data).returning();
+    return row;
+  }
+
+  async deleteKeywordMapping(id: string): Promise<void> {
+    await db.delete(findyKeywordMappings).where(eq(findyKeywordMappings.id, id));
   }
 
   // Returns the distinct (Country, Universities) pairs that exist in the
