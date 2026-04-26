@@ -6066,6 +6066,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // the search returns zero rows, we still inject an explicit "no rows
       // matched" marker so the model sees a clear signal and applies the
       // grounding rule from the system prompt instead of inventing data.
+
+      // Compute query tokens for the debug trace (same normalisation used throughout).
+      const queryTokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
+
       let ragDebugChunks: Array<{ id: string; preview: string; score: number; matchedTerms: string[] }> = [];
       try {
         const scoredChunks = await storage.searchKnowledgeChunks(message, 12, {
@@ -6079,9 +6083,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
           pushSection(label, scoredChunks.map(x => '- ' + x.chunk.content).join('\n'));
           if (isAdmin) {
-            ragDebugChunks = scoredChunks.map(x => ({
+            ragDebugChunks = scoredChunks.slice(0, 5).map(x => ({
               id: x.chunk.id,
-              preview: x.chunk.content.slice(0, 80),
+              preview: x.chunk.content.slice(0, 120),
               score: x.score,
               matchedTerms: x.matchedTerms,
             }));
@@ -6139,11 +6143,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             provider, apiKey, model, baseUrl, temperature, maxTokens,
             systemPrompt, userMessage: message, ragContext, history,
           });
+          const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
+          const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
           return res.json({
             success: true,
             message: botResponse,
             data: { message: botResponse },
-            ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
+            ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
           });
         } catch (providerErr: any) {
           // Surface a concise reason so the admin can debug from the chat reply
@@ -6187,11 +6193,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             botResponse = await response.text();
           }
 
+          const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
+          const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
           return res.json({
             success: true,
             message: botResponse,
             data: { message: botResponse },
-            ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
+            ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
           });
         } catch (webhookErr: any) {
           // Webhook failed AND no provider was configured — explain why for admins.
@@ -6210,11 +6218,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ── 3. Degraded mode — only RAG context, no LLM ──────────────────────────
       if (ragContext) {
+        const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
+        const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
         return res.json({
           success: true,
           message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
           data: { message: ragContext, hasContext: true },
-          ...(isAdmin ? { debug: { chunks: ragDebugChunks } } : {}),
+          ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
         });
       }
       // No provider configured AND no webhook — be explicit for admins.

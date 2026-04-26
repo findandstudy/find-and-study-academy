@@ -724,12 +724,185 @@
           color: #9ca3af;
         }
       }
+
+      /* Admin debug panel */
+      .findy-debug-panel {
+        margin-top: 6px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        overflow: hidden;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 11px;
+      }
+
+      .findy-debug-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        padding: 5px 8px;
+        background: #f1f5f9;
+        border: none;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: inherit;
+        color: #475569;
+        text-align: left;
+        user-select: none;
+      }
+
+      .findy-debug-toggle:hover {
+        background: #e2e8f0;
+      }
+
+      .findy-debug-toggle-arrow {
+        transition: transform 0.15s ease;
+        display: inline-block;
+        font-style: normal;
+      }
+
+      .findy-debug-toggle-arrow.open {
+        transform: rotate(90deg);
+      }
+
+      .findy-debug-body {
+        display: none;
+        padding: 8px;
+        background: #f8fafc;
+        color: #334155;
+        line-height: 1.5;
+      }
+
+      .findy-debug-body.open {
+        display: block;
+      }
+
+      .findy-debug-section {
+        margin-bottom: 8px;
+      }
+
+      .findy-debug-section:last-child {
+        margin-bottom: 0;
+      }
+
+      .findy-debug-label {
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 10px;
+        margin-bottom: 3px;
+      }
+
+      .findy-debug-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+      }
+
+      .findy-debug-tag {
+        background: #dbeafe;
+        color: #1e40af;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 11px;
+      }
+
+      .findy-debug-tag.filter {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .findy-debug-tag.term {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .findy-debug-chunk {
+        margin-top: 4px;
+        padding: 4px 6px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        border-left: 2px solid #94a3b8;
+      }
+
+      .findy-debug-chunk-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+
+      .findy-debug-chunk-score {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .findy-debug-chunk-id {
+        color: #94a3b8;
+        font-size: 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 140px;
+      }
+
+      .findy-debug-chunk-preview {
+        color: #475569;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .findy-debug-panel {
+          border-color: #374151;
+        }
+
+        .findy-debug-toggle {
+          background: #1e293b;
+          color: #94a3b8;
+        }
+
+        .findy-debug-toggle:hover {
+          background: #0f172a;
+        }
+
+        .findy-debug-body {
+          background: #0f172a;
+          color: #cbd5e1;
+        }
+
+        .findy-debug-label {
+          color: #64748b;
+        }
+
+        .findy-debug-chunk {
+          background: #1e293b;
+          border-left-color: #475569;
+        }
+
+        .findy-debug-chunk-score {
+          color: #f1f5f9;
+        }
+
+        .findy-debug-chunk-preview {
+          color: #94a3b8;
+        }
+      }
     </style>
 
     <script>
       (function() {
         // Configuration - Using backend API proxy
         const API_ENDPOINT = '/api/chat';
+
+        // Read authenticated user from the React app's session store so we can
+        // send the x-user-id header (backend uses it to enable admin debug data).
+        function getSession() {
+          try {
+            return JSON.parse(localStorage.getItem('fas_session') || '{}');
+          } catch { return {}; }
+        }
 
         // DOM Elements
         const launcher = document.getElementById('findy-launcher');
@@ -890,8 +1063,146 @@
           return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         }
 
+        // Build a collapsible debug panel (admin-only) beneath a bot reply.
+        // debugData = { queryTokens, expandedTerms, activeFilters, chunks }
+        function buildDebugPanel(debugData) {
+          if (!debugData) return null;
+          const panel = document.createElement('div');
+          panel.className = 'findy-debug-panel';
+
+          // Toggle button
+          const toggle = document.createElement('button');
+          toggle.className = 'findy-debug-toggle';
+          toggle.type = 'button';
+          const arrow = document.createElement('i');
+          arrow.className = 'findy-debug-toggle-arrow';
+          arrow.textContent = '\u25B6'; // right-pointing triangle
+          toggle.appendChild(arrow);
+          const chunkCount = (debugData.chunks || []).length;
+          toggle.appendChild(document.createTextNode(
+            '\u00A0Debug trace \u2014 ' + chunkCount + ' chunk' + (chunkCount !== 1 ? 's' : '') + ' matched'
+          ));
+          panel.appendChild(toggle);
+
+          // Body (hidden by default)
+          const body = document.createElement('div');
+          body.className = 'findy-debug-body';
+
+          // Helper to add a section
+          function addSection(label, content) {
+            const sec = document.createElement('div');
+            sec.className = 'findy-debug-section';
+            const lbl = document.createElement('div');
+            lbl.className = 'findy-debug-label';
+            lbl.textContent = label;
+            sec.appendChild(lbl);
+            sec.appendChild(content);
+            body.appendChild(sec);
+          }
+
+          // Query tokens
+          if (debugData.queryTokens && debugData.queryTokens.length > 0) {
+            const tags = document.createElement('div');
+            tags.className = 'findy-debug-tags';
+            debugData.queryTokens.forEach(function(t) {
+              const tag = document.createElement('span');
+              tag.className = 'findy-debug-tag';
+              tag.textContent = t;
+              tags.appendChild(tag);
+            });
+            addSection('Normalized query tokens', tags);
+          }
+
+          // Expanded / matched terms
+          if (debugData.expandedTerms && debugData.expandedTerms.length > 0) {
+            const tags = document.createElement('div');
+            tags.className = 'findy-debug-tags';
+            debugData.expandedTerms.forEach(function(t) {
+              const tag = document.createElement('span');
+              tag.className = 'findy-debug-tag term';
+              tag.textContent = t;
+              tags.appendChild(tag);
+            });
+            addSection('Expanded / matched terms', tags);
+          }
+
+          // Active filters
+          const af = debugData.activeFilters || {};
+          const activeFilters = [
+            af.university && ('university: ' + af.university),
+            af.country && ('country: ' + af.country),
+            af.city && ('near: ' + af.city),
+          ].filter(Boolean);
+          if (activeFilters.length > 0) {
+            const tags = document.createElement('div');
+            tags.className = 'findy-debug-tags';
+            activeFilters.forEach(function(f) {
+              const tag = document.createElement('span');
+              tag.className = 'findy-debug-tag filter';
+              tag.textContent = f;
+              tags.appendChild(tag);
+            });
+            addSection('Active filters', tags);
+          } else {
+            const none = document.createElement('span');
+            none.style.color = '#94a3b8';
+            none.style.fontStyle = 'italic';
+            none.textContent = 'none';
+            addSection('Active filters', none);
+          }
+
+          // Top chunks
+          if (debugData.chunks && debugData.chunks.length > 0) {
+            const container = document.createElement('div');
+            debugData.chunks.forEach(function(ch, idx) {
+              const chunkEl = document.createElement('div');
+              chunkEl.className = 'findy-debug-chunk';
+              const meta = document.createElement('div');
+              meta.className = 'findy-debug-chunk-meta';
+              const scoreEl = document.createElement('span');
+              scoreEl.className = 'findy-debug-chunk-score';
+              scoreEl.textContent = '#' + (idx + 1) + '\u00A0score: ' + (typeof ch.score === 'number' ? ch.score.toFixed(3) : ch.score);
+              meta.appendChild(scoreEl);
+              const idEl = document.createElement('span');
+              idEl.className = 'findy-debug-chunk-id';
+              idEl.title = ch.id;
+              idEl.textContent = ch.id;
+              meta.appendChild(idEl);
+              chunkEl.appendChild(meta);
+              if (ch.matchedTerms && ch.matchedTerms.length > 0) {
+                const termTags = document.createElement('div');
+                termTags.className = 'findy-debug-tags';
+                termTags.style.marginBottom = '3px';
+                ch.matchedTerms.forEach(function(t) {
+                  const tag = document.createElement('span');
+                  tag.className = 'findy-debug-tag term';
+                  tag.textContent = t;
+                  termTags.appendChild(tag);
+                });
+                chunkEl.appendChild(termTags);
+              }
+              const preview = document.createElement('div');
+              preview.className = 'findy-debug-chunk-preview';
+              preview.textContent = ch.preview;
+              chunkEl.appendChild(preview);
+              container.appendChild(chunkEl);
+            });
+            addSection('Top-' + debugData.chunks.length + ' scored chunks', container);
+          }
+
+          panel.appendChild(body);
+
+          // Toggle click handler
+          toggle.addEventListener('click', function() {
+            const isOpen = body.classList.toggle('open');
+            arrow.classList.toggle('open', isOpen);
+          });
+
+          return panel;
+        }
+
         // Add message to chat
-        function addMessage(text, isUser = false) {
+        function addMessage(text, isUser = false, debugData = null) {
           const messageDiv = document.createElement('div');
           messageDiv.className = `findy-message ${isUser ? 'user' : 'bot'}`;
           
@@ -930,6 +1241,12 @@
           
           contentWrapper.appendChild(contentDiv);
           contentWrapper.appendChild(timeDiv);
+
+          // Append admin debug panel below bot replies when debug data is present.
+          if (!isUser && debugData) {
+            const panel = buildDebugPanel(debugData);
+            if (panel) contentWrapper.appendChild(panel);
+          }
           
           messageDiv.appendChild(avatarDiv);
           messageDiv.appendChild(contentWrapper);
@@ -982,11 +1299,17 @@
 
           showTypingIndicator();
 
+          // Read current session to send user identity header (the backend uses
+          // this to gate admin-only debug data in the response).
+          const session = getSession();
+          const userId = session?.user?.id || '';
+
           try {
             const response = await fetch(API_ENDPOINT, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                ...(userId ? { 'x-user-id': userId } : {}),
               },
               body: JSON.stringify({
                 message: message,
@@ -1002,7 +1325,10 @@
               const result = await response.json();
               // Backend returns { success: true, message: "...", data: {...} }
               const botMessage = result.data?.message || result.data?.response || result.message || 'No response received';
-              addMessage(botMessage, false);
+              // The server already gates the debug object to admin callers only;
+              // trust that as the source of truth rather than re-checking local role.
+              const debugData = result.debug || null;
+              addMessage(botMessage, false, debugData);
 
               // Update rolling history (keep last 10 = 5 exchanges).
               conversationHistory.push({ role: 'user', content: message });
