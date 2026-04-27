@@ -125,13 +125,16 @@ export default function AdminContentCountries() {
       duration: (c as any).duration || '',
       status: c.status,
       description: c.description || '',
+      content: c.content
+        ? c.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+        : '',
       videoUrl: (c as any).videoUrl || '',
       documentUrl: (c as any).documentUrl || '',
       quizId: (c as any).quizId || '',
       order: (c as any).order ?? '',
     }));
     const contentSheet = XLSX.utils.json_to_sheet(contentRows);
-    contentSheet['!cols'] = [{ wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 50 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 8 }];
+    contentSheet['!cols'] = [{ wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 50 }, { wch: 80 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 8 }];
     XLSX.utils.book_append_sheet(wb, contentSheet, 'Content');
 
     // ── Countries sheet ──────────────────────────────────────────────────────
