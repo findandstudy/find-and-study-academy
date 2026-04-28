@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import DOMPurify from "dompurify";
+import { useTranslation } from "react-i18next";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,21 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Trash2, Check, Globe, PenLine, Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react";
+import { Loader2, Trash2, Check, Globe, PenLine, Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react";
 import type { Content, ContentTranslation } from "@shared/schema";
-
-const SUPPORTED_LANGUAGES = [
-  { code: "tr", label: "Türkçe", flag: "🇹🇷" },
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
-  { code: "uz", label: "O'zbek", flag: "🇺🇿" },
-  { code: "kk", label: "Қазақша", flag: "🇰🇿" },
-  { code: "az", label: "Azərbaycan", flag: "🇦🇿" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
-  { code: "zh", label: "中文", flag: "🇨🇳" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-];
+import { SUPPORTED_LANGUAGES, isSupportedLanguage } from "@/i18n/languages";
 
 function getAuthHeaders(): Record<string, string> {
   const raw = localStorage.getItem("fas_session");
@@ -115,7 +104,26 @@ interface ContentTranslationEditorProps {
 
 export function ContentTranslationEditor({ content, open, onClose }: ContentTranslationEditorProps) {
   const { toast } = useToast();
-  const [selectedLang, setSelectedLang] = useState("tr");
+  const { i18n } = useTranslation();
+
+  // Derive a valid initial lang from the current UI language
+  const resolvedUiLang = isSupportedLanguage(i18n.resolvedLanguage)
+    ? i18n.resolvedLanguage
+    : isSupportedLanguage(i18n.language)
+      ? i18n.language
+      : 'tr';
+
+  const [selectedLang, setSelectedLang] = useState<string>(resolvedUiLang);
+
+  // Sync selectedLang whenever the top-right language switcher changes
+  useEffect(() => {
+    const lang = isSupportedLanguage(i18n.resolvedLanguage)
+      ? i18n.resolvedLanguage
+      : isSupportedLanguage(i18n.language)
+        ? i18n.language
+        : 'tr';
+    setSelectedLang(lang);
+  }, [i18n.resolvedLanguage, i18n.language]);
   const [form, setForm] = useState<{ title: string; description: string; content: string; status: string }>({
     title: "",
     description: "",
@@ -175,7 +183,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contents", content.id, "translations"] });
-      const langLabel = SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.label || selectedLang;
+      const langLabel = SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel || selectedLang;
       toast({ title: "Çeviri kaydedildi", description: `${langLabel} çevirisi başarıyla kaydedildi.` });
     },
     onError: (err: Error) => {
@@ -240,8 +248,8 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                     className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "hover-elevate text-foreground"}`}
                   >
                     <span className="flex items-center gap-2">
-                      <span>{lang.flag}</span>
-                      <span>{lang.label}</span>
+                      <span className={`fi fi-${lang.flag}`} aria-hidden="true" />
+                      <span>{lang.nativeLabel}</span>
                     </span>
                     {hasTranslation && (
                       <Check className={`w-3 h-3 shrink-0 ${isSelected ? "text-primary-foreground" : "text-green-600"}`} />
@@ -257,7 +265,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <PenLine className="w-4 h-4" />
-                {SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.label} Çevirisi
+                {SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel} Çevirisi
               </h3>
               <div className="flex items-center gap-2">
                 {existingLangCodes.includes(selectedLang) && (
@@ -312,7 +320,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                   key={`${content.id}-${selectedLang}`}
                   value={form.content}
                   onChange={html => setForm(f => ({ ...f, content: html }))}
-                  placeholder={`${SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.label} dilinde içerik yazın...`}
+                  placeholder={`${SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel} dilinde içerik yazın...`}
                 />
               </div>
             </div>
@@ -326,7 +334,8 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                     const lang = SUPPORTED_LANGUAGES.find(l => l.code === t.language);
                     return (
                       <Badge key={t.language} variant={t.status === "published" ? "default" : "secondary"}>
-                        {lang?.flag} {lang?.label || t.language}
+                        {lang && <span className={`fi fi-${lang.flag} mr-1`} aria-hidden="true" />}
+                        {lang?.nativeLabel || t.language}
                         {t.status === "published" ? " · Yayında" : " · Taslak"}
                       </Badge>
                     );
