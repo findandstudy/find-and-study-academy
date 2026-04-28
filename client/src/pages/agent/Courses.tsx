@@ -194,10 +194,7 @@ export default function AgentCourses() {
 
       <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
         {/* Custom scrollable country selector — avoids Radix TabsList overflow constraints */}
-        <div
-          className="flex gap-2 overflow-x-auto pb-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl border border-border/50 shadow-sm"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
+        <div className="flex flex-wrap gap-2 p-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
           {activeCountries.map((country) => {
             const isActive = selectedCountry === country.code.toLowerCase();
             return (
