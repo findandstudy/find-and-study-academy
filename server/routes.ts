@@ -5296,7 +5296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ---- Bulk Content Import ----
-  app.get('/api/admin/content/bulk-template', requireAdminOrStaff, async (req, res) => {
+  app.get('/api/admin/content/bulk-template', requireAuth, requireAdminOrStaff, async (req, res) => {
     // Return column headers as JSON for client-side template generation
     const headers = [
       'title', 'slug', 'description', 'content_type', 'status', 'section',
@@ -5312,7 +5312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, headers, validations });
   });
 
-  app.post('/api/admin/content/bulk-import', requireAdminOrStaff, async (req, res) => {
+  app.post('/api/admin/content/bulk-import', requireAuth, requireAdminOrStaff, async (req, res) => {
     try {
       const { rows } = req.body;
       if (!Array.isArray(rows) || rows.length === 0) {
