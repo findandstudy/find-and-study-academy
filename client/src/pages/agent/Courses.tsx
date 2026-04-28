@@ -68,7 +68,7 @@ export default function AgentCourses() {
     // Always include Turkey (default course) if not already present
     const hasTurkey = countriesWithContent.some(c => c.code === 'TR');
     if (!hasTurkey) {
-      countriesWithContent.unshift({
+      countriesWithContent.push({
         id: 'turkey',
         name: 'Turkey',
         code: 'TR',
@@ -79,7 +79,8 @@ export default function AgentCourses() {
       });
     }
     
-    return countriesWithContent;
+    // Sort alphabetically by country name
+    return countriesWithContent.slice().sort((a, b) => a.name.localeCompare(b.name));
   }, [countries, contents]);
 
   // Initialize selected country from API defaults once countries are loaded
