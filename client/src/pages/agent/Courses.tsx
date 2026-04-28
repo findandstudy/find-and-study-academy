@@ -193,8 +193,8 @@ export default function AgentCourses() {
       </div>
 
       <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
-        <div className="relative">
-          <TabsList className="inline-flex w-auto gap-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl overflow-x-auto scrollbar-hide border border-border/50 shadow-sm">
+        <div className="w-full overflow-x-auto scrollbar-hide pb-1">
+          <TabsList className="inline-flex w-max gap-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl border border-border/50 shadow-sm">
             {activeCountries.map((country) => (
               <TabsTrigger 
                 key={country.id} 
