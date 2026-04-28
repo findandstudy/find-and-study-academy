@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useMemo, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import type { Content, Country } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
 import { useTranslation } from 'react-i18next';
@@ -193,20 +193,31 @@ export default function AgentCourses() {
       </div>
 
       <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
-        <div className="w-full overflow-x-auto scrollbar-hide pb-1">
-          <TabsList className="inline-flex w-max gap-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl border border-border/50 shadow-sm">
-            {activeCountries.map((country) => (
-              <TabsTrigger 
-                key={country.id} 
-                value={country.code.toLowerCase()}
-                className="group relative flex items-center gap-3 whitespace-nowrap px-6 py-3 transition-all duration-300 hover:-translate-y-0.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
+        {/* Custom scrollable country selector — avoids Radix TabsList overflow constraints */}
+        <div
+          className="flex gap-2 overflow-x-auto pb-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm p-2 rounded-xl border border-border/50 shadow-sm"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {activeCountries.map((country) => {
+            const isActive = selectedCountry === country.code.toLowerCase();
+            return (
+              <button
+                key={country.id}
+                type="button"
+                onClick={() => setSelectedCountry(country.code.toLowerCase())}
                 data-testid={`tab-country-${country.code.toLowerCase()}`}
+                className={[
+                  'flex shrink-0 items-center gap-3 whitespace-nowrap px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300',
+                  isActive
+                    ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg'
+                    : 'text-foreground hover-elevate',
+                ].join(' ')}
               >
                 <CountryFlag code={country.code} size="md" />
-                <span className="font-medium">{country.name}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+                <span>{country.name}</span>
+              </button>
+            );
+          })}
         </div>
 
         {activeCountries.map((country) => (
