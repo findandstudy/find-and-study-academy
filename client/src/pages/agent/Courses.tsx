@@ -10,10 +10,13 @@ import { CountryFlag } from '@/components/CountryFlag';
 import { useTranslation } from 'react-i18next';
 
 export default function AgentCourses() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { courses } = useDataStore();
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [defaultInitialized, setDefaultInitialized] = useState(false);
+
+  // Current UI language — used as ?lang= param so content translations are applied server-side
+  const currentLang = i18n.resolvedLanguage || i18n.language || 'en';
 
   // Fetch global defaults from settings
   const { data: defaultsData } = useQuery<{ success: boolean; defaults: { default_country_code: string | null } }>({
@@ -34,12 +37,18 @@ export default function AgentCourses() {
   });
 
   const { data: contents = [] } = useQuery({
-    queryKey: ['/api/public/contents'],
-    staleTime: 0, // Always fetch fresh data
+    queryKey: ['/api/public/contents', currentLang],
+    queryFn: async () => {
+      const url = currentLang && currentLang !== 'en'
+        ? `/api/public/contents?lang=${encodeURIComponent(currentLang)}`
+        : '/api/public/contents';
+      const res = await fetch(url);
+      return res.json();
+    },
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     select: (data: any) => {
-      console.log('📚 Public contents API response:', data);
       return data.contents as Array<Content & { countryName?: string }>;
     }
   });

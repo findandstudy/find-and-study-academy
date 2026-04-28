@@ -489,7 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get published content (optionally filtered by countryId)
   app.get('/api/public/contents', async (req, res) => {
     try {
-      const { countryId } = req.query;
+      const { countryId, lang } = req.query;
       const contents = await storage.getContents();
       const countries = await storage.getCountries();
       
@@ -501,11 +501,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         publishedContents = publishedContents.filter(content => content.countryId === countryId);
       }
       
-      // Add country name to each content
+      // If a language is requested, fetch all translations for that language in one query
+      // and overlay title/description/content fields when a published translation exists
+      let translationMap: Map<string, any> = new Map();
+      if (lang && typeof lang === 'string' && lang !== 'en') {
+        const translations = await storage.getTranslationsByLanguage(lang);
+        for (const t of translations) {
+          if (t.status === 'published') {
+            translationMap.set(t.contentId, t);
+          }
+        }
+      }
+
+      // Add country name + apply translations to each content
       const contentsWithCountryName = publishedContents.map(content => {
         const country = countries.find(c => c.id === content.countryId);
+        const tr = translationMap.get(content.id);
         return {
           ...content,
+          title: tr?.title || content.title,
+          description: tr?.description || content.description,
+          content: tr?.content || content.content,
           countryName: country?.name || 'Unknown'
         };
       });

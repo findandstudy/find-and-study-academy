@@ -222,6 +222,7 @@ export interface IStorage {
   // Content Translation methods
   getContentTranslations(contentId: string): Promise<ContentTranslation[]>;
   getContentTranslation(contentId: string, language: string): Promise<ContentTranslation | undefined>;
+  getTranslationsByLanguage(language: string): Promise<ContentTranslation[]>;
   upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation>;
   deleteContentTranslation(contentId: string, language: string): Promise<void>;
   getAllTranslations(): Promise<ContentTranslation[]>;
@@ -1522,6 +1523,11 @@ export class DatabaseStorage implements IStorage {
         eq(contentTranslations.language, language)
       ));
     return row || undefined;
+  }
+
+  async getTranslationsByLanguage(language: string): Promise<ContentTranslation[]> {
+    return db.select().from(contentTranslations)
+      .where(eq(contentTranslations.language, language));
   }
 
   async upsertContentTranslation(data: InsertContentTranslation): Promise<ContentTranslation> {
