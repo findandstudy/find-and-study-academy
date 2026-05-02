@@ -314,6 +314,31 @@ type AiCallArgs = {
   history?: HistoryMessage[];
 };
 
+// ── Tiny TTL cache for chat hot-paths ────────────────────────────────────────
+// Findy hits these helpers on every single message, but the underlying data
+// (active countries, distinct knowledge-base university names) only changes
+// when an admin uploads/edits — typically minutes apart. A 60-second cache
+// shaves the bulk of the DB round-trip latency off the chat critical path
+// while staying fresh enough that admin edits show up almost immediately.
+const __chatHotCache: Record<string, { at: number; v: unknown }> = {};
+const CHAT_CACHE_TTL_MS = 60_000;
+async function memoChat<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const hit = __chatHotCache[key];
+  if (hit && Date.now() - hit.at < CHAT_CACHE_TTL_MS) return hit.v as T;
+  const v = await fn();
+  __chatHotCache[key] = { at: Date.now(), v };
+  return v;
+}
+// Exported so admin endpoints can punch the cache after content / KB edits
+// (called from the existing reprocess + content-mutation routes below).
+export function invalidateChatHotCache(keys?: string[]): void {
+  if (!keys || keys.length === 0) {
+    for (const k of Object.keys(__chatHotCache)) delete __chatHotCache[k];
+    return;
+  }
+  for (const k of keys) delete __chatHotCache[k];
+}
+
 async function callAiProvider(a: AiCallArgs): Promise<string> {
   const userContent = a.ragContext
     ? `${a.userMessage}\n${a.ragContext}`
@@ -3796,7 +3821,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const country = await storage.createCountry(validation.data);
-      
+      invalidateChatHotCache(['countries']);
+
       res.status(201).json({
         success: true,
         country
@@ -3832,7 +3858,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const country = await storage.updateCountry(id, validation.data);
-      
+      invalidateChatHotCache(['countries']);
+
       res.json({
         success: true,
         country
@@ -3859,7 +3886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteCountry(id);
-      
+      invalidateChatHotCache(['countries']);
+
       res.json({
         success: true,
         message: 'Country deleted successfully'
@@ -3908,9 +3936,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[CREATE CONTENT] Validated data:', JSON.stringify(validation.data, null, 2));
       
       const content = await storage.createContent(validation.data);
-      
+      invalidateChatHotCache(['contents']);
+
       console.log('[CREATE CONTENT] Created content:', JSON.stringify(content, null, 2));
-      
+
       res.status(201).json({
         success: true,
         content
@@ -3946,7 +3975,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const content = await storage.updateContent(id, validation.data);
-      
+      invalidateChatHotCache(['contents']);
+
       res.json({
         success: true,
         content
@@ -3973,7 +4003,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteContent(id);
-      
+      invalidateChatHotCache(['contents']);
+
       res.json({
         success: true,
         message: 'Content deleted successfully'
@@ -4416,6 +4447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const folderIdSchema = z.object({ folderId: z.string().nullable() });
       const { folderId } = folderIdSchema.parse(req.body);
       const content = await storage.updateContent(req.params.id, { folderId });
+      invalidateChatHotCache(['contents']);
       res.json({ success: true, content });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to assign content to folder';
@@ -4455,6 +4487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deleted = results.filter((r) => r.success).length;
       const failed = results.length - deleted;
+      if (deleted > 0) invalidateChatHotCache(['contents']);
       res.json({ success: failed === 0, deleted, failed, total: results.length, results });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to bulk-delete contents';
@@ -4500,6 +4533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updated = results.filter((r) => r.success).length;
       const failed = results.length - updated;
+      if (updated > 0) invalidateChatHotCache(['contents']);
       res.json({ success: failed === 0, updated, failed, total: results.length, status, results });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to bulk-update content statuses';
@@ -4535,6 +4569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const moved = results.filter((r) => r.success).length;
       const failed = results.length - moved;
+      if (moved > 0) invalidateChatHotCache(['contents']);
       res.json({ success: failed === 0, moved, failed, total: results.length, results });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to bulk-move contents';
@@ -5711,6 +5746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try { fs.unlinkSync(src.filePath); } catch {}
       }
       await storage.deleteKnowledgeSource(req.params.id);
+      invalidateChatHotCache(['kbUniversities']);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to delete source' });
@@ -5753,6 +5789,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateKnowledgeSource(src.id, { status: 'error', errorMessage: err.message });
           }
         }
+        // KB content has been replaced — punch the chat cache so the next
+        // chat message sees the freshly parsed universities immediately.
+        invalidateChatHotCache(['kbUniversities']);
       });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Bulk reprocess failed' });
@@ -5786,6 +5825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (err: any) {
           await storage.updateKnowledgeSource(src.id, { status: 'error', errorMessage: err.message });
         }
+        // KB content for this source has been replaced — punch the chat cache.
+        invalidateChatHotCache(['kbUniversities']);
       });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Reprocess failed' });
@@ -5927,122 +5968,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
       const messageNorm = normTr(message);
 
-      // (a) Destinations — always include, also use them for entity extraction.
-      let countryHint: string | undefined;
-      let activeCountries: any[] = [];
-      try {
-        const allCountries = await storage.getCountries?.();
-        activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
-        if (activeCountries.length > 0) {
-          const lines = activeCountries.map((c: any) =>
-            `- ${c.name} (${c.code})${c.description ? ' — ' + c.description.slice(0, 80) : ''}`
-          );
-          pushSection('DESTINATIONS (countries available on Find And Study):', lines.join('\n'));
-          // Entity extraction: did the user mention any of these country names?
-          for (const c of activeCountries) {
-            if (c.name && messageNorm.includes(normTr(c.name))) { countryHint = c.name; break; }
-          }
-        }
-      } catch (err) {
-        console.warn('Country lookup for RAG failed (non-fatal):', err);
-      }
-
-      // (b) Platform content — keyword match published rows, cap to 4 + 400ch.
-      try {
-        const allContents = await storage.getContents?.();
-        const tokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
-        const matches = (allContents || [])
-          .filter((c: any) => c.status === 'published')
-          .filter((c: any) => {
-            const hay = normTr(`${c.title || ''} ${c.description || ''} ${c.content || ''}`);
-            return tokens.some((t: string) => hay.includes(t));
-          })
-          .slice(0, 4);
-        if (matches.length > 0) {
-          const lines = matches.map((c: any) => {
-            const body = (c.content || c.description || '')
-              .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
-            return `- [${c.title}]${c.countryCode ? ' (' + c.countryCode + ')' : ''}: ${body}`;
-          });
-          pushSection('PLATFORM CONTENT (lessons / documents matching the question):', lines.join('\n'));
-        }
-      } catch (err) {
-        console.warn('Content lookup for RAG failed (non-fatal):', err);
-      }
-
-      // Entity extraction for the knowledge base pre-filter: scan the metadata
-      // of a small sample to discover universities present in the corpus, then
-      // see if the user mentioned any. This keeps token use down dramatically
-      // on large corpora ("Tell me about Bahçeşehir CS" filters 10000+ rows
-      // down to that one university's offerings).
-      let universityHint: string | undefined;
-      try {
-        const sampleChunks = await storage.searchKnowledgeChunks('university', 80);
-        const seenUnis = new Set<string>();
-        for (const { chunk: ch } of sampleChunks) {
-          const u = (ch.metadata as any)?.Universities;
-          if (u && typeof u === 'string') seenUnis.add(u);
-        }
-        for (const u of Array.from(seenUnis)) {
-          const tokens = normTr(u).split(/\s+/).filter(t => t.length > 3);
-          if (tokens.length === 0) continue;
-          // Match if the user message mentions ALL discriminating tokens of
-          // the university name (e.g. "anadolu" alone is enough; "bahcesehir
-          // istanbul" requires both). This avoids mis-matching short generic
-          // tokens like "university".
-          const distinctive = tokens.filter(t => !['university', 'college', 'institute', 'school'].includes(t));
-          if (distinctive.length > 0 && distinctive.every(t => messageNorm.includes(t))) {
-            universityHint = u;
-            break;
-          }
-        }
-      } catch (err) {
-        console.warn('University entity extraction failed (non-fatal):', err);
-      }
-
-      // (c0) Listing intent — when the user is asking a *general* "which
-      // universities do you have / list universities / hangi üniversiteler
-      // var" question (and didn't name a specific university), the per-row
-      // similarity search will only surface a handful of programs from a
-      // couple of universities and the model ends up answering with a
-      // partial list. Inject the FULL distinct (country, university) list
-      // from the corpus so the model can answer accurately.
-      //
-      // The university word matcher is intentionally broad so it catches
-      // both English (university / universities) and Turkish surface forms
-      // (üniversite -> universite, üniversitesi -> universitesi) plus the
-      // most common Turkish typos (univerite / univeriste). All of these
-      // begin with "univer" after the diacritic-stripping done by normTr.
-      // We then REQUIRE a list/question marker so neutral statements like
-      // "universite cok pahali" don't dump the whole catalogue.
+      // ── Pure-CPU intent detection (runs before any DB I/O) ───────────────────
+      // The university word matcher is intentionally broad so it catches both
+      // English (university / universities) and Turkish surface forms
+      // (üniversite → universite, üniversitesi → universitesi) plus the most
+      // common Turkish typos (univerite / univeriste). All of these begin with
+      // "univer" after the diacritic-stripping done by normTr. We then REQUIRE
+      // a list/question marker so neutral statements like "universite cok
+      // pahali" don't dump the whole catalogue.
       const uniWordRe = /\buniver[a-z]*\b/;
       const listMarkerRe = /(hangi|kac\s|kacar|liste|listele|nelerdir|nedir\b|var\s*mi\b|\bvar\b|mevcut|sahip|\bmu\b|\bmı\b|\ball\b|\blist\b|\bwhich\b|\bwhat\b|how\s*many|do\s*you\s*have|are\s*available|available\b|sundugunuz|sundugu|teklif)/;
       const wantsUniversityListing =
         uniWordRe.test(messageNorm) && listMarkerRe.test(messageNorm);
-      if (wantsUniversityListing && !universityHint) {
-        try {
-          const groups = await storage.listKnowledgeUniversities();
-          if (groups.length > 0) {
-            const totalUnis = groups.reduce((s, g) => s + g.universities.length, 0);
-            const lines = groups.map(g =>
-              `${g.country} (${g.universities.length}): ${g.universities.join(', ')}`
-            );
-            pushSection(
-              `AVAILABLE UNIVERSITIES (complete list from the uploaded knowledge base — ${totalUnis} universities across ${groups.length} ${groups.length === 1 ? 'country' : 'countries'}):`,
-              lines.join('\n')
-            );
-          }
-        } catch (err) {
-          console.warn('University listing for RAG failed (non-fatal):', err);
-        }
-      }
 
       // Proximity intent detection — e.g. "İstanbul'a en yakın bilgisayar
-      // mühendisliği olan üniversite". When detected, extract the reference city
-      // so knowledge chunks can be pre-filtered by their City metadata field.
-      // The city list covers the most commonly mentioned Turkish cities in the
-      // study-abroad context; it is intentionally kept small to avoid false
-      // positives and is applied only when a proximity keyword is present.
+      // mühendisliği olan üniversite". When detected, extract the reference
+      // city so knowledge chunks can be pre-filtered by their City metadata
+      // field. The city list covers the most commonly mentioned Turkish
+      // cities in the study-abroad context; it is intentionally kept small to
+      // avoid false positives and is applied only when a proximity keyword
+      // is present.
       let cityHint: string | undefined;
       {
         const proximityRe = /\ben\s+yakin\b|yakinin(da|daki|dan)\b|yakindaki\b|yakininda\b|yakinindaki\b|en\s+yakin/;
@@ -6075,6 +6020,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
+      }
+
+      // ── Parallel cached lookups ──────────────────────────────────────────────
+      // All three are independent and small; running them concurrently shaves
+      // ~2× off the chat critical path versus the previous sequential awaits.
+      // listKnowledgeUniversities() is *also* used as the cheap source for
+      // university entity extraction below — it returns the DISTINCT
+      // (country, university) pairs straight from a single SQL query and
+      // replaces what used to be a full ~80-row searchKnowledgeChunks scan
+      // (with ILIKE / TR_TO_EN expansion / rerank) on every single message.
+      const [allCountries, allContents, knowledgeUnis] = await Promise.all([
+        memoChat('countries', () => storage.getCountries())
+          .catch(err => { console.warn('Country lookup for RAG failed (non-fatal):', err); return [] as any[]; }),
+        memoChat('contents', () => storage.getContents())
+          .catch(err => { console.warn('Content lookup for RAG failed (non-fatal):', err); return [] as any[]; }),
+        memoChat('kbUniversities', () => storage.listKnowledgeUniversities())
+          .catch(err => { console.warn('KB university list failed (non-fatal):', err); return [] as { country: string; universities: string[] }[]; }),
+      ]);
+
+      // (a) Destinations — always include, also use them for entity extraction.
+      const activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
+      let countryHint: string | undefined;
+      if (activeCountries.length > 0) {
+        const lines = activeCountries.map((c: any) =>
+          `- ${c.name} (${c.code})${c.description ? ' — ' + c.description.slice(0, 80) : ''}`
+        );
+        pushSection('DESTINATIONS (countries available on Find And Study):', lines.join('\n'));
+        // Entity extraction: did the user mention any of these country names?
+        for (const c of activeCountries) {
+          if (c.name && messageNorm.includes(normTr(c.name))) { countryHint = c.name; break; }
+        }
+      }
+
+      // (b) Platform content — keyword match published rows, cap to 4 + 400ch.
+      {
+        const tokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
+        const matches = (allContents || [])
+          .filter((c: any) => c.status === 'published')
+          .filter((c: any) => {
+            const hay = normTr(`${c.title || ''} ${c.description || ''} ${c.content || ''}`);
+            return tokens.some((t: string) => hay.includes(t));
+          })
+          .slice(0, 4);
+        if (matches.length > 0) {
+          const lines = matches.map((c: any) => {
+            const body = (c.content || c.description || '')
+              .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+            return `- [${c.title}]${c.countryCode ? ' (' + c.countryCode + ')' : ''}: ${body}`;
+          });
+          pushSection('PLATFORM CONTENT (lessons / documents matching the question):', lines.join('\n'));
+        }
+      }
+
+      // Entity extraction for the knowledge base pre-filter: walk the cached
+      // DISTINCT (country, university) list and see whether the user mentioned
+      // any of them. Match requires ALL discriminating tokens of the
+      // university name to appear in the message (e.g. "anadolu" alone is
+      // enough; "bahcesehir istanbul" requires both) so short generic tokens
+      // like "university" don't trigger false positives.
+      let universityHint: string | undefined;
+      {
+        const seenUnis = new Set<string>();
+        for (const g of knowledgeUnis) for (const u of g.universities) seenUnis.add(u);
+        for (const u of Array.from(seenUnis)) {
+          const tokens = normTr(u).split(/\s+/).filter(t => t.length > 3);
+          if (tokens.length === 0) continue;
+          const distinctive = tokens.filter(t => !['university', 'college', 'institute', 'school'].includes(t));
+          if (distinctive.length > 0 && distinctive.every(t => messageNorm.includes(t))) {
+            universityHint = u;
+            break;
+          }
+        }
+      }
+
+      // (c0) Listing intent — when the user is asking a *general* "which
+      // universities do you have / list universities / hangi üniversiteler
+      // var" question (and didn't name a specific university), the per-row
+      // similarity search will only surface a handful of programs from a
+      // couple of universities and the model ends up answering with a
+      // partial list. Inject the FULL distinct (country, university) list
+      // (already fetched above) so the model can answer accurately.
+      if (wantsUniversityListing && !universityHint && knowledgeUnis.length > 0) {
+        const totalUnis = knowledgeUnis.reduce((s, g) => s + g.universities.length, 0);
+        const lines = knowledgeUnis.map(g =>
+          `${g.country} (${g.universities.length}): ${g.universities.join(', ')}`
+        );
+        pushSection(
+          `AVAILABLE UNIVERSITIES (complete list from the uploaded knowledge base — ${totalUnis} universities across ${knowledgeUnis.length} ${knowledgeUnis.length === 1 ? 'country' : 'countries'}):`,
+          lines.join('\n')
+        );
       }
 
       // (c) Uploaded knowledge — scored search, optionally pre-filtered by
