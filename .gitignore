@@ -1,12 +1,89 @@
+# ── Bağımlılıklar ─────────────────────────────────────────────────────────────
 node_modules
+.pnpm-store
+
+# ── Build çıktısı ─────────────────────────────────────────────────────────────
 dist
-.DS_Store
+build
 server/public
 vite.config.ts.*
 *.tar.gz
 
-# Uploaded files (keep directory structure with .gitkeep)
+# ── Ortam değişkenleri (ASLA repo'ya girmemeli) ───────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!.env.example
+!.env.production.example
+
+# ── Yerel/IDE ─────────────────────────────────────────────────────────────────
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+
+# ── Replit yerel dosyaları (üretime gerek yok) ────────────────────────────────
+.local
+.agents
+.config
+.upm
+.cache
+.replit_*
+
+# ── Loglar ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pm2.log
+ecosystem.log
+
+# ── Yüklenen kullanıcı dosyaları (klasör yapısı .gitkeep ile korunur) ─────────
 public/uploads/*
 !public/uploads/.gitkeep
+!public/uploads/profiles/
+public/uploads/profiles/*
 !public/uploads/profiles/.gitkeep
+!public/uploads/logos/
+public/uploads/logos/*
 !public/uploads/logos/.gitkeep
+!public/uploads/content/
+public/uploads/content/*
+!public/uploads/content/.gitkeep
+!public/uploads/knowledge/
+public/uploads/knowledge/*
+!public/uploads/knowledge/.gitkeep
+uploads/
+
+# ── Geliştirme süresince üretilen ekran görüntüleri/PDF'ler ───────────────────
+attached_assets/
+/*.png
+/*.jpg
+/*.jpeg
+/*.pdf
+!client/**/*.png
+!client/**/*.jpg
+!client/**/*.svg
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.svg
+
+# ── Test/coverage ─────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# ── Geçici dosyalar ───────────────────────────────────────────────────────────
+tmp/
+.tmp/
+*.bak
+*.orig
+
+# ── DB yedekleri ──────────────────────────────────────────────────────────────
+*.sql.gz
+*.dump
+backups/
