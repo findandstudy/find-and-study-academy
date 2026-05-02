@@ -31,7 +31,9 @@ vite.config.ts.*
 .config
 .upm
 .cache
+.replit
 .replit_*
+replit.nix
 
 # ── Loglar ────────────────────────────────────────────────────────────────────
 *.log

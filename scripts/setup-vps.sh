@@ -7,9 +7,17 @@
 # Backend port: 3000 (OpenLiteSpeed reverse proxy yapacak)
 #
 # Kullanım:
-#   1) VPS'e root olarak SSH yap
-#   2) wget -O setup-vps.sh https://raw.githubusercontent.com/<USER>/<REPO>/main/scripts/setup-vps.sh
-#   3) bash setup-vps.sh
+#   1) VPS'e root olarak SSH yapın
+#   2) Bu betiği VPS'e kopyalayın. Repo private olduğu için wget çalışmaz; yerel
+#      makinenizden scp ile gönderin:
+#         scp scripts/setup-vps.sh root@<VPS_IP>:/root/setup-vps.sh
+#      veya nano ile yapıştırın:
+#         nano /root/setup-vps.sh   (içeriği yapıştırıp Ctrl+O, Enter, Ctrl+X)
+#   3) chmod +x /root/setup-vps.sh && bash /root/setup-vps.sh
+#
+# Bu betik repoyu SSH Deploy Key ile çeker — bu yüzden GitHub repo URL'sini
+# SSH formatında verin (git@github.com:owner/repo.git). HTTPS verirseniz
+# otomatik SSH'a çevrilir.
 # ============================================================================
 
 set -euo pipefail
@@ -38,8 +46,17 @@ LSWS_DIR="/usr/local/lsws"
 echo
 log "Önce birkaç bilgiye ihtiyacım var (Enter = varsayılan)"
 read -rp "Domain [$DOMAIN]: " input_domain && DOMAIN="${input_domain:-$DOMAIN}"
-read -rp "GitHub repo URL (örn: https://github.com/user/repo.git): " GIT_URL
+read -rp "GitHub repo URL (örn: git@github.com:findandstudy/find-and-study-academy.git): " GIT_URL
 [[ -z "$GIT_URL" ]] && { err "GitHub repo URL gerekli"; exit 1; }
+# HTTPS verildiyse otomatik olarak SSH formatına çevir
+if [[ "$GIT_URL" =~ ^https://github\.com/([^/]+)/([^/]+)\.git$ ]]; then
+  GIT_URL="git@github.com:${BASH_REMATCH[1]}/${BASH_REMATCH[2]}.git"
+  warn "Repo URL SSH formatına çevrildi: $GIT_URL"
+fi
+if [[ ! "$GIT_URL" =~ ^git@github\.com: ]]; then
+  err "Repo URL beklenen formatta değil. Beklenen: git@github.com:owner/repo.git"
+  exit 1
+fi
 read -rp "Let's Encrypt için e-posta: " LETSENCRYPT_EMAIL
 [[ -z "$LETSENCRYPT_EMAIL" ]] && { err "E-posta gerekli"; exit 1; }
 read -rsp "PostgreSQL kullanıcısı için yeni parola (boşsa otomatik üretilir): " PG_PASSWORD
@@ -137,6 +154,97 @@ if ! id -u "$APP_USER" >/dev/null 2>&1; then
   fi
 fi
 ok "deploy kullanıcısı hazır"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7.5) GitHub SSH Deploy Key — private repo'dan read-only çekmek için
+# ─────────────────────────────────────────────────────────────────────────────
+SSH_KEY_PATH="/root/.ssh/github_deploy"
+install -d -m 700 /root/.ssh
+
+if [[ ! -f "$SSH_KEY_PATH" ]]; then
+  log "GitHub Deploy Key oluşturuluyor: $SSH_KEY_PATH"
+  ssh-keygen -t ed25519 -f "$SSH_KEY_PATH" -N "" -C "deploy@${DOMAIN}"
+  chmod 600 "$SSH_KEY_PATH"
+  chmod 644 "${SSH_KEY_PATH}.pub"
+else
+  ok "Mevcut deploy key kullanılacak: $SSH_KEY_PATH"
+fi
+
+# Repo URL'den owner/repo'yu çıkar (deploy keys ekleme linki için)
+REPO_PATH="$(echo "$GIT_URL" | sed -E 's#^git@github\.com:([^/]+/[^.]+)\.git$#\1#')"
+DEPLOY_KEYS_URL="https://github.com/${REPO_PATH}/settings/keys/new"
+
+echo
+echo "════════════════════════════════════════════════════════════════════"
+echo "GitHub'da DEPLOY KEY olarak eklenecek public key:"
+echo "════════════════════════════════════════════════════════════════════"
+cat "${SSH_KEY_PATH}.pub"
+echo "════════════════════════════════════════════════════════════════════"
+echo
+warn "ŞİMDİ YAPMANIZ GEREKEN ADIMLAR:"
+echo "  1) Tarayıcıda şu adresi açın:"
+echo "     ${DEPLOY_KEYS_URL}"
+echo "  2) Title: 'Hostinger VPS Deploy' (veya istediğiniz bir isim)"
+echo "  3) Key alanına yukarıdaki public key'i (ssh-ed25519 ile başlayan tüm satır) yapıştırın"
+echo "  4) 'Allow write access' KUTUSUNU İŞARETLEMEYİN — read-only deploy key daha güvenli"
+echo "  5) 'Add key' butonuna basın"
+echo
+read -rp "Deploy key'i GitHub'a ekledikten sonra Enter'a basın... " _
+
+# /root için SSH config — github.com için bu key kullanılsın
+SSH_CONFIG="/root/.ssh/config"
+if ! grep -qE "^Host github\.com$" "$SSH_CONFIG" 2>/dev/null; then
+  cat >> "$SSH_CONFIG" <<EOF
+
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ${SSH_KEY_PATH}
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+EOF
+fi
+chmod 600 "$SSH_CONFIG"
+
+# Doğrulama: GitHub'a SSH ile bağlanıp deploy key'i kabul ettiklerini gör
+log "GitHub SSH bağlantısı doğrulanıyor"
+SSH_TEST_OUTPUT="$(ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)"
+echo "$SSH_TEST_OUTPUT"
+if echo "$SSH_TEST_OUTPUT" | grep -qE "successfully authenticated|Hi |You've successfully"; then
+  ok "GitHub SSH erişimi onaylandı"
+else
+  err "GitHub SSH erişimi doğrulanamadı! Public key'i Deploy Key olarak eklediğinizden emin olun."
+  err "Manuel test: ssh -T git@github.com"
+  read -rp "Yine de devam edelim mi? (e/h): " continue_anyway
+  [[ "$continue_anyway" != "e" && "$continue_anyway" != "E" ]] && exit 1
+fi
+
+# deploy kullanıcısı da aynı key'i kullansın (clone + deploy.sh git pull için)
+install -d -m 700 -o "$APP_USER" -g "$APP_USER" "/home/$APP_USER/.ssh"
+cp "$SSH_KEY_PATH" "/home/$APP_USER/.ssh/github_deploy"
+cp "${SSH_KEY_PATH}.pub" "/home/$APP_USER/.ssh/github_deploy.pub"
+chown "$APP_USER:$APP_USER" "/home/$APP_USER/.ssh/github_deploy" "/home/$APP_USER/.ssh/github_deploy.pub"
+chmod 600 "/home/$APP_USER/.ssh/github_deploy"
+chmod 644 "/home/$APP_USER/.ssh/github_deploy.pub"
+
+DEPLOY_SSH_CONFIG="/home/$APP_USER/.ssh/config"
+if ! grep -qE "^Host github\.com$" "$DEPLOY_SSH_CONFIG" 2>/dev/null; then
+  cat >> "$DEPLOY_SSH_CONFIG" <<EOF
+
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile /home/${APP_USER}/.ssh/github_deploy
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+EOF
+fi
+chown "$APP_USER:$APP_USER" "$DEPLOY_SSH_CONFIG"
+chmod 600 "$DEPLOY_SSH_CONFIG"
+
+# deploy user için known_hosts'a github.com'u ekle (sessizce)
+sudo -u "$APP_USER" ssh -o StrictHostKeyChecking=accept-new -T git@github.com >/dev/null 2>&1 || true
+ok "deploy kullanıcısı için de SSH ayarlandı"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 8) Repo klonla + bağımlılıklar
