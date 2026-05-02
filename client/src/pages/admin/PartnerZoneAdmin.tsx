@@ -28,6 +28,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth';
 import { CountryFlag } from '@/components/CountryFlag';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -44,8 +45,6 @@ interface PartnerFolder {
   parentFolderId: string | null;
   subfolderCount?: number;
   contentCount?: number;
-  // Distinct content types found anywhere in this folder's descendant tree.
-  // Values are normalized to 'document' | 'video' | 'image'.
   contentTypes?: string[];
   updatedAt: string;
   createdAt: string;
@@ -79,12 +78,6 @@ type MediaType = 'document' | 'video' | 'image';
 type FileTypeFilter = 'all' | MediaType;
 type SortKey = 'newest' | 'oldest' | 'az' | 'za';
 
-const MEDIA_TYPES: { value: MediaType; label: string; icon: React.ElementType; accept: string; folder: string }[] = [
-  { value: 'document', label: 'Belge', icon: FileText, accept: '.pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip', folder: 'documents' },
-  { value: 'video',    label: 'Video', icon: Video,    accept: '.mp4,.mov,.webm,.avi,.mkv',                  folder: 'videos'    },
-  { value: 'image',    label: 'Görsel', icon: ImageIcon, accept: '.jpg,.jpeg,.png,.gif,.webp,.svg',           folder: 'images'    },
-];
-
 function getContentUrl(item: FolderContent): string | null {
   return item.documentUrl ?? item.videoUrl ?? item.imageUrl ?? null;
 }
@@ -95,14 +88,15 @@ function getContentType(item: FolderContent): MediaType {
   return 'document';
 }
 function ContentIcon({ type, className }: { type: MediaType; className?: string }) {
-  const Icon = MEDIA_TYPES.find((m) => m.value === type)?.icon ?? File;
-  return <Icon className={className} />;
+  if (type === 'video') return <Video className={className} />;
+  if (type === 'image') return <ImageIcon className={className} />;
+  return <FileText className={className} />;
 }
 
 // ─── Folder form ────────────────────────────────────────────────────────────
 
 const folderSchema = z.object({
-  name: z.string().min(1, 'Klasör adı zorunlu'),
+  name: z.string().min(1, 'folder_name_required'),
   description: z.string().optional(),
   categoryTag: z.string().optional(),
   countryCode: z.string().optional(),
@@ -115,7 +109,7 @@ type FolderFormValues = z.infer<typeof folderSchema>;
 
 const contentSchema = z.object({
   mediaType: z.enum(['document', 'video', 'image']),
-  title: z.string().min(1, 'Başlık zorunlu'),
+  title: z.string().min(1, 'title_required'),
   description: z.string().optional(),
   displayName: z.string().optional(),
   fileSize: z.string().optional(),
@@ -140,13 +134,13 @@ interface ToolbarProps {
 }
 
 function PartnerToolbar(props: ToolbarProps) {
-  // Local input state debounced (250ms) before propagating to parent filter state
+  const { t } = useTranslation();
   const [localSearch, setLocalSearch] = useState(props.search);
   useEffect(() => { setLocalSearch(props.search); }, [props.search]);
   useEffect(() => {
     if (localSearch === props.search) return;
-    const t = setTimeout(() => props.onSearchChange(localSearch), 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => props.onSearchChange(localSearch), 250);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSearch]);
 
@@ -157,17 +151,17 @@ function PartnerToolbar(props: ToolbarProps) {
         <Input
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
-          placeholder="Ara..."
+          placeholder={t('admin.partnerZone.allCountries')}
           className="pl-9"
           data-testid="input-admin-partner-search"
         />
       </div>
       <Select value={props.country} onValueChange={props.onCountryChange}>
         <SelectTrigger className="w-full sm:w-44" data-testid="select-admin-partner-country">
-          <SelectValue placeholder="Ülke" />
+          <SelectValue />
         </SelectTrigger>
         <SelectContent className="max-h-72">
-          <SelectItem value="all">Tüm ülkeler</SelectItem>
+          <SelectItem value="all">{t('admin.partnerZone.allCountries')}</SelectItem>
           {props.countries.map((c) => (
             <SelectItem key={c.code} value={c.code}>
               {c.name}
@@ -181,10 +175,10 @@ function PartnerToolbar(props: ToolbarProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tüm türler</SelectItem>
-            <SelectItem value="document">Belge</SelectItem>
-            <SelectItem value="video">Video</SelectItem>
-            <SelectItem value="image">Görsel</SelectItem>
+            <SelectItem value="all">{t('admin.partnerZone.allTypes')}</SelectItem>
+            <SelectItem value="document">{t('common.document')}</SelectItem>
+            <SelectItem value="video">{t('common.video')}</SelectItem>
+            <SelectItem value="image">{t('common.image')}</SelectItem>
           </SelectContent>
         </Select>
       )}
@@ -193,8 +187,8 @@ function PartnerToolbar(props: ToolbarProps) {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="newest">Yeni → Eski</SelectItem>
-          <SelectItem value="oldest">Eski → Yeni</SelectItem>
+          <SelectItem value="newest">{t('admin.partnerZone.newestFirst')}</SelectItem>
+          <SelectItem value="oldest">{t('admin.partnerZone.oldestFirst')}</SelectItem>
           <SelectItem value="az">A → Z</SelectItem>
           <SelectItem value="za">Z → A</SelectItem>
         </SelectContent>
@@ -232,56 +226,41 @@ function sortContents(list: FolderContent[], sort: SortKey): FolderContent[] {
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export default function PartnerZoneAdmin() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [, params] = useRoute('/admin/partner-zone/:folderId');
   const [, navigate] = useLocation();
   const folderId = params?.folderId ?? null;
 
-  // Toolbar state
   const [search, setSearch] = useState('');
   const [country, setCountry] = useState('all');
   const [fileType, setFileType] = useState<FileTypeFilter>('all');
   const [sort, setSort] = useState<SortKey>('newest');
 
-  // Folder CRUD state
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<PartnerFolder | null>(null);
   const [deleteFolder, setDeleteFolder] = useState<PartnerFolder | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  // One-shot maintenance: confirmation dialog for the cover-resize job
   const [resizeConfirmOpen, setResizeConfirmOpen] = useState(false);
-  // Pending uploaded cover URL kept in component state instead of window globals
   const [pendingCoverUrl, setPendingCoverUrl] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  // Content CRUD state (inside a folder)
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
   const [editingContent, setEditingContent] = useState<FolderContent | null>(null);
   const [deleteContent, setDeleteContent] = useState<FolderContent | null>(null);
-  // Bulk-delete confirmation dialog (uses current selectedContentIds at the time
-  // of action so the count stays accurate even if selection mutates afterwards).
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ─── Drag & drop state ──────────────────────────────────────────────────
-  // Holds the item currently being dragged; null when no drag is active.
-  // For 'content' the drag may carry multiple ids when started from a row that
-  // is part of an active multi-selection.
   const [dragItem, setDragItem] = useState<
     | { kind: 'folder'; id: string; name: string; currentParentId: string | null }
     | { kind: 'content'; ids: string[]; primaryId: string; name: string; currentFolderId: string | null }
     | null
   >(null);
-  // Identifier of the drop target currently being hovered (folderId or 'root').
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-
-  // ─── Multi-select state (folder detail content table) ───────────────────
-  // Set of selected content ids. Cleared whenever the open folder changes.
   const [selectedContentIds, setSelectedContentIds] = useState<Set<string>>(new Set());
-  // Index of the last clicked row, used to anchor shift-range selection.
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   useEffect(() => {
     setSelectedContentIds(new Set());
@@ -323,93 +302,127 @@ export default function PartnerZoneAdmin() {
     },
     staleTime: 5 * 60 * 1000,
   });
-  const countries = (countriesData?.countries ?? []).filter((c) => c.status === 'active');
 
+  const countries = (countriesData?.countries ?? []).filter((c) => c.status === 'active');
   const rootFolders = foldersData?.folders ?? [];
   const openFolder = folderDetailData?.folder ?? null;
   const folderContents = folderDetailData?.contents ?? [];
-  const folderSubfolders = folderDetailData?.subfolders ?? [];
+  const subfolders = folderDetailData?.subfolders ?? [];
   const breadcrumb = folderDetailData?.breadcrumb ?? [];
 
-  // ─── Filtering / sorting ───────────────────────────────────────────────
-
-  // Type filter for folders: a folder passes if its descendant tree contains
-  // at least one content of the selected type. Folders with an unknown
-  // contentTypes (legacy payload) are kept to avoid hiding content silently.
-  const folderMatchesType = (f: PartnerFolder) => {
-    if (fileType === 'all') return true;
-    if (!f.contentTypes) return true;
-    return f.contentTypes.includes(fileType);
-  };
+  // ─── Filtering ──────────────────────────────────────────────────────────
 
   const filteredRootFolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
       rootFolders.filter((f) => {
+        if (q && !f.name.toLowerCase().includes(q)) return false;
         if (country !== 'all' && f.countryCode !== country) return false;
-        if (!folderMatchesType(f)) return false;
-        if (q) {
-          const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
         return true;
       }),
       sort,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rootFolders, country, search, sort, fileType]);
+  }, [rootFolders, search, country, sort]);
 
   const filteredSubfolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
-      folderSubfolders.filter((f) => {
+      subfolders.filter((f) => {
+        if (q && !f.name.toLowerCase().includes(q)) return false;
         if (country !== 'all' && f.countryCode !== country) return false;
-        if (!folderMatchesType(f)) return false;
-        if (q) {
-          const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
         return true;
       }),
       sort,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderSubfolders, country, search, sort, fileType]);
+  }, [subfolders, search, country, sort]);
 
   const filteredFolderContents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortContents(
-      folderContents.filter((c) => {
-        if (fileType !== 'all' && getContentType(c) !== fileType) return false;
-        if (q) {
-          const hay = `${c.title} ${c.description ?? ''} ${c.displayName ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
+      folderContents.filter((item) => {
+        const name = (item.displayName ?? item.title).toLowerCase();
+        if (q && !name.includes(q)) return false;
+        if (fileType !== 'all' && getContentType(item) !== fileType) return false;
         return true;
       }),
       sort,
     );
-  }, [folderContents, fileType, search, sort]);
+  }, [folderContents, search, fileType, sort]);
 
-  // ─── Folder form ─────────────────────────────────────────────────────────
+  // ─── Multi-select helpers ────────────────────────────────────────────────
+
+  const allVisibleSelected = filteredFolderContents.length > 0 &&
+    filteredFolderContents.every((item) => selectedContentIds.has(item.id));
+  const someVisibleSelected = filteredFolderContents.some((item) => selectedContentIds.has(item.id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedContentIds((prev) => {
+        const next = new Set(prev);
+        filteredFolderContents.forEach((item) => next.delete(item.id));
+        return next;
+      });
+    } else {
+      setSelectedContentIds((prev) => {
+        const next = new Set(prev);
+        filteredFolderContents.forEach((item) => next.add(item.id));
+        return next;
+      });
+    }
+    setLastClickedIndex(null);
+  };
+
+  const handleRowSelectClick = (id: string, index: number, e: React.MouseEvent) => {
+    if (e.shiftKey && lastClickedIndex !== null) {
+      const min = Math.min(lastClickedIndex, index);
+      const max = Math.max(lastClickedIndex, index);
+      const range = filteredFolderContents.slice(min, max + 1).map((item) => item.id);
+      setSelectedContentIds((prev) => {
+        const next = new Set(prev);
+        range.forEach((rid) => next.add(rid));
+        return next;
+      });
+    } else {
+      setSelectedContentIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setLastClickedIndex(index);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedContentIds(new Set());
+    setLastClickedIndex(null);
+  };
+
+  // ─── Forms ──────────────────────────────────────────────────────────────
 
   const folderForm = useForm<FolderFormValues>({
     resolver: zodResolver(folderSchema),
     defaultValues: { name: '', description: '', categoryTag: '', countryCode: '', order: 0, status: 'draft' },
   });
 
+  const contentForm = useForm<ContentFormValues>({
+    resolver: zodResolver(contentSchema),
+    defaultValues: { mediaType: 'document', title: '', description: '', displayName: '', fileSize: '', fileUrl: '', status: 'draft' },
+  });
+
+  const mediaType = contentForm.watch('mediaType');
+  const MEDIA_TYPES = [
+    { value: 'document' as MediaType, label: t('common.document'), icon: FileText, accept: '.pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip', folder: 'documents' },
+    { value: 'video' as MediaType, label: t('common.video'), icon: Video, accept: '.mp4,.mov,.webm,.avi,.mkv', folder: 'videos' },
+    { value: 'image' as MediaType, label: t('common.image'), icon: ImageIcon, accept: '.jpg,.jpeg,.png,.gif,.webp,.svg', folder: 'images' },
+  ];
+  const currentMediaEntry = MEDIA_TYPES.find((m) => m.value === mediaType) ?? MEDIA_TYPES[0];
+
   const openCreateFolder = () => {
     setEditingFolder(null);
     setCoverPreview(null);
     setPendingCoverUrl(null);
-    folderForm.reset({
-      name: '',
-      description: '',
-      categoryTag: '',
-      countryCode: '',
-      order: (folderId ? folderSubfolders.length : rootFolders.length),
-      status: 'draft',
-    });
+    folderForm.reset({ name: '', description: '', categoryTag: '', countryCode: '', order: 0, status: 'draft' });
     setFolderDialogOpen(true);
   };
 
@@ -422,21 +435,41 @@ export default function PartnerZoneAdmin() {
       description: f.description ?? '',
       categoryTag: f.categoryTag ?? '',
       countryCode: f.countryCode ?? '',
-      order: f.order,
+      order: f.order ?? 0,
       status: f.status as 'draft' | 'published',
     });
     setFolderDialogOpen(true);
   };
+
+  const openCreateContent = () => {
+    setEditingContent(null);
+    contentForm.reset({ mediaType: 'document', title: '', description: '', displayName: '', fileSize: '', fileUrl: '', status: 'draft' });
+    setContentDialogOpen(true);
+  };
+
+  const openEditContent = (item: FolderContent) => {
+    setEditingContent(item);
+    const mt = getContentType(item);
+    contentForm.reset({
+      mediaType: mt,
+      title: item.title,
+      description: item.description ?? '',
+      displayName: item.displayName ?? '',
+      fileSize: item.fileSize ?? '',
+      fileUrl: getContentUrl(item) ?? '',
+      status: item.status as 'draft' | 'published',
+    });
+    setContentDialogOpen(true);
+  };
+
+  // ─── Cover upload ────────────────────────────────────────────────────────
 
   const handleCoverUpload = async (file: File) => {
     setCoverUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('folder', 'images');
-      // Server will downsize images to 540x540 when purpose=cover
-      fd.append('purpose', 'cover');
-      const res = await fetch('/api/uploads/content', {
+      const res = await fetch('/api/admin/partner-folders/upload-cover', {
         method: 'POST',
         headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
         body: fd,
@@ -446,10 +479,10 @@ export default function PartnerZoneAdmin() {
       if (data.url) {
         setCoverPreview(data.url);
         setPendingCoverUrl(data.url);
-        toast({ title: 'Kapak yüklendi', description: '540×540 boyutuna küçültüldü.' });
+        toast({ title: t('admin.partnerZone.coverUploaded'), description: t('admin.partnerZone.coverUploadedDesc') });
       }
     } catch {
-      toast({ title: 'Yükleme hatası', variant: 'destructive' });
+      toast({ title: t('admin.partnerZone.coverUploadError'), variant: 'destructive' });
     } finally {
       setCoverUploading(false);
     }
@@ -457,23 +490,18 @@ export default function PartnerZoneAdmin() {
 
   const createFolderMutation = useMutation({
     mutationFn: async (values: FolderFormValues) => {
-      const payload = {
-        ...values,
-        coverImageUrl: pendingCoverUrl,
-        // Nest under the folder we're currently inside; null at root
-        parentFolderId: folderId ?? null,
-      };
+      const payload = { ...values, coverImageUrl: pendingCoverUrl, parentFolderId: folderId ?? null };
       const r = await apiRequest('POST', '/api/admin/partner-folders', payload);
       if (!r.ok) throw new Error();
       return r.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
-      toast({ title: 'Klasör oluşturuldu' });
+      toast({ title: t('admin.partnerZone.folderCreated') });
       setFolderDialogOpen(false);
       setPendingCoverUrl(null);
     },
-    onError: () => toast({ title: 'Hata', description: 'Klasör oluşturulamadı', variant: 'destructive' }),
+    onError: () => toast({ title: t('common.error'), description: t('admin.partnerZone.folderCreateFailed'), variant: 'destructive' }),
   });
 
   const updateFolderMutation = useMutation({
@@ -487,30 +515,27 @@ export default function PartnerZoneAdmin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
-      toast({ title: 'Klasör güncellendi' });
+      toast({ title: t('admin.partnerZone.folderUpdated') });
       setFolderDialogOpen(false);
       setPendingCoverUrl(null);
     },
-    onError: () => toast({ title: 'Hata', description: 'Güncellenemedi', variant: 'destructive' }),
+    onError: () => toast({ title: t('common.error'), description: t('admin.partnerZone.folderUpdateFailed'), variant: 'destructive' }),
   });
 
   const deleteFolderMutation = useMutation({
     mutationFn: async (id: string) => {
       const r = await apiRequest('DELETE', `/api/admin/partner-folders/${id}`);
       const body = await r.json().catch(() => null);
-      if (!r.ok) {
-        const message = body?.message ?? 'Silme işlemi başarısız';
-        throw new Error(message);
-      }
+      if (!r.ok) throw new Error(body?.message ?? t('admin.partnerZone.folderDeleteFailed'));
       return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
-      toast({ title: 'Klasör silindi' });
+      toast({ title: t('admin.partnerZone.folderDeleted') });
       setDeleteFolder(null);
     },
     onError: (err: Error) => {
-      toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
+      toast({ title: t('admin.partnerZone.folderDeleteFailed'), description: err.message, variant: 'destructive' });
     },
   });
 
@@ -526,7 +551,6 @@ export default function PartnerZoneAdmin() {
     },
   });
 
-  // One-shot maintenance: downsize all legacy cover images to 540x540.
   const resizeCoversMutation = useMutation({
     mutationFn: async () => {
       const r = await apiRequest('POST', '/api/admin/partner-folders/resize-covers');
@@ -535,20 +559,20 @@ export default function PartnerZoneAdmin() {
     onSuccess: (data) => {
       const s = data?.summary;
       if (!s) {
-        toast({ title: 'Tamamlandı', description: 'Kapak görselleri işlendi.' });
+        toast({ title: t('common.success'), description: t('admin.partnerZone.coverUploadedDesc') });
         return;
       }
       toast({
-        title: 'Kapak görselleri küçültüldü',
+        title: t('admin.partnerZone.resizeCovers'),
         description:
-          `${s.resized}/${s.total} dosya küçültüldü • ${s.mbSaved} MB kazanıldı ` +
-          `(zaten küçük: ${s.skippedAlreadySmall}, eksik: ${s.skippedMissing}, hata: ${s.errors})`,
+          `${s.resized}/${s.total} resized • ${s.mbSaved} MB saved ` +
+          `(already small: ${s.skippedAlreadySmall}, missing: ${s.skippedMissing}, errors: ${s.errors})`,
       });
     },
     onError: (err) => {
       toast({
-        title: 'İşlem başarısız',
-        description: err instanceof Error ? err.message : 'Bilinmeyen hata',
+        title: t('common.error'),
+        description: err instanceof Error ? err.message : t('common.error'),
         variant: 'destructive',
       });
     },
@@ -559,139 +583,111 @@ export default function PartnerZoneAdmin() {
     else createFolderMutation.mutate(values);
   };
 
-  // ─── Content form (inside folder) ────────────────────────────────────────
-
-  const contentForm = useForm<ContentFormValues>({
-    resolver: zodResolver(contentSchema),
-    defaultValues: { mediaType: 'document', title: '', description: '', displayName: '', fileSize: '', fileUrl: '', status: 'draft' },
-  });
-  const watchedMediaType = contentForm.watch('mediaType');
-  const currentMediaEntry = MEDIA_TYPES.find((m) => m.value === watchedMediaType) ?? MEDIA_TYPES[0];
-
-  const openCreateContent = () => {
-    setEditingContent(null);
-    contentForm.reset({ mediaType: 'document', title: '', description: '', displayName: '', fileSize: '', fileUrl: '', status: 'draft' });
-    setContentDialogOpen(true);
-  };
-
-  const openEditContent = (item: FolderContent) => {
-    setEditingContent(item);
-    contentForm.reset({
-      mediaType: getContentType(item),
-      title: item.title,
-      description: item.description ?? '',
-      displayName: item.displayName ?? '',
-      fileSize: item.fileSize ?? '',
-      fileUrl: getContentUrl(item) ?? '',
-      status: item.status as 'draft' | 'published',
-    });
-    setContentDialogOpen(true);
-  };
+  // ─── Content mutations ───────────────────────────────────────────────────
 
   const handleFileUpload = async (file: File) => {
     setFileUploading(true);
     try {
+      const mt = contentForm.getValues('mediaType');
+      const entry = MEDIA_TYPES.find((m) => m.value === mt) ?? MEDIA_TYPES[0];
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('folder', currentMediaEntry.folder);
+      fd.append('folder', entry.folder);
       const res = await fetch('/api/uploads/content', {
         method: 'POST',
-        headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
+        headers: { 'x-user-id': user?.id ?? '' },
         body: fd,
       });
-      if (!res.ok) throw new Error();
-      const data: { url?: string; originalName?: string } = await res.json();
-      if (data.url) {
-        contentForm.setValue('fileUrl', data.url);
-        contentForm.setValue('displayName', data.originalName ?? file.name);
-        const kb = file.size / 1024;
-        contentForm.setValue('fileSize', kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`);
-        toast({ title: 'Dosya yüklendi' });
-      }
-    } catch {
-      toast({ title: 'Yükleme hatası', variant: 'destructive' });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      const url = data?.url || data?.fileUrl || data?.path;
+      if (!url) throw new Error('No URL returned');
+      contentForm.setValue('fileUrl', url);
+      const sizeKb = file.size / 1024;
+      contentForm.setValue('fileSize', sizeKb < 1024
+        ? `${sizeKb.toFixed(0)} KB`
+        : `${(sizeKb / 1024).toFixed(1)} MB`);
+    } catch (err) {
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.error'), variant: 'destructive' });
     } finally {
       setFileUploading(false);
     }
   };
 
-  const buildContentPayload = (values: ContentFormValues) => {
-    const base = {
-      title: values.title,
-      description: values.description,
-      displayName: values.displayName,
-      fileSize: values.fileSize,
-      status: values.status,
-      type: values.mediaType,
-      contentType: values.mediaType,
-      language: 'tr',
-      order: 0,
-      folderId,
-      slug: `partner-${Date.now()}`,
-    };
-    if (values.mediaType === 'video') return { ...base, videoUrl: values.fileUrl, documentUrl: null, imageUrl: null };
-    if (values.mediaType === 'image') return { ...base, imageUrl: values.fileUrl, documentUrl: null, videoUrl: null };
-    return { ...base, documentUrl: values.fileUrl, videoUrl: null, imageUrl: null };
-  };
-
   const createContentMutation = useMutation({
     mutationFn: async (values: ContentFormValues) => {
-      const r = await apiRequest('POST', '/api/admin/contents', buildContentPayload(values));
+      const payload = {
+        title: values.title,
+        description: values.description || null,
+        displayName: values.displayName || null,
+        fileSize: values.fileSize || null,
+        status: values.status,
+        folderId: folderId ?? null,
+        type: values.mediaType,
+        contentType: values.mediaType,
+        ...(values.mediaType === 'document' ? { documentUrl: values.fileUrl || null } : {}),
+        ...(values.mediaType === 'video' ? { videoUrl: values.fileUrl || null } : {}),
+        ...(values.mediaType === 'image' ? { imageUrl: values.fileUrl || null } : {}),
+      };
+      const r = await apiRequest('POST', '/api/admin/partner-contents', payload);
       if (!r.ok) throw new Error();
       return r.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
-      toast({ title: 'İçerik eklendi' });
       setContentDialogOpen(false);
     },
-    onError: () => toast({ title: 'Hata', description: 'İçerik eklenemedi', variant: 'destructive' }),
+    onError: () => toast({ title: t('common.error'), variant: 'destructive' }),
   });
 
   const updateContentMutation = useMutation({
     mutationFn: async (values: ContentFormValues) => {
       if (!editingContent) return;
-      const payload = buildContentPayload(values);
-      const r = await apiRequest('PATCH', `/api/admin/contents/${editingContent.id}`, payload);
+      const payload = {
+        title: values.title,
+        description: values.description || null,
+        displayName: values.displayName || null,
+        fileSize: values.fileSize || null,
+        status: values.status,
+        type: values.mediaType,
+        contentType: values.mediaType,
+        ...(values.mediaType === 'document' ? { documentUrl: values.fileUrl || null } : {}),
+        ...(values.mediaType === 'video' ? { videoUrl: values.fileUrl || null } : {}),
+        ...(values.mediaType === 'image' ? { imageUrl: values.fileUrl || null } : {}),
+      };
+      const r = await apiRequest('PATCH', `/api/admin/partner-contents/${editingContent.id}`, payload);
       if (!r.ok) throw new Error();
       return r.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
-      toast({ title: 'İçerik güncellendi' });
       setContentDialogOpen(false);
     },
-    onError: () => toast({ title: 'Hata', variant: 'destructive' }),
+    onError: () => toast({ title: t('common.error'), variant: 'destructive' }),
   });
 
   const deleteContentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const r = await apiRequest('DELETE', `/api/admin/contents/${id}`);
+      const r = await apiRequest('DELETE', `/api/admin/partner-contents/${id}`);
       if (!r.ok) throw new Error();
+      return r.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
-      toast({ title: 'İçerik silindi' });
       setDeleteContent(null);
     },
-    onError: () => toast({ title: 'Hata', variant: 'destructive' }),
+    onError: () => toast({ title: t('common.error'), variant: 'destructive' }),
   });
 
-  // Bulk-delete many contents at once. Mirrors moveContentsMutation: invalidates
-  // the folder cache, drops handled ids from the selection, and surfaces
-  // partial failures in the toast so the admin sees exactly what happened.
   const bulkDeleteContentsMutation = useMutation({
     mutationFn: async ({ ids }: { ids: string[] }) => {
       const r = await apiRequest('POST', '/api/admin/contents/bulk-delete', { ids });
       const body = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(body?.message ?? 'Dosyalar silinemedi');
+      if (!r.ok) throw new Error(body?.message ?? t('common.error'));
       return body as { deleted: number; failed: number; total: number };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] });
-      // Drop the handled ids from selection regardless of per-id outcome — a
-      // failed delete usually means the row no longer exists or is invalid;
-      // either way leaving them selected would be misleading.
       setSelectedContentIds((prev) => {
         if (prev.size === 0) return prev;
         const next = new Set(prev);
@@ -702,27 +698,24 @@ export default function PartnerZoneAdmin() {
       setBulkDeleteConfirmOpen(false);
       const deleted = data?.deleted ?? variables.ids.length;
       const failed = data?.failed ?? 0;
-      const desc = failed > 0
-        ? `${deleted} silindi, ${failed} başarısız`
-        : `${deleted} dosya silindi`;
       toast({
-        title: failed > 0 ? 'Bazı dosyalar silinemedi' : 'Dosyalar silindi',
-        description: desc,
+        title: failed > 0 ? t('admin.partnerZone.bulkDeleteFailed') : t('admin.partnerZone.bulkDeleted'),
+        description: failed > 0
+          ? t('admin.partnerZone.bulkDeletedDesc', { deleted, failed })
+          : t('admin.partnerZone.bulkDeletedDescSuccess', { deleted }),
         variant: failed > 0 ? 'destructive' : undefined,
       });
     },
     onError: (err: Error) => {
-      toast({ title: 'Silme başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     },
   });
 
-  // Bulk publish/draft toggle. Status is supplied by the toolbar button so the
-  // same mutation handles both directions.
   const bulkUpdateStatusMutation = useMutation({
     mutationFn: async ({ ids, status }: { ids: string[]; status: 'published' | 'draft' }) => {
       const r = await apiRequest('POST', '/api/admin/contents/bulk-status', { ids, status });
       const body = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(body?.message ?? 'Durum güncellenemedi');
+      if (!r.ok) throw new Error(body?.message ?? t('common.error'));
       return body as { updated: number; failed: number; total: number; status: 'published' | 'draft' };
     },
     onSuccess: (data, variables) => {
@@ -736,18 +729,17 @@ export default function PartnerZoneAdmin() {
       setLastClickedIndex(null);
       const updated = data?.updated ?? variables.ids.length;
       const failed = data?.failed ?? 0;
-      const targetLabel = variables.status === 'published' ? 'Yayında' : 'Taslak';
-      const desc = failed > 0
-        ? `${updated} güncellendi, ${failed} başarısız`
-        : `${updated} dosya "${targetLabel}" olarak işaretlendi`;
+      const statusLabel = variables.status === 'published' ? t('common.published') : t('common.draft');
       toast({
-        title: failed > 0 ? 'Bazı dosyalar güncellenemedi' : 'Durum güncellendi',
-        description: desc,
+        title: failed > 0 ? t('admin.partnerZone.bulkStatusFailed') : t('admin.partnerZone.bulkStatusUpdated'),
+        description: failed > 0
+          ? t('admin.partnerZone.bulkStatusDesc', { updated, failed })
+          : t('admin.partnerZone.bulkStatusDescSuccess', { updated, status: statusLabel }),
         variant: failed > 0 ? 'destructive' : undefined,
       });
     },
     onError: (err: Error) => {
-      toast({ title: 'Güncelleme başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     },
   });
 
@@ -759,9 +751,8 @@ export default function PartnerZoneAdmin() {
   const isFolderMutating = createFolderMutation.isPending || updateFolderMutation.isPending;
   const isContentMutating = createContentMutation.isPending || updateContentMutation.isPending;
 
-  // ─── Drag & drop: move mutations ────────────────────────────────────────
+  // ─── Drag & drop ─────────────────────────────────────────────────────────
 
-  // Refresh both the root list and any open folder detail view after moves.
   const invalidatePartnerFolders = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders'] });
   };
@@ -770,33 +761,27 @@ export default function PartnerZoneAdmin() {
     mutationFn: async ({ id, parentFolderId }: { id: string; parentFolderId: string | null }) => {
       const r = await apiRequest('PATCH', `/api/admin/partner-folders/${id}`, { parentFolderId });
       const body = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(body?.message ?? 'Klasör taşınamadı');
+      if (!r.ok) throw new Error(body?.message ?? t('admin.partnerZone.folderMoveFailed'));
       return body;
     },
     onSuccess: () => {
       invalidatePartnerFolders();
-      toast({ title: 'Klasör taşındı' });
+      toast({ title: t('admin.partnerZone.folderMoved') });
     },
     onError: (err: Error) => {
-      toast({ title: 'Taşıma başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: t('admin.partnerZone.folderMoveFailed'), description: err.message, variant: 'destructive' });
     },
   });
 
-  // Move many contents at once via the bulk endpoint. Single-file moves still
-  // funnel through here so behavior stays identical regardless of selection.
   const moveContentsMutation = useMutation({
     mutationFn: async ({ ids, folderId: targetFolderId }: { ids: string[]; folderId: string | null }) => {
-      const r = await apiRequest('POST', '/api/admin/contents/bulk-move', {
-        ids,
-        folderId: targetFolderId,
-      });
+      const r = await apiRequest('POST', '/api/admin/contents/bulk-move', { ids, folderId: targetFolderId });
       const body = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(body?.message ?? 'Dosya taşınamadı');
+      if (!r.ok) throw new Error(body?.message ?? t('common.error'));
       return body as { moved: number; failed: number; total: number };
     },
     onSuccess: (data, variables) => {
       invalidatePartnerFolders();
-      // Drop the moved ids from the active selection to avoid stale highlights.
       setSelectedContentIds((prev) => {
         if (prev.size === 0) return prev;
         const next = new Set(prev);
@@ -805,137 +790,68 @@ export default function PartnerZoneAdmin() {
       });
       const moved = data?.moved ?? variables.ids.length;
       const failed = data?.failed ?? 0;
-      const desc = failed > 0
-        ? `${moved} taşındı, ${failed} başarısız`
-        : `${moved} dosya taşındı`;
       toast({
-        title: failed > 0 ? 'Bazı dosyalar taşınamadı' : 'Dosya(lar) taşındı',
-        description: desc,
+        title: failed > 0 ? t('admin.partnerZone.filesMovedFailed') : t('admin.partnerZone.filesMoved'),
+        description: failed > 0
+          ? t('admin.partnerZone.filesMovedDesc', { moved, failed })
+          : t('admin.partnerZone.filesMovedDescSuccess', { moved }),
         variant: failed > 0 ? 'destructive' : undefined,
       });
     },
     onError: (err: Error) => {
-      toast({ title: 'Taşıma başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     },
   });
 
-  // Resolves a drop event into a backend call; ignores no-op moves and
-  // self-drops. The cycle/self-parent check is also enforced server-side.
-  const handleDrop = (target: { kind: 'folder'; id: string } | { kind: 'root' }) => {
-    if (!dragItem) return;
-    const targetFolderId = target.kind === 'root' ? null : target.id;
+  // ─── Drop target helpers ─────────────────────────────────────────────────
 
-    if (dragItem.kind === 'folder') {
-      // Don't drop a folder onto itself.
-      if (target.kind === 'folder' && target.id === dragItem.id) return;
-      // Don't move a folder to where it already lives.
-      if (dragItem.currentParentId === targetFolderId) return;
-      moveFolderMutation.mutate({ id: dragItem.id, parentFolderId: targetFolderId });
-    } else {
-      if (dragItem.currentFolderId === targetFolderId) return;
-      moveContentsMutation.mutate({ ids: dragItem.ids, folderId: targetFolderId });
-    }
-  };
-
-  // ─── Selection helpers (operate on filteredFolderContents) ──────────────
-  // Toggles a single content row's selection without affecting others.
-  const toggleSingleSelection = (id: string) => {
-    setSelectedContentIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-  // Adds [start..end] (inclusive) from the visible list to the current set.
-  const extendRangeSelection = (startIndex: number, endIndex: number) => {
-    const [lo, hi] = startIndex <= endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
-    setSelectedContentIds((prev) => {
-      const next = new Set(prev);
-      for (let i = lo; i <= hi; i++) {
-        const item = filteredFolderContents[i];
-        if (item) next.add(item.id);
-      }
-      return next;
-    });
-  };
-  // Click handler for a row's checkbox: shift-click extends a range from the
-  // last anchor; ctrl/cmd or plain checkbox click toggles a single item.
-  const handleRowSelectClick = (id: string, index: number, e: React.MouseEvent) => {
-    if (e.shiftKey && lastClickedIndex !== null) {
-      extendRangeSelection(lastClickedIndex, index);
-    } else {
-      toggleSingleSelection(id);
-    }
-    setLastClickedIndex(index);
-  };
-  // Master "select all visible" checkbox toggles between all-visible and none.
-  const allVisibleSelected =
-    filteredFolderContents.length > 0 &&
-    filteredFolderContents.every((c) => selectedContentIds.has(c.id));
-  const someVisibleSelected =
-    !allVisibleSelected &&
-    filteredFolderContents.some((c) => selectedContentIds.has(c.id));
-  const toggleSelectAllVisible = () => {
-    setSelectedContentIds((prev) => {
-      if (allVisibleSelected) {
-        const next = new Set(prev);
-        filteredFolderContents.forEach((c) => next.delete(c.id));
-        return next;
-      }
-      const next = new Set(prev);
-      filteredFolderContents.forEach((c) => next.add(c.id));
-      return next;
-    });
-    setLastClickedIndex(null);
-  };
-  const clearSelection = () => {
-    setSelectedContentIds(new Set());
-    setLastClickedIndex(null);
+  const dropTargetProps = (
+    target: { kind: 'root' } | { kind: 'folder'; id: string },
+    key: string,
+  ) => {
+    const targetId = target.kind === 'root' ? 'root' : target.id;
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (!dragItem) return;
+        if (dragItem.kind === 'folder') {
+          if (target.kind === 'folder' && target.id === dragItem.id) return;
+          if (target.kind === 'folder' && target.id === dragItem.currentParentId) return;
+        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDropTargetId(key);
+      },
+      onDragLeave: () => setDropTargetId((prev) => (prev === key ? null : prev)),
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        setDropTargetId(null);
+        if (!dragItem) return;
+        if (dragItem.kind === 'folder') {
+          const newParent = target.kind === 'root' ? null : target.id;
+          if (newParent === dragItem.currentParentId) return;
+          moveFolderMutation.mutate({ id: dragItem.id, parentFolderId: newParent });
+        } else {
+          const newFolder = target.kind === 'root' ? null : target.id;
+          if (newFolder === dragItem.currentFolderId) return;
+          moveContentsMutation.mutate({ ids: dragItem.ids, folderId: newFolder });
+        }
+        setDragItem(null);
+      },
+    };
   };
 
-  // Drop targets accept the move only when the dragged item is meaningful
-  // for the target (a folder can't be dropped on itself).
-  const canAcceptDrop = (target: { kind: 'folder'; id: string } | { kind: 'root' }): boolean => {
-    if (!dragItem) return false;
-    if (dragItem.kind === 'folder' && target.kind === 'folder' && target.id === dragItem.id) return false;
-    return true;
-  };
+  // ─── Folder card renderer ────────────────────────────────────────────────
 
-  // Shared drop-target handlers; key=string used to highlight the active target.
-  const dropTargetProps = (target: { kind: 'folder'; id: string } | { kind: 'root' }, key: string) => ({
-    onDragOver: (e: React.DragEvent) => {
-      if (!canAcceptDrop(target)) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (dropTargetId !== key) setDropTargetId(key);
-    },
-    onDragLeave: (e: React.DragEvent) => {
-      // Only clear when actually leaving the element (not when entering a child).
-      if (e.currentTarget === e.target) setDropTargetId(null);
-    },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault();
-      setDropTargetId(null);
-      handleDrop(target);
-      setDragItem(null);
-    },
-    'data-drop-active': dropTargetId === key ? 'true' : undefined,
-  });
-
-  // ─── Folder card (admin variant with overlay actions) ─────────────────────
   const renderFolderCard = (f: PartnerFolder) => {
     const country = countries.find((c) => c.code === f.countryCode) ?? null;
-    const isDragging = dragItem?.kind === 'folder' && dragItem.id === f.id;
     const isDropTarget = dropTargetId === `folder-${f.id}`;
     return (
       <div
         key={f.id}
-        className={`group relative transition-opacity ${isDragging ? 'opacity-40' : ''}`}
+        className="relative group"
         draggable
         onDragStart={(e) => {
-          e.stopPropagation();
           e.dataTransfer.effectAllowed = 'move';
-          // Some browsers require setData to actually start the drag.
           e.dataTransfer.setData('text/plain', f.id);
           setDragItem({ kind: 'folder', id: f.id, name: f.name, currentParentId: f.parentFolderId });
         }}
@@ -958,7 +874,7 @@ export default function PartnerZoneAdmin() {
             )}
             <div className="absolute top-2 left-2">
               <Badge variant={f.status === 'published' ? 'default' : 'secondary'} className="text-xs">
-                {f.status === 'published' ? 'Yayında' : 'Taslak'}
+                {f.status === 'published' ? t('common.published') : t('common.draft')}
               </Badge>
             </div>
           </div>
@@ -993,7 +909,7 @@ export default function PartnerZoneAdmin() {
               onClick={(e) => { e.stopPropagation(); navigate(`/admin/partner-zone/${f.id}`); }}
               data-testid={`button-open-folder-${f.id}`}
             >
-              Aç
+              {t('admin.partnerZone.open')}
             </Button>
           </div>
         </div>
@@ -1002,21 +918,21 @@ export default function PartnerZoneAdmin() {
           <Button
             size="icon" variant="secondary" className="h-7 w-7"
             onClick={(e) => { e.stopPropagation(); toggleFolderStatus.mutate(f); }}
-            title={f.status === 'published' ? 'Taslağa al' : 'Yayınla'}
+            title={f.status === 'published' ? t('admin.partnerZone.unpublish') : t('admin.partnerZone.publish')}
           >
             {f.status === 'published' ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </Button>
           <Button
             size="icon" variant="secondary" className="h-7 w-7"
             onClick={(e) => { e.stopPropagation(); openEditFolder(f); }}
-            title="Düzenle"
+            title={t('common.edit')}
           >
             <Edit2 className="w-3.5 h-3.5" />
           </Button>
           <Button
             size="icon" variant="secondary" className="h-7 w-7"
             onClick={(e) => { e.stopPropagation(); setDeleteFolder(f); }}
-            title="Sil"
+            title={t('common.delete')}
           >
             <Trash2 className="w-3.5 h-3.5 text-destructive" />
           </Button>
@@ -1030,7 +946,6 @@ export default function PartnerZoneAdmin() {
   if (folderId) {
     return (
       <div className="space-y-6">
-        {/* Breadcrumbs (also act as drop targets so users can move items "up") */}
         <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Breadcrumb">
           <div
             className={`rounded-md ${dropTargetId === 'breadcrumb-root' ? 'ring-2 ring-primary' : ''}`}
@@ -1075,7 +990,6 @@ export default function PartnerZoneAdmin() {
           })}
         </nav>
 
-        {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <FolderOpen className="w-7 h-7 text-primary" />
@@ -1084,7 +998,7 @@ export default function PartnerZoneAdmin() {
                 <h1 className="text-2xl font-bold">{openFolder?.name ?? '...'}</h1>
                 {openFolder && (
                   <Badge variant={openFolder.status === 'published' ? 'default' : 'secondary'}>
-                    {openFolder.status === 'published' ? 'Yayında' : 'Taslak'}
+                    {openFolder.status === 'published' ? t('common.published') : t('common.draft')}
                   </Badge>
                 )}
               </div>
@@ -1096,20 +1010,19 @@ export default function PartnerZoneAdmin() {
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={openCreateFolder} data-testid="button-new-subfolder">
               <Plus className="w-4 h-4 mr-2" />
-              Alt Klasör
+              {t('admin.partnerZone.newSubfolder')}
             </Button>
             <Button variant="outline" onClick={() => openFolder && openEditFolder(openFolder)}>
               <Edit2 className="w-4 h-4 mr-2" />
-              Klasörü Düzenle
+              {t('admin.partnerZone.editFolder')}
             </Button>
             <Button onClick={openCreateContent} data-testid="button-new-content">
               <Plus className="w-4 h-4 mr-2" />
-              İçerik Ekle
+              {t('admin.partnerZone.addContent')}
             </Button>
           </div>
         </div>
 
-        {/* Toolbar */}
         <PartnerToolbar
           search={search}
           onSearchChange={setSearch}
@@ -1125,15 +1038,14 @@ export default function PartnerZoneAdmin() {
 
         {detailLoading ? (
           <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin" /><span>Yükleniyor...</span>
+            <Loader2 className="w-5 h-5 animate-spin" /><span>{t('admin.partnerZone.loading')}</span>
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Subfolders grid */}
             {filteredSubfolders.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Alt Klasörler
+                  {t('admin.partnerZone.subfolders')}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {filteredSubfolders.map(renderFolderCard)}
@@ -1141,34 +1053,27 @@ export default function PartnerZoneAdmin() {
               </div>
             )}
 
-            {/* Contents table */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Dosyalar
+                  {t('admin.partnerZone.files')}
                 </h2>
-                {/* Selection summary appears only when at least one file is picked. */}
                 {selectedContentIds.size > 0 && (
                   <div
                     className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
                     data-testid="bulk-selection-toolbar"
                   >
                     <Badge variant="secondary" data-testid="bulk-selection-count">
-                      {selectedContentIds.size} öğe seçildi
+                      {t('admin.partnerZone.itemsSelected', { count: selectedContentIds.size })}
                     </Badge>
                     <span className="text-xs text-muted-foreground hidden lg:inline">
-                      Sürükleyip taşıyın ya da aşağıdaki toplu işlemleri kullanın.
+                      {t('admin.partnerZone.dragOrBulk')}
                     </span>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
-                      onClick={() =>
-                        bulkUpdateStatusMutation.mutate({
-                          ids: Array.from(selectedContentIds),
-                          status: 'published',
-                        })
-                      }
+                      onClick={() => bulkUpdateStatusMutation.mutate({ ids: Array.from(selectedContentIds), status: 'published' })}
                       data-testid="button-bulk-publish"
                     >
                       {bulkUpdateStatusMutation.isPending && bulkUpdateStatusMutation.variables?.status === 'published' ? (
@@ -1176,18 +1081,13 @@ export default function PartnerZoneAdmin() {
                       ) : (
                         <Eye className="w-3.5 h-3.5 mr-1" />
                       )}
-                      Yayınla
+                      {t('admin.partnerZone.publish')}
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
-                      onClick={() =>
-                        bulkUpdateStatusMutation.mutate({
-                          ids: Array.from(selectedContentIds),
-                          status: 'draft',
-                        })
-                      }
+                      onClick={() => bulkUpdateStatusMutation.mutate({ ids: Array.from(selectedContentIds), status: 'draft' })}
                       data-testid="button-bulk-draft"
                     >
                       {bulkUpdateStatusMutation.isPending && bulkUpdateStatusMutation.variables?.status === 'draft' ? (
@@ -1195,7 +1095,7 @@ export default function PartnerZoneAdmin() {
                       ) : (
                         <EyeOff className="w-3.5 h-3.5 mr-1" />
                       )}
-                      Taslağa al
+                      {t('admin.partnerZone.unpublish')}
                     </Button>
                     <Button
                       size="sm"
@@ -1205,7 +1105,7 @@ export default function PartnerZoneAdmin() {
                       data-testid="button-bulk-delete"
                     >
                       <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      Sil
+                      {t('common.delete')}
                     </Button>
                     <Button
                       size="sm"
@@ -1214,7 +1114,7 @@ export default function PartnerZoneAdmin() {
                       data-testid="button-clear-selection"
                     >
                       <X className="w-3.5 h-3.5 mr-1" />
-                      Temizle
+                      {t('admin.partnerZone.clear')}
                     </Button>
                   </div>
                 )}
@@ -1226,8 +1126,8 @@ export default function PartnerZoneAdmin() {
                       <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-40" />
                       <p className="text-muted-foreground">
                         {folderContents.length === 0
-                          ? 'Bu klasörde henüz dosya yok. "İçerik Ekle" ile başlayın.'
-                          : 'Filtrelere uygun dosya bulunamadı.'}
+                          ? t('admin.partnerZone.noFiles')
+                          : t('admin.partnerZone.noFilesFiltered')}
                       </p>
                     </div>
                   ) : (
@@ -1236,24 +1136,18 @@ export default function PartnerZoneAdmin() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={
-                                allVisibleSelected
-                                  ? true
-                                  : someVisibleSelected
-                                    ? 'indeterminate'
-                                    : false
-                              }
+                              checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
                               onCheckedChange={toggleSelectAllVisible}
-                              aria-label="Tüm görünen dosyaları seç"
+                              aria-label={t('admin.partnerZone.selectAll')}
                               data-testid="checkbox-select-all"
                             />
                           </TableHead>
-                          <TableHead>İçerik</TableHead>
-                          <TableHead>Tür</TableHead>
-                          <TableHead>Boyut</TableHead>
-                          <TableHead>Durum</TableHead>
-                          <TableHead>Güncelleme</TableHead>
-                          <TableHead className="text-right">İşlemler</TableHead>
+                          <TableHead>{t('common.title')}</TableHead>
+                          <TableHead>{t('admin.partnerZone.type')}</TableHead>
+                          <TableHead>{t('admin.partnerZone.size')}</TableHead>
+                          <TableHead>{t('common.status')}</TableHead>
+                          <TableHead>{t('admin.partnerZone.updated')}</TableHead>
+                          <TableHead className="text-right">{t('common.actions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1261,8 +1155,6 @@ export default function PartnerZoneAdmin() {
                           const mt = getContentType(item);
                           const url = getContentUrl(item);
                           const isSelected = selectedContentIds.has(item.id);
-                          // Drag visual feedback covers all rows participating in
-                          // the active drag, not just the row that started it.
                           const isInActiveDrag =
                             dragItem?.kind === 'content' && dragItem.ids.includes(item.id);
                           return (
@@ -1271,9 +1163,6 @@ export default function PartnerZoneAdmin() {
                               draggable
                               onDragStart={(e) => {
                                 e.dataTransfer.effectAllowed = 'move';
-                                // If the dragged row is part of the current
-                                // selection, drag the entire selection together;
-                                // otherwise drag just this row.
                                 const ids = isSelected && selectedContentIds.size > 0
                                   ? Array.from(selectedContentIds)
                                   : [item.id];
@@ -1283,21 +1172,24 @@ export default function PartnerZoneAdmin() {
                                   ids,
                                   primaryId: item.id,
                                   name: ids.length > 1
-                                    ? `${ids.length} dosya`
+                                    ? `${ids.length} files`
                                     : item.displayName || item.title,
                                   currentFolderId: item.folderId,
                                 });
                               }}
                               onDragEnd={() => { setDragItem(null); setDropTargetId(null); }}
-                              className={`cursor-grab ${isInActiveDrag ? 'opacity-40' : ''}`}
-                              data-state={isSelected ? 'selected' : undefined}
-                              data-testid={`content-row-${item.id}`}
+                              className={`cursor-grab active:cursor-grabbing ${
+                                isInActiveDrag ? 'opacity-50' : ''
+                              }`}
+                              onClick={(e) => {
+                                if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                                  e.preventDefault();
+                                  handleRowSelectClick(item.id, index, e);
+                                }
+                              }}
                             >
                               <TableCell
                                 onClick={(e) => {
-                                  // Catch shift/ctrl clicks anywhere on the cell so
-                                  // ranges can be created without precisely hitting
-                                  // the small checkbox target.
                                   if (e.shiftKey || e.ctrlKey || e.metaKey) {
                                     e.preventDefault();
                                     handleRowSelectClick(item.id, index, e);
@@ -1310,7 +1202,7 @@ export default function PartnerZoneAdmin() {
                                     e.stopPropagation();
                                     handleRowSelectClick(item.id, index, e);
                                   }}
-                                  aria-label={`${item.displayName || item.title} seç`}
+                                  aria-label={`${item.displayName || item.title}`}
                                   data-testid={`checkbox-content-${item.id}`}
                                 />
                               </TableCell>
@@ -1341,9 +1233,9 @@ export default function PartnerZoneAdmin() {
                                   className="flex items-center gap-1 w-fit"
                                 >
                                   {item.status === 'published' ? (
-                                    <><CheckCircle2 className="w-3 h-3" />Yayında</>
+                                    <><CheckCircle2 className="w-3 h-3" />{t('common.published')}</>
                                   ) : (
-                                    <><XCircle className="w-3 h-3" />Taslak</>
+                                    <><XCircle className="w-3 h-3" />{t('common.draft')}</>
                                   )}
                                 </Badge>
                               </TableCell>
@@ -1355,14 +1247,14 @@ export default function PartnerZoneAdmin() {
                               <TableCell>
                                 <div className="flex items-center justify-end gap-1">
                                   {url && (
-                                    <Button size="icon" variant="ghost" asChild title="Aç">
+                                    <Button size="icon" variant="ghost" asChild title={t('admin.partnerZone.open')}>
                                       <a href={url} target="_blank" rel="noopener noreferrer">
                                         <ExternalLink className="w-4 h-4" />
                                       </a>
                                     </Button>
                                   )}
                                   {url && (
-                                    <Button size="icon" variant="ghost" asChild title="İndir">
+                                    <Button size="icon" variant="ghost" asChild title={t('admin.partnerZone.download')}>
                                       <a href={url} download={item.displayName || item.title} target="_blank" rel="noopener noreferrer">
                                         <Download className="w-4 h-4" />
                                       </a>
@@ -1372,7 +1264,7 @@ export default function PartnerZoneAdmin() {
                                     size="icon"
                                     variant="ghost"
                                     onClick={() => openEditContent(item)}
-                                    title="Düzenle"
+                                    title={t('common.edit')}
                                   >
                                     <Edit2 className="w-4 h-4" />
                                   </Button>
@@ -1380,7 +1272,7 @@ export default function PartnerZoneAdmin() {
                                     size="icon"
                                     variant="ghost"
                                     onClick={() => setDeleteContent(item)}
-                                    title="Sil"
+                                    title={t('common.delete')}
                                   >
                                     <Trash2 className="w-4 h-4 text-destructive" />
                                   </Button>
@@ -1398,7 +1290,6 @@ export default function PartnerZoneAdmin() {
           </div>
         )}
 
-        {/* Folder dialog (also used here for edit + new subfolder) */}
         <FolderDialog
           open={folderDialogOpen}
           onOpenChange={setFolderDialogOpen}
@@ -1413,7 +1304,6 @@ export default function PartnerZoneAdmin() {
           countries={countries}
         />
 
-        {/* Content dialog */}
         <ContentDialog
           open={contentDialogOpen}
           onOpenChange={setContentDialogOpen}
@@ -1427,53 +1317,39 @@ export default function PartnerZoneAdmin() {
           onFileSelect={(f) => handleFileUpload(f)}
         />
 
-        {/* Delete content confirm */}
         <AlertDialog open={!!deleteContent} onOpenChange={(o) => !o && setDeleteContent(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>İçeriği Sil</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.partnerZone.deleteContentTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                "{deleteContent?.displayName || deleteContent?.title}" kalıcı olarak silinecek.
+                {t('admin.partnerZone.deleteContentDesc', { name: deleteContent?.displayName || deleteContent?.title || '' })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>İptal</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteContent && deleteContentMutation.mutate(deleteContent.id)}
                 className="bg-destructive text-destructive-foreground"
               >
-                Sil
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Bulk delete confirm — explicit count in Turkish so the admin can
-            sanity-check before destroying many rows at once. */}
-        <AlertDialog
-          open={bulkDeleteConfirmOpen}
-          onOpenChange={(o) => {
-            // Don't allow closing while the request is in flight to avoid
-            // double-trigger via clicking the backdrop.
-            if (!o && bulkDeleteContentsMutation.isPending) return;
-            setBulkDeleteConfirmOpen(o);
-          }}
-        >
+        <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Seçili dosyaları sil</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.partnerZone.deleteContentTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                {selectedContentIds.size} dosya kalıcı olarak silinecek. Bu işlem geri alınamaz.
+                {t('admin.partnerZone.itemsSelected', { count: selectedContentIds.size })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={bulkDeleteContentsMutation.isPending}>İptal</AlertDialogCancel>
+              <AlertDialogCancel disabled={bulkDeleteContentsMutation.isPending}>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 disabled={bulkDeleteContentsMutation.isPending || selectedContentIds.size === 0}
                 onClick={(e) => {
-                  // AlertDialogAction would auto-close; we control closure
-                  // from the mutation's onSuccess so failures keep the dialog
-                  // open with the spinner state.
                   e.preventDefault();
                   bulkDeleteContentsMutation.mutate({ ids: Array.from(selectedContentIds) });
                 }}
@@ -1481,31 +1357,30 @@ export default function PartnerZoneAdmin() {
                 data-testid="button-confirm-bulk-delete"
               >
                 {bulkDeleteContentsMutation.isPending ? (
-                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Siliniyor...</>
+                  <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />{t('common.loading')}</>
                 ) : (
-                  <>{selectedContentIds.size} dosyayı sil</>
+                  <>{t('common.delete')} ({selectedContentIds.size})</>
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Delete folder confirm (for sub-folders shown in this view) */}
         <AlertDialog open={!!deleteFolder} onOpenChange={(o) => !o && setDeleteFolder(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Klasörü Sil</AlertDialogTitle>
+              <AlertDialogTitle>{t('admin.partnerZone.deleteFolderTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                "{deleteFolder?.name}" klasörünü silmek üzeresiniz. Klasör boş değilse silinemez (önce alt klasörleri ve dosyaları taşıyın veya silin).
+                {t('admin.partnerZone.deleteFolderDesc', { name: deleteFolder?.name || '' })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>İptal</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteFolder && deleteFolderMutation.mutate(deleteFolder.id)}
                 className="bg-destructive text-destructive-foreground"
               >
-                Sil
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1518,15 +1393,14 @@ export default function PartnerZoneAdmin() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
             <Package className="w-8 h-8 text-primary" />
-            Partner Zone Yönetimi
+            {t('admin.partnerZone.title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Acentelerin göreceği klasörleri ve içerikleri yönetin.
+            {t('admin.partnerZone.subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1536,26 +1410,24 @@ export default function PartnerZoneAdmin() {
               onClick={() => setResizeConfirmOpen(true)}
               disabled={resizeCoversMutation.isPending}
               data-testid="button-resize-covers"
-              title="Eski kapak görsellerini 540x540 boyutuna küçültür"
+              title={t('admin.partnerZone.resizeCoversTitle')}
             >
               {resizeCoversMutation.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Minimize2 className="w-4 h-4 mr-2" />
               )}
-              Eski Kapakları Küçült
+              {t('admin.partnerZone.resizeCovers')}
             </Button>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Eski kapak görsellerini küçült</AlertDialogTitle>
+                <AlertDialogTitle>{t('admin.partnerZone.resizeCoversTitle')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tüm partner klasörlerinin kapak görselleri 540×540 boyutuna küçültülerek
-                  orijinal dosyaların üzerine yazılır. Bu işlem geri alınamaz, ancak URL'ler
-                  değişmez. Zaten küçük olan dosyalar atlanır. Devam edilsin mi?
+                  {t('admin.partnerZone.resizeCoversDesc')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel data-testid="button-cancel-resize">İptal</AlertDialogCancel>
+                <AlertDialogCancel data-testid="button-cancel-resize">{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => {
                     setResizeConfirmOpen(false);
@@ -1563,25 +1435,24 @@ export default function PartnerZoneAdmin() {
                   }}
                   data-testid="button-confirm-resize"
                 >
-                  Küçült
+                  {t('admin.partnerZone.shrink')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <Button onClick={openCreateFolder} data-testid="button-new-folder">
             <Plus className="w-4 h-4 mr-2" />
-            Yeni Klasör
+            {t('admin.partnerZone.newFolder')}
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Kök Klasör', value: rootFolders.length },
-          { label: 'Yayınlanan', value: rootFolders.filter((f) => f.status === 'published').length },
-          { label: 'Taslak', value: rootFolders.filter((f) => f.status === 'draft').length },
-          { label: 'Toplam İçerik', value: rootFolders.reduce((s, f) => s + (f.contentCount ?? 0), 0) },
+          { label: t('admin.partnerZone.rootFolders'), value: rootFolders.length },
+          { label: t('admin.partnerZone.published'), value: rootFolders.filter((f) => f.status === 'published').length },
+          { label: t('admin.partnerZone.draft'), value: rootFolders.filter((f) => f.status === 'draft').length },
+          { label: t('admin.partnerZone.totalContent'), value: rootFolders.reduce((s, f) => s + (f.contentCount ?? 0), 0) },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="pt-4 pb-4">
@@ -1592,7 +1463,6 @@ export default function PartnerZoneAdmin() {
         ))}
       </div>
 
-      {/* Toolbar */}
       <PartnerToolbar
         search={search}
         onSearchChange={setSearch}
@@ -1606,10 +1476,9 @@ export default function PartnerZoneAdmin() {
         onSortChange={setSort}
       />
 
-      {/* Folder grid */}
       {foldersLoading ? (
         <div className="flex justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" /><span>Yükleniyor...</span>
+          <Loader2 className="w-5 h-5 animate-spin" /><span>{t('admin.partnerZone.loading')}</span>
         </div>
       ) : filteredRootFolders.length === 0 ? (
         <Card>
@@ -1617,8 +1486,8 @@ export default function PartnerZoneAdmin() {
             <Folder className="w-14 h-14 mx-auto mb-3 text-muted-foreground opacity-30" />
             <p className="text-muted-foreground">
               {rootFolders.length === 0
-                ? 'Henüz klasör yok. "Yeni Klasör" ile başlayın.'
-                : 'Filtrelere uygun klasör bulunamadı.'}
+                ? t('admin.partnerZone.noFolders')
+                : t('admin.partnerZone.noFoldersFiltered')}
             </p>
           </CardContent>
         </Card>
@@ -1628,7 +1497,6 @@ export default function PartnerZoneAdmin() {
         </div>
       )}
 
-      {/* Folder dialog */}
       <FolderDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
@@ -1643,22 +1511,21 @@ export default function PartnerZoneAdmin() {
         countries={countries}
       />
 
-      {/* Delete folder confirm */}
       <AlertDialog open={!!deleteFolder} onOpenChange={(o) => !o && setDeleteFolder(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Klasörü Sil</AlertDialogTitle>
+            <AlertDialogTitle>{t('admin.partnerZone.deleteFolderTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              "{deleteFolder?.name}" klasörünü silmek üzeresiniz. Klasör boş değilse silinemez (önce alt klasörleri ve dosyaları taşıyın veya silin).
+              {t('admin.partnerZone.deleteFolderDesc', { name: deleteFolder?.name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteFolder && deleteFolderMutation.mutate(deleteFolder.id)}
               className="bg-destructive text-destructive-foreground"
             >
-              Sil
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1685,23 +1552,21 @@ function FolderDialog({
   onCoverSelect: (file: File) => void;
   countries: CountryItem[];
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Klasörü Düzenle' : 'Yeni Klasör'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('admin.partnerZone.editFolder') : t('admin.partnerZone.newFolder')}</DialogTitle>
           <DialogDescription>
-            Klasör adı, kapak görseli ve yayınlanma durumu gibi bilgileri ayarlayın.
+            {t('admin.partnerZone.folderDialogDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
-            {/* Cover image */}
             <div className="space-y-2">
               <FormLabel>
-                Kapak Görseli{' '}
-                <span className="text-muted-foreground font-normal">(540×540 önerilen)</span>
+                {t('admin.partnerZone.coverImageLabel')}
               </FormLabel>
               <div
                 className="relative rounded-md border-2 border-dashed flex items-center justify-center overflow-hidden cursor-pointer hover-elevate"
@@ -1713,7 +1578,7 @@ function FolderDialog({
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground py-8">
                     <ImageIcon className="w-10 h-10 opacity-40" />
-                    <span className="text-sm">Görsel yüklemek için tıklayın</span>
+                    <span className="text-sm">{t('admin.partnerZone.coverImageHint')}</span>
                   </div>
                 )}
                 {coverUploading && (
@@ -1723,7 +1588,7 @@ function FolderDialog({
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Yüklenen görseller sunucu tarafında en fazla 540×540 olacak şekilde küçültülür.
+                {t('admin.partnerZone.coverImageResizeNote')}
               </p>
               <input
                 ref={coverInputRef}
@@ -1738,49 +1603,46 @@ function FolderDialog({
               />
             </div>
 
-            {/* Name */}
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel>Klasör Adı</FormLabel>
-                <FormControl><Input {...field} placeholder="ör. Pathway Flyers" /></FormControl>
+                <FormLabel>{t('admin.partnerZone.folderNameLabel')}</FormLabel>
+                <FormControl><Input {...field} placeholder="e.g. Pathway Flyers" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Description */}
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem>
-                <FormLabel>Açıklama <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
+                <FormLabel>{t('admin.partnerZone.descriptionLabel')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></FormLabel>
                 <FormControl>
-                  <Textarea {...field} value={field.value ?? ''} rows={2} placeholder="Klasör hakkında kısa açıklama..." />
+                  <Textarea {...field} value={field.value ?? ''} rows={2} placeholder={t('admin.partnerZone.descriptionPlaceholder')} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Category + Country */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="categoryTag" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kategori</FormLabel>
-                  <FormControl><Input {...field} value={field.value ?? ''} placeholder="ör. Flyers" /></FormControl>
+                  <FormLabel>{t('admin.partnerZone.categoryLabel')}</FormLabel>
+                  <FormControl><Input {...field} value={field.value ?? ''} placeholder={t('admin.partnerZone.categoryPlaceholder')} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="countryCode" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ülke</FormLabel>
+                  <FormLabel>{t('admin.partnerZone.countryLabel')}</FormLabel>
                   <Select
                     onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
                     value={field.value || '__none__'}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Ülke seçin..." />
+                        <SelectValue placeholder={t('admin.partnerZone.countryPlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="max-h-60">
-                      <SelectItem value="__none__">— Ülke yok —</SelectItem>
+                      <SelectItem value="__none__">{t('admin.partnerZone.noCountry')}</SelectItem>
                       {countries.map((c) => (
                         <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                       ))}
@@ -1791,23 +1653,22 @@ function FolderDialog({
               )} />
             </div>
 
-            {/* Order + Status */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="order" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sıralama</FormLabel>
+                  <FormLabel>{t('admin.partnerZone.orderLabel')}</FormLabel>
                   <FormControl><Input {...field} type="number" min={0} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Durum</FormLabel>
+                  <FormLabel>{t('admin.partnerZone.statusLabel')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="draft">Taslak</SelectItem>
-                      <SelectItem value="published">Yayınla</SelectItem>
+                      <SelectItem value="draft">{t('admin.partnerZone.draftOption')}</SelectItem>
+                      <SelectItem value="published">{t('admin.partnerZone.publishedOption')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -1816,12 +1677,12 @@ function FolderDialog({
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={isMutating}>
                 {isMutating ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Kaydediliyor...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.saving')}</>
                 ) : (
-                  'Kaydet'
+                  t('common.save')
                 )}
               </Button>
             </div>
@@ -1845,26 +1706,30 @@ function ContentDialog({
   isMutating: boolean;
   isEditing: boolean;
   fileUploading: boolean;
-  currentMediaEntry: typeof MEDIA_TYPES[0];
+  currentMediaEntry: { value: MediaType; label: string; icon: React.ElementType; accept: string; folder: string };
   fileInputRef: React.RefObject<HTMLInputElement>;
   onFileSelect: (file: File) => void;
 }) {
+  const { t } = useTranslation();
+  const MEDIA_TYPES = [
+    { value: 'document' as MediaType, label: t('common.document'), icon: FileText, accept: '.pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip', folder: 'documents' },
+    { value: 'video' as MediaType, label: t('common.video'), icon: Video, accept: '.mp4,.mov,.webm,.avi,.mkv', folder: 'videos' },
+    { value: 'image' as MediaType, label: t('common.image'), icon: ImageIcon, accept: '.jpg,.jpeg,.png,.gif,.webp,.svg', folder: 'images' },
+  ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'İçeriği Düzenle' : 'İçerik Ekle'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('admin.partnerZone.contentDialogTitleEdit') : t('admin.partnerZone.contentDialogTitleNew')}</DialogTitle>
           <DialogDescription>
-            Belge, video veya görsel yükleyin ve yayınlanma durumunu seçin.
+            {t('admin.partnerZone.contentDialogDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
-            {/* Media type */}
             <FormField control={form.control} name="mediaType" render={({ field }) => (
               <FormItem>
-                <FormLabel>İçerik Türü</FormLabel>
+                <FormLabel>{t('admin.partnerZone.contentTypeLabel')}</FormLabel>
                 <div className="grid grid-cols-3 gap-2">
                   {MEDIA_TYPES.map((mt) => {
                     const Icon = mt.icon;
@@ -1890,36 +1755,32 @@ function ContentDialog({
               </FormItem>
             )} />
 
-            {/* Title */}
             <FormField control={form.control} name="title" render={({ field }) => (
               <FormItem>
-                <FormLabel>Başlık</FormLabel>
-                <FormControl><Input {...field} placeholder={`${currentMediaEntry.label} başlığı`} /></FormControl>
+                <FormLabel>{t('admin.partnerZone.titleLabel')}</FormLabel>
+                <FormControl><Input {...field} placeholder={`${currentMediaEntry.label} title`} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Display Name */}
             <FormField control={form.control} name="displayName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Görüntülenen Ad <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
-                <FormControl><Input {...field} placeholder="İndirme butonunda görünecek ad" /></FormControl>
+                <FormLabel>{t('admin.partnerZone.displayNameLabel')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></FormLabel>
+                <FormControl><Input {...field} placeholder={t('admin.partnerZone.displayNamePlaceholder')} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Description */}
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem>
-                <FormLabel>Açıklama</FormLabel>
-                <FormControl><Textarea {...field} value={field.value ?? ''} rows={2} placeholder="Kısa açıklama..." /></FormControl>
+                <FormLabel>{t('admin.partnerZone.descriptionLabel')}</FormLabel>
+                <FormControl><Textarea {...field} value={field.value ?? ''} rows={2} placeholder="..." /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Upload */}
             <div className="space-y-2">
-              <FormLabel>Dosya Yükle</FormLabel>
+              <FormLabel>{t('admin.partnerZone.uploadFileLabel')}</FormLabel>
               <Button
                 type="button"
                 variant="outline"
@@ -1928,9 +1789,9 @@ function ContentDialog({
                 className="w-full"
               >
                 {fileUploading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Yükleniyor...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.partnerZone.uploading')}</>
                 ) : (
-                  <><Upload className="w-4 h-4 mr-2" />{currentMediaEntry.label} Yükle</>
+                  <><Upload className="w-4 h-4 mr-2" />{currentMediaEntry.label}</>
                 )}
               </Button>
               <input
@@ -1946,36 +1807,32 @@ function ContentDialog({
               />
             </div>
 
-            {/* URL */}
             <FormField control={form.control} name="fileUrl" render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-1">
-                  <Link2 className="w-3 h-3" />URL{' '}
-                  <span className="text-muted-foreground font-normal">(veya manuel gir)</span>
+                  <Link2 className="w-3 h-3" />{t('admin.partnerZone.urlLabel')}
                 </FormLabel>
                 <FormControl><Input {...field} value={field.value ?? ''} placeholder="https://..." /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* File size */}
             <FormField control={form.control} name="fileSize" render={({ field }) => (
               <FormItem>
-                <FormLabel>Dosya Boyutu <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
-                <FormControl><Input {...field} value={field.value ?? ''} placeholder="ör. 2.3 MB" /></FormControl>
+                <FormLabel>{t('admin.partnerZone.fileSizeLabel')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder={t('admin.partnerZone.fileSizePlaceholder')} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
-            {/* Status */}
             <FormField control={form.control} name="status" render={({ field }) => (
               <FormItem>
-                <FormLabel>Durum</FormLabel>
+                <FormLabel>{t('admin.partnerZone.statusLabel')}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="draft">Taslak</SelectItem>
-                    <SelectItem value="published">Yayınla</SelectItem>
+                    <SelectItem value="draft">{t('admin.partnerZone.draftOption')}</SelectItem>
+                    <SelectItem value="published">{t('admin.partnerZone.publishedOption')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -1983,12 +1840,12 @@ function ContentDialog({
             )} />
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={isMutating}>
                 {isMutating ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Kaydediliyor...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('common.saving')}</>
                 ) : (
-                  'Kaydet'
+                  t('common.save')
                 )}
               </Button>
             </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   BookOpen,
@@ -24,46 +25,46 @@ import {
 
 type MenuItem = {
   id: string;
-  name: string;
+  nameKey: string;
   description?: string;
+  descriptionKey?: string;
   icon: LucideIcon;
 };
 
 type MenuGroup = {
-  label: string;
-  description?: string;
+  labelKey: string;
   items: MenuItem[];
 };
 
 const agentMenuGroups: MenuGroup[] = [
   {
-    label: 'Genel',
+    labelKey: 'admin.menuMgmt.groupGeneral',
     items: [
-      { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-      { id: 'announcements', name: 'Duyurular', icon: Bell },
+      { id: 'dashboard', nameKey: 'admin.menuMgmt.dashboard', icon: LayoutDashboard },
+      { id: 'announcements', nameKey: 'admin.menuMgmt.announcements', icon: Bell },
     ],
   },
   {
-    label: 'Eğitim',
+    labelKey: 'admin.menuMgmt.groupEducation',
     items: [
-      { id: 'courses', name: 'Kurslar', icon: BookOpen },
-      { id: 'certificates', name: 'Sertifikalar', icon: Award },
-      { id: 'leaderboard', name: 'Liderlik Tablosu', icon: Trophy },
+      { id: 'courses', nameKey: 'admin.menuMgmt.courses', icon: BookOpen },
+      { id: 'certificates', nameKey: 'admin.menuMgmt.certificates', icon: Award },
+      { id: 'leaderboard', nameKey: 'admin.menuMgmt.leaderboard', icon: Trophy },
     ],
   },
   {
-    label: 'Acente',
+    labelKey: 'admin.menuMgmt.groupAgency',
     items: [
-      { id: 'agency', name: 'Acentem', icon: Building },
-      { id: 'profile', name: 'Profil', icon: User },
+      { id: 'agency', nameKey: 'admin.menuMgmt.myAgency', icon: Building },
+      { id: 'profile', nameKey: 'admin.menuMgmt.profile', icon: User },
     ],
   },
   {
-    label: 'Hizmetler',
+    labelKey: 'admin.menuMgmt.groupServices',
     items: [
-      { id: 'exams-orders', name: 'Sınavlar / Siparişler', icon: ShoppingCart },
-      { id: 'subscriptions', name: 'Abonelikler', icon: Bell },
-      { id: 'partner-zone', name: 'İş Ortağı Bölgesi', icon: Package },
+      { id: 'exams-orders', nameKey: 'admin.menuMgmt.examsOrders', icon: ShoppingCart },
+      { id: 'subscriptions', nameKey: 'admin.menuMgmt.subscriptions', icon: Bell },
+      { id: 'partner-zone', nameKey: 'admin.menuMgmt.partnerZone', icon: Package },
     ],
   },
 ];
@@ -71,9 +72,8 @@ const agentMenuGroups: MenuGroup[] = [
 const globalWidgets: MenuItem[] = [
   {
     id: 'findy',
-    name: 'Findy Asistan',
-    description:
-      'Tüm panellerin sağ alt köşesinde görünen sohbet widget\'ı. Kapatıldığında hem admin hem de agent panellerinde gizlenir.',
+    nameKey: 'admin.menuMgmt.findyAssistant',
+    descriptionKey: 'admin.menuMgmt.findyAssistantDesc',
     icon: MessageCircle,
   },
 ];
@@ -88,6 +88,7 @@ interface MenuVisibility {
 }
 
 export default function MenuManagement() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [menuVisibility, setMenuVisibility] = useState<MenuVisibility>({});
@@ -157,8 +158,8 @@ export default function MenuManagement() {
           // ignore quota / private mode errors
         }
         toast({
-          title: 'Ayarlar Kaydedildi',
-          description: 'Menü görünürlük ayarları başarıyla güncellendi.',
+          title: t('admin.menuMgmt.settingsSaved'),
+          description: t('admin.menuMgmt.settingsSavedDesc'),
         });
       } else {
         throw new Error('Failed to save settings');
@@ -166,8 +167,8 @@ export default function MenuManagement() {
     } catch (error) {
       console.error('Error saving menu settings:', error);
       toast({
-        title: 'Kaydedilemedi',
-        description: 'Menü ayarları güncellenemedi. Lütfen tekrar deneyin.',
+        title: t('admin.menuMgmt.saveFailed'),
+        description: t('admin.menuMgmt.saveFailedDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -182,8 +183,8 @@ export default function MenuManagement() {
     });
     setMenuVisibility(resetVisibility);
     toast({
-      title: 'Sıfırlandı',
-      description: 'Tüm menü öğeleri etkinleştirildi.',
+      title: t('admin.menuMgmt.reset'),
+      description: t('admin.menuMgmt.resetDesc'),
     });
   };
 
@@ -198,10 +199,10 @@ export default function MenuManagement() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Menü Yönetimi
+            {t('admin.menuMgmt.title')}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Acente kenar çubuğunda hangi öğelerin görüneceğini ve Findy asistanının açık olup olmayacağını kontrol edin.
+            {t('admin.menuMgmt.subtitle')}
           </p>
         </div>
       </div>
@@ -211,19 +212,19 @@ export default function MenuManagement() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-            <p className="text-sm text-muted-foreground">Toplam Öğe</p>
+            <p className="text-sm text-muted-foreground">{t('admin.menuMgmt.totalItems')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">{visibleCount}</div>
-            <p className="text-sm text-muted-foreground">Görünür</p>
+            <p className="text-sm text-muted-foreground">{t('admin.menuMgmt.visible')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-orange-600">{hiddenCount}</div>
-            <p className="text-sm text-muted-foreground">Gizli</p>
+            <p className="text-sm text-muted-foreground">{t('admin.menuMgmt.hidden')}</p>
           </CardContent>
         </Card>
       </div>
@@ -231,21 +232,23 @@ export default function MenuManagement() {
       {/* Sidebar groups */}
       <Card>
         <CardHeader>
-          <CardTitle>Acente Kenar Çubuğu</CardTitle>
+          <CardTitle>{t('admin.menuMgmt.agentSidebar')}</CardTitle>
           <CardDescription>
-            Acentenin kenar çubuğunda hangi öğelerin görüneceğini açıp kapatın. Gizlenen öğeler menüde gözükmez.
+            {t('admin.menuMgmt.agentSidebarDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Ayarlar yükleniyor...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {t('admin.menuMgmt.loadingSettings')}
+            </div>
           ) : (
             <div className="space-y-6">
               {agentMenuGroups.map((group) => (
-                <div key={group.label} className="space-y-3">
+                <div key={group.labelKey} className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Label className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      {group.label}
+                      {t(group.labelKey)}
                     </Label>
                     <Badge variant="outline">{group.items.length}</Badge>
                   </div>
@@ -273,10 +276,12 @@ export default function MenuManagement() {
                                 htmlFor={`toggle-${item.id}`}
                                 className="text-base font-medium cursor-pointer"
                               >
-                                {item.name}
+                                {t(item.nameKey)}
                               </Label>
                               <p className="text-sm text-muted-foreground truncate">
-                                {isVisible ? 'Acentelere görünür' : 'Acentelerden gizli'}
+                                {isVisible
+                                  ? t('admin.menuMgmt.visibleToAgents')
+                                  : t('admin.menuMgmt.hiddenFromAgents')}
                               </p>
                             </div>
                           </div>
@@ -300,14 +305,16 @@ export default function MenuManagement() {
       {/* Global widgets (Findy) */}
       <Card>
         <CardHeader>
-          <CardTitle>Genel Widget'lar</CardTitle>
+          <CardTitle>{t('admin.menuMgmt.globalWidgets')}</CardTitle>
           <CardDescription>
-            Tüm panellerde (admin ve agent) görünen widget'ları yönetin.
+            {t('admin.menuMgmt.globalWidgetsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Ayarlar yükleniyor...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {t('admin.menuMgmt.loadingSettings')}
+            </div>
           ) : (
             globalWidgets.map((item) => {
               const Icon = item.icon;
@@ -332,13 +339,15 @@ export default function MenuManagement() {
                         htmlFor={`toggle-${item.id}`}
                         className="text-base font-medium cursor-pointer"
                       >
-                        {item.name}
+                        {t(item.nameKey)}
                       </Label>
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      {item.descriptionKey && (
+                        <p className="text-sm text-muted-foreground">{t(item.descriptionKey)}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-1">
-                        {isVisible ? 'Tüm panellerde açık' : 'Tüm panellerde kapalı'}
+                        {isVisible
+                          ? t('admin.menuMgmt.allPanelsOn')
+                          : t('admin.menuMgmt.allPanelsOff')}
                       </p>
                     </div>
                   </div>
@@ -359,7 +368,7 @@ export default function MenuManagement() {
       <div className="flex gap-3">
         <Button onClick={handleSave} disabled={saving || loading} data-testid="button-save-menu">
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+          {saving ? t('admin.menuMgmt.saving') : t('admin.menuMgmt.saveChanges')}
         </Button>
         <Button
           variant="outline"
@@ -368,21 +377,21 @@ export default function MenuManagement() {
           data-testid="button-reset-menu"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
-          Varsayılana Dön
+          {t('admin.menuMgmt.resetToDefault')}
         </Button>
       </div>
 
       {/* Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Bilgilendirme</CardTitle>
+          <CardTitle>{t('admin.menuMgmt.infoTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Değişiklikler kaydedildikten sonra tüm kullanıcılar için anında geçerli olur.</p>
-          <p>• Gizlenen menü öğelerine, doğrudan URL üzerinden hâlâ erişilebilir; tam erişim engelleme için rol/izin kullanın.</p>
-          <p>• Acentelerin gezinebilmesi için en az bir menü öğesinin açık kalması önerilir.</p>
-          <p>• "Agent Portal" ve "Dorm Booking" dış bağlantıları bu ayarlardan etkilenmez.</p>
-          <p>• Findy Asistan kapatıldığında, hem admin hem de agent panellerinde sohbet düğmesi gizlenir.</p>
+          <p>• {t('admin.menuMgmt.info1')}</p>
+          <p>• {t('admin.menuMgmt.info2')}</p>
+          <p>• {t('admin.menuMgmt.info3')}</p>
+          <p>• {t('admin.menuMgmt.info4')}</p>
+          <p>• {t('admin.menuMgmt.info5')}</p>
         </CardContent>
       </Card>
     </div>

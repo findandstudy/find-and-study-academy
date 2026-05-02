@@ -22,6 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Megaphone, Plus, Edit, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 interface Popup {
@@ -46,30 +47,6 @@ interface Agency {
   name: string;
 }
 
-const FREQ_LABEL: Record<Popup['frequency'], string> = {
-  every_session: 'Her oturum',
-  every_login: 'Her giriş',
-  once_per_user: 'Bir kez',
-};
-
-const AUDIENCE_LABEL: Record<Popup['targetAudience'], string> = {
-  all: 'Tümü',
-  agents: 'Acenteler',
-  specific: 'Belirli Acenteler',
-};
-
-const STATUS_VARIANT: Record<Popup['status'], 'default' | 'secondary' | 'outline'> = {
-  active: 'default',
-  draft: 'secondary',
-  archived: 'outline',
-};
-
-const STATUS_LABEL: Record<Popup['status'], string> = {
-  active: 'Aktif',
-  draft: 'Taslak',
-  archived: 'Arşivli',
-};
-
 interface FormState {
   title: string;
   content: string;
@@ -83,6 +60,12 @@ interface FormState {
   expiresAt: string;
   frequency: Popup['frequency'];
 }
+
+const STATUS_VARIANT: Record<Popup['status'], 'default' | 'secondary' | 'outline'> = {
+  active: 'default',
+  draft: 'secondary',
+  archived: 'outline',
+};
 
 const emptyForm: FormState = {
   title: '',
@@ -123,6 +106,7 @@ function popupToForm(p: Popup): FormState {
 }
 
 export default function AdminPopups() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -154,40 +138,53 @@ export default function AdminPopups() {
     expiresAt: string | null;
     frequency: Popup['frequency'];
   };
+
   const errorMessage = (e: unknown, fallback: string) =>
     e instanceof Error ? e.message : fallback;
 
   const createMut = useMutation({
     mutationFn: (payload: PopupPayload) => apiRequest('POST', '/api/admin/popups', payload),
     onSuccess: () => {
-      toast({ title: 'Pop-up oluşturuldu' });
+      toast({ title: t('admin.popups.created') });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/popups'] });
       setIsCreateOpen(false);
       setForm(emptyForm);
     },
-    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Oluşturulamadı'), variant: 'destructive' }),
+    onError: (e: unknown) => toast({
+      title: t('common.error'),
+      description: errorMessage(e, t('admin.popups.createFailed')),
+      variant: 'destructive',
+    }),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: PopupPayload }) =>
       apiRequest('PUT', `/api/admin/popups/${id}`, payload),
     onSuccess: () => {
-      toast({ title: 'Pop-up güncellendi' });
+      toast({ title: t('admin.popups.updated') });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/popups'] });
       setIsEditOpen(false);
       setEditing(null);
       setForm(emptyForm);
     },
-    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Güncellenemedi'), variant: 'destructive' }),
+    onError: (e: unknown) => toast({
+      title: t('common.error'),
+      description: errorMessage(e, t('admin.popups.updateFailed')),
+      variant: 'destructive',
+    }),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/popups/${id}`),
     onSuccess: () => {
-      toast({ title: 'Pop-up silindi' });
+      toast({ title: t('admin.popups.deleted') });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/popups'] });
     },
-    onError: (e: unknown) => toast({ title: 'Hata', description: errorMessage(e, 'Silinemedi'), variant: 'destructive' }),
+    onError: (e: unknown) => toast({
+      title: t('common.error'),
+      description: errorMessage(e, t('admin.popups.deleteFailed')),
+      variant: 'destructive',
+    }),
   });
 
   const buildPayload = (s: FormState) => ({
@@ -206,7 +203,7 @@ export default function AdminPopups() {
 
   const handleCreate = () => {
     if (!form.title.trim() || !form.content.trim()) {
-      toast({ title: 'Hata', description: 'Başlık ve içerik zorunludur', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('admin.popups.validationError'), variant: 'destructive' });
       return;
     }
     createMut.mutate(buildPayload(form));
@@ -215,7 +212,7 @@ export default function AdminPopups() {
   const handleUpdate = () => {
     if (!editing) return;
     if (!form.title.trim() || !form.content.trim()) {
-      toast({ title: 'Hata', description: 'Başlık ve içerik zorunludur', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('admin.popups.validationError'), variant: 'destructive' });
       return;
     }
     updateMut.mutate({ id: editing.id, payload: buildPayload(form) });
@@ -247,9 +244,13 @@ export default function AdminPopups() {
       const url = json?.url || json?.fileUrl || json?.path;
       if (!url) throw new Error('URL not returned');
       setForm((f) => ({ ...f, imageUrl: url }));
-      toast({ title: 'Görsel yüklendi' });
+      toast({ title: t('admin.popups.imageUploaded') });
     } catch (e: unknown) {
-      toast({ title: 'Yükleme hatası', description: errorMessage(e, 'Yüklenemedi'), variant: 'destructive' });
+      toast({
+        title: t('admin.popups.imageUploadFailed'),
+        description: errorMessage(e, t('admin.popups.createFailed')),
+        variant: 'destructive',
+      });
     } finally {
       setUploading(false);
     }
@@ -258,7 +259,7 @@ export default function AdminPopups() {
   const renderForm = () => (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="popup-title">Başlık *</Label>
+        <Label htmlFor="popup-title">{t('admin.popups.titleLabel')}</Label>
         <Input
           id="popup-title"
           value={form.title}
@@ -268,7 +269,7 @@ export default function AdminPopups() {
       </div>
 
       <div>
-        <Label htmlFor="popup-content">İçerik *</Label>
+        <Label htmlFor="popup-content">{t('admin.popups.contentLabel')}</Label>
         <Textarea
           id="popup-content"
           rows={5}
@@ -279,7 +280,7 @@ export default function AdminPopups() {
       </div>
 
       <div>
-        <Label>Görsel (opsiyonel)</Label>
+        <Label>{t('admin.popups.imageLabel')}</Label>
         <div className="flex items-center gap-2 flex-wrap">
           <Input
             placeholder="https://..."
@@ -295,7 +296,7 @@ export default function AdminPopups() {
             data-testid="button-popup-upload-image"
           >
             {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImageIcon className="w-4 h-4 mr-2" />}
-            Yükle
+            {t('admin.popups.upload')}
           </Button>
           <input
             ref={fileInputRef}
@@ -318,7 +319,7 @@ export default function AdminPopups() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="popup-link-url">Link URL (opsiyonel)</Label>
+          <Label htmlFor="popup-link-url">{t('admin.popups.linkUrlLabel')}</Label>
           <Input
             id="popup-link-url"
             placeholder="https://..."
@@ -328,10 +329,10 @@ export default function AdminPopups() {
           />
         </div>
         <div>
-          <Label htmlFor="popup-link-text">Link Metni</Label>
+          <Label htmlFor="popup-link-text">{t('admin.popups.linkTextLabel')}</Label>
           <Input
             id="popup-link-text"
-            placeholder="Daha fazla bilgi"
+            placeholder={t('admin.popups.linkTextPlaceholder')}
             value={form.linkText}
             onChange={(e) => setForm((f) => ({ ...f, linkText: e.target.value }))}
             data-testid="input-popup-link-text"
@@ -341,7 +342,7 @@ export default function AdminPopups() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <Label>Hedef Kitle</Label>
+          <Label>{t('admin.popups.audienceLabel')}</Label>
           <Select
             value={form.targetAudience}
             onValueChange={(v: Popup['targetAudience']) =>
@@ -350,37 +351,37 @@ export default function AdminPopups() {
           >
             <SelectTrigger data-testid="select-popup-audience"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tümü</SelectItem>
-              <SelectItem value="agents">Tüm Acenteler</SelectItem>
-              <SelectItem value="specific">Belirli Acenteler</SelectItem>
+              <SelectItem value="all">{t('admin.popups.audienceAll')}</SelectItem>
+              <SelectItem value="agents">{t('admin.popups.audienceAgents')}</SelectItem>
+              <SelectItem value="specific">{t('admin.popups.audienceSpecific')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Sıklık</Label>
+          <Label>{t('admin.popups.frequencyLabel')}</Label>
           <Select
             value={form.frequency}
             onValueChange={(v: Popup['frequency']) => setForm((f) => ({ ...f, frequency: v }))}
           >
             <SelectTrigger data-testid="select-popup-frequency"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="every_session">Her oturum</SelectItem>
-              <SelectItem value="every_login">Her giriş</SelectItem>
-              <SelectItem value="once_per_user">Kullanıcı başına bir kez</SelectItem>
+              <SelectItem value="every_session">{t('admin.popups.freqSession')}</SelectItem>
+              <SelectItem value="every_login">{t('admin.popups.freqLogin')}</SelectItem>
+              <SelectItem value="once_per_user">{t('admin.popups.freqOnce')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label>Durum</Label>
+          <Label>{t('admin.popups.statusLabel')}</Label>
           <Select
             value={form.status}
             onValueChange={(v: Popup['status']) => setForm((f) => ({ ...f, status: v }))}
           >
             <SelectTrigger data-testid="select-popup-status"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="draft">Taslak</SelectItem>
-              <SelectItem value="active">Aktif</SelectItem>
-              <SelectItem value="archived">Arşivli</SelectItem>
+              <SelectItem value="draft">{t('admin.popups.statusDraft')}</SelectItem>
+              <SelectItem value="active">{t('admin.popups.statusActive')}</SelectItem>
+              <SelectItem value="archived">{t('admin.popups.statusArchived')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -388,10 +389,10 @@ export default function AdminPopups() {
 
       {form.targetAudience === 'specific' && (
         <div>
-          <Label>Acenteler</Label>
+          <Label>{t('admin.popups.agenciesLabel')}</Label>
           <div className="border border-border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
             {agencies.length === 0 && (
-              <p className="text-sm text-muted-foreground">Acente bulunamadı.</p>
+              <p className="text-sm text-muted-foreground">{t('admin.popups.noAgencies')}</p>
             )}
             {agencies.map((a) => {
               const checked = form.targetAgencyIds.includes(a.id);
@@ -418,7 +419,7 @@ export default function AdminPopups() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="popup-starts-at">Başlangıç (opsiyonel)</Label>
+          <Label htmlFor="popup-starts-at">{t('admin.popups.startsAt')}</Label>
           <Input
             id="popup-starts-at"
             type="datetime-local"
@@ -428,7 +429,7 @@ export default function AdminPopups() {
           />
         </div>
         <div>
-          <Label htmlFor="popup-expires-at">Bitiş (opsiyonel)</Label>
+          <Label htmlFor="popup-expires-at">{t('admin.popups.expiresAt')}</Label>
           <Input
             id="popup-expires-at"
             type="datetime-local"
@@ -441,13 +442,31 @@ export default function AdminPopups() {
     </div>
   );
 
+  const freqLabel: Record<Popup['frequency'], string> = {
+    every_session: t('admin.popups.freqLabelSession'),
+    every_login: t('admin.popups.freqLabelLogin'),
+    once_per_user: t('admin.popups.freqLabelOnce'),
+  };
+  const audienceLabel: Record<Popup['targetAudience'], string> = {
+    all: t('admin.popups.audienceLabelAll'),
+    agents: t('admin.popups.audienceLabelAgents'),
+    specific: t('admin.popups.audienceLabelSpecific'),
+  };
+  const statusLabel: Record<Popup['status'], string> = {
+    active: t('admin.popups.statusLabelActive'),
+    draft: t('admin.popups.statusLabelDraft'),
+    archived: t('admin.popups.statusLabelArchived'),
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="heading-popups">Pop-up Reklamlar</h1>
+          <h1 className="text-3xl font-bold text-foreground" data-testid="heading-popups">
+            {t('admin.popups.title')}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Acentelere dashboard girişinde gösterilecek modal duyuruları yönetin.
+            {t('admin.popups.subtitle')}
           </p>
         </div>
 
@@ -455,18 +474,20 @@ export default function AdminPopups() {
           <DialogTrigger asChild>
             <Button data-testid="button-create-popup">
               <Plus className="w-4 h-4 mr-2" />
-              Yeni Pop-up
+              {t('admin.popups.newPopup')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Yeni Pop-up Oluştur</DialogTitle>
+              <DialogTitle>{t('admin.popups.createTitle')}</DialogTitle>
             </DialogHeader>
             {renderForm()}
             <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>İptal</Button>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                {t('admin.popups.cancel')}
+              </Button>
               <Button onClick={handleCreate} disabled={createMut.isPending} data-testid="button-submit-create-popup">
-                {createMut.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
+                {createMut.isPending ? t('admin.popups.creating') : t('admin.popups.create')}
               </Button>
             </div>
           </DialogContent>
@@ -477,7 +498,7 @@ export default function AdminPopups() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="w-5 h-5" />
-            Pop-up Listesi ({popups.length})
+            {t('admin.popups.listTitle', { count: popups.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -488,20 +509,20 @@ export default function AdminPopups() {
           ) : popups.length === 0 ? (
             <div className="text-center py-12">
               <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Henüz hiç pop-up oluşturulmadı.</p>
+              <p className="text-muted-foreground">{t('admin.popups.empty')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Başlık</TableHead>
-                    <TableHead>Hedef</TableHead>
-                    <TableHead>Sıklık</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead>Tarih Aralığı</TableHead>
-                    <TableHead>Oluşturulma</TableHead>
-                    <TableHead className="text-right">İşlem</TableHead>
+                    <TableHead>{t('admin.popups.colTitle')}</TableHead>
+                    <TableHead>{t('admin.popups.colAudience')}</TableHead>
+                    <TableHead>{t('admin.popups.colFrequency')}</TableHead>
+                    <TableHead>{t('admin.popups.colStatus')}</TableHead>
+                    <TableHead>{t('admin.popups.colDateRange')}</TableHead>
+                    <TableHead>{t('admin.popups.colCreated')}</TableHead>
+                    <TableHead className="text-right">{t('admin.popups.colAction')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -511,9 +532,15 @@ export default function AdminPopups() {
                         <div className="font-medium truncate">{p.title}</div>
                         <div className="text-xs text-muted-foreground truncate">{p.content}</div>
                       </TableCell>
-                      <TableCell><Badge variant="outline">{AUDIENCE_LABEL[p.targetAudience]}</Badge></TableCell>
-                      <TableCell><span className="text-sm">{FREQ_LABEL[p.frequency]}</span></TableCell>
-                      <TableCell><Badge variant={STATUS_VARIANT[p.status]}>{STATUS_LABEL[p.status]}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{audienceLabel[p.targetAudience]}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{freqLabel[p.frequency]}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_VARIANT[p.status]}>{statusLabel[p.status]}</Badge>
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {p.startsAt ? dayjs(p.startsAt).format('DD MMM YYYY') : '—'}
                         {' → '}
@@ -540,18 +567,18 @@ export default function AdminPopups() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Pop-up'ı sil?</AlertDialogTitle>
+                                <AlertDialogTitle>{t('admin.popups.deleteTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  "{p.title}" silinecek. Bu işlem geri alınamaz.
+                                  {t('admin.popups.deleteDesc', { title: p.title })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogCancel>{t('admin.popups.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => deleteMut.mutate(p.id)}
                                   data-testid={`button-confirm-delete-${p.id}`}
                                 >
-                                  Sil
+                                  {t('admin.popups.delete')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -570,13 +597,15 @@ export default function AdminPopups() {
       <Dialog open={isEditOpen} onOpenChange={(o) => { if (!o) { setIsEditOpen(false); setEditing(null); } else setIsEditOpen(o); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Pop-up'ı Düzenle</DialogTitle>
+            <DialogTitle>{t('admin.popups.editTitle')}</DialogTitle>
           </DialogHeader>
           {renderForm()}
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="outline" onClick={() => { setIsEditOpen(false); setEditing(null); }}>İptal</Button>
+            <Button variant="outline" onClick={() => { setIsEditOpen(false); setEditing(null); }}>
+              {t('admin.popups.cancel')}
+            </Button>
             <Button onClick={handleUpdate} disabled={updateMut.isPending} data-testid="button-submit-edit-popup">
-              {updateMut.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              {updateMut.isPending ? t('admin.popups.saving') : t('admin.popups.save')}
             </Button>
           </div>
         </DialogContent>

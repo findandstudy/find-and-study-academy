@@ -12,6 +12,7 @@ import {
   ExternalLink, Search, Home, X, Archive,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/CountryFlag';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ interface FolderContent {
   imageUrl: string | null;
   displayName: string | null;
   fileSize: string | null;
+  folderId?: string | null;
   updatedAt: string;
 }
 
@@ -100,13 +102,13 @@ interface ToolbarProps {
 }
 
 function PartnerZoneToolbar(props: ToolbarProps) {
-  // Local input state debounced (250ms) before propagating to parent filter state
+  const { t } = useTranslation();
   const [localSearch, setLocalSearch] = useState(props.search);
   useEffect(() => { setLocalSearch(props.search); }, [props.search]);
   useEffect(() => {
     if (localSearch === props.search) return;
-    const t = setTimeout(() => props.onSearchChange(localSearch), 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => props.onSearchChange(localSearch), 250);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSearch]);
 
@@ -117,20 +119,23 @@ function PartnerZoneToolbar(props: ToolbarProps) {
         <Input
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
-          placeholder="Ara..."
+          placeholder={t('agent.partnerZone.searchPlaceholder')}
           className="pl-9"
           data-testid="input-partner-search"
         />
       </div>
       <Select value={props.country} onValueChange={props.onCountryChange}>
         <SelectTrigger className="w-full sm:w-44" data-testid="select-partner-country">
-          <SelectValue placeholder="Ülke" />
+          <SelectValue />
         </SelectTrigger>
         <SelectContent className="max-h-72">
-          <SelectItem value="all">Tüm ülkeler</SelectItem>
+          <SelectItem value="all">{t('agent.partnerZone.allCountries')}</SelectItem>
           {props.countries.map((c) => (
             <SelectItem key={c.code} value={c.code}>
-              {c.name}
+              <span className="inline-flex items-center gap-2">
+                <CountryFlag code={c.code} size="sm" />
+                {c.name}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -141,10 +146,10 @@ function PartnerZoneToolbar(props: ToolbarProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tüm türler</SelectItem>
-            <SelectItem value="document">Belge</SelectItem>
-            <SelectItem value="video">Video</SelectItem>
-            <SelectItem value="image">Görsel</SelectItem>
+            <SelectItem value="all">{t('agent.partnerZone.allTypes')}</SelectItem>
+            <SelectItem value="document">{t('common.document')}</SelectItem>
+            <SelectItem value="video">{t('common.video')}</SelectItem>
+            <SelectItem value="image">{t('common.image')}</SelectItem>
           </SelectContent>
         </Select>
       )}
@@ -153,8 +158,8 @@ function PartnerZoneToolbar(props: ToolbarProps) {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="newest">Yeni → Eski</SelectItem>
-          <SelectItem value="oldest">Eski → Yeni</SelectItem>
+          <SelectItem value="newest">{t('agent.partnerZone.newestFirst')}</SelectItem>
+          <SelectItem value="oldest">{t('agent.partnerZone.oldestFirst')}</SelectItem>
           <SelectItem value="az">A → Z</SelectItem>
           <SelectItem value="za">Z → A</SelectItem>
         </SelectContent>
@@ -163,85 +168,64 @@ function PartnerZoneToolbar(props: ToolbarProps) {
   );
 }
 
-// ─── Folder card ────────────────────────────────────────────────────────────
+// ─── Folder card ─────────────────────────────────────────────────────────────
 
-function FolderCard({
-  folder,
-  countries,
-  onClick,
-}: {
+interface FolderCardProps {
   folder: PartnerFolder;
   countries: CountryItem[];
   onClick: () => void;
-}) {
-  const country = countries.find((c) => c.code === folder.countryCode) ?? null;
+}
+
+function FolderCard({ folder: f, countries, onClick }: FolderCardProps) {
+  const country = countries.find((c) => c.code === f.countryCode) ?? null;
   return (
     <button
+      type="button"
+      className="rounded-xl border overflow-hidden text-left w-full hover-elevate"
       onClick={onClick}
-      className="group relative rounded-xl overflow-hidden border hover-elevate text-left w-full"
-      data-testid={`folder-card-${folder.id}`}
+      data-testid={`folder-card-${f.id}`}
     >
-      <div className="relative aspect-square overflow-hidden bg-muted">
-        {folder.coverImageUrl ? (
-          <img
-            src={folder.coverImageUrl}
-            alt={folder.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
+        {f.coverImageUrl ? (
+          <img src={f.coverImageUrl} alt={f.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Folder className="w-20 h-20 text-muted-foreground opacity-20" />
-          </div>
+          <Folder className="w-16 h-16 text-muted-foreground opacity-20" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-3 space-y-1">
-          <p className="text-white font-semibold text-sm leading-tight drop-shadow-sm line-clamp-2">
-            {folder.name}
-          </p>
-          <div className="flex items-center justify-between gap-2 text-white/85 text-xs">
-            {country ? (
-              <span className="inline-flex items-center gap-1.5">
-                <CountryFlag code={country.code} size="sm" />
-                <span className="truncate max-w-[100px]">{country.name}</span>
-              </span>
-            ) : (
-              <span />
-            )}
-            <span className="inline-flex items-center gap-1 shrink-0">
-              {(folder.subfolderCount ?? 0) > 0 && (
-                <span className="inline-flex items-center gap-0.5">
-                  <Folder className="w-3 h-3" />
-                  {folder.subfolderCount}
-                </span>
-              )}
-              {(folder.contentCount ?? 0) > 0 && (
-                <span className="inline-flex items-center gap-0.5">
-                  <File className="w-3 h-3" />
-                  {folder.contentCount}
-                </span>
-              )}
+      </div>
+      <div className="p-3 space-y-1.5">
+        <p className="font-semibold text-sm leading-tight line-clamp-2">{f.name}</p>
+        <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground">
+          {country ? (
+            <span className="inline-flex items-center gap-1.5 truncate">
+              <CountryFlag code={country.code} size="sm" />
+              <span className="truncate">{country.name}</span>
             </span>
-          </div>
+          ) : (
+            <span />
+          )}
+          {(f.contentCount ?? 0) > 0 && (
+            <span className="shrink-0 inline-flex items-center gap-0.5">
+              <File className="w-3 h-3" />
+              {f.contentCount}
+            </span>
+          )}
         </div>
       </div>
     </button>
   );
 }
 
-// ─── Content card with dual Aç + İndir buttons ─────────────────────────────
+// ─── Content card with dual Open + Download buttons ──────────────────────────
 
 interface ContentCardProps {
   item: FolderContent;
   index: number;
   isSelected: boolean;
-  // React.MouseEvent is the common base for both the card div's click event
-  // (MouseEvent<HTMLDivElement>) and the Radix Checkbox's click event
-  // (MouseEvent<HTMLButtonElement>), so both call sites pass the event
-  // through naturally — no casts required.
   onSelectClick: (id: string, index: number, e: React.MouseEvent) => void;
 }
 
 function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProps) {
+  const { t } = useTranslation();
   const url = getContentUrl(item);
   const mt = getContentType(item);
 
@@ -262,8 +246,6 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
     document.body.removeChild(a);
   };
 
-  // Card-level click captures shift/ctrl for range/toggle selection. Plain
-  // clicks fall through to whatever the user actually clicked (Aç / İndir / etc).
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -281,8 +263,6 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
       data-state={isSelected ? 'selected' : undefined}
       data-testid={`content-card-${item.id}`}
     >
-      {/* Top-left selection checkbox overlay. Stops propagation so toggling
-          the checkbox doesn't also fire the card click handler. */}
       <div
         className="absolute top-2 left-2 z-10 rounded bg-background/90 p-1 shadow-sm"
         onClick={(e) => e.stopPropagation()}
@@ -293,7 +273,7 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
             e.stopPropagation();
             onSelectClick(item.id, index, e);
           }}
-          aria-label={`${item.displayName || item.title} seç`}
+          aria-label={`${item.displayName || item.title}`}
           data-testid={`checkbox-content-${item.id}`}
         />
       </div>
@@ -329,7 +309,7 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
             data-testid={`button-open-${item.id}`}
           >
             <ExternalLink className="w-4 h-4 mr-2" />
-            Aç
+            {t('agent.partnerZone.openFile')}
           </Button>
           <Button
             className="flex-1"
@@ -338,7 +318,7 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
             data-testid={`button-download-${item.id}`}
           >
             <Download className="w-4 h-4 mr-2" />
-            İndir
+            {t('agent.partnerZone.downloadFile')}
           </Button>
         </div>
       </div>
@@ -346,7 +326,7 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
   );
 }
 
-// ─── Sorting / filtering helpers ───────────────────────────────────────────
+// ─── Sorting / filtering helpers ─────────────────────────────────────────────
 
 function sortFolders(list: PartnerFolder[], sort: SortKey): PartnerFolder[] {
   const arr = [...list];
@@ -372,39 +352,34 @@ function sortContents(list: FolderContent[], sort: SortKey): FolderContent[] {
   return arr;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export default function AgentPartnerZone() {
+  const { t } = useTranslation();
   const [, params] = useRoute('/agent/partner-zone/:folderId');
   const [, navigate] = useLocation();
   const folderId = params?.folderId ?? null;
 
-  // Toolbar state — kept in component state. Reset between list ↔ detail views naturally.
   const [search, setSearch] = useState('');
   const [country, setCountry] = useState('all');
   const [fileType, setFileType] = useState<FileTypeFilter>('all');
   const [sort, setSort] = useState<SortKey>('newest');
 
-  // Multi-select state for bulk ZIP download. Cleared whenever the
-  // viewed folder changes so selections don't leak across navigation.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   const [isZipping, setIsZipping] = useState(false);
   const zipAbortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
+
   useEffect(() => {
     setSelectedIds(new Set());
     setLastClickedIndex(null);
-    // Cancel any in-flight ZIP request when navigating between folders so a
-    // long-running download for the previous folder doesn't keep streaming
-    // (and doesn't surface a misleading toast for the new view).
     return () => {
       zipAbortRef.current?.abort();
       zipAbortRef.current = null;
     };
   }, [folderId]);
 
-  // Active countries (for country select)
   const { data: countriesData } = useQuery<{ countries: CountryItem[] }>({
     queryKey: ['/api/public/countries'],
     queryFn: async () => {
@@ -415,7 +390,6 @@ export default function AgentPartnerZone() {
   });
   const countries = (countriesData?.countries ?? []).filter((c) => c.status === 'active');
 
-  // Folder list (root or under a parent — value `parentId=root` for root)
   const listParentParam = folderId ?? 'root';
   const { data: foldersData, isLoading: foldersLoading } = useQuery<{ folders: PartnerFolder[] }>({
     queryKey: ['/api/partner-folders', { parentId: listParentParam }],
@@ -425,10 +399,9 @@ export default function AgentPartnerZone() {
       });
       return r.json();
     },
-    enabled: !folderId, // only used on root view
+    enabled: !folderId,
   });
 
-  // Folder detail
   const { data: detailData, isLoading: detailLoading } = useQuery<{
     folder: PartnerFolder;
     contents: FolderContent[];
@@ -451,118 +424,98 @@ export default function AgentPartnerZone() {
   const detailContents = detailData?.contents ?? [];
   const breadcrumb = detailData?.breadcrumb ?? [];
 
-  // ─── Filtering ───────────────────────────────────────────────────────────
+  // ─── Filtering ─────────────────────────────────────────────────────────────
 
   const filteredRootFolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
       rootFolders.filter((f) => {
+        if (q && !f.name.toLowerCase().includes(q)) return false;
         if (country !== 'all' && f.countryCode !== country) return false;
-        if (q) {
-          const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
         return true;
       }),
       sort,
     );
-  }, [rootFolders, country, search, sort]);
+  }, [rootFolders, search, country, sort]);
 
   const filteredDetailSubfolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortFolders(
       detailSubfolders.filter((f) => {
+        if (q && !f.name.toLowerCase().includes(q)) return false;
         if (country !== 'all' && f.countryCode !== country) return false;
-        if (q) {
-          const hay = `${f.name} ${f.description ?? ''} ${f.categoryTag ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
         return true;
       }),
       sort,
     );
-  }, [detailSubfolders, country, search, sort]);
+  }, [detailSubfolders, search, country, sort]);
 
   const filteredDetailContents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return sortContents(
-      detailContents.filter((c) => {
-        if (fileType !== 'all' && getContentType(c) !== fileType) return false;
-        if (q) {
-          const hay = `${c.title} ${c.description ?? ''} ${c.displayName ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
+      detailContents.filter((item) => {
+        const name = (item.displayName ?? item.title).toLowerCase();
+        if (q && !name.includes(q)) return false;
+        if (fileType !== 'all' && getContentType(item) !== fileType) return false;
         return true;
       }),
       sort,
     );
-  }, [detailContents, fileType, search, sort]);
+  }, [detailContents, search, fileType, sort]);
 
-  // ─── Selection helpers (operate on filteredDetailContents) ────────────
-  // Plain checkbox click toggles a single id; shift+click extends a contiguous
-  // range from the last clicked anchor; ctrl/cmd+click is treated as a toggle.
-  const toggleSingleSelection = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
+  // ─── Selection helpers ─────────────────────────────────────────────────────
+
   const handleSelectClick = (id: string, index: number, e: React.MouseEvent) => {
     if (e.shiftKey && lastClickedIndex !== null) {
-      const [lo, hi] = lastClickedIndex <= index
-        ? [lastClickedIndex, index]
-        : [index, lastClickedIndex];
+      const min = Math.min(lastClickedIndex, index);
+      const max = Math.max(lastClickedIndex, index);
+      const range = filteredDetailContents.slice(min, max + 1).map((item) => item.id);
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        for (let i = lo; i <= hi; i++) {
-          const it = filteredDetailContents[i];
-          if (it) next.add(it.id);
-        }
+        range.forEach((rid) => next.add(rid));
         return next;
       });
     } else {
-      toggleSingleSelection(id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setLastClickedIndex(index);
     }
-    setLastClickedIndex(index);
   };
+
+  const selectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      filteredDetailContents.forEach((item) => next.add(item.id));
+      return next;
+    });
+    setLastClickedIndex(null);
+  };
+
   const clearSelection = () => {
     setSelectedIds(new Set());
     setLastClickedIndex(null);
   };
-  const selectAllVisible = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      filteredDetailContents.forEach((c) => next.add(c.id));
-      return next;
-    });
-    setLastClickedIndex(null);
-  };
 
-  // Stream a folder ZIP via the public endpoint. Two callsites share this:
-  //   - "Seçilenleri ZIP olarak indir" (selection mode → query string `?ids=...`)
-  //   - "Tüm klasörü ZIP olarak indir" (whole-folder mode → query string `?all=true`)
-  // Uses fetch+blob so we can attach the x-user-id auth header that anchor
-  // <a download> can't carry. Server-side response body still streams from
-  // archiver, so the server never holds the whole archive in memory.
-  const downloadFolderZip = async (mode: 'selection' | 'all') => {
-    if (!folderId || isZipping) return;
+  // ─── ZIP download ──────────────────────────────────────────────────────────
+
+  const downloadFolderZip = async (mode: 'all' | 'selection') => {
+    if (isZipping) return;
     const ids = mode === 'selection' ? Array.from(selectedIds) : [];
-    if (mode === 'selection' && ids.length === 0) return;
     setIsZipping(true);
-    // Allow cancellation if the user navigates away while the request is open.
     const controller = new AbortController();
     zipAbortRef.current = controller;
     try {
-      const qs = mode === 'selection'
-        ? `ids=${encodeURIComponent(ids.join(','))}`
-        : 'all=true';
+      const qs = mode === 'selection' ? `ids=${ids.join(',')}` : '';
       const r = await fetch(
         `/api/partner-folders/${folderId}/zip?${qs}`,
         { headers: authHeaders(), signal: controller.signal },
       );
       if (!r.ok) {
-        let msg = 'ZIP indirilemedi';
+        let msg = t('agent.partnerZone.downloadFailed');
         try {
           const ct = r.headers.get('content-type') ?? '';
           if (ct.includes('application/json')) {
@@ -570,11 +523,10 @@ export default function AgentPartnerZone() {
             if (j?.message) msg = j.message;
           }
         } catch { /* ignore */ }
-        toast({ title: 'İndirme başarısız', description: msg, variant: 'destructive' });
+        toast({ title: t('agent.partnerZone.downloadFailed'), description: msg, variant: 'destructive' });
         return;
       }
       const blob = await r.blob();
-      // Try to honor the server-supplied filename; fall back to folder name.
       const cd = r.headers.get('content-disposition') ?? '';
       const m = /filename="?([^";]+)"?/i.exec(cd);
       const filename = m?.[1] ?? `${detailFolder?.name ?? 'partner-zone'}.zip`;
@@ -587,16 +539,16 @@ export default function AgentPartnerZone() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast({
-        title: 'İndirme tamam',
+        title: t('agent.partnerZone.downloadOk'),
         description: mode === 'selection'
-          ? `${ids.length} dosya ZIP olarak indirildi.`
-          : 'Klasördeki tüm yayında dosyalar ZIP olarak indirildi.',
+          ? t('agent.partnerZone.downloadOkSelected', { count: ids.length })
+          : t('agent.partnerZone.downloadOkAll'),
       });
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
       toast({
-        title: 'İndirme başarısız',
-        description: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+        title: t('agent.partnerZone.downloadFailed'),
+        description: t('agent.partnerZone.downloadError'),
         variant: 'destructive',
       });
     } finally {
@@ -607,10 +559,6 @@ export default function AgentPartnerZone() {
   const downloadSelectedZip = () => downloadFolderZip('selection');
   const downloadFullFolderZip = () => downloadFolderZip('all');
 
-  // Whether the folder header's "Tüm klasörü ZIP olarak indir" button is
-  // useful: only when there is at least one published file with a local
-  // /uploads/ asset (remote URLs are skipped server-side, so we mirror the
-  // same eligibility check here so the button doesn't tease an empty ZIP).
   const downloadableContentCount = useMemo(
     () => detailContents.filter((c) => {
       const url = c.documentUrl ?? c.imageUrl ?? c.videoUrl ?? null;
@@ -619,7 +567,7 @@ export default function AgentPartnerZone() {
     [detailContents],
   );
 
-  // ─── Folder detail view ───────────────────────────────────────────────────
+  // ─── Folder detail view ────────────────────────────────────────────────────
 
   if (folderId) {
     return (
@@ -667,9 +615,6 @@ export default function AgentPartnerZone() {
               <p className="text-muted-foreground text-sm mt-1">{detailFolder.description}</p>
             )}
           </div>
-          {/* Whole-folder ZIP button. Hidden until the folder has at least one
-              downloadable published file (so we don't tease an empty ZIP).
-              The button is independent of the per-file selection toolbar. */}
           {downloadableContentCount > 0 && (
             <Button
               onClick={downloadFullFolderZip}
@@ -681,7 +626,7 @@ export default function AgentPartnerZone() {
               ) : (
                 <Archive className="w-4 h-4 mr-1.5" />
               )}
-              {isZipping ? 'Hazırlanıyor...' : 'Tüm klasörü ZIP olarak indir'}
+              {isZipping ? t('agent.partnerZone.preparing') : t('agent.partnerZone.downloadZip')}
             </Button>
           )}
         </div>
@@ -703,7 +648,7 @@ export default function AgentPartnerZone() {
         {detailLoading ? (
           <div className="flex justify-center py-20 text-muted-foreground gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Yükleniyor...</span>
+            <span>{t('agent.partnerZone.loading')}</span>
           </div>
         ) : (
           <div className="space-y-8">
@@ -711,7 +656,7 @@ export default function AgentPartnerZone() {
             {filteredDetailSubfolders.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Alt Klasörler
+                  {t('agent.partnerZone.subfolders')}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {filteredDetailSubfolders.map((f) => (
@@ -731,18 +676,15 @@ export default function AgentPartnerZone() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Dosyalar
+                    {t('common.files')}
                   </h2>
-                  {/* Selection toolbar — visible only when there is at least one
-                      selected content. "Tümünü seç" picks every visible row
-                      (respecting the current filters) and "Temizle" clears. */}
                   {selectedIds.size > 0 ? (
                     <div
                       className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1"
                       data-testid="bulk-selection-toolbar"
                     >
                       <Badge variant="secondary" data-testid="bulk-selection-count">
-                        {selectedIds.size} dosya seçildi
+                        {t('agent.partnerZone.filesSelected', { count: selectedIds.size })}
                       </Badge>
                       <Button
                         size="sm"
@@ -755,7 +697,7 @@ export default function AgentPartnerZone() {
                         ) : (
                           <Archive className="w-4 h-4 mr-1.5" />
                         )}
-                        {isZipping ? 'Hazırlanıyor...' : 'Seçilenleri ZIP olarak indir'}
+                        {isZipping ? t('agent.partnerZone.preparing') : t('agent.partnerZone.downloadSelected')}
                       </Button>
                       <Button
                         size="sm"
@@ -765,7 +707,7 @@ export default function AgentPartnerZone() {
                         data-testid="button-clear-selection"
                       >
                         <X className="w-3.5 h-3.5 mr-1" />
-                        Temizle
+                        {t('agent.partnerZone.clearSelection')}
                       </Button>
                     </div>
                   ) : (
@@ -775,7 +717,7 @@ export default function AgentPartnerZone() {
                       onClick={selectAllVisible}
                       data-testid="button-select-all-visible"
                     >
-                      Tümünü seç
+                      {t('agent.partnerZone.selectAll')}
                     </Button>
                   )}
                 </div>
@@ -799,8 +741,8 @@ export default function AgentPartnerZone() {
                 <File className="w-14 h-14 mx-auto mb-3 text-muted-foreground opacity-30" />
                 <p className="text-muted-foreground">
                   {search || country !== 'all' || fileType !== 'all'
-                    ? 'Filtrelere uygun klasör veya dosya bulunamadı.'
-                    : 'Bu klasörde henüz içerik bulunmuyor.'}
+                    ? t('agent.partnerZone.noContentFiltered')
+                    : t('agent.partnerZone.noContent')}
                 </p>
               </div>
             )}
@@ -810,7 +752,7 @@ export default function AgentPartnerZone() {
     );
   }
 
-  // ─── Root folder list view ────────────────────────────────────────────────
+  // ─── Root folder list view ─────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
@@ -820,7 +762,7 @@ export default function AgentPartnerZone() {
           Partner Zone
         </h1>
         <p className="text-muted-foreground mt-2">
-          Find And Study Academy tarafından paylaşılan kaynaklar, rehberler ve materyaller.
+          {t('agent.partnerZone.subtitle')}
         </p>
       </div>
 
@@ -839,16 +781,18 @@ export default function AgentPartnerZone() {
       {foldersLoading ? (
         <div className="flex justify-center py-20 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Yükleniyor...</span>
+          <span>{t('agent.partnerZone.loading')}</span>
         </div>
       ) : filteredRootFolders.length === 0 ? (
         <div className="text-center py-20">
           <Folder className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-25" />
           <p className="text-muted-foreground text-lg font-medium">
-            {search || country !== 'all' ? 'Eşleşen klasör bulunamadı.' : 'Henüz klasör bulunmuyor'}
+            {search || country !== 'all'
+              ? t('agent.partnerZone.noFoldersFiltered')
+              : t('agent.partnerZone.noFolders')}
           </p>
           {!search && country === 'all' && (
-            <p className="text-muted-foreground text-sm mt-1">İçerikler yakında eklenecek.</p>
+            <p className="text-muted-foreground text-sm mt-1">{t('agent.partnerZone.comingSoon')}</p>
           )}
         </div>
       ) : (

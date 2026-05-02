@@ -39,7 +39,7 @@ function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: placeholder || "İçeriği buraya yazın..." }),
+      Placeholder.configure({ placeholder: placeholder || "…" }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -64,27 +64,27 @@ function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   return (
     <div className="border rounded-md overflow-hidden">
       <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1.5">
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Kalın">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold">
           <Bold className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="İtalik">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic">
           <Italic className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="Başlık">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="Heading">
           <Heading2 className="w-4 h-4" />
         </ToolbarButton>
         <div className="w-px h-5 bg-border mx-1" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Madde listesi">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet list">
           <List className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Numaralı liste">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Ordered list">
           <ListOrdered className="w-4 h-4" />
         </ToolbarButton>
         <div className="w-px h-5 bg-border mx-1" />
-        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="Geri al">
+        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="Undo">
           <Undo className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="Yeniden yap">
+        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="Redo">
           <Redo className="w-4 h-4" />
         </ToolbarButton>
       </div>
@@ -163,6 +163,8 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     loadTranslationToForm(lang);
   };
 
+  const { t } = useTranslation();
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const sanitized = {
@@ -184,10 +186,10 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contents", content.id, "translations"] });
       const langLabel = SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel || selectedLang;
-      toast({ title: "Çeviri kaydedildi", description: `${langLabel} çevirisi başarıyla kaydedildi.` });
+      toast({ title: t("contentEditor.saved"), description: `${langLabel} ${t("contentEditor.savedDesc")}` });
     },
     onError: (err: Error) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -202,13 +204,13 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     },
     onSuccess: (_, lang) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contents", content.id, "translations"] });
-      toast({ title: "Çeviri silindi" });
+      toast({ title: t("contentEditor.deleted") });
       if (lang === selectedLang) {
         setForm({ title: "", description: "", content: "", status: "draft" });
       }
     },
     onError: (err: Error) => {
-      toast({ title: "Hata", description: err.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -220,21 +222,21 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary" />
-            Çok Dilli İçerik Düzenleyici
+            {t("contentEditor.title")}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium">{content.title}</span> için çeviri ekle veya düzenle
+            <span className="font-medium">{content.title}</span> — {t("contentEditor.subtitle")}
           </p>
         </DialogHeader>
 
         <div className="flex gap-4 mt-2">
           {/* Language selector panel */}
           <div className="w-44 shrink-0 space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Diller</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("contentEditor.languages")}</p>
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Yükleniyor...
+                {t("common.loading")}
               </div>
             ) : (
               SUPPORTED_LANGUAGES.map(lang => {
@@ -265,7 +267,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <PenLine className="w-4 h-4" />
-                {SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel} Çevirisi
+                {SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel} — {t("contentEditor.translation")}
               </h3>
               <div className="flex items-center gap-2">
                 {existingLangCodes.includes(selectedLang) && (
@@ -275,7 +277,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                     className="text-destructive"
                     onClick={() => deleteMutation.mutate(selectedLang)}
                     disabled={deleteMutation.isPending}
-                    title="Bu çeviriyi sil"
+                    title={t("contentEditor.deleteThisTranslation")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -285,8 +287,8 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Taslak</SelectItem>
-                    <SelectItem value="published">Yayında</SelectItem>
+                    <SelectItem value="draft">{t("common.draft")}</SelectItem>
+                    <SelectItem value="published">{t("common.published")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -294,7 +296,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
 
             <div className="space-y-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Başlık (boş bırakılırsa ana başlık kullanılır)</Label>
+                <Label className="text-xs text-muted-foreground">{t("contentEditor.titleLabel")}</Label>
                 <Input
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -304,23 +306,23 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground">Açıklama</Label>
+                <Label className="text-xs text-muted-foreground">{t("contentEditor.descriptionLabel")}</Label>
                 <Textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder={content.description || "Açıklama..."}
+                  placeholder={content.description || "…"}
                   className="mt-1 resize-none"
                   rows={2}
                 />
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">İçerik</Label>
+                <Label className="text-xs text-muted-foreground mb-1 block">{t("contentEditor.contentLabel")}</Label>
                 <RichEditor
                   key={`${content.id}-${selectedLang}`}
                   value={form.content}
                   onChange={html => setForm(f => ({ ...f, content: html }))}
-                  placeholder={`${SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel} dilinde içerik yazın...`}
+                  placeholder={t("contentEditor.contentPlaceholder", { lang: SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel ?? selectedLang })}
                 />
               </div>
             </div>
@@ -328,15 +330,15 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
             {/* Existing translations summary */}
             {translations.length > 0 && (
               <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Mevcut çeviriler</p>
+                <p className="text-xs text-muted-foreground mb-2">{t("contentEditor.existingTranslations")}</p>
                 <div className="flex flex-wrap gap-2">
-                  {translations.map(t => {
-                    const lang = SUPPORTED_LANGUAGES.find(l => l.code === t.language);
+                  {translations.map(tr => {
+                    const lang = SUPPORTED_LANGUAGES.find(l => l.code === tr.language);
                     return (
-                      <Badge key={t.language} variant={t.status === "published" ? "default" : "secondary"}>
+                      <Badge key={tr.language} variant={tr.status === "published" ? "default" : "secondary"}>
                         {lang && <span className={`fi fi-${lang.flag} mr-1`} aria-hidden="true" />}
-                        {lang?.nativeLabel || t.language}
-                        {t.status === "published" ? " · Yayında" : " · Taslak"}
+                        {lang?.nativeLabel || tr.language}
+                        {` · ${tr.status === "published" ? t("common.published") : t("common.draft")}`}
                       </Badge>
                     );
                   })}
@@ -347,12 +349,12 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose}>Kapat</Button>
+          <Button variant="outline" onClick={onClose}>{t("common.close")}</Button>
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Kaydediliyor...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("common.saving")}</>
             ) : (
-              <><Check className="w-4 h-4 mr-2" /> Çeviriyi Kaydet</>
+              <><Check className="w-4 h-4 mr-2" />{t("contentEditor.saveButton")}</>
             )}
           </Button>
         </DialogFooter>
