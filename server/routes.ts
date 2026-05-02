@@ -98,12 +98,14 @@ const quizUpdateSchema = insertQuizSchema.extend({
   }
 );
 
-// Authentication middleware - verify user session with server-side validation
+// Authentication middleware - verify the cookie-based session.
+// The user id lives in req.session.userId (set by /api/login). Header-based
+// "x-user-id" auth was removed because clients could forge it; cookies are
+// httpOnly and signed with SESSION_SECRET so they cannot be tampered with.
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    // Extract user ID from headers (client sends this from their session)
-    const userId = req.headers['x-user-id'] as string;
-    
+    const userId = req.session?.userId;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -112,12 +114,12 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     }
 
     // Server-side validation: Verify user exists in storage and get their actual role
-    const users = await storage.getUsers();
-    const user = users.find(u => u.id === userId);
-    
-    console.log('[AUTH] User lookup:', { userId, found: !!user, agencyId: user?.agencyId });
-    
+    const user = await storage.getUser(userId);
+
     if (!user) {
+      // Stale cookie pointing to a deleted user — destroy the session so the
+      // browser stops sending it.
+      req.session.destroy(() => {});
       return res.status(401).json({
         success: false,
         message: 'Invalid user credentials'
@@ -666,17 +668,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Support both bcrypt hash and plain text passwords (for backward compatibility)
-      let passwordMatch = false;
-      
-      // Check if password is bcrypt hashed (starts with $2a$, $2b$, or $2y$)
-      if (user.password.startsWith('$2')) {
-        passwordMatch = await bcrypt.compare(password, user.password);
-      } else {
-        // Plain text password comparison
-        passwordMatch = password === user.password;
+      // Bcrypt-only password verification. The legacy plaintext fallback was
+      // removed: any user record whose password is not a bcrypt hash MUST be
+      // re-issued a hashed password by an admin (or via password reset).
+      if (!user.password || !user.password.startsWith('$2')) {
+        console.warn(`[LOGIN] User ${user.email} has a non-bcrypt password — rejecting.`);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
       }
-      
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
       if (!passwordMatch) {
         return res.status(401).json({
           success: false,
@@ -685,7 +688,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Block login for accounts that have not been approved by an admin/staff yet.
-      // Strict check: anything other than 'active' (including null/undefined/empty string) is denied.
       if (user.status !== 'active') {
         return res.status(403).json({
           success: false,
@@ -693,6 +695,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Hesabınız henüz onaylanmadı. Yöneticilerimiz başvurunuzu inceledikten sonra giriş yapabileceksiniz.'
         });
       }
+
+      // Persist the authenticated user id in the cookie-based session. From
+      // this point on every request from this browser will be authenticated
+      // via the httpOnly session cookie, not via any client-supplied header.
+      req.session.userId = user.id;
+      // Force-save before responding so the Set-Cookie header is reliably
+      // attached to this response (avoids race with res.json on some stores).
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
 
       res.json({
         success: true,
@@ -713,6 +725,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Login failed'
       });
     }
+  });
+
+  // Logout — destroy the server-side session row and clear the browser cookie.
+  // Always returns success: even if the session was already gone, the user
+  // ends up in the desired "logged out" state.
+  app.post('/api/logout', (req, res) => {
+    const SESSION_COOKIE = 'fas.sid';
+    if (!req.session) {
+      res.clearCookie(SESSION_COOKIE);
+      return res.json({ success: true });
+    }
+    req.session.destroy((err) => {
+      res.clearCookie(SESSION_COOKIE);
+      if (err) {
+        console.error('[LOGOUT] session.destroy error:', err);
+        return res.status(500).json({ success: false, message: 'Logout failed' });
+      }
+      res.json({ success: true });
+    });
   });
 
   // Self-update language preference. Anyone with a valid session can change
@@ -5912,8 +5943,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Optional admin lookup so we can show verbose provider errors only to
-      // admin users (regular agents see a friendly generic message).
-      const callerId = req.header('x-user-id');
+      // admin users (regular agents see a friendly generic message). The
+      // chat endpoint is intentionally open to anonymous visitors, so the
+      // session cookie may be absent — that just means "non-admin".
+      const callerId = req.session?.userId;
       if (callerId) {
         try {
           const caller = await storage.getUser(callerId);
@@ -6367,7 +6400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/admin/contents/:id/translations/:lang — upsert a translation
   app.put('/api/admin/contents/:id/translations/:lang', requireAuth, requireAdminOrStaff, async (req, res) => {
     try {
-      const userId = req.headers['x-user-id'] as string;
+      const userId = (req as any).user?.id as string;
       const { title, description, content, status } = req.body;
       const translation = await storage.upsertContentTranslation({
         contentId: req.params.id,
