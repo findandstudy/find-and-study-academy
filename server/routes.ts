@@ -610,13 +610,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/settings/defaults', async (req, res) => {
     try {
       const settings = await storage.getSystemSettings();
-      const defaultCountry = settings.find(s => s.key === 'default_country_code');
-      const defaultCourse = settings.find(s => s.key === 'default_course_id');
+      const findVal = (key: string) => settings.find(s => s.key === key)?.value || null;
       res.json({
         success: true,
         defaults: {
-          default_country_code: defaultCountry?.value || null,
-          default_course_id: defaultCourse?.value || null,
+          default_country_code: findVal('default_country_code'),
+          default_course_id: findVal('default_course_id'),
+          platform_name: findVal('platform_name'),
+          support_email: findVal('support_email'),
         }
       });
     } catch (error) {
