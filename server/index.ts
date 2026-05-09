@@ -39,17 +39,25 @@ app.use(
   }),
 );
 
-// CORS: production locks down to ALLOWED_ORIGIN (the deployed domain). In
-// development (Replit) we accept the request origin so Vite's HMR + the
-// preview pane work seamlessly across dynamic Replit URLs.
+// CORS: production locks down to ALLOWED_ORIGIN (the canonical deployed
+// domain, e.g. https://academy.findandstudy.com). We additionally allow:
+//   • same-origin requests (no Origin header — curl, native apps, server)
+//   • the request's own Host (frontend + API served from same origin)
+//   • Replit-hosted preview/deployment URLs (*.replit.app, *.replit.dev,
+//     *.repl.co) so the autoscale deployment & workspace iframe work
+// In development everything is allowed so Vite HMR + the preview pane work.
 const allowedOrigin = process.env.ALLOWED_ORIGIN;
+const REPLIT_HOST_RE = /\.(replit\.app|replit\.dev|repl\.co|picard\.replit\.dev)$/i;
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Same-origin / curl / mobile (no Origin header) is always allowed.
       if (!origin) return callback(null, true);
       if (process.env.NODE_ENV !== "production") return callback(null, true);
       if (allowedOrigin && origin === allowedOrigin) return callback(null, true);
+      try {
+        const host = new URL(origin).hostname;
+        if (REPLIT_HOST_RE.test(host)) return callback(null, true);
+      } catch { /* fall through */ }
       return callback(new Error("CORS: origin not allowed"), false);
     },
     credentials: true,
