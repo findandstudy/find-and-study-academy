@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, enrichWithTurkishKeywords } from "./storage";
+import { storage, enrichWithTurkishKeywords, expandTurkishQueryTerms } from "./storage";
 import { 
   insertCertificateSchema, 
   insertAgencySchema, 
@@ -6088,49 +6088,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // (b) Platform content — Turkish-aware scored keyword match against
-      // published lessons / documents. Replaces the previous "first 4 rows
-      // that contain any token, body capped to 400 chars" approach which
-      // was both undersized for general "how does the platform work" questions
-      // AND blind to Turkish suffix inflection (so "başvuru" did not match a
-      // lesson titled "başvuruyu nasıl başlatırım").
+      // published lessons / documents. Uses the SAME query-expansion pipeline
+      // as storage.searchKnowledgeChunks (normalize → strip TR suffixes →
+      // expand TR→EN via shared dictionary + admin custom mappings) so that a
+      // Turkish query like "başvuruyu" or "yönetim" matches both the Excel
+      // knowledge base AND English course-content lessons consistently.
       //
-      // Scoring per row = 3×title hits + 2×description hits + 1×body hits.
-      // We also strip a small set of common Turkish suffixes from each query
-      // token (locative, ablative, possessive, plural) so "başvuruyu",
-      // "başvurudan", "başvurular" all collapse to "başvuru". Same suffix
-      // list as storage.searchKnowledgeChunks() so behavior stays consistent
-      // across both RAG sources.
+      // Scoring per row = 3×title hits + 2×description hits + 1×body hits,
+      // then top 6 rows, body cap 700 chars (was take-first-4 / 400 chars).
       {
-        const TR_SUFFIXES = [
-          'larinda','lerinde','larindan','lerinden',
-          'larina','lerine','sinden','sindan',
-          'ginden','gunden',
-          'sinde','sinda','ginde','gunde','giyle','guyle',
-          'larin','lerin','lardan','lerden','larda','lerde',
-          'gini','gunu','gine','gune',
-          'lari','leri','nden','ndan','nde','nda',
-          'nin','nun','sini','sinu',
-          'gin','gun',
-          'dir','tir','dur','tur',
-          'lar','ler','den','dan','ten','tan',
-          'de','da','te','ta','in','un','si','su','le','la',
-          'gi','gu','li','lu',
-        ];
-        const stripSuffix = (t: string): string => {
-          for (const sfx of TR_SUFFIXES) {
-            if (t.length >= sfx.length + 4 && t.endsWith(sfx)) return t.slice(0, -sfx.length);
-          }
-          return t;
-        };
-
-        const rawTokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
-        const queryTerms = new Set<string>();
-        for (const t of rawTokens) {
-          queryTerms.add(t);
-          const stem = stripSuffix(t);
-          if (stem !== t && stem.length > 2) queryTerms.add(stem);
-        }
-        const terms = Array.from(queryTerms);
+        let kwMappings: Awaited<ReturnType<typeof storage.getKeywordMappings>> = [];
+        try { kwMappings = await memoChat('kwMappings', () => storage.getKeywordMappings()); }
+        catch { /* non-fatal */ }
+        const expansion = expandTurkishQueryTerms(message, kwMappings);
+        const terms = expansion.terms;
 
         const countHits = (hay: string, term: string): number => {
           if (!hay || !term) return 0;

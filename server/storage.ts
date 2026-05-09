@@ -451,6 +451,212 @@ export function enrichWithTurkishKeywords(text: string, existingKeywords: string
   return (existingKeywords + ' ' + Array.from(added).join(' ')).trim();
 }
 
+// ── Shared Turkish-aware query expansion ────────────────────────────────────
+// Used by BOTH searchKnowledgeChunks() (knowledge-base RAG over Excel imports
+// in `knowledge_chunks`) AND the platform-content matcher in routes.ts (RAG
+// over published lessons/documents in `contents`). Keeping the suffix list
+// + TR→EN dictionary + expansion logic in one place ensures Turkish queries
+// behave identically against both data sources.
+export const TR_NORMALIZE = (s: string): string => (s || '').toLowerCase()
+  .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
+  .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+  .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+
+const TR_SUFFIXES_LIST: string[] = [
+  'larinda','lerinde','larindan','lerinden',
+  'larina','lerine','sinden','sindan',
+  'ginden','gunden',
+  'sinde','sinda','ginde','gunde','giyle','guyle',
+  'larin','lerin','lardan','lerden','larda','lerde',
+  'gini','gunu','gine','gune',
+  'lari','leri','nden','ndan','nde','nda',
+  'nin','nun','sini','sinu',
+  'gin','gun',
+  'dir','tir','dur','tur',
+  'lar','ler','den','dan','ten','tan',
+  'de','da','te','ta','in','un','sı','si','su','le','la',
+  'gi','gu','li','lu',
+];
+
+export const TR_STRIP_SUFFIX = (t: string): string => {
+  for (const sfx of TR_SUFFIXES_LIST) {
+    if (t.length >= sfx.length + 4 && t.endsWith(sfx)) return t.slice(0, -sfx.length);
+  }
+  return t;
+};
+
+// Built-in TR→EN dictionary. Mirrors the previous inline copy from
+// searchKnowledgeChunks. Custom admin-managed mappings are merged at call
+// time and take precedence (see expandTurkishQueryTerms).
+export const TR_TO_EN_BUILTIN: Record<string, string[]> = {
+  universite: ['university'], uni: ['university'],
+  universiteler: ['university', 'universities'],
+  universitesi: ['university'], universiteleri: ['universities'],
+  yuksekokul: ['school', 'college'], enstitu: ['institute'],
+  akademi: ['academy'], kolej: ['college'],
+  fakulte: ['faculty'], bolum: ['department'],
+  uygulamali: ['applied'], uygulama: ['applied', 'application'],
+  yonetim: ['management'], yonetimi: ['management'],
+  idari: ['administrative'], idare: ['administration'],
+  isletme: ['business'], isletmesi: ['business'],
+  iktisat: ['economics'], ekonomi: ['economics'],
+  muhasebe: ['accounting'], muhasebesi: ['accounting'],
+  finans: ['finance'], finansman: ['finance'],
+  bankacilik: ['banking'], sigortacilik: ['insurance'],
+  pazarlama: ['marketing'], reklamcilik: ['advertising'],
+  halkla: ['public relations'], iliskiler: ['relations'],
+  kamu: ['public'], siyaset: ['political', 'politics'],
+  saglik: ['health'], saglikli: ['health'],
+  tip: ['medicine'], tibbi: ['medical'],
+  hemsirelik: ['nursing'], hemsire: ['nursing'],
+  eczacilik: ['pharmacy'], eczaci: ['pharmacy'],
+  dis: ['dentistry'], dishekimligi: ['dentistry'],
+  veteriner: ['veterinary'],
+  fizyoterapi: ['physiotherapy'], fizik: ['physics'],
+  radyoloji: ['radiology'], beslenme: ['nutrition', 'dietetics'],
+  muhendislik: ['engineering'], muhendis: ['engineer'],
+  muhendisligi: ['engineering'], muhendisligini: ['engineering'],
+  muhendisliginde: ['engineering'], muhendisliginden: ['engineering'],
+  muhendisligine: ['engineering'], muhendisligin: ['engineering'],
+  bilgisayar: ['computer'], bilisim: ['informatics', 'information technology'],
+  bilgisayarla: ['computer'], bilgisayarli: ['computer', 'computerized'],
+  bilgisayarin: ['computer'],
+  yazilim: ['software'], donanim: ['hardware'],
+  elektrik: ['electrical'], elektronik: ['electronics'],
+  makine: ['mechanical'], mekatronik: ['mechatronics'],
+  endustri: ['industrial'], endustriyel: ['industrial'],
+  insaat: ['civil'], insaati: ['civil'],
+  mimarlik: ['architecture'], ic: ['interior'],
+  cevre: ['environmental'], cevresi: ['environmental'],
+  biyomedikal: ['biomedical'], biyomuhendislik: ['biomedical engineering'],
+  kimya: ['chemistry'], kimyasal: ['chemical'],
+  biyoloji: ['biology'], biyokimya: ['biochemistry'],
+  mikrobiyoloji: ['microbiology'], genetik: ['genetics'],
+  matematik: ['mathematics'], istatistik: ['statistics'],
+  aktuerya: ['actuarial'], veri: ['data'],
+  hukuk: ['law'], hukuku: ['law'],
+  sosyoloji: ['sociology'], sosyal: ['social'],
+  psikoloji: ['psychology'],
+  tarih: ['history'], cografya: ['geography'],
+  felsefe: ['philosophy'], felsefesi: ['philosophy'],
+  arkeoloji: ['archaeology'], antropoloji: ['anthropology'],
+  egitim: ['education'], egitimi: ['education'],
+  ogretmenlik: ['teaching', 'education'], ogretmen: ['teacher'],
+  rehberlik: ['guidance', 'counseling'], pdr: ['counseling'],
+  iletisim: ['communication'], gazetecilik: ['journalism'],
+  medya: ['media'], radyo: ['radio'], televizyon: ['television'],
+  sinema: ['cinema', 'film'], grafik: ['graphic'], tasarim: ['design'],
+  muzik: ['music'], tiyatro: ['theatre', 'theater'],
+  sanat: ['art'], resim: ['painting', 'art'],
+  turizm: ['tourism'], turistik: ['tourism'],
+  otel: ['hotel', 'hospitality'], otelcilik: ['hotel management'],
+  konaklama: ['hospitality', 'accommodation'],
+  gastronomi: ['gastronomy'], mutfak: ['culinary'],
+  tarim: ['agriculture'], orman: ['forestry'],
+  havacilik: ['aviation'], denizcilik: ['maritime'],
+  spor: ['sports'], beden: ['physical education'],
+  antrenorlik: ['coaching'], rekreasyon: ['recreation'],
+  ucret: ['fee', 'tuition'], ucretler: ['fee', 'tuition'],
+  fiyat: ['fee', 'tuition'], odeme: ['payment', 'fee'],
+  burs: ['scholarship'], burslu: ['scholarship'],
+  indirim: ['discount'],
+  sure: ['duration'], donem: ['semester', 'term'],
+  ay: ['month'], yil: ['year'],
+  basvuru: ['application'], kabul: ['admission'],
+  baslangic: ['intake'], giris: ['intake', 'entry'],
+  kayit: ['enrollment', 'registration'],
+  mezuniyet: ['graduation'], diploma: ['diploma', 'degree'],
+  sertifika: ['certificate'],
+  lisans: ['bachelor'], onlisans: ['associate'],
+  yukseklisans: ['master'], yuksek: ['master'],
+  doktora: ['phd', 'doctorate'],
+  uzaktan: ['distance'], hazirlik: ['preparatory'],
+  sehir: ['city'], ulke: ['country'],
+  turkiye: ['turkey'], almanya: ['germany'],
+  letonya: ['latvia'], cin: ['china'],
+  abd: ['usa', 'united states'],
+  dil: ['language'], ingilizce: ['english'], turkce: ['turkish'],
+  almanca: ['german'], rusca: ['russian'], cince: ['chinese'],
+  fransizca: ['french'], ispanyolca: ['spanish'],
+  tercume: ['translation'], ceviri: ['translation'],
+  dilbilimi: ['linguistics'],
+};
+
+export interface TurkishQueryExpansion {
+  /** Normalized query string (lowercase, ASCII-folded). */
+  normalized: string;
+  /** Tokens after normalize + suffix-strip + TR→EN expansion. Deduped. */
+  terms: string[];
+  /** True when `tok` (or its stripped stem) has a TR→EN dictionary entry. */
+  hasDictMatch: (tok: string) => boolean;
+}
+
+/**
+ * Expand a Turkish-language query into a normalized, suffix-stripped, and
+ * dictionary-translated set of search terms. Custom admin-managed mappings
+ * (from FindyKeywordMapping rows) override built-in entries when provided.
+ *
+ * Used by:
+ *   - storage.searchKnowledgeChunks() over `knowledge_chunks` (Excel KB)
+ *   - routes.ts platform-content matcher over `contents` (lessons/docs)
+ */
+export function expandTurkishQueryTerms(
+  query: string,
+  customMappings?: Array<{ turkishPhrase: string; englishEquivalents: string }>,
+): TurkishQueryExpansion {
+  const dict: Record<string, string[]> = { ...TR_TO_EN_BUILTIN };
+  if (customMappings) {
+    for (const m of customMappings) {
+      const key = TR_NORMALIZE(m.turkishPhrase.trim());
+      if (!key) continue;
+      const vals = m.englishEquivalents
+        .split(',')
+        .map(v => v.trim().toLowerCase())
+        .filter(Boolean);
+      if (vals.length > 0) dict[key] = vals;
+    }
+  }
+
+  // Prefix-aware lookup: exact match → 6-char prefix → 5-char → 4-char.
+  const lookup = (tok: string): string[] | undefined => {
+    if (dict[tok]) return dict[tok];
+    for (const preLen of [6, 5, 4]) {
+      if (tok.length < preLen) continue;
+      const pre = tok.slice(0, preLen);
+      for (const [k, v] of Object.entries(dict)) {
+        if (k.length >= preLen && k.slice(0, preLen) === pre) return v;
+      }
+    }
+    return undefined;
+  };
+
+  const normalized = TR_NORMALIZE(query.trim());
+  const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
+
+  const expanded = new Set<string>();
+  for (const t of rawTokens) {
+    expanded.add(t);
+    const stem = TR_STRIP_SUFFIX(t);
+    if (stem !== t && stem.length > 2) expanded.add(stem);
+    const enList = lookup(t) || lookup(stem);
+    if (enList) for (const en of enList) expanded.add(en);
+  }
+
+  // Phrase-level scan for multi-word dictionary keys (e.g. "spor bilimleri").
+  for (const [k, vList] of Object.entries(dict)) {
+    const normKey = TR_NORMALIZE(k);
+    if (normKey.length >= 4 && normalized.includes(normKey)) {
+      for (const en of vList) expanded.add(en);
+    }
+  }
+
+  return {
+    normalized,
+    terms: Array.from(expanded),
+    hasDictMatch: (tok: string) => !!(lookup(tok) || lookup(TR_STRIP_SUFFIX(tok))),
+  };
+}
+
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -1781,231 +1987,27 @@ export class DatabaseStorage implements IStorage {
     limit = 12,
     opts?: { university?: string; country?: string; city?: string }
   ): Promise<ScoredKnowledgeChunk[]> {
-    // Turkish-aware normalization so "Bahçeşehir" matches "Bahcesehir" etc.
-    const normalize = (s: string) => (s || '').toLowerCase()
-      .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
-      .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
-      .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+    // Turkish normalization + suffix stripping + TR→EN expansion now live in
+    // module-level helpers (TR_NORMALIZE, TR_STRIP_SUFFIX, expandTurkishQueryTerms)
+    // so the platform-content matcher in routes.ts can reuse the exact same
+    // pipeline. Keep local aliases so the rest of this method reads naturally.
+    const normalize = TR_NORMALIZE;
+    const stripSuffix = TR_STRIP_SUFFIX;
 
-    // Strip common Turkish suffixes (locative, ablative, dative, possessive,
-    // plural) so "burdurda" / "burdurdan" / "üniversitesinde" all collapse to
-    // their stems. Order matters — try the longest suffix first. We only
-    // strip when the remaining stem is at least 4 chars to avoid shredding
-    // short tokens like "var".
-    const TR_SUFFIXES = [
-      // 7-char suffixes
-      'larinda', 'lerinde', 'larindan', 'lerinden',
-      // 6-char suffixes
-      'larina', 'lerine', 'sinden', 'sindan',
-      // ğ-ending ablative (normalized ğ→g): "mühendisliğinden" → "muhendisliginden" → strip "ginden"
-      'ginden', 'gunden',
-      // 5-char suffixes
-      'sinde', 'sinda',
-      // ğ-ending locative: "mühendisliğinde" → strip "ginde"
-      'ginde', 'gunde',
-      // ğ-ending instrumental: "olduğuyla" → strip "guyla"
-      'giyle', 'guyle',
-      // 4-char suffixes
-      'larin', 'lerin', 'lardan', 'lerden', 'larda', 'lerde',
-      // ğ-ending accusative: "bilgisayarı" → already covered; "olduğunu" → strip "gunu"
-      'gini', 'gunu',
-      // ğ-ending dative: "mühendisliğine" → strip "gine"
-      'gine', 'gune',
-      // 3-char suffixes
-      'lari', 'leri', 'nden', 'ndan', 'nde', 'nda',
-      'nin', 'nun', 'sini', 'sinu',
-      // ğ-ending genitive: "mühendisliğin" → strip "gin"
-      'gin', 'gun',
-      'dir', 'tir', 'dur', 'tur',
-      'lar', 'ler', 'den', 'dan', 'ten', 'tan',
-      // 2-char suffixes
-      'de', 'da', 'te', 'ta', 'in', 'un', 'sı', 'si', 'su', 'le', 'la',
-      // ğ-ending bare possessive: "mühendisliği" → "muhendisligi" → strip "gi" → "muhendisli"
-      // adjective-forming suffix (burslu→burs, bilgisayarlı→bilgisayar)
-      'gi', 'gu', 'li', 'lu',
-    ];
-    const stripSuffix = (t: string): string => {
-      for (const sfx of TR_SUFFIXES) {
-        if (t.length >= sfx.length + 4 && t.endsWith(sfx)) {
-          return t.slice(0, -sfx.length);
-        }
-      }
-      return t;
-    };
+    // Pull admin-managed custom mappings; non-fatal on failure.
+    let customMappings: FindyKeywordMapping[] = [];
+    try { customMappings = await this.getKeywordMappings(); } catch { /* ignore */ }
 
-    // TR→EN dictionary — maps Turkish study-abroad vocabulary to the English
-    // equivalents that appear in the uploaded Excel knowledge base. Covers
-    // full words, common suffixed forms, AND partial stems so that a user
-    // typing "yönetim", "yönet", or even "yöne" can still resolve to
-    // "management". Keep focused on study-abroad nouns.
-    const TR_TO_EN: Record<string, string[]> = {
-      // ── Universities / institutions ──────────────────────────────────────
-      universite: ['university'], uni: ['university'],
-      universiteler: ['university', 'universities'],
-      universitesi: ['university'], universiteleri: ['universities'],
-      yuksekokul: ['school', 'college'], enstitu: ['institute'],
-      akademi: ['academy'], kolej: ['college'],
-      fakulte: ['faculty'], bolum: ['department'],
-      // ── Applied / management sciences (very common in TR uni names) ──────
-      uygulamali: ['applied'], uygulama: ['applied', 'application'],
-      yonetim: ['management'], yonetimi: ['management'],
-      idari: ['administrative'], idare: ['administration'],
-      isletme: ['business'], isletmesi: ['business'],
-      iktisat: ['economics'], ekonomi: ['economics'],
-      muhasebe: ['accounting'], muhasebesi: ['accounting'],
-      finans: ['finance'], finansman: ['finance'],
-      bankacilik: ['banking'], sigortacilik: ['insurance'],
-      pazarlama: ['marketing'], reklamcilik: ['advertising'],
-      halkla: ['public relations'], iliskiler: ['relations'],
-      kamu: ['public'], siyaset: ['political', 'politics'],
-      // ── Health sciences ───────────────────────────────────────────────────
-      saglik: ['health'], saglikli: ['health'],
-      tip: ['medicine'], tibbi: ['medical'],
-      hemsirelik: ['nursing'], hemsire: ['nursing'],
-      eczacilik: ['pharmacy'], eczaci: ['pharmacy'],
-      dis: ['dentistry'], dishekimligi: ['dentistry'],
-      veteriner: ['veterinary'],
-      fizyoterapi: ['physiotherapy'], fizik: ['physics'],
-      radyoloji: ['radiology'], beslenme: ['nutrition', 'dietetics'],
-      // ── Engineering & technology ──────────────────────────────────────────
-      muhendislik: ['engineering'], muhendis: ['engineer'],
-      // ğ-ending inflected forms of "mühendislik" that don't strip cleanly:
-      muhendisligi: ['engineering'], muhendisligini: ['engineering'],
-      muhendisliginde: ['engineering'], muhendisliginden: ['engineering'],
-      muhendisligine: ['engineering'], muhendisligin: ['engineering'],
-      bilgisayar: ['computer'], bilisim: ['informatics', 'information technology'],
-      // common inflected forms of "bilgisayar":
-      bilgisayarla: ['computer'], bilgisayarli: ['computer', 'computerized'],
-      bilgisayarin: ['computer'],
-      yazilim: ['software'], donanim: ['hardware'],
-      elektrik: ['electrical'], elektronik: ['electronics'],
-      makine: ['mechanical'], mekatronik: ['mechatronics'],
-      endustri: ['industrial'], endustriyel: ['industrial'],
-      insaat: ['civil'], insaati: ['civil'],
-      mimarlik: ['architecture'], ic: ['interior'],
-      cevre: ['environmental'], cevresi: ['environmental'],
-      biyomedikal: ['biomedical'], biyomuhendislik: ['biomedical engineering'],
-      // ── Natural & formal sciences ─────────────────────────────────────────
-      kimya: ['chemistry'], kimyasal: ['chemical'],
-      biyoloji: ['biology'], biyokimya: ['biochemistry'],
-      mikrobiyoloji: ['microbiology'], genetik: ['genetics'],
-      matematik: ['mathematics'], istatistik: ['statistics'],
-      aktuerya: ['actuarial'], veri: ['data'],
-      // ── Social sciences & humanities ──────────────────────────────────────
-      hukuk: ['law'], hukuku: ['law'],
-      sosyoloji: ['sociology'], sosyal: ['social'],
-      psikoloji: ['psychology'],
-      tarih: ['history'], cografya: ['geography'],
-      felsefe: ['philosophy'], felsefesi: ['philosophy'],
-      arkeoloji: ['archaeology'], antropoloji: ['anthropology'],
-      // ── Education ─────────────────────────────────────────────────────────
-      egitim: ['education'], egitimi: ['education'],
-      ogretmenlik: ['teaching', 'education'], ogretmen: ['teacher'],
-      rehberlik: ['guidance', 'counseling'], pdr: ['counseling'],
-      // ── Communication, media, arts ────────────────────────────────────────
-      iletisim: ['communication'], gazetecilik: ['journalism'],
-      medya: ['media'], radyo: ['radio'], televizyon: ['television'],
-      sinema: ['cinema', 'film'], grafik: ['graphic'], tasarim: ['design'],
-      muzik: ['music'], tiyatro: ['theatre', 'theater'],
-      sanat: ['art'], resim: ['painting', 'art'],
-      // ── Tourism & hospitality ─────────────────────────────────────────────
-      turizm: ['tourism'], turistik: ['tourism'],
-      otel: ['hotel', 'hospitality'], otelcilik: ['hotel management'],
-      konaklama: ['hospitality', 'accommodation'],
-      gastronomi: ['gastronomy'], mutfak: ['culinary'],
-      // ── Agriculture, environment, sport ───────────────────────────────────
-      tarim: ['agriculture'], orman: ['forestry'],
-      havacilik: ['aviation'], denizcilik: ['maritime'],
-      spor: ['sports'], beden: ['physical education'],
-      antrenorlik: ['coaching'], rekreasyon: ['recreation'],
-      // ── Fees, duration, process ───────────────────────────────────────────
-      ucret: ['fee', 'tuition'], ucretler: ['fee', 'tuition'],
-      fiyat: ['fee', 'tuition'], odeme: ['payment', 'fee'],
-      burs: ['scholarship'], burslu: ['scholarship'],
-      indirim: ['discount'],
-      sure: ['duration'], donem: ['semester', 'term'],
-      ay: ['month'], yil: ['year'],
-      basvuru: ['application'], kabul: ['admission'],
-      baslangic: ['intake'], giris: ['intake', 'entry'],
-      kayit: ['enrollment', 'registration'],
-      mezuniyet: ['graduation'], diploma: ['diploma', 'degree'],
-      sertifika: ['certificate'],
-      // ── Level / mode ──────────────────────────────────────────────────────
-      lisans: ['bachelor'], onlisans: ['associate'],
-      yukseklisans: ['master'], yuksek: ['master'],
-      doktora: ['phd', 'doctorate'],
-      uzaktan: ['distance'], hazirlik: ['preparatory'],
-      // ── Locations ─────────────────────────────────────────────────────────
-      sehir: ['city'], ulke: ['country'],
-      turkiye: ['turkey'], almanya: ['germany'],
-      letonya: ['latvia'], cin: ['china'],
-      abd: ['usa', 'united states'],
-      // ── Language ──────────────────────────────────────────────────────────
-      dil: ['language'], ingilizce: ['english'], turkce: ['turkish'],
-      almanca: ['german'], rusca: ['russian'], cince: ['chinese'],
-      fransizca: ['french'], ispanyolca: ['spanish'],
-      // ── Misc ──────────────────────────────────────────────────────────────
-      tercume: ['translation'], ceviri: ['translation'],
-      dilbilimi: ['linguistics'],
-    };
-
-    // Merge admin-managed custom mappings (fetched from DB) into TR_TO_EN.
-    // Custom mappings take precedence over built-in entries for the same key.
-    try {
-      const customMappings = await this.getKeywordMappings();
-      for (const m of customMappings) {
-        const key = normalize(m.turkishPhrase.trim());
-        if (!key) continue;
-        const vals = m.englishEquivalents
-          .split(',')
-          .map(v => v.trim().toLowerCase())
-          .filter(Boolean);
-        if (vals.length > 0) TR_TO_EN[key] = vals;
-      }
-    } catch {
-      // Non-fatal — proceed with built-in dictionary only
-    }
-
-    const normalized = normalize(query.trim());
-    const rawTokens = normalized.split(/[\s,.;:!?()|/]+/).filter(t => t.length > 2);
-
-    // Prefix-aware TR→EN lookup: first try exact match, then shrinking prefix
-    // (4-char minimum) so truncated words like "uygul" (uygulamalı→applied),
-    // "yönet" (yönetim→management) and typos like "bilgisayr" (bilgisayar)
-    // still resolve to their English equivalents.
+    const expansion = expandTurkishQueryTerms(query, customMappings);
     const lookupTrEn = (tok: string): string[] | undefined => {
-      if (TR_TO_EN[tok]) return TR_TO_EN[tok];
-      // Try 6-char prefix first (higher precision), then 5, then 4.
-      for (const preLen of [6, 5, 4]) {
-        if (tok.length < preLen) continue;
-        const pre = tok.slice(0, preLen);
-        for (const [k, v] of Object.entries(TR_TO_EN)) {
-          if (k.length >= preLen && k.slice(0, preLen) === pre) return v;
-        }
-      }
-      return undefined;
+      // Lightweight wrapper retained so the trigram-skip heuristic below
+      // still has the boolean signal it needs ("does this token already
+      // have a dict translation?"). The actual translations are already
+      // baked into expansion.terms.
+      return expansion.hasDictMatch(tok) ? [] : undefined;
     };
-
-    // Expand each token into: itself + stripped stem + EN translation(s).
-    const expanded = new Set<string>();
-    for (const t of rawTokens) {
-      expanded.add(t);
-      const stem = stripSuffix(t);
-      if (stem !== t && stem.length > 2) expanded.add(stem);
-      const enList = lookupTrEn(t) || lookupTrEn(stem);
-      if (enList) for (const en of enList) expanded.add(en);
-    }
-
-    // Phrase-level lookup: scan the normalized query for multi-word (or any)
-    // dictionary keys that appear as substrings. This handles admin-added
-    // mappings like "spor bilimleri" → "sports science" which span multiple
-    // tokens and are never matched by the per-token lookup above.
-    for (const [k, vList] of Object.entries(TR_TO_EN)) {
-      const normKey = normalize(k);
-      if (normKey.length >= 4 && normalized.includes(normKey)) {
-        for (const en of vList) expanded.add(en);
-      }
-    }
+    void lookupTrEn; // referenced inside the SQL builder below
+    const expanded = new Set(expansion.terms);
 
     // Cap so very long questions don't blow up SQL OR width.
     const terms = Array.from(expanded).slice(0, 20);
