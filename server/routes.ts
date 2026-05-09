@@ -6095,7 +6095,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // knowledge base AND English course-content lessons consistently.
       //
       // Scoring per row = 3×title hits + 2×description hits + 1×body hits,
-      // then top 6 rows, body cap 700 chars (was take-first-4 / 400 chars).
+      // then top 6 rows, body cap 700 chars (replaces the old take-first-4
+      // rows / 400-char body filter that ignored Turkish inflection and
+      // could miss the most relevant lesson when more than 4 rows matched).
       {
         let kwMappings: Awaited<ReturnType<typeof storage.getKeywordMappings>> = [];
         try { kwMappings = await memoChat('kwMappings', () => storage.getKeywordMappings()); }

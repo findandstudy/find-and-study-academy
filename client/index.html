@@ -930,9 +930,15 @@
         // Track which user the visible chat belongs to so we can detect a
         // switch even when the SPA navigates without a full page reload.
         // Anonymous = empty string so the first login is also a "change".
+        // Persisted to localStorage so the "did the user change?" check
+        // survives full-page reloads (otherwise the very first reload after
+        // a logout would re-render whatever HTML happened to be cached).
         let lastUserId = (function() {
-          try { return JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || ''; }
-          catch { return ''; }
+          try {
+            const stored = localStorage.getItem('findy-last-user') || '';
+            const current = JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || '';
+            return stored || current;
+          } catch { return ''; }
         })();
 
         // Reset the entire chat surface (DOM bubbles, in-memory history,
@@ -954,6 +960,7 @@
           conversationHistory = [];
           sessionId = generateSessionId();
           lastUserId = newUserId || '';
+          try { localStorage.setItem('findy-last-user', lastUserId); } catch { /* ignore */ }
           chatEpoch++;
           // Abort any pending request from the previous user so its response
           // never lands in the new user's view.
