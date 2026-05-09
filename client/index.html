@@ -920,7 +920,69 @@
         let isMinimized = localStorage.getItem('findy-minimized') === 'true';
         // Rolling conversation history sent to the backend (max 10 messages = 5 exchanges).
         let conversationHistory = [];
-        
+
+        // Snapshot the static welcome message so we can restore it whenever
+        // the active user changes (login/logout/account switch). Without this,
+        // the previous user's chat bubbles would keep sitting in the DOM and
+        // the next user (e.g. an agent right after an admin) would see them.
+        const welcomeHTML = messagesContainer.innerHTML;
+
+        // Track which user the visible chat belongs to so we can detect a
+        // switch even when the SPA navigates without a full page reload.
+        // Anonymous = empty string so the first login is also a "change".
+        let lastUserId = (function() {
+          try { return JSON.parse(localStorage.getItem('fas_session') || '{}')?.user?.id || ''; }
+          catch { return ''; }
+        })();
+
+        // Reset the entire chat surface (DOM bubbles, in-memory history,
+        // session id) when the authenticated user changes. We must not reuse
+        // the same sessionId across users — the backend binds it to user_id
+        // in findy_conversations and the rolling `history` we send would
+        // otherwise leak the previous user's exchange to the LLM context.
+        // Monotonic counter incremented on every user change. Each in-flight
+        // sendMessage() captures the current epoch at request time and drops
+        // its response if the epoch has moved on — preventing the previous
+        // user's late-arriving reply from being rendered into the new
+        // user's chat. Also tracks the active AbortController so we can
+        // proactively cancel pending fetches at switch time.
+        let chatEpoch = 0;
+        let activeAbort = null;
+
+        function resetChatForUserChange(newUserId) {
+          messagesContainer.innerHTML = welcomeHTML;
+          conversationHistory = [];
+          sessionId = generateSessionId();
+          lastUserId = newUserId || '';
+          chatEpoch++;
+          // Abort any pending request from the previous user so its response
+          // never lands in the new user's view.
+          if (activeAbort) {
+            try { activeAbort.abort(); } catch { /* ignore */ }
+            activeAbort = null;
+          }
+          removeTypingIndicator();
+          sendBtn.disabled = !input.value.trim();
+        }
+
+        // Compare current logged-in user against last seen and reset if
+        // different. Called on every chat open and before each send so we
+        // never miss a switch (the React app does not currently dispatch a
+        // dedicated logout event we could subscribe to).
+        function ensureCurrentUser() {
+          const sess = getSession();
+          const uid = sess?.user?.id || '';
+          if (uid !== lastUserId) {
+            resetChatForUserChange(uid);
+          }
+        }
+
+        // Cross-tab safety: if the user logs out / switches in another tab,
+        // the `fas_session` localStorage entry changes — react to it here.
+        window.addEventListener('storage', function(ev) {
+          if (ev.key === 'fas_session') ensureCurrentUser();
+        });
+
         // Apply minimized state on load
         if (isMinimized) {
           launcher.classList.add('minimized');
@@ -949,8 +1011,11 @@
         function toggleChat() {
           isChatOpen = !isChatOpen;
           chatWindow.style.display = isChatOpen ? 'flex' : 'none';
-          
+
           if (isChatOpen) {
+            // Wipe any stale bubbles that belong to a previously logged-in
+            // user before showing the chat to the new user.
+            ensureCurrentUser();
             input.focus();
             scrollToBottom();
           }
@@ -1243,9 +1308,17 @@
           contentWrapper.appendChild(timeDiv);
 
           // Append admin debug panel below bot replies when debug data is present.
+          // Defense-in-depth: the server already gates `debug` to admin callers,
+          // but we re-check the role on the client too so a non-admin can never
+          // see the debug trace even if the response was somehow tampered with
+          // or if a stale admin response is replayed in a non-admin session.
           if (!isUser && debugData) {
-            const panel = buildDebugPanel(debugData);
-            if (panel) contentWrapper.appendChild(panel);
+            const sess = getSession();
+            const role = sess?.user?.role || '';
+            if (role === 'admin') {
+              const panel = buildDebugPanel(debugData);
+              if (panel) contentWrapper.appendChild(panel);
+            }
           }
           
           messageDiv.appendChild(avatarDiv);
@@ -1291,6 +1364,11 @@
           const message = input.value.trim();
           if (!message) return;
 
+          // Belt-and-braces: if the user changed since the chat was opened
+          // (e.g. they logged out and re-logged-in another tab), make sure
+          // we don't ship the previous user's history to the LLM.
+          ensureCurrentUser();
+
           // Add user message
           addMessage(message, true);
           input.value = '';
@@ -1304,25 +1382,47 @@
           const session = getSession();
           const userId = session?.user?.id || '';
 
+          // Snapshot the request's identity. If the active user changes (or
+          // the chat is reset for any other reason) before this request
+          // resolves, `chatEpoch` will have moved on and we will silently
+          // drop the response instead of leaking it into a new account.
+          const reqEpoch = chatEpoch;
+          const reqSessionId = sessionId;
+          const reqUserId = userId;
+
+          // Use a real AbortController (not just AbortSignal.timeout) so
+          // resetChatForUserChange() can cancel an in-flight request the
+          // moment the user switches.
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          activeAbort = controller;
+
+          const isStale = () => chatEpoch !== reqEpoch || sessionId !== reqSessionId;
+
           try {
             const response = await fetch(API_ENDPOINT, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...(userId ? { 'x-user-id': userId } : {}),
+                ...(reqUserId ? { 'x-user-id': reqUserId } : {}),
               },
               body: JSON.stringify({
                 message: message,
-                sessionId: sessionId,
+                sessionId: reqSessionId,
                 history: conversationHistory
               }),
-              signal: AbortSignal.timeout(30000) // 30 second timeout
+              signal: controller.signal
             });
+
+            // If a user switch happened while we were waiting, drop the
+            // response on the floor — the new user must not see it.
+            if (isStale()) return;
 
             removeTypingIndicator();
 
             if (response.ok) {
               const result = await response.json();
+              if (isStale()) return;
               // Backend returns { success: true, message: "...", data: {...} }
               const botMessage = result.data?.message || result.data?.response || result.message || 'No response received';
               // The server already gates the debug object to admin callers only;
@@ -1341,6 +1441,11 @@
               throw new Error(errorData.message || 'Request failed');
             }
           } catch (error) {
+            // Aborts triggered by a user switch are intentional — never
+            // surface them as a chat error in the (now different) account.
+            if (isStale() || (error && error.name === 'AbortError' && chatEpoch !== reqEpoch)) {
+              return;
+            }
             removeTypingIndicator();
             console.error('Findy message error:', error);
             // Use the server's error message when one was returned (it is already
@@ -1360,6 +1465,9 @@
                 : serverMsg,
               false
             );
+          } finally {
+            clearTimeout(timeoutId);
+            if (activeAbort === controller) activeAbort = null;
           }
         }
 
