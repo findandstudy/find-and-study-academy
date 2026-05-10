@@ -585,7 +585,7 @@ export default function AdminContentCountries() {
               ) : (
                 <div className="space-y-2">
                   {filteredCountries.map((country) => (
-                    <div key={country.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div key={country.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <CountryFlag code={country.code} size="lg" />
                         <div>
@@ -1296,7 +1296,7 @@ export default function AdminContentCountries() {
               ) : (
                 <div className="space-y-2">
                   {filteredContents.map((content) => (
-                    <div key={content.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={content.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
                         {getContentIcon(content.type)}
                         <div className="flex-1">
