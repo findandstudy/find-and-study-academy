@@ -1,27 +1,6 @@
-/**
- * Findy chat — uçtan-uca regresyon paketi (Task #45).
- *
- * Korunan davranışlar (Task #42'den):
- *   1. Hesap izolasyonu: admin → çıkış → acente girişi sonrası bir önceki
- *      kullanıcının bubble'ları DOM'dan ve conversationHistory'den temizlenir,
- *      yeni sessionId üretilir.
- *   2. Race güvenliği: bir mesaj uçuşta iken kullanıcı değişirse geç gelen
- *      yanıt yeni kullanıcının chat'ine düşmez (chatEpoch + AbortController).
- *   3. Debug paneli sadece admin için render edilir; sahte admin payload
- *      enjekte edilse bile acente client-side guard'ı reddeder.
- *   4. Türkçe RAG genişletmesi: `başvuru`, `yönetim` gibi sorgular
- *      expandTurkishQueryTerms üzerinden English equivalent'lere expand
- *      olur (debug.expandedTerms ile doğrulanır).
- *
- * Test verisi: her koşuda RUN_ID son ekiyle iki test kullanıcısı (admin +
- * agent) bcrypt-hashed parola ile users tablosuna eklenir; test sonu
- * `afterAll` ile silinir. Mevcut DB içeriği bozulmaz.
- *
- * NOT: Gerçek AI sağlayıcı çağrısı yapılmaz. RAG retrieval testi sunucunun
- * /api/chat yanıtındaki `debug` alanını okur (admin-only, sağlayıcı/n8n
- * sonucundan bağımsız olarak ekleniyor). Account-isolation/race testleri
- * Playwright route mock'u ile /api/chat'i deterministik hale getirir.
- */
+// Findy chat E2E regression suite — Task #45.
+// Covers: account isolation, race-safe reset, admin-only debug panel,
+// Turkish RAG retrieval (başvuru + yönetim).
 
 import { test, expect, Page, BrowserContext, Route } from '@playwright/test';
 import { Pool, neonConfig } from '@neondatabase/serverless';
@@ -34,6 +13,28 @@ const TEST_PASSWORD = 'TestPass123!';
 const RUN_ID = `e2e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const ADMIN_EMAIL = `admin.${RUN_ID}@e2e.findandstudy.test`;
 const AGENT_EMAIL = `agent.${RUN_ID}@e2e.findandstudy.test`;
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5000';
+
+interface HistoryItem { role: 'user' | 'assistant'; content: string }
+interface ChatRequestBody { sessionId?: string; history?: HistoryItem[]; message?: string }
+interface DebugChunk {
+  id: string;
+  sourceId: string;
+  preview: string;
+  score: number;
+  matchedTerms: string[];
+}
+interface DebugPayload {
+  queryTokens?: string[];
+  expandedTerms?: string[];
+  chunks?: DebugChunk[];
+}
+interface ChatResponse {
+  success: boolean;
+  message?: string;
+  data?: { message?: string };
+  debug?: DebugPayload;
+}
 
 let pool: Pool;
 let adminId = '';
@@ -61,19 +62,14 @@ test.beforeAll(async () => {
   );
   agentId = gr.rows[0].id;
 
-  // ── Deterministic RAG seed ────────────────────────────────────────────────
-  // Türkçe sorguların (`başvuru`, `yönetim`) expandTurkishQueryTerms üzerinden
-  // English equivalent'lere expand olduğunu kanıtlamak için bilgi tabanına
-  // 'application' / 'management' içeren chunk'lar ekliyoruz. Sorgu Türkçe
-  // ama eşleşme English chunk'la kuruluyor → expansion zinciri kanıtlanır.
+  // Seed two RAG chunks with unique RUN_ID markers so retrieval provenance
+  // can be asserted independently of any other rows in the KB.
   const sr = await pool.query(
     `INSERT INTO knowledge_sources (name, type, file_type, status, uploaded_by)
      VALUES ($1, 'file', 'excel', 'active', $2) RETURNING id`,
     [`E2E KB ${RUN_ID}`, adminId]
   );
   kbSourceId = sr.rows[0].id;
-  // Embed RUN_ID as a unique marker in chunk content so retrieval provenance
-  // can be asserted independently of any other rows in the KB.
   await pool.query(
     `INSERT INTO knowledge_chunks (source_id, content, keywords, metadata) VALUES
        ($1, $2, $3, $4),
@@ -92,9 +88,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (pool) {
-    // Test session'larında oluşan findy konuşmalarını ve mesajlarını temizle.
-    // findy_messages.conversation_id FK'si CASCADE olduğundan conversation
-    // silindiğinde mesajlar otomatik silinir.
     await pool.query(
       `DELETE FROM findy_conversations WHERE session_id LIKE $1 OR user_id = ANY($2)`,
       [`%${RUN_ID}%`, [adminId, agentId]]
@@ -110,16 +103,9 @@ test.afterAll(async () => {
   }
 });
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 type Role = 'admin' | 'agent';
 
-interface TestUser {
-  id: string;
-  email: string;
-  role: Role;
-  name: string;
-}
+interface TestUser { id: string; email: string; role: Role; name: string }
 
 function userFor(role: Role): TestUser {
   return role === 'admin'
@@ -127,14 +113,11 @@ function userFor(role: Role): TestUser {
     : { id: agentId, email: AGENT_EMAIL, role, name: 'E2E Agent' };
 }
 
-/**
- * Login over /api/login using the BROWSER context's request helper so the
- * httpOnly fas.sid cookie lands on the same context as page navigations
- * (otherwise the React app's auth store calls validateSession → /api/me
- * → 401 → logout() and wipes localStorage before the launcher can read it).
- * Also seed the React app's localStorage `fas_session` entry that the
- * findy-launcher reads to identify the current user.
- */
+async function newCtx(browser: import('@playwright/test').Browser) {
+  // Pass baseURL explicitly so manually-created contexts resolve relative URLs.
+  return browser.newContext({ baseURL: BASE_URL });
+}
+
 async function mockNoPopups(context: BrowserContext) {
   await context.route('**/api/popups/active', async (route: Route) => {
     await route.fulfill({
@@ -148,6 +131,8 @@ async function mockNoPopups(context: BrowserContext) {
 async function loginAs(context: BrowserContext, page: Page, role: Role) {
   await mockNoPopups(context);
   const u = userFor(role);
+  // Use the browser context's request helper so the httpOnly fas.sid cookie
+  // shares the same context as page navigations.
   const res = await context.request.post('/api/login', {
     headers: { 'x-playwright-test': '1' },
     data: { email: u.email, password: TEST_PASSWORD },
@@ -166,7 +151,7 @@ async function loginAs(context: BrowserContext, page: Page, role: Role) {
     },
     role: u.role,
   };
-
+  // Seed the React app's localStorage entry that findy-launcher reads.
   await page.addInitScript((payload) => {
     localStorage.setItem('fas_session', JSON.stringify(payload));
   }, sessionPayload);
@@ -185,25 +170,18 @@ async function openChat(page: Page) {
   await expect(page.locator('#findy-chat')).toBeVisible();
 }
 
-/**
- * Mock the /api/chat endpoint with a deterministic reply that includes the
- * given identifier in the bot message so we can assert which exchange a
- * given DOM bubble belongs to. Optional `debug` object is forwarded as-is
- * (used to verify the client-side admin gate).
- */
-async function mockChatReply(
-  context: BrowserContext,
-  opts: {
-    bodyMarker: string;
-    delayMs?: number;
-    debug?: unknown;
-    onRequest?: (postBody: any) => void;
-  }
-) {
+interface MockChatOptions {
+  bodyMarker: string;
+  delayMs?: number;
+  debug?: DebugPayload;
+  onRequest?: (postBody: ChatRequestBody) => void;
+}
+
+async function mockChatReply(context: BrowserContext, opts: MockChatOptions) {
   await context.route('**/api/chat', async (route: Route) => {
-    let parsed: any = {};
+    let parsed: ChatRequestBody = {};
     try {
-      parsed = JSON.parse(route.request().postData() || '{}');
+      parsed = JSON.parse(route.request().postData() || '{}') as ChatRequestBody;
     } catch { /* ignore */ }
     if (opts.onRequest) opts.onRequest(parsed);
     if (opts.delayMs) await new Promise((r) => setTimeout(r, opts.delayMs));
@@ -221,8 +199,7 @@ async function mockChatReply(
 }
 
 async function sendChatMessage(page: Page, text: string) {
-  const input = page.locator('#findy-input');
-  await input.fill(text);
+  await page.locator('#findy-input').fill(text);
   await page.locator('#findy-send').click();
 }
 
@@ -230,32 +207,20 @@ async function sendChatMessage(page: Page, text: string) {
 
 test.describe('Findy chat hesap izolasyonu', () => {
   test('admin → logout → agent: bubble\'lar, sessionId VE conversationHistory sıfırlanır', async ({ browser }) => {
-    const context = await browser.newContext();
-    const sessionIds: string[] = [];
-    // Her /api/chat çağrısında gönderilen `history` payload'ını yakalayalım —
-    // agent oturumunda admin mesajları sızmamış olmalı.
-    const requests: { sessionId: string; history: any[]; userId: string }[] = [];
+    const context = await newCtx(browser);
+    interface CapturedReq { sessionId: string; history: HistoryItem[]; userId: string }
+    const requests: CapturedReq[] = [];
+
     await context.route('**/api/chat', async (route: Route) => {
-      let body: any = {};
-      try { body = JSON.parse(route.request().postData() || '{}'); } catch { /* ignore */ }
-      requests.push({
-        sessionId: body?.sessionId,
-        history: body?.history || [],
-        userId: route.request().headers()['x-user-id'] || '',
-      });
-      sessionIds.push(body?.sessionId);
-      // İlk N istek admin'e, sonrakiler agent'a — marker basit bir
-      // "her istek için aynı yanıt" yaklaşımı yerine isteğe göre seçilir.
-      const isAdminReq = route.request().headers()['x-user-id'] === adminId;
-      const marker = isAdminReq ? 'ADMIN_REPLY_MARKER' : 'AGENT_REPLY_MARKER';
+      let body: ChatRequestBody = {};
+      try { body = JSON.parse(route.request().postData() || '{}') as ChatRequestBody; } catch { /* ignore */ }
+      const userId = route.request().headers()['x-user-id'] || '';
+      requests.push({ sessionId: body.sessionId || '', history: body.history || [], userId });
+      const marker = userId === adminId ? 'ADMIN_REPLY_MARKER' : 'AGENT_REPLY_MARKER';
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          message: marker,
-          data: { message: marker },
-        }),
+        body: JSON.stringify({ success: true, message: marker, data: { message: marker } }),
       });
     });
 
@@ -266,29 +231,22 @@ test.describe('Findy chat hesap izolasyonu', () => {
       await openChat(page);
 
       await sendChatMessage(page, 'admin tarafından gönderildi');
-      await expect(page.locator('.findy-message.user').last()).toContainText(
-        'admin tarafından gönderildi'
-      );
-      await expect(page.locator('.findy-message.bot').last()).toContainText(
-        'ADMIN_REPLY_MARKER'
-      );
+      await expect(page.locator('.findy-message.user').last()).toContainText('admin tarafından gönderildi');
+      await expect(page.locator('.findy-message.bot').last()).toContainText('ADMIN_REPLY_MARKER');
 
-      // İkinci admin mesajı → conversationHistory'de admin'in ilk turu olmalı
+      // Second admin send → history must contain the first admin turn.
       await sendChatMessage(page, 'admin ikinci sorgusu');
-      // Bu istekte history içinde 'admin tarafından gönderildi' geçmeli
       const adminSecondReq = requests[requests.length - 1];
       expect(
         JSON.stringify(adminSecondReq.history).toLowerCase(),
         'admin oturumunda history admin mesajını içermeli'
       ).toContain('admin tarafından gönderildi');
 
-      // User switch
       await logout(context, page);
       await loginAs(context, page, 'agent');
       await page.goto('/');
       await openChat(page);
 
-      // Önceki bubble'lar gitmeli
       await expect(
         page.locator('.findy-message.user', { hasText: 'admin tarafından gönderildi' })
       ).toHaveCount(0);
@@ -296,31 +254,24 @@ test.describe('Findy chat hesap izolasyonu', () => {
         page.locator('.findy-message.bot', { hasText: 'ADMIN_REPLY_MARKER' })
       ).toHaveCount(0);
 
-      // Yeni mesaj — yeni sessionId üretilmiş olmalı VE history boş olmalı
       await sendChatMessage(page, 'acente sorgusu');
-      await expect(page.locator('.findy-message.bot').last()).toContainText(
-        'AGENT_REPLY_MARKER'
-      );
+      await expect(page.locator('.findy-message.bot').last()).toContainText('AGENT_REPLY_MARKER');
       const agentReq = requests[requests.length - 1];
       expect(agentReq.userId).toBe(agentId);
       expect(agentReq.sessionId).not.toBe(adminSecondReq.sessionId);
-      // KRİTİK: agent'ın ilk isteğinde history boş olmalı (admin turu sızmamış).
+      // The critical assertion: agent's first request must carry no admin history.
       expect(
         agentReq.history.length,
         `acente ilk isteğinde history dolu — admin verisi sızıyor: ${JSON.stringify(agentReq.history)}`
       ).toBe(0);
-      // Çift güvence: history serialize edildiğinde admin metni geçmemeli.
-      expect(JSON.stringify(agentReq.history).toLowerCase()).not.toContain(
-        'admin tarafından gönderildi'
-      );
-      expect(sessionIds[0]).not.toBe(sessionIds[sessionIds.length - 1]);
+      expect(JSON.stringify(agentReq.history).toLowerCase()).not.toContain('admin tarafından gönderildi');
     } finally {
       await context.close();
     }
   });
 
   test('cross-tab logout: storage event chat\'i resetler', async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await newCtx(browser);
     await mockChatReply(context, { bodyMarker: 'TAB1_REPLY' });
 
     const tab1 = await context.newPage();
@@ -328,23 +279,16 @@ test.describe('Findy chat hesap izolasyonu', () => {
     await tab1.goto('/');
     await openChat(tab1);
     await sendChatMessage(tab1, 'birinci tab mesajı');
-    await expect(tab1.locator('.findy-message.bot').last()).toContainText(
-      'TAB1_REPLY'
-    );
+    await expect(tab1.locator('.findy-message.bot').last()).toContainText('TAB1_REPLY');
 
-    // İkinci tab — agent oturumu açtığında localStorage 'storage' event'i
-    // birinci tab'a yayılır ve resetChatForUserChange tetiklenir.
     const tab2 = await context.newPage();
     await loginAs(context, tab2, 'agent');
     await tab2.goto('/');
 
-    // Geri tab1'e dönüp chat'i tekrar aç → ensureCurrentUser eski bubble'ları siler.
     await tab1.bringToFront();
-    // Bir mikro tetik: aynı değeri tekrar yazmak event'i de fırlatır
     await tab1.evaluate(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: 'fas_session' }));
     });
-    // Welcome mesajı geri gelmeli — eski "birinci tab mesajı" bubble'ı yok
     await expect(
       tab1.locator('.findy-message.user', { hasText: 'birinci tab mesajı' })
     ).toHaveCount(0);
@@ -354,25 +298,15 @@ test.describe('Findy chat hesap izolasyonu', () => {
 });
 
 test.describe('Findy chat debug panel gating', () => {
+  const fakeDebug: DebugPayload = {
+    queryTokens: ['başvuru'],
+    expandedTerms: ['application'],
+    chunks: [{ id: 'fake-1', sourceId: 'fake-1', score: 5, matchedTerms: ['application'], preview: 'Sample chunk preview' }],
+  };
+
   test('admin: server debug payload geldiğinde panel render edilir', async ({ browser }) => {
-    const context = await browser.newContext();
-    await mockChatReply(context, {
-      bodyMarker: 'admin debug görür',
-      debug: {
-        queryTokens: ['başvuru'],
-        expandedTerms: ['application'],
-        activeFilters: { university: null, country: null, city: null },
-        chunks: [
-          {
-            sourceId: 'fake-1',
-            score: 5,
-            matchedTerms: ['application'],
-            preview: 'Sample chunk preview',
-            metadata: { Country: 'Turkey' },
-          },
-        ],
-      },
-    });
+    const context = await newCtx(browser);
+    await mockChatReply(context, { bodyMarker: 'admin debug görür', debug: fakeDebug });
 
     const page = await context.newPage();
     await loginAs(context, page, 'admin');
@@ -386,37 +320,17 @@ test.describe('Findy chat debug panel gating', () => {
   });
 
   test('agent: sahte debug payload enjekte edilse bile panel render edilmez', async ({ browser }) => {
-    const context = await browser.newContext();
-    // Acente için sunucu normalde debug GÖNDERMEZ. Testi sıkılaştırmak
-    // için biz mock'tan yine de debug payload'ı dönüyoruz; client guard
-    // (sess.user.role !== 'admin') paneli hiçbir koşulda render
-    // etmemeli.
-    await mockChatReply(context, {
-      bodyMarker: 'acente yanıt',
-      debug: {
-        queryTokens: ['başvuru'],
-        expandedTerms: ['application'],
-        activeFilters: { university: null, country: null, city: null },
-        chunks: [
-          {
-            sourceId: 'fake-1',
-            score: 5,
-            matchedTerms: ['application'],
-            preview: 'x',
-            metadata: {},
-          },
-        ],
-      },
-    });
+    const context = await newCtx(browser);
+    // Server normally never sends `debug` to agents; the mock forces it
+    // anyway to verify the client-side role guard rejects it unconditionally.
+    await mockChatReply(context, { bodyMarker: 'acente yanıt', debug: fakeDebug });
 
     const page = await context.newPage();
     await loginAs(context, page, 'agent');
     await page.goto('/');
     await openChat(page);
     await sendChatMessage(page, 'başvuru nasıl yapılır');
-    await expect(page.locator('.findy-message.bot').last()).toContainText(
-      'acente yanıt'
-    );
+    await expect(page.locator('.findy-message.bot').last()).toContainText('acente yanıt');
     await expect(page.locator('.findy-debug-panel')).toHaveCount(0);
 
     await context.close();
@@ -425,8 +339,7 @@ test.describe('Findy chat debug panel gating', () => {
 
 test.describe('Findy chat race koşulu', () => {
   test('uçuşta yanıt, kullanıcı değişiminden sonra DOM\'a düşmez', async ({ browser }) => {
-    const context = await browser.newContext();
-    // İlk istek 1500 ms bekleyecek — bu süre içinde kullanıcı değişecek.
+    const context = await newCtx(browser);
     await context.route('**/api/chat', async (route) => {
       await new Promise((r) => setTimeout(r, 1500));
       await route.fulfill({
@@ -445,105 +358,111 @@ test.describe('Findy chat race koşulu', () => {
     await page.goto('/');
     await openChat(page);
 
-    // Mesajı gönder ama yanıt gelmeden user'ı değiştir.
     await sendChatMessage(page, 'yanıt gelmeden önce kullanıcı değişecek');
-    // Yanıt henüz gelmediği için DOM'da STALE bubble bulunmamalı.
     await expect(
-      page.locator('.findy-message.bot', {
-        hasText: 'STALE_REPLY_FROM_PREVIOUS_USER',
-      })
+      page.locator('.findy-message.bot', { hasText: 'STALE_REPLY_FROM_PREVIOUS_USER' })
     ).toHaveCount(0);
 
-    // Kullanıcıyı değiştir → resetChatForUserChange çağrılır, AbortController
-    // pending fetch'i iptal eder; yanıt gelse bile chatEpoch ileri kaymıştır.
     await logout(context, page);
     await loginAs(context, page, 'agent');
     await page.evaluate(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: 'fas_session' }));
     });
 
-    // Bekleme süresi geçtikten sonra bile DOM'da geç gelen yanıt olmamalı.
     await page.waitForTimeout(2000);
     await expect(
-      page.locator('.findy-message.bot', {
-        hasText: 'STALE_REPLY_FROM_PREVIOUS_USER',
-      })
+      page.locator('.findy-message.bot', { hasText: 'STALE_REPLY_FROM_PREVIOUS_USER' })
     ).toHaveCount(0);
 
     await context.close();
   });
 });
 
+// ── Turkish RAG retrieval (deterministic against seeded chunks) ────────────
+
 test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
-  test('admin sorgusu "başvuru" için debug.expandedTerms English equivalent içerir', async ({
-    request,
-  }) => {
-    // /api/login → fas.sid cookie'si APIRequestContext üzerinde tutulur.
+  function assertSeedHit(chunks: DebugChunk[], suffix: 'APP' | 'MGMT') {
+    const marker = `E2EMARKER_${RUN_ID}_${suffix}`;
+    const seedHit = chunks.find(
+      (c) => c.sourceId === kbSourceId && typeof c.preview === 'string' && c.preview.includes(marker)
+    );
+    expect(
+      seedHit,
+      `seed chunk (sourceId=${kbSourceId}, marker=${marker}) retrieve edilmedi; geldi: ${JSON.stringify(chunks)}`
+    ).toBeDefined();
+  }
+
+  function assertExpansion(debug: DebugPayload, expected: string, chunks: DebugChunk[]) {
+    const terms = (debug.expandedTerms || []).join(' ').toLowerCase();
+    const hasInExpanded = terms.includes(expected);
+    const hasInMatched = chunks.some((c) =>
+      (c.matchedTerms || []).some((t) => t.toLowerCase().includes(expected))
+    );
+    expect(
+      hasInExpanded || hasInMatched,
+      `Türkçe expansion '${expected}' equivalent'ini içermeli; expandedTerms=${terms}`
+    ).toBe(true);
+  }
+
+  test('admin sorgusu "başvuru" — TR→EN expansion + seeded source provenance', async ({ request }) => {
     const loginRes = await request.post('/api/login', {
-      headers: { "x-playwright-test": "1" },
+      headers: { 'x-playwright-test': '1' },
       data: { email: ADMIN_EMAIL, password: TEST_PASSWORD },
     });
     expect(loginRes.status()).toBe(200);
 
-    // Query embeds the unique RUN_ID marker so only our seeded chunks can
-    // top-rank for it — but ALSO contains 'başvuru' so the TR→EN expansion
-    // ('basvuru' → 'application') is exercised and asserted alongside.
+    // Embedding the unique marker in the query lets only the seed chunk
+    // top-rank, while `başvuruyu` still exercises TR→EN expansion.
     const chatRes = await request.post('/api/chat', {
       headers: { 'x-user-id': adminId, 'x-playwright-test': '1' },
       data: {
         message: `başvuruyu nasıl başlatırım E2EMARKER_${RUN_ID}_APP`,
-        sessionId: 'rag-test-session-' + RUN_ID,
+        sessionId: 'rag-test-app-' + RUN_ID,
         history: [],
       },
     });
-    // KB seed'i sayesinde provider olmasa bile degraded RAG path 200 dönmeli
-    // (ragContext doluyor → degraded mode'a düşüyor). 502 yalnızca provider
-    // SET edilmiş ama başarısız olmuşsa olur (test ortamında provider yok).
     expect(chatRes.ok(), `admin /api/chat 2xx dönmeli, geldi: ${chatRes.status()}`).toBe(true);
-    const json = await chatRes.json();
+    const json = (await chatRes.json()) as ChatResponse;
     expect(json.success).toBe(true);
     expect(json.debug, 'admin için debug payload dönmeli').toBeDefined();
-    const tokens = (json.debug.queryTokens || []).join(' ').toLowerCase();
-    const terms = (json.debug.expandedTerms || []).join(' ').toLowerCase();
-    // Normalize edilmiş "basvuru" tokens'da görünmeli.
-    expect(tokens).toContain('basvuru');
-    // TR_KEYWORD_DICT['basvuru'] = ['application'] — seed chunk'ı 'application'
-    // English equivalent'i ile eşleşmeli; expandedTerms VEYA chunk.matchedTerms
-    // 'application' içermeli.
-    const hasApplicationExpansion =
-      terms.includes('application') ||
-      (json.debug.chunks || []).some((c: any) =>
-        (c.matchedTerms || []).some((t: string) =>
-          t.toLowerCase().includes('application')
-        )
-      );
-    expect(
-      hasApplicationExpansion,
-      `Türkçe expansion 'application' equivalent'ini içermeli; expandedTerms=${terms}`
-    ).toBe(true);
-    // Seed'imizdeki chunk en az bir kez retrieve edilmiş olmalı.
-    const chunks = json.debug.chunks || [];
-    expect(chunks.length, 'KB seed chunk retrieve edilmedi — RAG zinciri kırık')
-      .toBeGreaterThan(0);
-    // KRİTİK provenance: dönen chunk'lardan en az biri seed ettiğimiz
-    // sourceId'ye ait olmalı VE içeriği RUN_ID marker'ımızı taşımalı.
-    // Aksi halde test populated DB'de başka rastgele chunk'la geçebilir.
-    const seedHit = chunks.find((c: any) =>
-      c.sourceId === kbSourceId &&
-      typeof c.preview === 'string' &&
-      c.preview.includes(`E2EMARKER_${RUN_ID}_APP`)
-    );
-    expect(
-      seedHit,
-      `seed chunk (sourceId=${kbSourceId}, marker=E2EMARKER_${RUN_ID}_APP) retrieve edilmedi; geldi: ${JSON.stringify(chunks)}`
-    ).toBeDefined();
+    const debug = json.debug as DebugPayload;
+    const chunks = debug.chunks || [];
+    expect((debug.queryTokens || []).join(' ').toLowerCase()).toContain('basvuru');
+    assertExpansion(debug, 'application', chunks);
+    expect(chunks.length, 'KB seed chunk retrieve edilmedi').toBeGreaterThan(0);
+    assertSeedHit(chunks, 'APP');
   });
 
-  test('agent sorgusu için sunucu yanıtı debug payload İÇERMEZ', async ({
-    request,
-  }) => {
+  test('admin sorgusu "yönetim" — TR→EN expansion + seeded source provenance', async ({ request }) => {
     const loginRes = await request.post('/api/login', {
-      headers: { "x-playwright-test": "1" },
+      headers: { 'x-playwright-test': '1' },
+      data: { email: ADMIN_EMAIL, password: TEST_PASSWORD },
+    });
+    expect(loginRes.status()).toBe(200);
+
+    const chatRes = await request.post('/api/chat', {
+      headers: { 'x-user-id': adminId, 'x-playwright-test': '1' },
+      data: {
+        message: `yönetim programları E2EMARKER_${RUN_ID}_MGMT`,
+        sessionId: 'rag-test-mgmt-' + RUN_ID,
+        history: [],
+      },
+    });
+    expect(chatRes.ok(), `admin /api/chat 2xx dönmeli, geldi: ${chatRes.status()}`).toBe(true);
+    const json = (await chatRes.json()) as ChatResponse;
+    expect(json.success).toBe(true);
+    expect(json.debug).toBeDefined();
+    const debug = json.debug as DebugPayload;
+    const chunks = debug.chunks || [];
+    expect((debug.queryTokens || []).join(' ').toLowerCase()).toContain('yonetim');
+    assertExpansion(debug, 'management', chunks);
+    expect(chunks.length, 'KB seed chunk retrieve edilmedi').toBeGreaterThan(0);
+    assertSeedHit(chunks, 'MGMT');
+  });
+
+  test('agent sorgusu için sunucu yanıtı debug payload İÇERMEZ', async ({ request }) => {
+    const loginRes = await request.post('/api/login', {
+      headers: { 'x-playwright-test': '1' },
       data: { email: AGENT_EMAIL, password: TEST_PASSWORD },
     });
     expect(loginRes.status()).toBe(200);
@@ -556,11 +475,8 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
         history: [],
       },
     });
-    // Status ne olursa olsun (200 RAG-only / 200 provider / 502 fail), agent
-    // yanıtında debug payload ASLA bulunmamalı — bu sunucu tarafı role
-    // gating'in temel güvencesidir.
     expect(chatRes.ok(), `agent /api/chat 2xx dönmeli, geldi: ${chatRes.status()}`).toBe(true);
-    const json = await chatRes.json();
+    const json = (await chatRes.json()) as ChatResponse;
     expect(json.success).toBe(true);
     expect(json.debug, 'sunucu acente için debug payload sızdırıyor').toBeUndefined();
   });
