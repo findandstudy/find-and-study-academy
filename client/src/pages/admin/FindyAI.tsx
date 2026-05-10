@@ -1663,8 +1663,10 @@ function SourcesTab() {
   const [bulkTotal, setBulkTotal] = useState(0);
 
   const reprocessAllMutation = useMutation({
-    mutationFn: async () =>
-      apiRequest('POST', '/api/admin/findy/sources/reprocess-all') as Promise<{ success: boolean; total: number }>,
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/findy/sources/reprocess-all');
+      return (await res.json()) as { success: boolean; total: number };
+    },
     onSuccess: (data: any) => {
       const total = data.total ?? 0;
       if (total === 0) return;

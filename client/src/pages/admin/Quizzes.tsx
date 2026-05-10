@@ -73,14 +73,14 @@ export default function AdminQuizzes() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Queries
-  const { data: countries = [] } = useQuery({
+  const { data: countries = [] } = useQuery<any[], Error, any[], readonly string[]>({
     queryKey: ['/api/public/countries'],
-    select: (data) => data.countries || []
+    select: (data: any) => data.countries || []
   });
   
-  const { data: quizzes = [], isLoading: quizzesLoading } = useQuery({
+  const { data: quizzes = [], isLoading: quizzesLoading } = useQuery<any, Error, QuizDTO[], readonly string[]>({
     queryKey: ['/api/admin/quizzes'],
-    select: (data) => {
+    select: (data: any) => {
       // Backend already parses questions JSON - use directly as array
       return data.quizzes.map((quiz: any) => ({
         ...quiz,
@@ -445,6 +445,7 @@ export default function AdminQuizzes() {
                             <Textarea 
                               placeholder="Quiz description..." 
                               {...field} 
+                              value={field.value ?? ''}
                               data-testid="textarea-quiz-description"
                             />
                           </FormControl>
@@ -652,7 +653,11 @@ export default function AdminQuizzes() {
                               <FormLabel>Answer Options</FormLabel>
                               {(() => {
                                 // Get current options from top-level watched questions (fixes hooks error)
-                                const currentOptions = watchedQuestions[index]?.options || field.options || ['', ''];
+                                const watchedQ = watchedQuestions[index] as FrontendQuestion | undefined;
+                                const fieldQ = field as FrontendQuestion;
+                                const currentOptions: string[] = (watchedQ && watchedQ.type === 'mcq' ? watchedQ.options : undefined)
+                                  || (fieldQ.type === 'mcq' ? fieldQ.options : undefined)
+                                  || ['', ''];
                                 
                                 return currentOptions.map((option: string, optionIndex: number) => (
                                 <div key={optionIndex} className="flex gap-2 items-center">
@@ -709,7 +714,11 @@ export default function AdminQuizzes() {
                               
                               {(() => {
                                 // Get current options from top-level watched questions (fixes hooks error)
-                                const currentOptions = watchedQuestions[index]?.options || field.options || ['', ''];
+                                const watchedQ = watchedQuestions[index] as FrontendQuestion | undefined;
+                                const fieldQ = field as FrontendQuestion;
+                                const currentOptions: string[] = (watchedQ && watchedQ.type === 'mcq' ? watchedQ.options : undefined)
+                                  || (fieldQ.type === 'mcq' ? fieldQ.options : undefined)
+                                  || ['', ''];
                                 
                                 return currentOptions && currentOptions.length < 6 && (
                                 <Button

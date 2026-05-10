@@ -291,7 +291,7 @@ function bigramSim(a: string, b: string): number {
   const aSet = bigrams(a);
   const bSet = bigrams(b);
   let intersection = 0;
-  for (const bg of aSet) if (bSet.has(bg)) intersection++;
+  aSet.forEach(bg => { if (bSet.has(bg)) intersection++; });
   return (2 * intersection) / (aSet.size + bSet.size);
 }
 

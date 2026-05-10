@@ -10,6 +10,7 @@ import { submitAttempt } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Quiz, Question, Attempt } from '../../types';
+import type { FrontendQuestion } from '@shared/schema';
 
 interface QuizModalProps {
   quiz: Quiz;
@@ -21,12 +22,12 @@ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProp
   // Normalize quiz.questions - parse if string, ensure array
   const quiz = {
     ...quizProp,
-    questions: (() => {
+    questions: ((): FrontendQuestion[] => {
       if (!quizProp.questions) return [];
-      if (Array.isArray(quizProp.questions)) return quizProp.questions;
+      if (Array.isArray(quizProp.questions)) return quizProp.questions as FrontendQuestion[];
       if (typeof quizProp.questions === 'string') {
         try {
-          return JSON.parse(quizProp.questions);
+          return JSON.parse(quizProp.questions) as FrontendQuestion[];
         } catch (e) {
           console.error('Failed to parse quiz questions:', e);
           return [];

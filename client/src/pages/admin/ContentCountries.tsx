@@ -587,7 +587,7 @@ export default function AdminContentCountries() {
                   {filteredCountries.map((country) => (
                     <div key={country.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
-                        <CountryFlag code={country.code} flag={country.flag} size="lg" />
+                        <CountryFlag code={country.code} size="lg" />
                         <div>
                           <div className="font-medium">{country.name}</div>
                           <div className="text-sm text-muted-foreground">

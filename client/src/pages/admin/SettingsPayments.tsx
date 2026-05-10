@@ -430,7 +430,7 @@ export default function AdminSettingsPayments() {
 
   const handleEditSetting = (data: SystemSettingFormData) => {
     if (!editingSetting) return;
-    updateSettingMutation.mutate({ key: editingSetting.key, ...data });
+    updateSettingMutation.mutate({ ...data, key: editingSetting.key });
   };
 
   const openEditSettingDialog = (setting: SystemSetting) => {

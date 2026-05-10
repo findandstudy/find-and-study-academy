@@ -514,7 +514,7 @@ export default function AdminIntegrations() {
                       <button
                         key={typeOpt.value}
                         type="button"
-                        onClick={() => form.setValue('type', typeOpt.value)}
+                        onClick={() => form.setValue('type', typeOpt.value as IntegrationFormData['type'])}
                         className={`flex flex-col items-center gap-2 p-4 rounded-md border-2 transition-colors text-center ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover-elevate'}`}
                         data-testid={`wizard-type-${typeOpt.value}`}
                       >
