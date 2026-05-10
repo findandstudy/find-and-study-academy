@@ -72,16 +72,18 @@ test.beforeAll(async () => {
     [`E2E KB ${RUN_ID}`, adminId]
   );
   kbSourceId = sr.rows[0].id;
+  // Embed RUN_ID as a unique marker in chunk content so retrieval provenance
+  // can be asserted independently of any other rows in the KB.
   await pool.query(
     `INSERT INTO knowledge_chunks (source_id, content, keywords, metadata) VALUES
        ($1, $2, $3, $4),
        ($1, $5, $6, $7)`,
     [
       kbSourceId,
-      'University application process: submit your application via the online portal with required documents.',
+      `E2EMARKER_${RUN_ID}_APP: University application process — submit your application via the online portal with required documents.`,
       'application university admission process',
       JSON.stringify({ Country: 'Turkey', e2e: RUN_ID }),
-      'Business management programs cover strategic management, project management and operations.',
+      `E2EMARKER_${RUN_ID}_MGMT: Business management programs cover strategic management, project management and operations.`,
       'management business mba programs',
       JSON.stringify({ Country: 'Turkey', e2e: RUN_ID }),
     ]
@@ -483,10 +485,13 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
     });
     expect(loginRes.status()).toBe(200);
 
+    // Query embeds the unique RUN_ID marker so only our seeded chunks can
+    // top-rank for it — but ALSO contains 'başvuru' so the TR→EN expansion
+    // ('basvuru' → 'application') is exercised and asserted alongside.
     const chatRes = await request.post('/api/chat', {
       headers: { 'x-user-id': adminId, 'x-playwright-test': '1' },
       data: {
-        message: 'başvuruyu nasıl başlatırım',
+        message: `başvuruyu nasıl başlatırım E2EMARKER_${RUN_ID}_APP`,
         sessionId: 'rag-test-session-' + RUN_ID,
         history: [],
       },
@@ -517,10 +522,21 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
       `Türkçe expansion 'application' equivalent'ini içermeli; expandedTerms=${terms}`
     ).toBe(true);
     // Seed'imizdeki chunk en az bir kez retrieve edilmiş olmalı.
+    const chunks = json.debug.chunks || [];
+    expect(chunks.length, 'KB seed chunk retrieve edilmedi — RAG zinciri kırık')
+      .toBeGreaterThan(0);
+    // KRİTİK provenance: dönen chunk'lardan en az biri seed ettiğimiz
+    // sourceId'ye ait olmalı VE içeriği RUN_ID marker'ımızı taşımalı.
+    // Aksi halde test populated DB'de başka rastgele chunk'la geçebilir.
+    const seedHit = chunks.find((c: any) =>
+      c.sourceId === kbSourceId &&
+      typeof c.preview === 'string' &&
+      c.preview.includes(`E2EMARKER_${RUN_ID}_APP`)
+    );
     expect(
-      (json.debug.chunks || []).length,
-      'KB seed chunk retrieve edilmedi — RAG zinciri kırık'
-    ).toBeGreaterThan(0);
+      seedHit,
+      `seed chunk (sourceId=${kbSourceId}, marker=E2EMARKER_${RUN_ID}_APP) retrieve edilmedi; geldi: ${JSON.stringify(chunks)}`
+    ).toBeDefined();
   });
 
   test('agent sorgusu için sunucu yanıtı debug payload İÇERMEZ', async ({

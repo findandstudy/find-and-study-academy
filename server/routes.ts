@@ -6205,7 +6205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Compute query tokens for the debug trace (same normalisation used throughout).
       const queryTokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
 
-      let ragDebugChunks: Array<{ id: string; preview: string; score: number; matchedTerms: string[] }> = [];
+      let ragDebugChunks: Array<{ id: string; sourceId: string; preview: string; score: number; matchedTerms: string[] }> = [];
       try {
         const scoredChunks = await storage.searchKnowledgeChunks(message, 12, {
           university: universityHint,
@@ -6220,6 +6220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (isAdmin) {
             ragDebugChunks = scoredChunks.slice(0, 5).map(x => ({
               id: x.chunk.id,
+              sourceId: x.chunk.sourceId,
               preview: x.chunk.content.slice(0, 120),
               score: x.score,
               matchedTerms: x.matchedTerms,
