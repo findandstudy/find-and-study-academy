@@ -175,6 +175,10 @@ const authRateLimit = rateLimit({
   message: { success: false, message: 'Too many attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  // Bypass for Playwright E2E tests in non-production environments only.
+  skip: (req) =>
+    process.env.NODE_ENV !== 'production' &&
+    req.get('x-playwright-test') === '1',
 });
 
 const passwordResetRateLimit = rateLimit({
