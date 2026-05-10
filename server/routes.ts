@@ -2880,11 +2880,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const existing = await storage.getPopupById(id);
       if (!existing) return res.status(404).json({ success: false, message: 'Popup not found' });
-      const allowed = ['title','content','imageUrl','linkUrl','linkText','targetAudience','targetAgencyIds','status','frequency'];
-      const updates: any = {};
-      for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
-      if (req.body.startsAt !== undefined) updates.startsAt = req.body.startsAt ? new Date(req.body.startsAt) : null;
-      if (req.body.expiresAt !== undefined) updates.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
+      // Build the update payload by reading each known field by name. Doing this
+      // explicitly (rather than `for (const k of allowed) updates[k] = req.body[k]`)
+      // avoids the static-analysis warning about computed property access on a
+      // user-controlled object and makes the contract obvious.
+      const b = req.body ?? {};
+      const updates: Record<string, unknown> = {};
+      if (b.title !== undefined) updates.title = b.title;
+      if (b.content !== undefined) updates.content = b.content;
+      if (b.imageUrl !== undefined) updates.imageUrl = b.imageUrl;
+      if (b.linkUrl !== undefined) updates.linkUrl = b.linkUrl;
+      if (b.linkText !== undefined) updates.linkText = b.linkText;
+      if (b.targetAudience !== undefined) updates.targetAudience = b.targetAudience;
+      if (b.targetAgencyIds !== undefined) updates.targetAgencyIds = b.targetAgencyIds;
+      if (b.status !== undefined) updates.status = b.status;
+      if (b.frequency !== undefined) updates.frequency = b.frequency;
+      if (b.startsAt !== undefined) updates.startsAt = b.startsAt ? new Date(b.startsAt) : null;
+      if (b.expiresAt !== undefined) updates.expiresAt = b.expiresAt ? new Date(b.expiresAt) : null;
       const popup = await storage.updatePopup(id, updates);
       res.json({ success: true, popup });
     } catch (error) {

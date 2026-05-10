@@ -26,18 +26,89 @@ const app = express();
 app.set("trust proxy", 1);
 
 // ── Security middleware ─────────────────────────────────────────────────────
+// CSP whitelist (Task #44):
+//   • script-src 'self' — the Findy launcher used to be an inline <script>,
+//     but it was extracted to /findy-launcher.js so we no longer need
+//     'unsafe-inline'. We do NOT enable CSP in development because Vite's
+//     HMR client injects inline modules and uses eval-based source maps.
+//   • style-src allows 'unsafe-inline' (Tailwind/shadcn + a couple of
+//     style="" attributes in legacy templates) and Google Fonts.
+//   • frame-src whitelists the third-party players we embed (YouTube,
+//     Vimeo) and the maps providers we link to (Google, Yandex).
+//   • connect-src is just 'self' because all AI / n8n calls happen
+//     server-side; the browser only ever talks to our own /api.
+//   • frame-ancestors is set to 'self' here; routes under /embed override
+//     it below so the chat widget can be embedded on third-party sites.
+const isProd = process.env.NODE_ENV === "production";
 app.use(
   helmet({
-    // CSP/COEP would block our embedded chat widget, third-party iframes
-    // (YouTube, Google Maps, Yandex), and inline event-handlers used by the
-    // legacy index.html chat widget. Disable until we audit them.
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: isProd
+      ? {
+          useDefaults: true,
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            scriptSrcAttr: ["'none'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+            imgSrc: ["'self'", "data:", "blob:", "https:"],
+            mediaSrc: ["'self'", "blob:", "https:"],
+            connectSrc: ["'self'"],
+            frameSrc: [
+              "'self'",
+              "https://www.youtube.com",
+              "https://www.youtube-nocookie.com",
+              "https://player.vimeo.com",
+              "https://www.google.com",
+              "https://maps.google.com",
+              "https://yandex.com",
+              "https://yandex.com.tr",
+              "https://yandex.ru",
+            ],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            upgradeInsecureRequests: [],
+          },
+        }
+      : false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
     // We set our own X-Frame-Options below (per-route) to allow /embed iframes.
     frameguard: false,
   }),
 );
+
+// Routes under /embed need to be embeddable on third-party sites (the Findy
+// chat widget). Re-emit the FULL CSP with only `frame-ancestors` widened to
+// `*` — overwriting the header with a single directive would silently drop
+// every other protection (script-src, object-src, etc.) on these routes.
+if (isProd) {
+  const embedCsp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "script-src-attr 'none'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' blob: https:",
+    "connect-src 'self'",
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com https://maps.google.com https://yandex.com https://yandex.com.tr https://yandex.ru",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors *",
+    "upgrade-insecure-requests",
+  ].join("; ");
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/embed")) {
+      res.setHeader("Content-Security-Policy", embedCsp);
+    }
+    next();
+  });
+}
 
 // CORS: production locks down to ALLOWED_ORIGIN (the canonical deployed
 // domain, e.g. https://academy.findandstudy.com). We additionally allow:
