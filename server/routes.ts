@@ -6271,8 +6271,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ].join('\n');
       const systemPrompt = (cfg.system_prompt || '').trim() || defaultSystemPrompt;
 
+      // ── 0. E2E test bypass — skip provider + n8n, force degraded RAG path
+      // so deterministic test seeds drive the response. Only honored in
+      // non-production environments and when the test header is present.
+      const isE2ETest =
+        process.env.NODE_ENV !== 'production' &&
+        req.get('x-playwright-test') === '1';
+
       // ── 1. Direct provider call (preferred when configured) ──────────────────
-      if (apiKey && provider && model) {
+      if (!isE2ETest && apiKey && provider && model) {
         try {
           const botResponse = await callAiProvider({
             provider, apiKey, model, baseUrl, temperature, maxTokens,
@@ -6303,7 +6310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ── 2. Legacy n8n webhook fallback ───────────────────────────────────────
       const webhookUrl = process.env.N8N_WEBHOOK_URL;
-      if (webhookUrl) {
+      if (!isE2ETest && webhookUrl) {
         try {
           const response = await fetch(webhookUrl, {
             method: 'POST',

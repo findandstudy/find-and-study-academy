@@ -28,7 +28,7 @@ import { Pool, neonConfig } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 import ws from 'ws';
 
-neonConfig.webSocketConstructor = ws as any;
+neonConfig.webSocketConstructor = ws as unknown as typeof globalThis.WebSocket;
 
 const TEST_PASSWORD = 'TestPass123!';
 const RUN_ID = `e2e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -38,6 +38,7 @@ const AGENT_EMAIL = `agent.${RUN_ID}@e2e.findandstudy.test`;
 let pool: Pool;
 let adminId = '';
 let agentId = '';
+let kbSourceId = '';
 
 test.beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
@@ -59,6 +60,32 @@ test.beforeAll(async () => {
     [`agent_${RUN_ID}`, hash, 'E2E Agent', AGENT_EMAIL]
   );
   agentId = gr.rows[0].id;
+
+  // ── Deterministic RAG seed ────────────────────────────────────────────────
+  // Türkçe sorguların (`başvuru`, `yönetim`) expandTurkishQueryTerms üzerinden
+  // English equivalent'lere expand olduğunu kanıtlamak için bilgi tabanına
+  // 'application' / 'management' içeren chunk'lar ekliyoruz. Sorgu Türkçe
+  // ama eşleşme English chunk'la kuruluyor → expansion zinciri kanıtlanır.
+  const sr = await pool.query(
+    `INSERT INTO knowledge_sources (name, type, file_type, status, uploaded_by)
+     VALUES ($1, 'file', 'excel', 'active', $2) RETURNING id`,
+    [`E2E KB ${RUN_ID}`, adminId]
+  );
+  kbSourceId = sr.rows[0].id;
+  await pool.query(
+    `INSERT INTO knowledge_chunks (source_id, content, keywords, metadata) VALUES
+       ($1, $2, $3, $4),
+       ($1, $5, $6, $7)`,
+    [
+      kbSourceId,
+      'University application process: submit your application via the online portal with required documents.',
+      'application university admission process',
+      JSON.stringify({ Country: 'Turkey', e2e: RUN_ID }),
+      'Business management programs cover strategic management, project management and operations.',
+      'management business mba programs',
+      JSON.stringify({ Country: 'Turkey', e2e: RUN_ID }),
+    ]
+  );
 });
 
 test.afterAll(async () => {
@@ -70,6 +97,10 @@ test.afterAll(async () => {
       `DELETE FROM findy_conversations WHERE session_id LIKE $1 OR user_id = ANY($2)`,
       [`%${RUN_ID}%`, [adminId, agentId]]
     );
+    if (kbSourceId) {
+      await pool.query('DELETE FROM knowledge_chunks WHERE source_id = $1', [kbSourceId]);
+      await pool.query('DELETE FROM knowledge_sources WHERE id = $1', [kbSourceId]);
+    }
     await pool.query('DELETE FROM users WHERE email = ANY($1)', [
       [ADMIN_EMAIL, AGENT_EMAIL],
     ]);
@@ -196,55 +227,94 @@ async function sendChatMessage(page: Page, text: string) {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe('Findy chat hesap izolasyonu', () => {
-  test('admin → logout → agent: önceki kullanıcının bubble\'ları ve sessionId temizlenir', async ({ browser }) => {
+  test('admin → logout → agent: bubble\'lar, sessionId VE conversationHistory sıfırlanır', async ({ browser }) => {
     const context = await browser.newContext();
     const sessionIds: string[] = [];
-    await mockChatReply(context, {
-      bodyMarker: 'ADMIN_REPLY_MARKER',
-      onRequest: (b) => sessionIds.push(b?.sessionId),
+    // Her /api/chat çağrısında gönderilen `history` payload'ını yakalayalım —
+    // agent oturumunda admin mesajları sızmamış olmalı.
+    const requests: { sessionId: string; history: any[]; userId: string }[] = [];
+    await context.route('**/api/chat', async (route: Route) => {
+      let body: any = {};
+      try { body = JSON.parse(route.request().postData() || '{}'); } catch { /* ignore */ }
+      requests.push({
+        sessionId: body?.sessionId,
+        history: body?.history || [],
+        userId: route.request().headers()['x-user-id'] || '',
+      });
+      sessionIds.push(body?.sessionId);
+      // İlk N istek admin'e, sonrakiler agent'a — marker basit bir
+      // "her istek için aynı yanıt" yaklaşımı yerine isteğe göre seçilir.
+      const isAdminReq = route.request().headers()['x-user-id'] === adminId;
+      const marker = isAdminReq ? 'ADMIN_REPLY_MARKER' : 'AGENT_REPLY_MARKER';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: marker,
+          data: { message: marker },
+        }),
+      });
     });
 
-    const page = await context.newPage();
-    await loginAs(context, page, 'admin');
-    await page.goto('/');
-    await openChat(page);
+    try {
+      const page = await context.newPage();
+      await loginAs(context, page, 'admin');
+      await page.goto('/');
+      await openChat(page);
 
-    await sendChatMessage(page, 'admin tarafından gönderildi');
-    await expect(page.locator('.findy-message.user').last()).toContainText(
-      'admin tarafından gönderildi'
-    );
-    await expect(page.locator('.findy-message.bot').last()).toContainText(
-      'ADMIN_REPLY_MARKER'
-    );
+      await sendChatMessage(page, 'admin tarafından gönderildi');
+      await expect(page.locator('.findy-message.user').last()).toContainText(
+        'admin tarafından gönderildi'
+      );
+      await expect(page.locator('.findy-message.bot').last()).toContainText(
+        'ADMIN_REPLY_MARKER'
+      );
 
-    // Switch user
-    await context.unroute('**/api/chat');
-    await mockChatReply(context, {
-      bodyMarker: 'AGENT_REPLY_MARKER',
-      onRequest: (b) => sessionIds.push(b?.sessionId),
-    });
-    await logout(context, page);
-    await loginAs(context, page, 'agent');
-    await page.goto('/');
-    await openChat(page);
+      // İkinci admin mesajı → conversationHistory'de admin'in ilk turu olmalı
+      await sendChatMessage(page, 'admin ikinci sorgusu');
+      // Bu istekte history içinde 'admin tarafından gönderildi' geçmeli
+      const adminSecondReq = requests[requests.length - 1];
+      expect(
+        JSON.stringify(adminSecondReq.history).toLowerCase(),
+        'admin oturumunda history admin mesajını içermeli'
+      ).toContain('admin tarafından gönderildi');
 
-    // Önceki bubble'lar gitmeli
-    await expect(
-      page.locator('.findy-message.user', { hasText: 'admin tarafından gönderildi' })
-    ).toHaveCount(0);
-    await expect(
-      page.locator('.findy-message.bot', { hasText: 'ADMIN_REPLY_MARKER' })
-    ).toHaveCount(0);
+      // User switch
+      await logout(context, page);
+      await loginAs(context, page, 'agent');
+      await page.goto('/');
+      await openChat(page);
 
-    // Yeni mesaj — yeni sessionId üretilmiş olmalı
-    await sendChatMessage(page, 'acente sorgusu');
-    await expect(page.locator('.findy-message.bot').last()).toContainText(
-      'AGENT_REPLY_MARKER'
-    );
-    expect(sessionIds.length).toBeGreaterThanOrEqual(2);
-    expect(sessionIds[0]).not.toBe(sessionIds[sessionIds.length - 1]);
+      // Önceki bubble'lar gitmeli
+      await expect(
+        page.locator('.findy-message.user', { hasText: 'admin tarafından gönderildi' })
+      ).toHaveCount(0);
+      await expect(
+        page.locator('.findy-message.bot', { hasText: 'ADMIN_REPLY_MARKER' })
+      ).toHaveCount(0);
 
-    await context.close();
+      // Yeni mesaj — yeni sessionId üretilmiş olmalı VE history boş olmalı
+      await sendChatMessage(page, 'acente sorgusu');
+      await expect(page.locator('.findy-message.bot').last()).toContainText(
+        'AGENT_REPLY_MARKER'
+      );
+      const agentReq = requests[requests.length - 1];
+      expect(agentReq.userId).toBe(agentId);
+      expect(agentReq.sessionId).not.toBe(adminSecondReq.sessionId);
+      // KRİTİK: agent'ın ilk isteğinde history boş olmalı (admin turu sızmamış).
+      expect(
+        agentReq.history.length,
+        `acente ilk isteğinde history dolu — admin verisi sızıyor: ${JSON.stringify(agentReq.history)}`
+      ).toBe(0);
+      // Çift güvence: history serialize edildiğinde admin metni geçmemeli.
+      expect(JSON.stringify(agentReq.history).toLowerCase()).not.toContain(
+        'admin tarafından gönderildi'
+      );
+      expect(sessionIds[0]).not.toBe(sessionIds[sessionIds.length - 1]);
+    } finally {
+      await context.close();
+    }
   });
 
   test('cross-tab logout: storage event chat\'i resetler', async ({ browser }) => {
@@ -414,39 +484,43 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
     expect(loginRes.status()).toBe(200);
 
     const chatRes = await request.post('/api/chat', {
-      headers: { 'x-user-id': adminId },
+      headers: { 'x-user-id': adminId, 'x-playwright-test': '1' },
       data: {
         message: 'başvuruyu nasıl başlatırım',
         sessionId: 'rag-test-session-' + RUN_ID,
         history: [],
       },
     });
-    // Bu dev ortamında AI provider yapılandırılmamış olabilir; n8n webhook
-    // da 404 dönebilir. O nedenle 200 (provider/n8n/degraded) ya da 502
-    // (provider+webhook fail) kabul edilir — debug payload her iki yolda da
-    // RAG çalıştığında üretilir (degraded mode + admin path).
-    expect([200, 502]).toContain(chatRes.status());
+    // KB seed'i sayesinde provider olmasa bile degraded RAG path 200 dönmeli
+    // (ragContext doluyor → degraded mode'a düşüyor). 502 yalnızca provider
+    // SET edilmiş ama başarısız olmuşsa olur (test ortamında provider yok).
+    expect(chatRes.ok(), `admin /api/chat 2xx dönmeli, geldi: ${chatRes.status()}`).toBe(true);
     const json = await chatRes.json();
-    expect(json).toBeTruthy();
-    if (json.debug) {
-      const tokens = (json.debug.queryTokens || []).join(' ').toLowerCase();
-      const terms = (json.debug.expandedTerms || []).join(' ').toLowerCase();
-      // Normalize edilmiş "basvuru" tokens'da görünmeli.
-      expect(tokens).toContain('basvuru');
-      // TR_KEYWORD_DICT['basvuru'] = ['application'] — expansion English
-      // equivalent'ini eklemiş olmalı (chunk olmasa bile expandedTerms'de).
-      const hasApplicationExpansion =
-        terms.includes('application') ||
-        (json.debug.chunks || []).some((c: any) =>
-          (c.matchedTerms || []).some((t: string) =>
-            t.toLowerCase().includes('application')
-          )
-        );
-      expect(
-        hasApplicationExpansion,
-        `Türkçe expansion 'application' equivalent'ini içermeli; expandedTerms=${terms}`
-      ).toBe(true);
-    }
+    expect(json.success).toBe(true);
+    expect(json.debug, 'admin için debug payload dönmeli').toBeDefined();
+    const tokens = (json.debug.queryTokens || []).join(' ').toLowerCase();
+    const terms = (json.debug.expandedTerms || []).join(' ').toLowerCase();
+    // Normalize edilmiş "basvuru" tokens'da görünmeli.
+    expect(tokens).toContain('basvuru');
+    // TR_KEYWORD_DICT['basvuru'] = ['application'] — seed chunk'ı 'application'
+    // English equivalent'i ile eşleşmeli; expandedTerms VEYA chunk.matchedTerms
+    // 'application' içermeli.
+    const hasApplicationExpansion =
+      terms.includes('application') ||
+      (json.debug.chunks || []).some((c: any) =>
+        (c.matchedTerms || []).some((t: string) =>
+          t.toLowerCase().includes('application')
+        )
+      );
+    expect(
+      hasApplicationExpansion,
+      `Türkçe expansion 'application' equivalent'ini içermeli; expandedTerms=${terms}`
+    ).toBe(true);
+    // Seed'imizdeki chunk en az bir kez retrieve edilmiş olmalı.
+    expect(
+      (json.debug.chunks || []).length,
+      'KB seed chunk retrieve edilmedi — RAG zinciri kırık'
+    ).toBeGreaterThan(0);
   });
 
   test('agent sorgusu için sunucu yanıtı debug payload İÇERMEZ', async ({
@@ -459,7 +533,7 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
     expect(loginRes.status()).toBe(200);
 
     const chatRes = await request.post('/api/chat', {
-      headers: { 'x-user-id': agentId },
+      headers: { 'x-user-id': agentId, 'x-playwright-test': '1' },
       data: {
         message: 'yönetim programları',
         sessionId: 'rag-test-agent-' + RUN_ID,
@@ -469,9 +543,9 @@ test.describe('Findy chat Türkçe RAG genişletmesi (API)', () => {
     // Status ne olursa olsun (200 RAG-only / 200 provider / 502 fail), agent
     // yanıtında debug payload ASLA bulunmamalı — bu sunucu tarafı role
     // gating'in temel güvencesidir.
-    expect([200, 502]).toContain(chatRes.status());
+    expect(chatRes.ok(), `agent /api/chat 2xx dönmeli, geldi: ${chatRes.status()}`).toBe(true);
     const json = await chatRes.json();
-    expect(json).toBeTruthy();
+    expect(json.success).toBe(true);
     expect(json.debug, 'sunucu acente için debug payload sızdırıyor').toBeUndefined();
   });
 });
