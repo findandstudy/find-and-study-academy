@@ -500,21 +500,27 @@ export default function AdminIntegrations() {
               <div className="space-y-4 py-2">
                 <p className="text-sm text-muted-foreground">Select the type of service you want to connect.</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[
+                  {([
                     { value: 'payment', label: 'Payment', Icon: CreditCard, desc: 'Stripe, PayPal, Iyzico' },
                     { value: 'email', label: 'Email', Icon: Mail, desc: 'SendGrid, Mailgun, SMTP' },
                     { value: 'storage', label: 'Storage', Icon: Cloud, desc: 'S3, GCS, Object Store' },
                     { value: 'crm', label: 'CRM', Icon: Users, desc: 'HubSpot, Salesforce' },
                     { value: 'analytics', label: 'Analytics', Icon: BarChart3, desc: 'GA4, Mixpanel, Segment' },
                     { value: 'automation', label: 'Automation', Icon: Zap, desc: 'n8n, Zapier, Make' },
-                  ].map(typeOpt => {
+                  ] as const).map(typeOpt => {
                     const currentType = form.watch('type');
                     const isSelected = currentType === typeOpt.value;
+                    const isIntegrationType = (v: string): v is IntegrationFormData['type'] =>
+                      ['payment', 'email', 'storage', 'crm', 'analytics', 'automation'].includes(v);
                     return (
                       <button
                         key={typeOpt.value}
                         type="button"
-                        onClick={() => form.setValue('type', typeOpt.value as IntegrationFormData['type'])}
+                        onClick={() => {
+                          if (isIntegrationType(typeOpt.value)) {
+                            form.setValue('type', typeOpt.value);
+                          }
+                        }}
                         className={`flex flex-col items-center gap-2 p-4 rounded-md border-2 transition-colors text-center ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover-elevate'}`}
                         data-testid={`wizard-type-${typeOpt.value}`}
                       >

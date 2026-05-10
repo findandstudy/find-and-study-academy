@@ -73,18 +73,21 @@ export default function AdminQuizzes() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Queries
-  const { data: countries = [] } = useQuery<any[], Error, any[], readonly string[]>({
+  type CountryListItem = { id: string; name: string; code: string; flag?: string | null };
+  type CountriesResponse = { countries: CountryListItem[] };
+  const { data: countries = [] } = useQuery<CountriesResponse, Error, CountryListItem[], readonly string[]>({
     queryKey: ['/api/public/countries'],
-    select: (data: any) => data.countries || []
+    select: (data) => data.countries || []
   });
-  
-  const { data: quizzes = [], isLoading: quizzesLoading } = useQuery<any, Error, QuizDTO[], readonly string[]>({
+
+  type AdminQuizzesResponse = { quizzes: Array<Omit<Quiz, 'questions'> & { questions: FrontendQuestion[] | string | null }> };
+  const { data: quizzes = [], isLoading: quizzesLoading } = useQuery<AdminQuizzesResponse, Error, QuizDTO[], readonly string[]>({
     queryKey: ['/api/admin/quizzes'],
-    select: (data: any) => {
+    select: (data) => {
       // Backend already parses questions JSON - use directly as array
-      return data.quizzes.map((quiz: any) => ({
+      return data.quizzes.map((quiz) => ({
         ...quiz,
-        questions: quiz.questions || []  // Already parsed by backend
+        questions: Array.isArray(quiz.questions) ? quiz.questions : [],
       })) as QuizDTO[];
     }
   });
