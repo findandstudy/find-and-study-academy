@@ -282,7 +282,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main content */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         {/* Top bar */}
-        <div className="sticky top-0 z-30 flex h-16 items-center justify-between bg-background border-b border-border px-6">
+        <div className="sticky top-0 z-30 flex h-16 items-center justify-between bg-background border-b border-border px-3 sm:px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -302,8 +302,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-semibold text-foreground">
-              Find And Study - Admin Portal
+            <h1 className="text-sm sm:text-lg font-semibold text-foreground truncate">
+              <span className="hidden sm:inline">Find And Study - </span>Admin Portal
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        <main className="p-3 sm:p-6">{children}</main>
       </div>
     </div>
   );

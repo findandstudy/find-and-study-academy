@@ -388,7 +388,7 @@ export default function AdminQuizzes() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
               Quiz Library
@@ -409,7 +409,7 @@ export default function AdminQuizzes() {
                 <Form {...quizForm}>
                   <form onSubmit={quizForm.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Basic Quiz Info */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={quizForm.control}
                         name="title"
@@ -457,7 +457,7 @@ export default function AdminQuizzes() {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={quizForm.control}
                         name="passPercent"
@@ -503,7 +503,7 @@ export default function AdminQuizzes() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={quizForm.control}
                         name="isFinal"
@@ -562,12 +562,12 @@ export default function AdminQuizzes() {
 
                     {/* Questions Section */}
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold flex items-center gap-2">
                           <Brain className="w-5 h-5" />
                           Questions ({questionFields.length})
                         </h3>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button 
                             type="button" 
                             variant="outline" 

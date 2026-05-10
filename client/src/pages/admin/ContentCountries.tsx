@@ -453,7 +453,7 @@ export default function AdminContentCountries() {
         <TabsContent value="countries" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="w-5 h-5" />
                   Country Management
@@ -647,7 +647,7 @@ export default function AdminContentCountries() {
         <TabsContent value="content" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Content Management
@@ -684,7 +684,7 @@ export default function AdminContentCountries() {
                     </DialogHeader>
                     <Form {...contentForm}>
                       <form onSubmit={contentForm.handleSubmit(onContentSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="title"
@@ -725,7 +725,7 @@ export default function AdminContentCountries() {
                             </FormItem>
                           )}
                         />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="type"
@@ -790,7 +790,7 @@ export default function AdminContentCountries() {
                             </FormItem>
                           )}
                         />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="countryId"
@@ -842,7 +842,7 @@ export default function AdminContentCountries() {
                             )}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="order"
@@ -865,7 +865,7 @@ export default function AdminContentCountries() {
                           />
                         </div>
                         {/* Language & Category */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={contentForm.control}
                             name="language"
@@ -1155,7 +1155,7 @@ export default function AdminContentCountries() {
                                 </FormItem>
                               )}
                             />
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <FormField
                                 control={contentForm.control}
                                 name="displayName"

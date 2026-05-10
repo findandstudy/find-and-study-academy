@@ -46,6 +46,7 @@ The platform offers a modular course structure with lessons and embedded quizzes
 -   **Popup Ad System:** Manages targeted pop-up advertisements.
 -   **Announcements System:** Dedicated agent announcements page with dashboard integration.
 -   **Grouped Sidebar Layouts:** Structured sidebar navigation for both admin and agent interfaces.
+-   **Mobile-Responsive Admin Pages:** Admin pages (Quizzes, ContentCountries, Agencies, Users, FindyAI) are usable on 360–768px viewports without horizontal scroll. Global `DialogContent` shrinks to `w-[calc(100%-1rem)]` with `max-h-[calc(100dvh-2rem)] overflow-y-auto` on mobile. `AdminLayout` topbar/main padding shrinks to `p-3` on mobile and the title is truncated. Admin form grids changed from `grid-cols-2` to `grid-cols-1 sm:grid-cols-2`. Card headers use `flex-wrap items-center justify-between gap-3` so action buttons wrap below titles. Agency list-view `<Table>` is wrapped in `overflow-x-auto`. The existing mobile drawer on `AdminLayout` (Menu button + overlay) handles sidebar collapse on small viewports.
 
 ## External Dependencies
 

@@ -413,9 +413,9 @@ export default function AdminAgencies() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Agency Management</h1>
+      <div className="flex flex-wrap justify-between items-start gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Agency Management</h1>
           <p className="text-muted-foreground mt-1">
             Manage partner agencies and their agent assignments.
           </p>
@@ -559,7 +559,7 @@ export default function AdminAgencies() {
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
@@ -598,7 +598,7 @@ export default function AdminAgencies() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="country"
@@ -650,7 +650,7 @@ export default function AdminAgencies() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="contactEmail"
@@ -1029,6 +1029,7 @@ export default function AdminAgencies() {
       {viewMode === 'list' && filteredAgencies.length > 0 && (
         <Card>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1137,6 +1138,7 @@ export default function AdminAgencies() {
                 })}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -1248,7 +1250,7 @@ export default function AdminAgencies() {
                   <Building className="w-4 h-4" />
                   Temel Bilgiler
                 </h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Acente Adı:</span>
                     <p className="font-medium">{viewAgency.name}</p>
@@ -1286,7 +1288,7 @@ export default function AdminAgencies() {
                   <User className="w-4 h-4" />
                   İletişim Bilgileri
                 </h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <div>
@@ -1333,7 +1335,7 @@ export default function AdminAgencies() {
                     <Users className="w-4 h-4" />
                     İşletme Bilgileri
                   </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     {viewAgency.staffSize && (
                       <div>
                         <span className="text-muted-foreground">Personel Sayısı:</span>

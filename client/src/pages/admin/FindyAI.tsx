@@ -1486,6 +1486,7 @@ function CustomSearchTermsTab() {
               No custom mappings yet. Add one above to extend the Turkish search dictionary.
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1520,6 +1521,7 @@ function CustomSearchTermsTab() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1872,6 +1874,7 @@ function SourcesTab() {
               <p className="text-xs text-muted-foreground">Upload an Excel file with university programs, PDFs, or add a URL</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1928,6 +1931,7 @@ function SourcesTab() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

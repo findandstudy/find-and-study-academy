@@ -575,9 +575,9 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">User Management</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-heading">User Management</h1>
           <p className="text-muted-foreground mt-1">
             Manage users, roles, and permissions across the platform.
           </p>
@@ -752,7 +752,7 @@ export default function AdminUsers() {
           ) : (
             <div className="space-y-4">
               {filteredUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate" data-testid={`card-user-${user.id}`}>
+                <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg hover-elevate" data-testid={`card-user-${user.id}`}>
                   <div className="flex items-center gap-4">
                     <Checkbox
                       checked={selectedUsers.has(user.id)}
