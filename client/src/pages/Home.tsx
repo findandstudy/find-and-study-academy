@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { I18N_STORAGE_KEY } from '@/i18n';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 const BRAND_NAVY = '#143591';
@@ -24,42 +27,22 @@ const BRAND_RED = '#ED1C24';
 // WCAG AA contrast (4.5:1) which the lighter brand red just misses.
 const BRAND_RED_DEEP = '#C8161D';
 
-const features = [
-  {
-    icon: BookOpen,
-    title: 'Kapsamlı Eğitimler',
-    description:
-      'Ülke bazlı, modüller halinde hazırlanmış kurslar ile eğitim danışmanlığında uzmanlaşın.',
-  },
-  {
-    icon: Award,
-    title: 'Doğrulanabilir Sertifika',
-    description:
-      'Her kursu tamamladığınızda QR kodlu, kamuya açık doğrulanabilir bir sertifika alın.',
-  },
-  {
-    icon: Package,
-    title: 'Partner Zone',
-    description:
-      'Üniversite katalogları, broşürler ve materyallere tek noktadan erişin.',
-  },
-  {
-    icon: Trophy,
-    title: 'Liderlik Tablosu',
-    description:
-      'Rozetler, puanlar ve liderlik tablosuyla acentenizin gelişimini ölçün.',
-  },
-];
-
-const heroBullets = [
-  'Ülke bazlı uzmanlaşma kursları',
-  'QR kodlu doğrulanabilir sertifikalar',
-  'Acentenize özel partner kaynakları',
-];
-
 export default function Home() {
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { user, role } = useAuthStore();
+
+  // The public landing page defaults to English unless the visitor has already
+  // picked a language (persisted in localStorage). Their choice always wins.
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(I18N_STORAGE_KEY) && i18n.resolvedLanguage !== 'en') {
+        i18n.changeLanguage('en');
+      }
+    } catch {
+      /* localStorage unavailable — ignore */
+    }
+  }, [i18n]);
 
   // Logged-in users go straight to their dashboard.
   useEffect(() => {
@@ -68,6 +51,18 @@ export default function Home() {
       setLocation(path);
     }
   }, [user, role, setLocation]);
+
+  const features = [
+    { icon: BookOpen, title: t('home.f1Title'), description: t('home.f1Desc') },
+    { icon: Award, title: t('home.f2Title'), description: t('home.f2Desc') },
+    { icon: Package, title: t('home.f3Title'), description: t('home.f3Desc') },
+    { icon: Trophy, title: t('home.f4Title'), description: t('home.f4Desc') },
+  ];
+  const heroBullets = [
+    t('home.heroBullet1'),
+    t('home.heroBullet2'),
+    t('home.heroBullet3'),
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -82,23 +77,23 @@ export default function Home() {
             <img src={logoImage} alt="Find And Study" className="h-9 w-auto object-contain" />
           </Link>
           <nav className="flex items-center gap-2">
+            <LanguageSwitcher variant="inline" />
             <Link href="/login">
               <Button variant="ghost" size="sm" data-testid="link-nav-login">
-                Giriş
+                {t('home.navLogin')}
               </Button>
             </Link>
             <Link href="/signup">
               <Button size="sm" data-testid="link-nav-signup">
-                Acente Kaydı
+                {t('home.navSignup')}
               </Button>
             </Link>
           </nav>
         </div>
       </header>
 
-      {/* Hero — light background, dark navy text, subtle brand-colored decorative shapes */}
+      {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        {/* Decorative blurred shapes in brand colors (very subtle) */}
         <div
           className="pointer-events-none absolute -top-32 -right-32 w-[28rem] h-[28rem] rounded-full opacity-[0.08] blur-3xl"
           style={{ background: BRAND_NAVY }}
@@ -119,7 +114,7 @@ export default function Home() {
                 data-testid="badge-hero-tag"
               >
                 <GraduationCap className="w-3 h-3 mr-1" style={{ color: BRAND_RED }} />
-                Eğitim Danışmanları İçin
+                {t('home.heroBadge')}
               </Badge>
               <h1
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] mb-4 tracking-tight"
@@ -131,23 +126,22 @@ export default function Home() {
                   className="block text-2xl sm:text-3xl lg:text-4xl font-semibold mt-3 text-slate-700"
                   data-testid="text-hero-subtitle"
                 >
-                  Acenteler için modern eğitim portalı
+                  {t('home.heroSubtitle')}
                 </span>
               </h1>
               <p
                 className="text-base sm:text-lg text-slate-600 mb-7 max-w-2xl leading-relaxed"
                 data-testid="text-hero-description"
               >
-                Yurt dışı eğitim danışmanlığında uzmanlaşmanızı sağlayan kurslar, sertifikalar,
-                partner kaynakları ve performans takibi — hepsi tek bir platformda.
+                {t('home.heroDescription')}
               </p>
 
               <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2 mb-8 max-w-2xl">
-                {heroBullets.map((b) => (
+                {heroBullets.map((b, i) => (
                   <li
-                    key={b}
+                    key={i}
                     className="flex items-center gap-2 text-sm text-slate-700"
-                    data-testid={`text-hero-bullet-${b}`}
+                    data-testid={`text-hero-bullet-${i}`}
                   >
                     <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: BRAND_NAVY }} />
                     <span>{b}</span>
@@ -158,19 +152,19 @@ export default function Home() {
               <div className="flex flex-wrap gap-3">
                 <Link href="/signup">
                   <Button size="lg" data-testid="button-cta-signup">
-                    Hemen Başla
+                    {t('home.ctaStart')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <Link href="/login">
                   <Button size="lg" variant="outline" data-testid="button-cta-login">
-                    Portala Giriş Yap
+                    {t('home.ctaLoginPortal')}
                   </Button>
                 </Link>
               </div>
             </div>
 
-            {/* Hero side card — visual element using brand colors */}
+            {/* Hero side card */}
             <div className="hidden lg:block lg:col-span-5">
               <div className="relative">
                 <div
@@ -193,21 +187,21 @@ export default function Home() {
                           Find And Study Academy
                         </p>
                         <p className="text-lg font-bold" style={{ color: BRAND_NAVY }}>
-                          Acente Eğitim Portalı
+                          {t('home.cardTitle')}
                         </p>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <FeatureRow icon={BookOpen} label="20+ ülke bazlı kurs" />
-                      <FeatureRow icon={Award} label="Doğrulanabilir sertifikalar" />
-                      <FeatureRow icon={Package} label="Üniversite kataloğu erişimi" />
-                      <FeatureRow icon={Trophy} label="Acente liderlik tablosu" />
+                      <FeatureRow icon={BookOpen} label={t('home.cardRow1')} />
+                      <FeatureRow icon={Award} label={t('home.cardRow2')} />
+                      <FeatureRow icon={Package} label={t('home.cardRow3')} />
+                      <FeatureRow icon={Trophy} label={t('home.cardRow4')} />
                     </div>
                     <div
                       className="mt-6 rounded-md p-3 text-sm font-semibold text-white text-center"
                       style={{ background: BRAND_RED_DEEP }}
                     >
-                      Hemen kayıt olun, eğitime başlayın
+                      {t('home.cardCta')}
                     </div>
                   </CardContent>
                 </Card>
@@ -225,18 +219,16 @@ export default function Home() {
               className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
               style={{ color: BRAND_NAVY }}
             >
-              Acentenize değer katan özellikler
+              {t('home.featuresTitle')}
             </h2>
-            <p className="text-slate-600">
-              Eğitimden raporlamaya kadar tüm süreçleriniz için ihtiyacınız olan araçlar.
-            </p>
+            <p className="text-slate-600">{t('home.featuresSubtitle')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map((f) => (
+            {features.map((f, i) => (
               <Card
-                key={f.title}
+                key={i}
                 className="hover-elevate border-slate-200"
-                data-testid={`card-feature-${f.title}`}
+                data-testid={`card-feature-${i}`}
               >
                 <CardContent className="p-6">
                   <div
@@ -263,22 +255,21 @@ export default function Home() {
             className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
             style={{ color: BRAND_NAVY }}
           >
-            Acentenizi Find And Study ailesine katın
+            {t('home.ctaBottomTitle')}
           </h2>
           <p className="text-slate-600 mb-7 max-w-2xl mx-auto leading-relaxed">
-            Eğitimleri tamamlayın, sertifikalarınızı kazanın ve danışmanlık süreçlerinizi
-            uçtan uca yönetin.
+            {t('home.ctaBottomDesc')}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/signup">
               <Button size="lg" data-testid="button-cta-signup-bottom">
-                Acente Kaydı
+                {t('home.ctaBottomSignup')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link href="/login">
               <Button size="lg" variant="outline" data-testid="button-cta-login-bottom">
-                Giriş Yap
+                {t('home.ctaBottomLogin')}
               </Button>
             </Link>
           </div>
@@ -289,25 +280,21 @@ export default function Home() {
       <footer className="border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 text-sm">
-            {/* Brand block */}
             <div className="md:col-span-5">
               <img
                 src={logoImage}
                 alt="Find And Study"
                 className="h-10 w-auto object-contain mb-4"
               />
-              <p className="text-slate-600 leading-relaxed max-w-sm">
-                Yurt dışı eğitim danışmanları için modern eğitim ve sertifikasyon platformu.
-              </p>
+              <p className="text-slate-600 leading-relaxed max-w-sm">{t('home.footerTagline')}</p>
             </div>
 
-            {/* Links */}
             <div className="md:col-span-3">
               <h4
                 className="font-semibold mb-4 text-xs uppercase tracking-wider"
                 style={{ color: BRAND_NAVY }}
               >
-                Bağlantılar
+                {t('home.footerLinksHead')}
               </h4>
               <ul className="space-y-1 text-slate-600">
                 <li>
@@ -316,7 +303,7 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-login"
                   >
-                    Acente Girişi
+                    {t('home.footerLoginLink')}
                   </Link>
                 </li>
                 <li>
@@ -325,7 +312,7 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-signup"
                   >
-                    Acente Kaydı
+                    {t('home.footerSignupLink')}
                   </Link>
                 </li>
                 <li>
@@ -334,19 +321,18 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-verify"
                   >
-                    Sertifika Doğrula
+                    {t('home.footerVerifyLink')}
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Contact */}
             <div className="md:col-span-4">
               <h4
                 className="font-semibold mb-4 text-xs uppercase tracking-wider"
                 style={{ color: BRAND_NAVY }}
               >
-                İletişim
+                {t('home.footerContactHead')}
               </h4>
               <ul className="space-y-1 text-slate-600">
                 <li>
@@ -386,8 +372,8 @@ export default function Home() {
           </div>
 
           <div className="border-t border-slate-200 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} Find And Study Academy. Tüm hakları saklıdır.</span>
-            <span className="text-slate-400">Türkiye merkezli eğitim danışmanlığı platformu</span>
+            <span>© {new Date().getFullYear()} Find And Study Academy. {t('home.footerRights')}</span>
+            <span className="text-slate-400">{t('home.footerLocated')}</span>
           </div>
         </div>
       </footer>
