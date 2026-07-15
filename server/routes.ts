@@ -775,6 +775,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Signup endpoint - create new agent user and agency
+  // ── SSO: Find And Study OS → Academy (one-click, no separate login) ─────────
+  // FaS-OS signs a short-lived JWT (HS256) with the shared SSO secret and links
+  // the agent here: academy.findandstudy.com/api/sso?token=<jwt>
+  // We verify the signature, just-in-time provision/link the agent (+ their
+  // company as an agency), open a session cookie and redirect to the dashboard.
+  const ssoUsedJti = new Map<string, number>(); // jti -> expiry(ms); best-effort replay guard (single process)
+  const b64urlToJson = (seg: string) =>
+    JSON.parse(Buffer.from(seg.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+  const verifyHs256Jwt = (token: string, secret: string): any => {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error('malformed');
+    const [h, p, sig] = parts;
+    const expected = crypto.createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new Error('bad-signature');
+    const header = b64urlToJson(h);
+    if (header.alg !== 'HS256') throw new Error('bad-alg');
+    const payload = b64urlToJson(p);
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && now > payload.exp) throw new Error('expired');
+    if (payload.nbf && now < payload.nbf) throw new Error('not-yet-valid');
+    return payload;
+  };
+
+  app.get('/api/sso', authRateLimit, async (req, res) => {
+    try {
+      const secret = process.env.SSO_SHARED_SECRET;
+      if (!secret) { console.error('[sso] SSO_SHARED_SECRET is not set'); return res.status(500).send('SSO not configured'); }
+      const token = String(req.query.token || '');
+      if (!token) return res.status(400).send('Missing token');
+
+      let payload: any;
+      try { payload = verifyHs256Jwt(token, secret); }
+      catch (e) { console.warn('[sso] token rejected:', (e as Error).message); return res.status(401).send('Invalid or expired SSO token'); }
+
+      const email = String(payload.email || '').trim().toLowerCase();
+      if (!email) return res.status(400).send('SSO token missing email');
+
+      // Best-effort single-use protection (prune expired first).
+      const jti = payload.jti ? String(payload.jti) : null;
+      if (jti) {
+        const nowMs = Date.now();
+        ssoUsedJti.forEach((exp, k) => { if (exp < nowMs) ssoUsedJti.delete(k); });
+        if (ssoUsedJti.has(jti)) return res.status(401).send('SSO token already used');
+        ssoUsedJti.set(jti, payload.exp ? payload.exp * 1000 : nowMs + 120000);
+      }
+
+      let user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Transfer the agent's company as an agency (link if it already exists).
+        let agencyId: string | null = null;
+        const companyName = String(payload.company || payload.companyName || payload.agencyName || '').trim() || null;
+        if (companyName) {
+          try {
+            const agencies = await storage.getAgencies();
+            const match = agencies.find((a) => a.name.trim().toLowerCase() === companyName.toLowerCase());
+            agencyId = match ? match.id : (await storage.createAgency({ name: companyName, status: 'active' } as any)).id;
+          } catch (e) { console.warn('[sso] agency link failed:', (e as Error).message); }
+        }
+        const randomPassword = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
+        const usernameBase = (email.split('@')[0] || 'agent').replace(/[^a-z0-9._-]/gi, '').slice(0, 24) || 'agent';
+        // createUser's typed shape is narrow; we insert the extra profile columns
+        // in the same insert via `as any` (drizzle accepts all real columns).
+        user = await storage.createUser({
+          username: `${usernameBase}-${crypto.randomBytes(3).toString('hex')}`,
+          email,
+          name: String(payload.name || email).slice(0, 120),
+          password: randomPassword,
+          role: 'agent',
+          status: 'active',
+          agencyId,
+          companyName,
+          country: payload.country ? String(payload.country).slice(0, 8) : null,
+          phone: payload.phone ? String(payload.phone).slice(0, 40) : null,
+        } as any);
+        console.log('[sso] provisioned new agent:', email);
+      }
+
+      if (user.status !== 'active') return res.status(403).send('Hesabınız pasif durumda. Yöneticinizle iletişime geçin.');
+
+      req.session.userId = user.id;
+      await new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
+      const dest = (user.role === 'admin' || user.role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
+      return res.redirect(302, dest);
+    } catch (error) {
+      console.error('[sso] error:', error);
+      return res.status(500).send('SSO failed');
+    }
+  });
+
   app.post('/api/signup', authRateLimit, async (req, res) => {
     try {
       const { name, email, password, agencyName, country, phone } = req.body;

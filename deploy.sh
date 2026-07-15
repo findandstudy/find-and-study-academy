@@ -38,7 +38,10 @@ if ! npm run build; then
 fi
 
 say "4/5  Restart ${APP}"
-pm2 restart "${APP}" --update-env >/dev/null
+# Restart via the ecosystem file so dotenv re-reads .env (picks up new env vars).
+# The ecosystem only defines the academy app, so other projects are untouched.
+pm2 restart ecosystem.config.cjs --update-env --only "${APP}" >/dev/null 2>&1 \
+  || pm2 restart "${APP}" --update-env >/dev/null
 
 say "5/5  Health check (${HEALTH_URL})"
 ok=0; code=""
@@ -52,7 +55,8 @@ if [ "$ok" != "1" ]; then
   printf '\033[1;31mHealth check failed (last HTTP %s) — rolling back.\033[0m\n' "${code:-none}" >&2
   if [ -d dist.prev ]; then
     rm -rf dist && mv dist.prev dist
-    pm2 restart "${APP}" --update-env >/dev/null
+    pm2 restart ecosystem.config.cjs --update-env --only "${APP}" >/dev/null 2>&1 \
+      || pm2 restart "${APP}" --update-env >/dev/null
     die "Rolled back to previous build. Check: pm2 logs ${APP}"
   fi
   die "No previous build to roll back to. Check: pm2 logs ${APP}"
