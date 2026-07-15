@@ -248,6 +248,7 @@ export default function PartnerZoneAdmin() {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [editingContent, setEditingContent] = useState<FolderContent | null>(null);
   const [deleteContent, setDeleteContent] = useState<FolderContent | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
@@ -1016,6 +1017,10 @@ export default function PartnerZoneAdmin() {
               <Edit2 className="w-4 h-4 mr-2" />
               {t('admin.partnerZone.editFolder')}
             </Button>
+            <Button variant="outline" onClick={() => setBulkDialogOpen(true)} data-testid="button-bulk-upload">
+              <Upload className="w-4 h-4 mr-2" />
+              {t('admin.partnerZone.bulkUpload', { defaultValue: 'Toplu Yükle' })}
+            </Button>
             <Button onClick={openCreateContent} data-testid="button-new-content">
               <Plus className="w-4 h-4 mr-2" />
               {t('admin.partnerZone.addContent')}
@@ -1315,6 +1320,14 @@ export default function PartnerZoneAdmin() {
           currentMediaEntry={currentMediaEntry}
           fileInputRef={fileInputRef}
           onFileSelect={(f) => handleFileUpload(f)}
+        />
+
+        <BulkUploadDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+          folderId={folderId}
+          user={user}
+          onDone={() => queryClient.invalidateQueries({ queryKey: ['/api/admin/partner-folders', folderId] })}
         />
 
         <AlertDialog open={!!deleteContent} onOpenChange={(o) => !o && setDeleteContent(null)}>
@@ -1867,6 +1880,205 @@ function ContentDialog({
             </div>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+// ─── Bulk Upload Dialog: pick many files, each becomes a content item ────────
+function BulkUploadDialog({
+  open, onOpenChange, folderId, user, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  folderId: string | null;
+  user: { id?: string; role?: string } | null;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const BULK_MEDIA = [
+    { value: 'document' as MediaType, label: t('common.document'), icon: FileText, accept: '.pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip', folder: 'documents' },
+    { value: 'video' as MediaType, label: t('common.video'), icon: Video, accept: '.mp4,.mov,.webm,.avi,.mkv', folder: 'videos' },
+    { value: 'image' as MediaType, label: t('common.image'), icon: ImageIcon, accept: '.jpg,.jpeg,.png,.gif,.webp,.svg', folder: 'images' },
+  ];
+  const [mediaType, setMediaType] = useState<MediaType>('image');
+  const [status, setStatus] = useState('draft');
+  const [items, setItems] = useState<{ file: File; state: 'pending' | 'uploading' | 'done' | 'error'; error?: string }[]>([]);
+  const [running, setRunning] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const entry = BULK_MEDIA.find((m) => m.value === mediaType) ?? BULK_MEDIA[0];
+
+  const humanSize = (bytes: number) => {
+    const kb = bytes / 1024;
+    return kb < 1024 ? `${kb.toFixed(0)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+  };
+  const addFiles = (files: FileList | File[]) => {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
+    setItems((prev) => [...prev, ...arr.map((file) => ({ file, state: 'pending' as const }))]);
+  };
+  const reset = () => { setItems([]); setRunning(false); };
+
+  const uploadAll = async () => {
+    if (running || items.length === 0) return;
+    setRunning(true);
+    const snapshot = items;
+    let ok = 0, fail = 0;
+    for (let i = 0; i < snapshot.length; i++) {
+      if (snapshot[i].state === 'done') continue;
+      setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'uploading', error: undefined } : p)));
+      try {
+        const fd = new FormData();
+        fd.append('file', snapshot[i].file);
+        fd.append('folder', entry.folder);
+        const up = await fetch('/api/uploads/content', {
+          method: 'POST',
+          headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
+          body: fd,
+        });
+        if (!up.ok) throw new Error(`upload ${up.status}`);
+        const data = await up.json();
+        const url = data?.url || data?.fileUrl || data?.path;
+        if (!url) throw new Error('no url');
+        const title = snapshot[i].file.name.replace(/\.[^.]+$/, '');
+        const payload: Record<string, unknown> = {
+          title,
+          displayName: snapshot[i].file.name,
+          description: null,
+          fileSize: humanSize(snapshot[i].file.size),
+          status,
+          folderId: folderId ?? null,
+          type: mediaType,
+          contentType: mediaType,
+        };
+        if (mediaType === 'document') payload.documentUrl = url;
+        if (mediaType === 'video') payload.videoUrl = url;
+        if (mediaType === 'image') payload.imageUrl = url;
+        const cr = await apiRequest('POST', '/api/admin/partner-contents', payload);
+        if (!cr.ok) throw new Error('save failed');
+        ok++;
+        setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'done' } : p)));
+      } catch (err) {
+        fail++;
+        setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'error', error: err instanceof Error ? err.message : 'error' } : p)));
+      }
+    }
+    setRunning(false);
+    onDone();
+    toast({
+      title: t('common.success', { defaultValue: 'Done' }),
+      description: `${ok} ✓${fail ? ` · ${fail} ✕` : ''}`,
+      variant: fail && !ok ? 'destructive' : 'default',
+    });
+  };
+
+  const doneCount = items.filter((i) => i.state === 'done').length;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!running) { onOpenChange(v); if (!v) reset(); } }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('admin.partnerZone.bulkUploadTitle', { defaultValue: 'Toplu Yükle' })}</DialogTitle>
+          <DialogDescription>
+            {t('admin.partnerZone.bulkUploadDesc', { defaultValue: 'Birden fazla dosya seç — her biri ayrı içerik olarak eklenir.' })}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            {BULK_MEDIA.map((mt) => {
+              const Icon = mt.icon;
+              const active = mediaType === mt.value;
+              return (
+                <button
+                  key={mt.value}
+                  type="button"
+                  disabled={running}
+                  onClick={() => setMediaType(mt.value)}
+                  className={`flex flex-col items-center gap-1.5 rounded-md border py-3 px-2 text-sm font-medium transition-colors ${
+                    active ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover-elevate'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />{mt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            onClick={() => { if (!running) inputRef.current?.click(); }}
+            onDragOver={(e) => { e.preventDefault(); if (!running) setDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (!running && e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+            }}
+            role="button"
+            tabIndex={0}
+            data-testid="dropzone-bulk-files"
+            className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-4 py-8 text-sm text-center cursor-pointer transition-colors ${
+              dragOver ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover-elevate'
+            } ${running ? 'pointer-events-none opacity-70' : ''}`}
+          >
+            <Upload className="w-6 h-6" />
+            <span className="font-medium">{entry.label}</span>
+            <span className="text-xs opacity-80">
+              {t('admin.partnerZone.bulkDropHint', { defaultValue: 'Birden fazla dosyayı sürükle bırak ya da seçmek için tıkla' })}
+            </span>
+          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            accept={entry.accept}
+            onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }}
+          />
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t('admin.partnerZone.statusLabel')}:</span>
+            <Select value={status} onValueChange={setStatus} disabled={running}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t('admin.partnerZone.draftOption')}</SelectItem>
+                <SelectItem value="published">{t('admin.partnerZone.publishedOption')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {items.length > 0 && (
+            <div className="max-h-52 overflow-y-auto rounded-md border divide-y">
+              {items.map((it, idx) => (
+                <div key={idx} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="truncate flex-1">{it.file.name}</span>
+                  {it.state === 'pending' && <span className="text-xs text-muted-foreground shrink-0">{humanSize(it.file.size)}</span>}
+                  {it.state === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+                  {it.state === 'done' && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+                  {it.state === 'error' && <span title={it.error} className="shrink-0"><XCircle className="w-4 h-4 text-destructive" /></span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">{items.length > 0 ? `${doneCount}/${items.length}` : ''}</span>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" disabled={running} onClick={() => { onOpenChange(false); reset(); }}>
+                {t('common.cancel')}
+              </Button>
+              <Button type="button" disabled={running || items.length === 0} onClick={uploadAll}>
+                {running ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.partnerZone.uploading')}</>
+                ) : (
+                  <><Upload className="w-4 h-4 mr-2" />{t('admin.partnerZone.bulkUploadAction', { defaultValue: 'Hepsini yükle' })} ({items.length})</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
