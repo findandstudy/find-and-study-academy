@@ -795,8 +795,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (header.alg !== 'HS256') throw new Error('bad-alg');
     const payload = b64urlToJson(p);
     const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && now > payload.exp) throw new Error('expired');
-    if (payload.nbf && now < payload.nbf) throw new Error('not-yet-valid');
+    const LEEWAY = 60; // seconds of clock-skew tolerance between FaS-OS and Academy
+    if (payload.exp && now > payload.exp + LEEWAY) throw new Error('expired');
+    if (payload.nbf && now < payload.nbf - LEEWAY) throw new Error('not-yet-valid');
     return payload;
   };
 
@@ -813,6 +814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const email = String(payload.email || '').trim().toLowerCase();
       if (!email) return res.status(400).send('SSO token missing email');
+      const externalId = payload.sub ? String(payload.sub).slice(0, 128) : null;
 
       // Best-effort single-use protection (prune expired first).
       const jti = payload.jti ? String(payload.jti) : null;
@@ -823,7 +825,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ssoUsedJti.set(jti, payload.exp ? payload.exp * 1000 : nowMs + 120000);
       }
 
-      let user = await storage.getUserByEmail(email);
+      // Match by the stable external id (FaS-OS user id) first, then by email.
+      // This means a later email change on the FaS-OS side never creates a
+      // duplicate academy account.
+      let user = externalId ? await storage.getUserByExternalId(externalId) : undefined;
+      if (!user) user = await storage.getUserByEmail(email);
+      if (user && externalId && !user.externalId) {
+        // Backfill the external id onto an existing (email-matched) account.
+        try { await storage.updateUser(user.id, { externalId } as any); } catch (e) { console.warn('[sso] externalId backfill failed:', (e as Error).message); }
+      }
       if (!user) {
         // Transfer the agent's company as an agency (link if it already exists).
         let agencyId: string | null = null;
@@ -847,6 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: 'agent',
           status: 'active',
           agencyId,
+          externalId,
           companyName,
           country: payload.country ? String(payload.country).slice(0, 8) : null,
           phone: payload.phone ? String(payload.phone).slice(0, 40) : null,

@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   role: text("role").notNull().default('agent'), // 'admin' | 'agent' | 'staff'
   status: text("status").notNull().default('active'), // 'active' | 'inactive'
   agencyId: varchar("agency_id"),
+  externalId: varchar("external_id"), // Stable id from an external system (e.g. Find And Study OS user id) for SSO matching
+
   companyName: text("company_name"), // Free-text company name (optional)
   country: text("country"), // ISO 3166-1 alpha-2 country code (e.g. "TR", "US")
   phone: text("phone"), // International mobile phone in E.164-ish format (e.g. "+90 5xx xxx xx xx")
