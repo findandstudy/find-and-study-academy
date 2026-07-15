@@ -73,6 +73,12 @@ attached_assets/
 !public/**/*.jpg
 !public/**/*.svg
 
+# ── Deploy sırasında üretilen yedekler / geçici çıktılar ──────────────────────
+*.bak-*
+**/*.bak-*
+locales.bak-*
+dist.prev/
+
 # ── Test/coverage ─────────────────────────────────────────────────────────────
 coverage/
 .nyc_output/

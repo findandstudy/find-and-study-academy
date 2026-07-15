@@ -431,7 +431,8 @@
       "downloadAll": "Tümünü indir",
       "downloadSelected": "Seçilenleri indir",
       "gridView": "Izgara görünümü",
-      "listView": "Liste görünümü"
+      "listView": "Liste görünümü",
+      "draftHint": "Taslak dosyalar acentelere görünmez. Görünür olması için durumu “Yayında” yapın."
     },
     "popups": {
       "title": "Pop-up Reklamlar",

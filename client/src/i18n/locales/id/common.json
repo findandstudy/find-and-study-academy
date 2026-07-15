@@ -394,7 +394,8 @@
       "downloadAll": "Unduh semua",
       "downloadSelected": "Unduh terpilih",
       "gridView": "Tampilan kisi",
-      "listView": "Tampilan daftar"
+      "listView": "Tampilan daftar",
+      "draftHint": "Berkas draf tidak terlihat oleh agen. Setel status ke \"Terbit\" agar terlihat."
     },
     "popups": {
       "title": "Iklan Pop-up",

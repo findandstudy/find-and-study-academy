@@ -394,7 +394,8 @@
       "downloadAll": "Tout télécharger",
       "downloadSelected": "Télécharger la sélection",
       "gridView": "Vue en grille",
-      "listView": "Vue en liste"
+      "listView": "Vue en liste",
+      "draftHint": "Les fichiers brouillons ne sont pas visibles par les agents. Mettez le statut sur « Publié » pour les afficher."
     },
     "popups": {
       "title": "Annonces pop-up",

@@ -2351,6 +2351,11 @@ function BulkUploadDialog({
               </SelectContent>
             </Select>
           </div>
+          {status === 'draft' && (
+            <p className="text-xs text-muted-foreground">
+              {t('admin.partnerZone.draftHint', { defaultValue: 'Taslak dosyalar acentelere görünmez. Görünür olması için durumu “Yayında” yapın.' })}
+            </p>
+          )}
 
           {items.length > 0 && (
             <div className="max-h-52 overflow-y-auto rounded-md border divide-y">

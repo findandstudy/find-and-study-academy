@@ -394,7 +394,8 @@
       "downloadAll": "全部下载",
       "downloadSelected": "下载所选",
       "gridView": "网格视图",
-      "listView": "列表视图"
+      "listView": "列表视图",
+      "draftHint": "草稿文件对代理不可见。将状态设为“已发布”即可显示。"
     },
     "popups": {
       "title": "弹窗广告",

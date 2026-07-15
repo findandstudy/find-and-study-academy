@@ -394,7 +394,8 @@
       "downloadAll": "Descargar todo",
       "downloadSelected": "Descargar selección",
       "gridView": "Vista de cuadrícula",
-      "listView": "Vista de lista"
+      "listView": "Vista de lista",
+      "draftHint": "Los archivos en borrador no son visibles para los agentes. Cambia el estado a \"Publicado\" para mostrarlos."
     },
     "popups": {
       "title": "Anuncios emergentes",
