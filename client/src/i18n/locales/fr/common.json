@@ -387,7 +387,11 @@
       "bulkUploadDesc": "Sélectionnez plusieurs fichiers — chacun devient un contenu distinct.",
       "bulkDropHint": "Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner",
       "bulkUploadAction": "Tout téléverser",
-      "dropOrClickHint": "Glissez-déposez ou cliquez pour sélectionner"
+      "dropOrClickHint": "Glissez-déposez ou cliquez pour sélectionner",
+      "downloadAll": "Tout télécharger",
+      "downloadSelected": "Télécharger la sélection",
+      "gridView": "Vue en grille",
+      "listView": "Vue en liste"
     },
     "popups": {
       "title": "Annonces pop-up",

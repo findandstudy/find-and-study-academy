@@ -397,13 +397,17 @@
       "save": "حفظ",
       "saving": "جاري الحفظ...",
       "open": "فتح",
-      "download": "تحميل",
+      "download": "تنزيل",
       "bulkUpload": "رفع جماعي",
       "bulkUploadTitle": "رفع جماعي",
       "bulkUploadDesc": "اختر عدة ملفات — يصبح كل ملف عنصر محتوى منفصلاً.",
       "bulkDropHint": "اسحب وأفلت عدة ملفات أو انقر للاختيار",
       "bulkUploadAction": "رفع الكل",
-      "dropOrClickHint": "اسحب وأفلت أو انقر للاختيار"
+      "dropOrClickHint": "اسحب وأفلت أو انقر للاختيار",
+      "downloadAll": "تنزيل الكل",
+      "downloadSelected": "تنزيل المحدد",
+      "gridView": "عرض شبكي",
+      "listView": "عرض قائمة"
     },
     "popups": {
       "title": "الإعلانات المنبثقة",

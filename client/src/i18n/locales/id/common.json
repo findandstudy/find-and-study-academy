@@ -387,7 +387,11 @@
       "bulkUploadDesc": "Pilih beberapa berkas — masing-masing menjadi konten tersendiri.",
       "bulkDropHint": "Seret & lepas beberapa berkas atau klik untuk memilih",
       "bulkUploadAction": "Unggah semua",
-      "dropOrClickHint": "Seret & lepas atau klik untuk memilih"
+      "dropOrClickHint": "Seret & lepas atau klik untuk memilih",
+      "downloadAll": "Unduh semua",
+      "downloadSelected": "Unduh terpilih",
+      "gridView": "Tampilan kisi",
+      "listView": "Tampilan daftar"
     },
     "popups": {
       "title": "Iklan Pop-up",

@@ -424,7 +424,11 @@
       "bulkUploadDesc": "Select multiple files — each becomes a separate content item.",
       "bulkDropHint": "Drag & drop multiple files or click to select",
       "bulkUploadAction": "Upload all",
-      "dropOrClickHint": "Drag & drop or click to select"
+      "dropOrClickHint": "Drag & drop or click to select",
+      "downloadAll": "Download all",
+      "downloadSelected": "Download selected",
+      "gridView": "Grid view",
+      "listView": "List view"
     },
     "popups": {
       "title": "Pop-up Ads",

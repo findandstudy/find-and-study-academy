@@ -424,7 +424,11 @@
       "bulkUploadDesc": "Birden fazla dosya seç — her biri ayrı içerik olarak eklenir.",
       "bulkDropHint": "Birden fazla dosyayı sürükle bırak ya da seçmek için tıkla",
       "bulkUploadAction": "Hepsini yükle",
-      "dropOrClickHint": "Sürükle bırak ya da seçmek için tıkla"
+      "dropOrClickHint": "Sürükle bırak ya da seçmek için tıkla",
+      "downloadAll": "Tümünü indir",
+      "downloadSelected": "Seçilenleri indir",
+      "gridView": "Izgara görünümü",
+      "listView": "Liste görünümü"
     },
     "popups": {
       "title": "Pop-up Reklamlar",

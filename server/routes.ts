@@ -4319,6 +4319,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: stream a ZIP of a folder's files (ALL statuses, incl. drafts).
+  //   Selected files: ?ids=<uuid>,<uuid>,...   Whole folder: ?all=true
+  app.get('/api/admin/partner-folders/:id/zip', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const folderId = req.params.id;
+      const folder = await storage.getPartnerFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ success: false, message: 'Folder not found' });
+      }
+      const idsRaw = typeof req.query.ids === 'string' ? req.query.ids : '';
+      const requestedIds = Array.from(new Set(idsRaw.split(',').map(s => s.trim()).filter(Boolean)));
+      const allMode = req.query.all === 'true' || req.query.all === '1' || requestedIds.length === 0;
+      if (!allMode && requestedIds.length > 200) {
+        return res.status(400).json({ success: false, message: 'Tek seferde en fazla 200 dosya indirilebilir' });
+      }
+      const allItems = await storage.getFolderContents(folderId);
+      const eligible = allMode
+        ? allItems
+        : (() => { const set = new Set(requestedIds); return allItems.filter(c => set.has(c.id)); })();
+      if (allMode && eligible.length > 200) {
+        return res.status(400).json({ success: false, message: `Bu klasörde ${eligible.length} dosya var. Tek seferde en fazla 200 dosya indirilebilir; lütfen seçim yaparak indirin.` });
+      }
+      const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
+      type ZipEntry = { absPath: string; entryName: string };
+      const usedNames = new Set<string>();
+      const sanitizeName = (raw: string): string => {
+        const cleaned = raw.replace(/[\x00-\x1f\x7f]/g, '').replace(/[\\/]/g, '_').replace(/^\.+/, '').trim();
+        return cleaned.length > 0 ? cleaned.slice(0, 180) : 'dosya';
+      };
+      const uniqueName = (base: string): string => {
+        if (!usedNames.has(base)) { usedNames.add(base); return base; }
+        const dot = base.lastIndexOf('.');
+        const stem = dot > 0 ? base.slice(0, dot) : base;
+        const ext = dot > 0 ? base.slice(dot) : '';
+        for (let i = 2; i < 1000; i++) { const cand = `${stem} (${i})${ext}`; if (!usedNames.has(cand)) { usedNames.add(cand); return cand; } }
+        const fb = `${stem}-${Date.now()}${ext}`; usedNames.add(fb); return fb;
+      };
+      const entries: ZipEntry[] = [];
+      for (const item of eligible) {
+        const url = item.documentUrl ?? item.imageUrl ?? item.videoUrl ?? null;
+        if (!url || !url.startsWith('/uploads/')) continue;
+        const relative = url.replace(/^\/+/, '');
+        const abs = path.resolve(process.cwd(), 'public', relative);
+        if (!abs.startsWith(uploadsRoot + path.sep) && abs !== uploadsRoot) continue;
+        if (!fs.existsSync(abs)) continue;
+        const baseLabel = (item.displayName ?? item.title ?? 'dosya').toString();
+        const labelHasExt = /\.[a-zA-Z0-9]{1,8}$/.test(baseLabel);
+        const base = labelHasExt ? baseLabel : `${baseLabel}${path.extname(relative)}`;
+        entries.push({ absPath: abs, entryName: uniqueName(sanitizeName(base)) });
+      }
+      if (entries.length === 0) {
+        return res.status(404).json({ success: false, message: 'İndirilebilir dosya bulunamadı' });
+      }
+      const folderSlug = folder.name.replace(/[^\w\d-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 80) || 'partner-zone';
+      const archiver = (await import('archiver')).default;
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${folderSlug}.zip"`);
+      res.setHeader('Cache-Control', 'no-store');
+      archive.on('warning', (err) => console.warn('[admin-partner-zip] warning:', err));
+      archive.on('error', (err) => {
+        console.error('[admin-partner-zip] error:', err);
+        if (!res.headersSent) res.status(500).json({ success: false, message: 'ZIP oluşturulamadı' });
+        else { try { res.destroy(err); } catch { /* noop */ } }
+      });
+      archive.pipe(res);
+      for (const e of entries) archive.file(e.absPath, { name: e.entryName });
+      await archive.finalize();
+    } catch (error) {
+      console.error('[admin-partner-zip] route error:', error);
+      if (!res.headersSent) res.status(500).json({ success: false, message: 'ZIP oluşturulamadı' });
+      else { try { res.end(); } catch { /* noop */ } }
+    }
+  });
+
   // Admin: list folders — supports ?parentId= (root by default if explicitly 'root')
   app.get('/api/admin/partner-folders', requireAuth, requireAdmin, async (req, res) => {
     try {

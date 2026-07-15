@@ -23,6 +23,7 @@ import {
   FileText, CheckCircle2, XCircle, Loader2, Eye, EyeOff,
   Video, Image as ImageIcon, File, Link2, Download,
   ChevronRight, Home, Search, ExternalLink, Minimize2, X,
+  LayoutGrid, List,
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -262,6 +263,10 @@ export default function PartnerZoneAdmin() {
   >(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [selectedContentIds, setSelectedContentIds] = useState<Set<string>>(new Set());
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
+  const [folderView, setFolderView] = useState<'grid' | 'list'>('grid');
+  const [fileView, setFileView] = useState<'list' | 'grid'>('list');
+  const [isZipping, setIsZipping] = useState(false);
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   useEffect(() => {
     setSelectedContentIds(new Set());
@@ -845,6 +850,155 @@ export default function PartnerZoneAdmin() {
 
   // ─── Folder card renderer ────────────────────────────────────────────────
 
+  // ─── ZIP download (admin: all statuses) ──────────────────────────────────
+  const downloadFolderZip = async (folderId: string, folderName: string, ids?: string[]) => {
+    if (isZipping) return;
+    setIsZipping(true);
+    try {
+      const qs = ids && ids.length ? `ids=${ids.join(',')}` : 'all=true';
+      const r = await fetch(`/api/admin/partner-folders/${folderId}/zip?${qs}`, {
+        headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
+      });
+      if (!r.ok) {
+        let msg = t('common.error');
+        try { const j = await r.json(); if (j?.message) msg = j.message; } catch { /* ignore */ }
+        toast({ title: t('common.error'), description: msg, variant: 'destructive' });
+        return;
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('content-disposition') ?? '';
+      const m = /filename="?([^";]+)"?/i.exec(cd);
+      const filename = m?.[1] ?? `${folderName || 'partner-zone'}.zip`;
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast({ title: t('common.error'), variant: 'destructive' });
+    } finally {
+      setIsZipping(false);
+    }
+  };
+
+  const toggleFolderSelect = (id: string) => {
+    setSelectedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const downloadSelectedFolders = async (folders: PartnerFolder[]) => {
+    const chosen = folders.filter((f) => selectedFolderIds.has(f.id));
+    for (const f of chosen) {
+      // sequential to avoid hammering the server with many archive streams
+      // eslint-disable-next-line no-await-in-loop
+      await downloadFolderZip(f.id, f.name);
+    }
+    setSelectedFolderIds(new Set());
+  };
+
+  // Toolbar shown above a folder grid/list: view toggle + bulk-download bar.
+  const FolderViewBar = ({ folders }: { folders: PartnerFolder[] }) => (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        {selectedFolderIds.size > 0 && (
+          <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-1">
+            <Badge variant="secondary">{t('admin.partnerZone.itemsSelected', { count: selectedFolderIds.size })}</Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isZipping}
+              onClick={() => downloadSelectedFolders(folders)}
+              data-testid="button-download-selected-folders"
+            >
+              {isZipping ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+              {t('admin.partnerZone.downloadSelected', { defaultValue: 'Download selected' })}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedFolderIds(new Set())}>
+              <X className="w-3.5 h-3.5 mr-1" />{t('admin.partnerZone.clear', { defaultValue: 'Clear' })}
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="inline-flex rounded-md border overflow-hidden shrink-0">
+        <Button
+          size="icon" variant={folderView === 'grid' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+          onClick={() => setFolderView('grid')} title={t('admin.partnerZone.gridView', { defaultValue: 'Grid view' })}
+          data-testid="button-folder-view-grid"
+        >
+          <LayoutGrid className="w-4 h-4" />
+        </Button>
+        <Button
+          size="icon" variant={folderView === 'list' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+          onClick={() => setFolderView('list')} title={t('admin.partnerZone.listView', { defaultValue: 'List view' })}
+          data-testid="button-folder-view-list"
+        >
+          <List className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  // A folder shown as a compact row (list view).
+  const renderFolderRow = (f: PartnerFolder) => {
+    const country = countries.find((c) => c.code === f.countryCode) ?? null;
+    return (
+      <div
+        key={f.id}
+        className="flex items-center gap-3 px-3 py-2 hover-elevate"
+        data-testid={`folder-row-${f.id}`}
+      >
+        <Checkbox
+          checked={selectedFolderIds.has(f.id)}
+          onCheckedChange={() => toggleFolderSelect(f.id)}
+          aria-label={f.name}
+          data-testid={`checkbox-folder-${f.id}`}
+        />
+        <button
+          type="button"
+          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+          onClick={() => navigate(`/admin/partner-zone/${f.id}`)}
+        >
+          <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center overflow-hidden shrink-0">
+            {f.coverImageUrl ? (
+              <img src={f.coverImageUrl} alt={f.name} className="w-full h-full object-cover" />
+            ) : (
+              <Folder className="w-5 h-5 text-muted-foreground opacity-40" />
+            )}
+          </div>
+          <span className="font-medium text-sm truncate">{f.name}</span>
+        </button>
+        {country && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+            <CountryFlag code={country.code} size="sm" />
+            <span className="truncate max-w-[120px]">{country.name}</span>
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+          <File className="w-3 h-3" />{f.contentCount ?? 0}
+        </span>
+        <Badge variant={f.status === 'published' ? 'default' : 'secondary'} className="text-xs shrink-0">
+          {f.status === 'published' ? t('common.published') : t('common.draft')}
+        </Badge>
+        <Button
+          size="icon" variant="ghost" className="h-8 w-8 shrink-0"
+          disabled={isZipping}
+          onClick={() => downloadFolderZip(f.id, f.name)}
+          title={t('admin.partnerZone.download', { defaultValue: 'Download' })}
+          data-testid={`button-download-folder-${f.id}`}
+        >
+          <Download className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  };
+
   const renderFolderCard = (f: PartnerFolder) => {
     const country = countries.find((c) => c.code === f.countryCode) ?? null;
     const isDropTarget = dropTargetId === `folder-${f.id}`;
@@ -875,7 +1029,19 @@ export default function PartnerZoneAdmin() {
             ) : (
               <Folder className="w-16 h-16 text-muted-foreground opacity-30" />
             )}
-            <div className="absolute top-2 left-2">
+            <div
+              className="absolute top-2 left-2 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                checked={selectedFolderIds.has(f.id)}
+                onCheckedChange={() => toggleFolderSelect(f.id)}
+                aria-label={f.name}
+                className="bg-white/90 border-slate-300"
+                data-testid={`checkbox-folder-${f.id}`}
+              />
+            </div>
+            <div className="absolute top-2 left-10">
               <Badge variant={f.status === 'published' ? 'default' : 'secondary'} className="text-xs">
                 {f.status === 'published' ? t('common.published') : t('common.draft')}
               </Badge>
@@ -927,6 +1093,15 @@ export default function PartnerZoneAdmin() {
           </Button>
           <Button
             size="icon" variant="secondary" className="h-7 w-7"
+            disabled={isZipping}
+            onClick={(e) => { e.stopPropagation(); downloadFolderZip(f.id, f.name); }}
+            title={t('admin.partnerZone.download', { defaultValue: 'Download' })}
+            data-testid={`button-download-folder-${f.id}`}
+          >
+            <Download className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            size="icon" variant="secondary" className="h-7 w-7"
             onClick={(e) => { e.stopPropagation(); openEditFolder(f); }}
             title={t('common.edit')}
           >
@@ -939,6 +1114,68 @@ export default function PartnerZoneAdmin() {
           >
             <Trash2 className="w-3.5 h-3.5 text-destructive" />
           </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // A content item shown as a card (grid view).
+  const renderContentCard = (item: FolderContent, index: number) => {
+    const mt = getContentType(item);
+    const url = getContentUrl(item);
+    const isSelected = selectedContentIds.has(item.id);
+    const isImage = mt === 'image' && !!url;
+    return (
+      <div
+        key={item.id}
+        className={`relative group rounded-md border overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
+        data-testid={`content-card-${item.id}`}
+      >
+        <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onClick={(e) => { e.stopPropagation(); handleRowSelectClick(item.id, index, e); }}
+            aria-label={item.displayName || item.title}
+            className="bg-white/90 border-slate-300"
+            data-testid={`checkbox-content-${item.id}`}
+          />
+        </div>
+        <div className="absolute top-2 right-2 z-10">
+          <Badge variant={item.status === 'published' ? 'default' : 'secondary'} className="text-xs">
+            {item.status === 'published' ? t('common.published') : t('common.draft')}
+          </Badge>
+        </div>
+        <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+          {isImage ? (
+            <img src={url as string} alt={item.displayName || item.title} className="w-full h-full object-cover" />
+          ) : (
+            <ContentIcon type={mt} className="w-14 h-14 text-primary opacity-40" />
+          )}
+        </div>
+        <div className="p-2.5 space-y-1.5">
+          <p className="font-medium text-sm leading-tight line-clamp-2">{item.displayName || item.title}</p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{MEDIA_TYPES.find((m) => m.value === mt)?.label}</span>
+            <span>{item.fileSize || '—'}</span>
+          </div>
+          <div className="flex items-center justify-end gap-1 pt-1">
+            {url && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" asChild title={t('admin.partnerZone.open')}>
+                <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" /></a>
+              </Button>
+            )}
+            {url && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" asChild title={t('admin.partnerZone.download')}>
+                <a href={url} download={item.displayName || item.title} target="_blank" rel="noopener noreferrer"><Download className="w-3.5 h-3.5" /></a>
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditContent(item)} title={t('common.edit')}>
+              <Edit2 className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteContent(item)} title={t('common.delete')}>
+              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -1051,12 +1288,23 @@ export default function PartnerZoneAdmin() {
           <div className="space-y-6">
             {filteredSubfolders.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  {t('admin.partnerZone.subfolders')}
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {filteredSubfolders.map(renderFolderCard)}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t('admin.partnerZone.subfolders')}
+                  </h2>
                 </div>
+                <FolderViewBar folders={filteredSubfolders} />
+                {folderView === 'grid' ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {filteredSubfolders.map(renderFolderCard)}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="p-0 divide-y">
+                      {filteredSubfolders.map(renderFolderRow)}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
 
@@ -1106,6 +1354,16 @@ export default function PartnerZoneAdmin() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      disabled={isZipping}
+                      onClick={() => folderId && downloadFolderZip(folderId, openFolder?.name ?? '', Array.from(selectedContentIds))}
+                      data-testid="button-download-selected"
+                    >
+                      {isZipping ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+                      {t('admin.partnerZone.downloadSelected', { defaultValue: 'Download selected' })}
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="destructive"
                       disabled={bulkUpdateStatusMutation.isPending || bulkDeleteContentsMutation.isPending}
                       onClick={() => setBulkDeleteConfirmOpen(true)}
@@ -1125,6 +1383,34 @@ export default function PartnerZoneAdmin() {
                     </Button>
                   </div>
                 )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isZipping || filteredFolderContents.length === 0}
+                    onClick={() => folderId && downloadFolderZip(folderId, openFolder?.name ?? '')}
+                    data-testid="button-download-all"
+                  >
+                    {isZipping ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+                    {t('admin.partnerZone.downloadAll', { defaultValue: 'Download all' })}
+                  </Button>
+                  <div className="inline-flex rounded-md border overflow-hidden">
+                    <Button
+                      size="icon" variant={fileView === 'list' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+                      onClick={() => setFileView('list')} title={t('admin.partnerZone.listView', { defaultValue: 'List view' })}
+                      data-testid="button-file-view-list"
+                    >
+                      <List className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon" variant={fileView === 'grid' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+                      onClick={() => setFileView('grid')} title={t('admin.partnerZone.gridView', { defaultValue: 'Grid view' })}
+                      data-testid="button-file-view-grid"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
               <Card>
                 <CardContent className="p-0">
@@ -1136,6 +1422,10 @@ export default function PartnerZoneAdmin() {
                           ? t('admin.partnerZone.noFiles')
                           : t('admin.partnerZone.noFilesFiltered')}
                       </p>
+                    </div>
+                  ) : fileView === 'grid' ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
+                      {filteredFolderContents.map((item, index) => renderContentCard(item, index))}
                     </div>
                   ) : (
                     <Table>
@@ -1507,8 +1797,19 @@ export default function PartnerZoneAdmin() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filteredRootFolders.map(renderFolderCard)}
+        <div className="space-y-3">
+          <FolderViewBar folders={filteredRootFolders} />
+          {folderView === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {filteredRootFolders.map(renderFolderCard)}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0 divide-y">
+                {filteredRootFolders.map(renderFolderRow)}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
