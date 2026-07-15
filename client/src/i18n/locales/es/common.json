@@ -381,7 +381,13 @@
       "save": "Guardar",
       "saving": "Guardando...",
       "open": "Abrir",
-      "download": "Descargar"
+      "download": "Descargar",
+      "bulkUpload": "Carga masiva",
+      "bulkUploadTitle": "Carga masiva",
+      "bulkUploadDesc": "Selecciona varios archivos: cada uno se agrega como un contenido independiente.",
+      "bulkDropHint": "Arrastra y suelta varios archivos o haz clic para seleccionar",
+      "bulkUploadAction": "Subir todo",
+      "dropOrClickHint": "Arrastra y suelta o haz clic para seleccionar"
     },
     "popups": {
       "title": "Anuncios emergentes",

@@ -381,7 +381,13 @@
       "save": "Simpan",
       "saving": "Menyimpan...",
       "open": "Buka",
-      "download": "Unduh"
+      "download": "Unduh",
+      "bulkUpload": "Unggah Massal",
+      "bulkUploadTitle": "Unggah Massal",
+      "bulkUploadDesc": "Pilih beberapa berkas — masing-masing menjadi konten tersendiri.",
+      "bulkDropHint": "Seret & lepas beberapa berkas atau klik untuk memilih",
+      "bulkUploadAction": "Unggah semua",
+      "dropOrClickHint": "Seret & lepas atau klik untuk memilih"
     },
     "popups": {
       "title": "Iklan Pop-up",

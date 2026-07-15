@@ -397,7 +397,13 @@
       "save": "حفظ",
       "saving": "جاري الحفظ...",
       "open": "فتح",
-      "download": "تحميل"
+      "download": "تحميل",
+      "bulkUpload": "رفع جماعي",
+      "bulkUploadTitle": "رفع جماعي",
+      "bulkUploadDesc": "اختر عدة ملفات — يصبح كل ملف عنصر محتوى منفصلاً.",
+      "bulkDropHint": "اسحب وأفلت عدة ملفات أو انقر للاختيار",
+      "bulkUploadAction": "رفع الكل",
+      "dropOrClickHint": "اسحب وأفلت أو انقر للاختيار"
     },
     "popups": {
       "title": "الإعلانات المنبثقة",

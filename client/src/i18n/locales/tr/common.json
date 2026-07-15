@@ -418,7 +418,13 @@
       "save": "Kaydet",
       "saving": "Kaydediliyor...",
       "open": "Aç",
-      "download": "İndir"
+      "download": "İndir",
+      "bulkUpload": "Toplu Yükle",
+      "bulkUploadTitle": "Toplu Yükle",
+      "bulkUploadDesc": "Birden fazla dosya seç — her biri ayrı içerik olarak eklenir.",
+      "bulkDropHint": "Birden fazla dosyayı sürükle bırak ya da seçmek için tıkla",
+      "bulkUploadAction": "Hepsini yükle",
+      "dropOrClickHint": "Sürükle bırak ya da seçmek için tıkla"
     },
     "popups": {
       "title": "Pop-up Reklamlar",

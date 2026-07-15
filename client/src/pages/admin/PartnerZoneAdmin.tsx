@@ -470,7 +470,9 @@ export default function PartnerZoneAdmin() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/admin/partner-folders/upload-cover', {
+      fd.append('folder', 'images');
+      fd.append('purpose', 'cover');
+      const res = await fetch('/api/uploads/content', {
         method: 'POST',
         headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
         body: fd,

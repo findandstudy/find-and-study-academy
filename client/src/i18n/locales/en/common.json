@@ -418,7 +418,13 @@
       "save": "Save",
       "saving": "Saving...",
       "open": "Open",
-      "download": "Download"
+      "download": "Download",
+      "bulkUpload": "Bulk Upload",
+      "bulkUploadTitle": "Bulk Upload",
+      "bulkUploadDesc": "Select multiple files — each becomes a separate content item.",
+      "bulkDropHint": "Drag & drop multiple files or click to select",
+      "bulkUploadAction": "Upload all",
+      "dropOrClickHint": "Drag & drop or click to select"
     },
     "popups": {
       "title": "Pop-up Ads",

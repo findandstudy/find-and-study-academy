@@ -381,7 +381,13 @@
       "save": "保存",
       "saving": "保存中...",
       "open": "打开",
-      "download": "下载"
+      "download": "下载",
+      "bulkUpload": "批量上传",
+      "bulkUploadTitle": "批量上传",
+      "bulkUploadDesc": "选择多个文件——每个文件将成为单独的内容项。",
+      "bulkDropHint": "拖放多个文件或点击选择",
+      "bulkUploadAction": "全部上传",
+      "dropOrClickHint": "拖放或点击选择"
     },
     "popups": {
       "title": "弹窗广告",

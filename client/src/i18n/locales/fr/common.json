@@ -381,7 +381,13 @@
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "open": "Ouvrir",
-      "download": "Télécharger"
+      "download": "Télécharger",
+      "bulkUpload": "Téléversement groupé",
+      "bulkUploadTitle": "Téléversement groupé",
+      "bulkUploadDesc": "Sélectionnez plusieurs fichiers — chacun devient un contenu distinct.",
+      "bulkDropHint": "Glissez-déposez plusieurs fichiers ou cliquez pour sélectionner",
+      "bulkUploadAction": "Tout téléverser",
+      "dropOrClickHint": "Glissez-déposez ou cliquez pour sélectionner"
     },
     "popups": {
       "title": "Annonces pop-up",
