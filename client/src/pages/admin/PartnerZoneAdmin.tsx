@@ -1711,6 +1711,7 @@ function ContentDialog({
   onFileSelect: (file: File) => void;
 }) {
   const { t } = useTranslation();
+  const [dragOver, setDragOver] = useState(false);
   const MEDIA_TYPES = [
     { value: 'document' as MediaType, label: t('common.document'), icon: FileText, accept: '.pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt,.zip', folder: 'documents' },
     { value: 'video' as MediaType, label: t('common.video'), icon: Video, accept: '.mp4,.mov,.webm,.avi,.mkv', folder: 'videos' },
@@ -1781,19 +1782,34 @@ function ContentDialog({
 
             <div className="space-y-2">
               <FormLabel>{t('admin.partnerZone.uploadFileLabel')}</FormLabel>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={fileUploading}
-                className="w-full"
+              <div
+                onClick={() => { if (!fileUploading) fileInputRef.current?.click(); }}
+                onDragOver={(e) => { e.preventDefault(); if (!fileUploading) setDragOver(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  if (fileUploading) return;
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) onFileSelect(f);
+                }}
+                role="button"
+                tabIndex={0}
+                data-testid="dropzone-content-file"
+                className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-4 py-6 text-sm text-center cursor-pointer transition-colors ${
+                  dragOver ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover-elevate'
+                } ${fileUploading ? 'pointer-events-none opacity-70' : ''}`}
               >
                 {fileUploading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('admin.partnerZone.uploading')}</>
+                  <><Loader2 className="w-5 h-5 animate-spin" />{t('admin.partnerZone.uploading')}</>
                 ) : (
-                  <><Upload className="w-4 h-4 mr-2" />{currentMediaEntry.label}</>
+                  <>
+                    <Upload className="w-5 h-5" />
+                    <span className="font-medium">{currentMediaEntry.label}</span>
+                    <span className="text-xs opacity-80">{t('admin.partnerZone.dropOrClickHint', { defaultValue: 'Drag & drop or click to select' })}</span>
+                  </>
                 )}
-              </Button>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"

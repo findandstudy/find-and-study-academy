@@ -3966,6 +3966,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Partner Zone Contents (create/update/delete) ─────────────────────────
+  // Content lives in the shared `contents` table, linked to a folder via folderId.
+  // The client omits `slug` (required + unique), so we generate one server-side.
+  app.post('/api/admin/partner-contents', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const base = String(req.body?.title ?? 'content')
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'content';
+      const body = { ...req.body, slug: `${base}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` };
+      const validation = insertContentSchema.safeParse(body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: 'Invalid content data', errors: validation.error.errors });
+      }
+      const content = await storage.createContent(validation.data);
+      invalidateChatHotCache(['contents']);
+      res.status(201).json({ success: true, content });
+    } catch (error) {
+      console.error('Create partner content error:', error);
+      res.status(500).json({ success: false, message: 'Failed to create partner content' });
+    }
+  });
+
+  app.patch('/api/admin/partner-contents/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = insertContentSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: 'Invalid content data', errors: validation.error.errors });
+      }
+      const content = await storage.updateContent(req.params.id, validation.data);
+      invalidateChatHotCache(['contents']);
+      res.json({ success: true, content });
+    } catch (error) {
+      console.error('Update partner content error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update partner content' });
+    }
+  });
+
+  app.delete('/api/admin/partner-contents/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteContent(req.params.id);
+      invalidateChatHotCache(['contents']);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete partner content error:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete partner content' });
+    }
+  });
+
   app.post('/api/admin/contents', requireAuth, requireAdmin, async (req, res) => {
     try {
       console.log('[CREATE CONTENT] Request body:', JSON.stringify(req.body, null, 2));
