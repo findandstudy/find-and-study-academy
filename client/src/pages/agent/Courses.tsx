@@ -92,9 +92,17 @@ export default function AgentCourses() {
     return countriesWithContent.slice().sort((a, b) => a.name.localeCompare(b.name));
   }, [countries, contents]);
 
-  // Initialize selected country from API defaults once countries are loaded
+  // Initialize the selected country from the admin-configured default.
+  // The configured default (Settings → Defaults → "Default Country") is
+  // AUTHORITATIVE: we wait until that country actually becomes available
+  // (its content may still be loading) and select it. We only fall back to
+  // another country when NO default is configured, or the configured default
+  // genuinely has no content after everything has finished loading.
+  // This prevents a slow content fetch from letting Turkey (or the first
+  // country) win the race and lock in as the default.
   useEffect(() => {
-    if (defaultInitialized || activeCountries.length === 0) return;
+    if (defaultInitialized) return;
+    if (defaultsData === undefined) return; // wait for defaults to load
     const apiDefault = defaultsData?.defaults?.default_country_code;
     if (apiDefault) {
       const found = activeCountries.find(c => c.code.toLowerCase() === apiDefault.toLowerCase());
@@ -103,11 +111,16 @@ export default function AgentCourses() {
         setDefaultInitialized(true);
         return;
       }
+      // Configured default not available yet — keep waiting while content is
+      // still loading, so it always wins once its data arrives.
+      if (contents.length === 0) return;
     }
-    // Fallback: first active country (usually Turkey)
-    setSelectedCountry(activeCountries[0].code.toLowerCase());
-    setDefaultInitialized(true);
-  }, [activeCountries, defaultsData, defaultInitialized]);
+    // No default configured, or configured default has no content → fall back.
+    if (activeCountries.length > 0) {
+      setSelectedCountry(activeCountries[0].code.toLowerCase());
+      setDefaultInitialized(true);
+    }
+  }, [activeCountries, defaultsData, defaultInitialized, contents.length]);
 
   // Get content for selected country
   const selectedCountryData = activeCountries.find(c => 
