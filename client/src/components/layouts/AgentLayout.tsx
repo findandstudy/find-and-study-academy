@@ -23,8 +23,6 @@ import {
   Package,
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
-import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
-import dormBookingLogo from '@assets/dorm-removebg-preview_1760296726263.png';
 
 interface AgentLayoutProps {
   children: React.ReactNode;
@@ -88,10 +86,8 @@ const navigationGroups: NavGroup[] = [
   {
     i18nKey: 'links',
     fallback: 'Links',
-    items: [
-      { i18nKey: 'agentPortal', fallback: 'Agent Portal', href: 'https://portal.findandstudy.com/agent-login', customIcon: portalIcon, external: true },
-      { i18nKey: 'dormBooking', fallback: 'Dorm Booking', href: 'https://dormbooking.com/', customIcon: dormBookingLogo, external: true },
-    ],
+    // Items are loaded dynamically from /api/sidebar-links (admin-managed).
+    items: [],
   },
 ];
 
@@ -109,6 +105,11 @@ export function AgentLayout({ children }: AgentLayoutProps) {
     const cached = localStorage.getItem('agent-menu-visibility');
     if (cached) { try { return JSON.parse(cached); } catch { /* ignore */ } }
     return {};
+  });
+  const [sidebarLinks, setSidebarLinks] = useState<Array<{ id: string; label: string; url: string; iconUrl: string | null }>>(() => {
+    const cached = localStorage.getItem('agent-sidebar-links');
+    if (cached) { try { return JSON.parse(cached); } catch { /* ignore */ } }
+    return [];
   });
   const [location] = useLocation();
   const { user, logout } = useAuthStore();
@@ -139,6 +140,36 @@ export function AgentLayout({ children }: AgentLayoutProps) {
     if (user) loadMenuVisibility();
   }, [user]);
 
+  // Load admin-managed sidebar links
+  useEffect(() => {
+    const loadLinks = async () => {
+      try {
+        const response = await fetch('/api/sidebar-links', {
+          headers: { 'x-user-id': user?.id || '', 'x-user-role': user?.role || '' },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const links = Array.isArray(data?.links) ? data.links : [];
+          setSidebarLinks(links);
+          localStorage.setItem('agent-sidebar-links', JSON.stringify(links));
+        }
+      } catch (error) {
+        console.error('Error loading sidebar links:', error);
+      }
+    };
+    if (user) loadLinks();
+  }, [user]);
+
+  const linkItems: NavItem[] = sidebarLinks
+    .filter((l) => l && l.url && l.label)
+    .map((l) => ({
+      i18nKey: `link-${l.id}`,
+      fallback: l.label,
+      href: l.url,
+      customIcon: l.iconUrl ?? undefined,
+      external: true,
+    }));
+
   // Filter items in each group based on visibility
   const filterItem = (item: NavItem) => {
     if (item.external) return true;
@@ -148,7 +179,9 @@ export function AgentLayout({ children }: AgentLayoutProps) {
   };
 
   const visibleGroups = navigationGroups
-    .map(g => ({ ...g, items: g.items.filter(filterItem) }))
+    .map(g => g.i18nKey === 'links'
+      ? { ...g, items: linkItems }
+      : { ...g, items: g.items.filter(filterItem) })
     .filter(g => g.items.length > 0);
 
   // ─── Item renderer ──────────────────────────────────────────────────────

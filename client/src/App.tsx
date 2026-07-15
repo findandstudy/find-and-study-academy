@@ -41,6 +41,7 @@ import AdminPopups from './pages/admin/Popups';
 import AdminSettingsPayments from './pages/admin/SettingsPayments';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminMenuManagement from './pages/admin/MenuManagement';
+import AdminSidebarLinks from './pages/admin/SidebarLinks';
 import AdminFindyAI from './pages/admin/FindyAI';
 import AdminPartnerZone from './pages/admin/PartnerZoneAdmin';
 
@@ -339,6 +340,14 @@ function Router() {
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
             <AdminMenuManagement />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/sidebar-links">
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AdminSidebarLinks />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

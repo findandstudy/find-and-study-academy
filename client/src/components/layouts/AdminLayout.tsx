@@ -24,6 +24,7 @@ import {
   ListTree,
   Bot,
   Package,
+  Link2,
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
@@ -94,6 +95,7 @@ const navigationGroups: NavGroup[] = [
       { i18nKey: 'settingsPayments', fallback: 'Settings / Payments', href: '/admin/settings/payments', icon: Settings, adminOnly: true },
       { i18nKey: 'integrations', fallback: 'Integrations', href: '/admin/integrations', icon: Plug, adminOnly: true },
       { i18nKey: 'menuManagement', fallback: 'Menu Management', href: '/admin/menu-management', icon: ListTree, adminOnly: true },
+      { i18nKey: 'sidebarLinks', fallback: 'Sidebar Links', href: '/admin/sidebar-links', icon: Link2, adminOnly: true },
     ],
   },
 ];

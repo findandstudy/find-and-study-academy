@@ -5340,6 +5340,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Menu Visibility Management
+  // ── Agent sidebar custom links (admin-managed) ────────────────────────────
+  // Stored as a JSON array in system_settings under 'agent_sidebar_links'.
+  const DEFAULT_SIDEBAR_LINKS = [
+    { id: 'agent-portal', label: 'Agent Portal', url: 'https://portal.findandstudy.com/agent-login', iconUrl: '/uploads/links/agent-portal.png', order: 0, enabled: true },
+    { id: 'dorm-booking', label: 'Dorm Booking', url: 'https://dormbooking.com/', iconUrl: '/uploads/links/dorm-booking.png', order: 1, enabled: true },
+  ];
+  const readSidebarLinks = async (): Promise<any[]> => {
+    const setting = await storage.getSystemSettingByKey('agent_sidebar_links');
+    if (setting && setting.value) {
+      try { const arr = JSON.parse(setting.value); if (Array.isArray(arr)) return arr; } catch { /* fall through */ }
+    }
+    return DEFAULT_SIDEBAR_LINKS;
+  };
+
+  // Public (any authenticated user): enabled links, ordered — used by the agent sidebar.
+  app.get('/api/sidebar-links', requireAuth, async (req, res) => {
+    try {
+      const links = (await readSidebarLinks())
+        .filter((l) => l && l.enabled !== false && l.url && l.label)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      res.json({ success: true, links });
+    } catch (error) {
+      console.error('Get sidebar links error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load links' });
+    }
+  });
+
+  // Admin: full list (incl. disabled).
+  app.get('/api/admin/sidebar-links', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const links = (await readSidebarLinks()).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      res.json({ success: true, links });
+    } catch (error) {
+      console.error('Get admin sidebar links error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load links' });
+    }
+  });
+
+  // Admin: replace the whole list (the editor sends the full array).
+  app.put('/api/admin/sidebar-links', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const authenticatedUser = (req as any).user;
+      const incoming = Array.isArray(req.body?.links) ? req.body.links : [];
+      const clean = incoming
+        .map((l: any, i: number) => ({
+          id: String(l.id ?? `link-${Date.now()}-${i}`),
+          label: String(l.label ?? '').trim().slice(0, 120),
+          url: String(l.url ?? '').trim().slice(0, 2000),
+          iconUrl: l.iconUrl ? String(l.iconUrl).trim().slice(0, 2000) : null,
+          order: Number.isFinite(l.order) ? Number(l.order) : i,
+          enabled: l.enabled !== false,
+        }))
+        .filter((l: any) => l.label && l.url);
+      const value = JSON.stringify(clean);
+      const existing = await storage.getSystemSettingByKey('agent_sidebar_links');
+      if (existing) {
+        await storage.updateSystemSetting('agent_sidebar_links', { value, updatedBy: authenticatedUser.id });
+      } else {
+        await storage.createSystemSetting({
+          key: 'agent_sidebar_links',
+          value,
+          category: 'appearance',
+          type: 'json',
+          description: 'Agent sidebar custom links',
+          isPublic: true,
+          updatedBy: authenticatedUser.id,
+        });
+      }
+      res.json({ success: true, links: clean });
+    } catch (error) {
+      console.error('Save sidebar links error:', error);
+      res.status(500).json({ success: false, message: 'Failed to save links' });
+    }
+  });
+
   app.get('/api/menu-visibility', requireAuth, async (req, res) => {
     try {
       const setting = await storage.getSystemSettingByKey('agent_menu_visibility');

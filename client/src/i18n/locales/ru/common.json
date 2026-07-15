@@ -91,7 +91,8 @@
       "findyAi": "Findy AI",
       "settingsPayments": "Настройки / Оплаты",
       "integrations": "Интеграции",
-      "menuManagement": "Управление меню"
+      "menuManagement": "Управление меню",
+      "sidebarLinks": "Ссылки боковой панели"
     }
   },
   "agent": {
