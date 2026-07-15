@@ -23,6 +23,7 @@ import {
   Package,
 } from 'lucide-react';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
+import portalIcon from '@assets/findandstudy-icon_1760222162688.png';
 
 interface AgentLayoutProps {
   children: React.ReactNode;
