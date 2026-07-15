@@ -241,7 +241,9 @@
       "clearSelection": "清除",
       "filesSelected": "已选择{{count}}个文件",
       "openFile": "打开",
-      "downloadFile": "下载"
+      "downloadFile": "下载",
+      "gridView": "网格视图",
+      "listView": "列表视图"
     },
     "announcements": {
       "title": "全部公告",

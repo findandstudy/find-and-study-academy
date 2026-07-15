@@ -241,7 +241,9 @@
       "clearSelection": "پاک کردن",
       "filesSelected": "{{count}} فایل انتخاب شده",
       "openFile": "باز کردن",
-      "downloadFile": "دانلود"
+      "downloadFile": "دانلود",
+      "gridView": "نمای شبکه‌ای",
+      "listView": "نمای فهرست"
     },
     "announcements": {
       "title": "همهٔ اطلاعیه‌ها",

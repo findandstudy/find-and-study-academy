@@ -246,7 +246,9 @@
       "clearSelection": "مسح",
       "filesSelected": "تم تحديد {{count}} ملف",
       "openFile": "فتح",
-      "downloadFile": "تحميل"
+      "downloadFile": "تحميل",
+      "gridView": "عرض شبكي",
+      "listView": "عرض قائمة"
     }
   },
   "contentEditor": {

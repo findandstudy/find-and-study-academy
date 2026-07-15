@@ -241,7 +241,9 @@
       "clearSelection": "Limpiar",
       "filesSelected": "{{count}} archivos seleccionados",
       "openFile": "Abrir",
-      "downloadFile": "Descargar"
+      "downloadFile": "Descargar",
+      "gridView": "Vista de cuadrícula",
+      "listView": "Vista de lista"
     },
     "announcements": {
       "title": "Todos los anuncios",

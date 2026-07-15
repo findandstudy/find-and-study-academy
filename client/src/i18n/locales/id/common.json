@@ -241,7 +241,9 @@
       "clearSelection": "Hapus",
       "filesSelected": "{{count}} file dipilih",
       "openFile": "Buka",
-      "downloadFile": "Unduh"
+      "downloadFile": "Unduh",
+      "gridView": "Tampilan kisi",
+      "listView": "Tampilan daftar"
     },
     "announcements": {
       "title": "Semua Pengumuman",

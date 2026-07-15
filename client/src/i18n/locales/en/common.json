@@ -267,7 +267,9 @@
       "clearSelection": "Clear",
       "filesSelected": "{{count}} files selected",
       "openFile": "Open",
-      "downloadFile": "Download"
+      "downloadFile": "Download",
+      "gridView": "Grid view",
+      "listView": "List view"
     }
   },
   "contentEditor": {

@@ -267,7 +267,9 @@
       "clearSelection": "Temizle",
       "filesSelected": "{{count}} dosya seçildi",
       "openFile": "Aç",
-      "downloadFile": "İndir"
+      "downloadFile": "İndir",
+      "gridView": "Izgara görünümü",
+      "listView": "Liste görünümü"
     }
   },
   "contentEditor": {

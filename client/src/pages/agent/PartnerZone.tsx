@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2, ChevronRight, Folder, Download, FileText, Video, Image as ImageIcon, File,
-  ExternalLink, Search, Home, X, Archive,
+  ExternalLink, Search, Home, X, Archive, LayoutGrid, List,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/CountryFlag';
 import { useTranslation } from 'react-i18next';
@@ -176,8 +176,39 @@ interface FolderCardProps {
   onClick: () => void;
 }
 
-function FolderCard({ folder: f, countries, onClick }: FolderCardProps) {
+function FolderCard({ folder: f, countries, onClick, view = 'grid' }: FolderCardProps & { view?: 'grid' | 'list' }) {
   const country = countries.find((c) => c.code === f.countryCode) ?? null;
+  if (view === 'list') {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-3 px-3 py-2 border-b last:border-b-0 w-full text-left hover-elevate"
+        data-testid={`folder-card-${f.id}`}
+      >
+        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden shrink-0">
+          {f.coverImageUrl ? (
+            <img src={f.coverImageUrl} alt={f.name} className="w-full h-full object-cover" />
+          ) : (
+            <Folder className="w-5 h-5 text-muted-foreground opacity-40" />
+          )}
+        </div>
+        <span className="font-medium text-sm truncate flex-1">{f.name}</span>
+        {country && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+            <CountryFlag code={country.code} size="sm" />
+            <span className="truncate max-w-[120px]">{country.name}</span>
+          </span>
+        )}
+        {(f.contentCount ?? 0) > 0 && (
+          <span className="shrink-0 inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+            <File className="w-3 h-3" />{f.contentCount}
+          </span>
+        )}
+        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -224,7 +255,7 @@ interface ContentCardProps {
   onSelectClick: (id: string, index: number, e: React.MouseEvent) => void;
 }
 
-function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProps) {
+function ContentCard({ item, index, isSelected, onSelectClick, view = 'grid' }: ContentCardProps & { view?: 'grid' | 'list' }) {
   const { t } = useTranslation();
   const url = getContentUrl(item);
   const mt = getContentType(item);
@@ -253,6 +284,43 @@ function ContentCard({ item, index, isSelected, onSelectClick }: ContentCardProp
       onSelectClick(item.id, index, e);
     }
   };
+
+  if (view === 'list') {
+    return (
+      <div
+        className={`flex items-center gap-3 px-3 py-2 border-b last:border-b-0 bg-card hover-elevate ${isSelected ? 'ring-2 ring-primary rounded-md' : ''}`}
+        onClick={handleCardClick}
+        data-state={isSelected ? 'selected' : undefined}
+        data-testid={`content-card-${item.id}`}
+      >
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <Checkbox
+            checked={isSelected}
+            onClick={(e) => { e.stopPropagation(); onSelectClick(item.id, index, e); }}
+            aria-label={item.displayName || item.title}
+            data-testid={`checkbox-content-${item.id}`}
+          />
+        </div>
+        {mt === 'image' && url ? (
+          <div className="w-10 h-10 rounded-md overflow-hidden bg-muted shrink-0">
+            <img src={url} alt="" className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <MediaIcon type={mt} className="w-6 h-6 text-primary opacity-70 shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{item.displayName || item.title}</p>
+          {item.fileSize && <p className="text-xs text-muted-foreground">{item.fileSize}</p>}
+        </div>
+        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleOpen(); }} disabled={!url} title={t('agent.partnerZone.openFile')} data-testid={`button-open-${item.id}`}>
+          <ExternalLink className="w-4 h-4" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); handleDownload(); }} disabled={!url} title={t('agent.partnerZone.downloadFile')} data-testid={`button-download-${item.id}`}>
+          <Download className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -370,6 +438,25 @@ export default function AgentPartnerZone() {
   const [isZipping, setIsZipping] = useState(false);
   const zipAbortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const viewToggle = (
+    <div className="inline-flex rounded-md border overflow-hidden shrink-0">
+      <Button
+        size="icon" variant={viewMode === 'grid' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+        onClick={() => setViewMode('grid')} title={t('agent.partnerZone.gridView', { defaultValue: 'Grid view' })}
+        data-testid="button-view-grid"
+      >
+        <LayoutGrid className="w-4 h-4" />
+      </Button>
+      <Button
+        size="icon" variant={viewMode === 'list' ? 'default' : 'ghost'} className="h-8 w-8 rounded-none"
+        onClick={() => setViewMode('list')} title={t('agent.partnerZone.listView', { defaultValue: 'List view' })}
+        data-testid="button-view-list"
+      >
+        <List className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -615,20 +702,23 @@ export default function AgentPartnerZone() {
               <p className="text-muted-foreground text-sm mt-1">{detailFolder.description}</p>
             )}
           </div>
-          {downloadableContentCount > 0 && (
-            <Button
-              onClick={downloadFullFolderZip}
-              disabled={isZipping}
-              data-testid="button-download-full-folder-zip"
-            >
-              {isZipping ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-              ) : (
-                <Archive className="w-4 h-4 mr-1.5" />
-              )}
-              {isZipping ? t('agent.partnerZone.preparing') : t('agent.partnerZone.downloadZip')}
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {viewToggle}
+            {downloadableContentCount > 0 && (
+              <Button
+                onClick={downloadFullFolderZip}
+                disabled={isZipping}
+                data-testid="button-download-full-folder-zip"
+              >
+                {isZipping ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Archive className="w-4 h-4 mr-1.5" />
+                )}
+                {isZipping ? t('agent.partnerZone.preparing') : t('agent.partnerZone.downloadZip')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Toolbar */}
@@ -658,16 +748,19 @@ export default function AgentPartnerZone() {
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   {t('agent.partnerZone.subfolders')}
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {filteredDetailSubfolders.map((f) => (
-                    <FolderCard
-                      key={f.id}
-                      folder={f}
-                      countries={countries}
-                      onClick={() => navigate(`/agent/partner-zone/${f.id}`)}
-                    />
-                  ))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {filteredDetailSubfolders.map((f) => (
+                      <FolderCard key={f.id} folder={f} countries={countries} view="grid" onClick={() => navigate(`/agent/partner-zone/${f.id}`)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    {filteredDetailSubfolders.map((f) => (
+                      <FolderCard key={f.id} folder={f} countries={countries} view="list" onClick={() => navigate(`/agent/partner-zone/${f.id}`)} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -721,17 +814,19 @@ export default function AgentPartnerZone() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredDetailContents.map((item, index) => (
-                    <ContentCard
-                      key={item.id}
-                      item={item}
-                      index={index}
-                      isSelected={selectedIds.has(item.id)}
-                      onSelectClick={handleSelectClick}
-                    />
-                  ))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredDetailContents.map((item, index) => (
+                      <ContentCard key={item.id} item={item} index={index} view="grid" isSelected={selectedIds.has(item.id)} onSelectClick={handleSelectClick} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    {filteredDetailContents.map((item, index) => (
+                      <ContentCard key={item.id} item={item} index={index} view="list" isSelected={selectedIds.has(item.id)} onSelectClick={handleSelectClick} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -796,15 +891,21 @@ export default function AgentPartnerZone() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {filteredRootFolders.map((folder) => (
-            <FolderCard
-              key={folder.id}
-              folder={folder}
-              countries={countries}
-              onClick={() => navigate(`/agent/partner-zone/${folder.id}`)}
-            />
-          ))}
+        <div className="space-y-3">
+          <div className="flex justify-end">{viewToggle}</div>
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {filteredRootFolders.map((folder) => (
+                <FolderCard key={folder.id} folder={folder} countries={countries} view="grid" onClick={() => navigate(`/agent/partner-zone/${folder.id}`)} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              {filteredRootFolders.map((folder) => (
+                <FolderCard key={folder.id} folder={folder} countries={countries} view="list" onClick={() => navigate(`/agent/partner-zone/${folder.id}`)} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

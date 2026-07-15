@@ -241,7 +241,9 @@
       "clearSelection": "Очистить",
       "filesSelected": "Выбрано {{count}} файлов",
       "openFile": "Открыть",
-      "downloadFile": "Скачать"
+      "downloadFile": "Скачать",
+      "gridView": "Сетка",
+      "listView": "Список"
     },
     "announcements": {
       "title": "Все объявления",
