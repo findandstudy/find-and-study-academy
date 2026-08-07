@@ -28,7 +28,9 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   role: null,
-  isLoading: false,
+  // Route guards must wait for the authoritative server session. This is
+  // especially important after SSO, where localStorage starts empty.
+  isLoading: true,
 
   login: async (credentials: LoginCredentials) => {
     set({ isLoading: true });
@@ -74,22 +76,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initialize: async () => {
-    const session = getSession();
-    if (session) {
-      // Validate session against backend; this also refreshes server-side
-      // fields (e.g. languagePreference) into the cached session.
-      const isValid = await validateSession();
-      if (isValid) {
-        // Re-read session AFTER validateSession so we pick up rehydrated
-        // fields rather than the stale local copy captured above.
-        const fresh = getSession() ?? session;
+    set({ isLoading: true });
+
+    // Always ask the server. SSO creates a secure server-side session cookie
+    // but cannot populate the Academy localStorage cache itself.
+    const isValid = await validateSession();
+    if (isValid) {
+      const fresh = getSession();
+      if (fresh) {
         syncLanguageFromUser(fresh.user);
-        set({ user: fresh.user, role: fresh.role });
-      } else {
-        // Session was invalid and cleared by validateSession
-        set({ user: null, role: null });
+        set({ user: fresh.user, role: fresh.role, isLoading: false });
+        return;
       }
     }
+
+    set({ user: null, role: null, isLoading: false });
   },
 
   updateUser: (updates: Partial<User>) => {

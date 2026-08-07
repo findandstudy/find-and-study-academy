@@ -181,6 +181,15 @@ app.use(
   }),
 );
 
+// Authentication state is user-specific and may change immediately after an
+// SSO redirect. Never allow a browser or intermediary to reuse a cached 401 or
+// a previous user's /api/me response.
+app.use("/api/me", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
+
 // ── Extra response headers (helmet covers most, these are project-specific) ─
 app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");

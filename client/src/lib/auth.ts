@@ -101,48 +101,49 @@ export const currentUser = (): { user: User; role: Role } | null => {
   return session ? { user: session.user, role: session.role } : null;
 };
 
-// Validate session against backend - returns true if valid, false if invalid.
-// On success, also re-hydrates fields that may have changed server-side
-// (e.g. languagePreference) into the local session cache so the UI reflects
-// the latest persisted preferences across devices.
-export const validateSession = async (): Promise<boolean> => {
-  const session = getSession();
-  if (!session) return false;
-
+// Hydrate the browser state from the authoritative server-side session.
+// This must work even when localStorage is empty: SSO establishes the secure
+// session cookie on the server and intentionally cannot write localStorage.
+export const fetchServerSession = async (): Promise<Session | null> => {
   try {
     const response = await fetch('/api/me', {
       method: 'GET',
-      headers: {
-        'x-user-id': session.user.id,
-        'x-user-role': session.user.role,
-      },
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
     });
 
     if (!response.ok) {
-      // Session is invalid (401 or other error) - clear it
-      console.log('[SESSION VALIDATION] Invalid session, logging out');
-      logout();
-      return false;
+      return null;
     }
 
-    try {
-      const data = await response.json();
-      if (data?.success && data.user) {
-        const refreshed: Session = {
-          user: { ...session.user, ...data.user },
-          role: data.user.role || session.role,
-        };
-        storage.setSession(refreshed);
-      }
-    } catch {
-      // Non-JSON or unexpected payload — keep cached session as-is
+    const data = await response.json();
+    if (!data?.success || !data.user?.id || !data.user?.role) {
+      return null;
     }
 
-    return true;
+    const cached = getSession();
+    const cachedUser = cached?.user;
+    const session: Session = {
+      user: cachedUser?.id === data.user.id
+        ? { ...cachedUser, ...data.user }
+        : data.user,
+      role: data.user.role,
+    };
+    storage.setSession(session);
+    return session;
   } catch (error) {
     console.error('[SESSION VALIDATION] Error:', error);
-    // On error, assume session is invalid
-    logout();
-    return false;
+    return null;
   }
+};
+
+// Validate and re-hydrate the browser state from the server session. A missing
+// or invalid server session clears stale local state.
+export const validateSession = async (): Promise<boolean> => {
+  const session = await fetchServerSession();
+  if (session) return true;
+
+  logout();
+  return false;
 };

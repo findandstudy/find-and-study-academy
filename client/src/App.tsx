@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { queryClient } from './lib/queryClient';
@@ -148,6 +149,14 @@ function FindyLauncherGate() {
 }
 
 // Route Guards
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Loading session" />
+    </div>
+  );
+}
+
 function ProtectedRoute({ 
   children, 
   requiredRole 
@@ -155,7 +164,11 @@ function ProtectedRoute({
   children: React.ReactNode; 
   requiredRole?: string | string[];
 }) {
-  const { user, role } = useAuthStore();
+  const { user, role, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <AuthLoadingScreen />;
+  }
   
   if (!user || !role) {
     return <Redirect to="/login" />;
@@ -172,7 +185,11 @@ function ProtectedRoute({
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, role } = useAuthStore();
+  const { user, role, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <AuthLoadingScreen />;
+  }
   
   if (user && role) {
     const dashboardPath = (role === 'admin' || role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
