@@ -155,6 +155,31 @@ export default function AdminContentCountries() {
     toast({ title: 'Download started', description: `Exported ${contents.length} content items and ${countries.length} countries.` });
   };
 
+  // The Excel export intentionally contains readable text. Translation work
+  // also needs the original markup, which can exceed Excel's cell limit.
+  const downloadHtmlSource = () => {
+    if (contents.length === 0) {
+      toast({ title: 'No data', description: 'There is no content to download.', variant: 'destructive' });
+      return;
+    }
+    const rows = contents.map(c => ({
+      id: c.id,
+      title: c.title,
+      countryId: c.countryId,
+      language: c.language,
+      contentHtml: c.content || '',
+    }));
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `content_html_source_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   // Country form
   const countryForm = useForm<InsertCountry>({
     resolver: zodResolver(insertCountrySchema),
@@ -660,6 +685,10 @@ export default function AdminContentCountries() {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download All
+                  </Button>
+                  <Button variant="outline" onClick={downloadHtmlSource} data-testid="button-download-html-source">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download HTML Source
                   </Button>
                   <Button
                     variant="outline"
