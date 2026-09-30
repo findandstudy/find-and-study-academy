@@ -35,6 +35,33 @@ interface RichEditorProps {
   placeholder?: string;
 }
 
+// The base lesson body can contain a complete styled HTML layout. Tiptap only
+// supports a small set of text nodes, so opening such a translation in the
+// visual editor would silently discard its cards, tables, classes and CSS.
+function hasCustomLayout(html: string): boolean {
+  return /<style\b|<(?:section|div|table)\b|\bclass\s*=/i.test(html);
+}
+
+function sanitizeTranslationContent(html: string): string {
+  if (!hasCustomLayout(html)) {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h2', 'h3', 'a', 'blockquote', 'code', 'pre'],
+      ALLOWED_ATTR: ['href', 'target'],
+    });
+  }
+
+  // Keep the same markup the main Content Body editor accepts. DOMPurify
+  // removes scripts, event handlers and unsafe URLs while retaining layout.
+  const sanitized = DOMPurify.sanitize(html, {
+    ADD_TAGS: ['style'],
+    ADD_ATTR: ['class', 'style', 'role', 'aria-label'],
+  });
+  if (/<style\b/i.test(html) && !/<style\b/i.test(sanitized)) {
+    throw new Error('The HTML layout could not be preserved. The translation was not saved.');
+  }
+  return sanitized;
+}
+
 function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -114,6 +141,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
       : 'tr';
 
   const [selectedLang, setSelectedLang] = useState<string>(resolvedUiLang);
+  const [sourceMode, setSourceMode] = useState(false);
 
   // Sync selectedLang whenever the top-right language switcher changes
   useEffect(() => {
@@ -160,6 +188,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
 
   const handleLangSelect = (lang: string) => {
     setSelectedLang(lang);
+    setSourceMode(false);
     loadTranslationToForm(lang);
   };
 
@@ -169,10 +198,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     mutationFn: async () => {
       const sanitized = {
         ...form,
-        content: DOMPurify.sanitize(form.content, {
-          ALLOWED_TAGS: ['p','br','strong','em','ul','ol','li','h2','h3','a','blockquote','code','pre'],
-          ALLOWED_ATTR: ['href','target']
-        }),
+        content: sanitizeTranslationContent(form.content),
       };
       const res = await fetch(`/api/admin/contents/${content.id}/translations/${selectedLang}`, {
         method: "PUT",
@@ -215,6 +241,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
   });
 
   const existingLangCodes = translations.map(t => t.language);
+  const structuredLesson = hasCustomLayout(content.content || '') || hasCustomLayout(form.content);
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -317,13 +344,33 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">{t("contentEditor.contentLabel")}</Label>
-                <RichEditor
-                  key={`${content.id}-${selectedLang}`}
-                  value={form.content}
-                  onChange={html => setForm(f => ({ ...f, content: html }))}
-                  placeholder={t("contentEditor.contentPlaceholder", { lang: SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel ?? selectedLang })}
-                />
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <Label className="text-xs text-muted-foreground">{t("contentEditor.contentLabel")}</Label>
+                  {structuredLesson ? (
+                    <span className="text-xs text-muted-foreground">HTML source · layout preserved</span>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setSourceMode(mode => !mode)}>
+                      {sourceMode ? 'Visual editor' : 'HTML source'}
+                    </Button>
+                  )}
+                </div>
+                {sourceMode || structuredLesson ? (
+                  <Textarea
+                    aria-label="Translation HTML source"
+                    value={form.content}
+                    onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                    placeholder={t("contentEditor.contentPlaceholder", { lang: SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel ?? selectedLang })}
+                    className="min-h-[300px] resize-y font-mono text-xs"
+                    dir="ltr"
+                  />
+                ) : (
+                  <RichEditor
+                    key={`${content.id}-${selectedLang}`}
+                    value={form.content}
+                    onChange={html => setForm(f => ({ ...f, content: html }))}
+                    placeholder={t("contentEditor.contentPlaceholder", { lang: SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel ?? selectedLang })}
+                  />
+                )}
               </div>
             </div>
 
