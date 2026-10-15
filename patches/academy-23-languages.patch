@@ -1,0 +1,292 @@
+diff --git a/client/src/components/BulkUploadWizard.tsx b/client/src/components/BulkUploadWizard.tsx
+index af7dd5d..8b38f62 100644
+--- a/client/src/components/BulkUploadWizard.tsx
++++ b/client/src/components/BulkUploadWizard.tsx
+@@ -1,4 +1,5 @@
+ import { useState, useRef } from 'react';
++import { LANGUAGE_CODES } from '@/i18n/languages';
+ import * as XLSX from 'xlsx';
+ import { useMutation } from '@tanstack/react-query';
+ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+@@ -20,7 +21,8 @@ const COLUMNS = [
+ const REQUIRED = ['title', 'slug', 'content_type'];
+ const VALID_TYPES = ['lesson', 'video', 'image', 'document', 'quiz'];
+ const VALID_STATUSES = ['draft', 'published', 'archived'];
+-const VALID_LANGS = ['en', 'tr', 'ru', 'ar', 'az', 'fa', 'uz', 'kk', 'zh', 'es', 'fr'];
++// Preserve legacy Azerbaijani imports while sharing the selectable language catalog.
++const VALID_LANGS: string[] = [...LANGUAGE_CODES, 'az'];
+ 
+ interface RowError { col: string; message: string }
+ interface ParsedRow { data: Record<string, string>; errors: RowError[]; selected: boolean }
+diff --git a/client/src/components/ContentTranslationEditor.tsx b/client/src/components/ContentTranslationEditor.tsx
+index 3972b56..ac91c42 100644
+--- a/client/src/components/ContentTranslationEditor.tsx
++++ b/client/src/components/ContentTranslationEditor.tsx
+@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
+ import { useToast } from "@/hooks/use-toast";
+ import { Loader2, Trash2, Check, Globe, PenLine, Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react";
+ import type { Content, ContentTranslation } from "@shared/schema";
+-import { SUPPORTED_LANGUAGES, isSupportedLanguage } from "@/i18n/languages";
++import { SUPPORTED_LANGUAGES, normalizeLanguage } from "@/i18n/languages";
+ 
+ function getAuthHeaders(): Record<string, string> {
+   const raw = localStorage.getItem("fas_session");
+@@ -134,24 +134,16 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
+   const { i18n } = useTranslation();
+ 
+   // Derive a valid initial lang from the current UI language
+-  const resolvedUiLang = isSupportedLanguage(i18n.resolvedLanguage)
+-    ? i18n.resolvedLanguage
+-    : isSupportedLanguage(i18n.language)
+-      ? i18n.language
+-      : 'tr';
++  const resolvedUiLang = normalizeLanguage(i18n.language);
+ 
+   const [selectedLang, setSelectedLang] = useState<string>(resolvedUiLang);
+   const [sourceMode, setSourceMode] = useState(false);
+ 
+   // Sync selectedLang whenever the top-right language switcher changes
+   useEffect(() => {
+-    const lang = isSupportedLanguage(i18n.resolvedLanguage)
+-      ? i18n.resolvedLanguage
+-      : isSupportedLanguage(i18n.language)
+-        ? i18n.language
+-        : 'tr';
++    const lang = normalizeLanguage(i18n.language);
+     setSelectedLang(lang);
+-  }, [i18n.resolvedLanguage, i18n.language]);
++  }, [i18n.language]);
+   const [form, setForm] = useState<{ title: string; description: string; content: string; status: string }>({
+     title: "",
+     description: "",
+diff --git a/client/src/components/LanguageSwitcher.tsx b/client/src/components/LanguageSwitcher.tsx
+index 091a050..3c94b3b 100644
+--- a/client/src/components/LanguageSwitcher.tsx
++++ b/client/src/components/LanguageSwitcher.tsx
+@@ -11,8 +11,8 @@ import { useAuthStore } from '@/store/auth';
+ import { useToast } from '@/hooks/use-toast';
+ import {
+   SUPPORTED_LANGUAGES,
+-  isSupportedLanguage,
+   getLanguageMeta,
++  normalizeLanguage,
+   type LanguageCode,
+ } from '@/i18n/languages';
+ 
+@@ -37,11 +37,7 @@ export function LanguageSwitcher({ variant = 'compact', className }: LanguageSwi
+   const { user, updateUser } = useAuthStore();
+   const { toast } = useToast();
+ 
+-  const currentCode = (isSupportedLanguage(i18n.resolvedLanguage)
+-    ? i18n.resolvedLanguage
+-    : isSupportedLanguage(i18n.language)
+-      ? i18n.language
+-      : 'en') as LanguageCode;
++  const currentCode = normalizeLanguage(i18n.language);
+   const current = getLanguageMeta(currentCode);
+ 
+   const handleChange = async (code: LanguageCode) => {
+@@ -101,7 +97,7 @@ export function LanguageSwitcher({ variant = 'compact', className }: LanguageSwi
+           )}
+         </Button>
+       </DropdownMenuTrigger>
+-      <DropdownMenuContent align="end" className="min-w-[180px]">
++      <DropdownMenuContent align="end" className="min-w-[220px] max-h-[70vh] overflow-y-auto">
+         {SUPPORTED_LANGUAGES.map((lang) => {
+           const isActive = lang.code === currentCode;
+           return (
+diff --git a/client/src/i18n/index.ts b/client/src/i18n/index.ts
+index 8ccbe51..79473b7 100644
+--- a/client/src/i18n/index.ts
++++ b/client/src/i18n/index.ts
+@@ -70,6 +70,6 @@ function applyDirection(lng: string) {
+ }
+ 
+ i18n.on('languageChanged', applyDirection);
+-applyDirection(i18n.resolvedLanguage || i18n.language || DEFAULT_LANGUAGE);
++applyDirection(i18n.language || DEFAULT_LANGUAGE);
+ 
+ export default i18n;
+diff --git a/client/src/i18n/languages.ts b/client/src/i18n/languages.ts
+index 0791630..3031788 100644
+--- a/client/src/i18n/languages.ts
++++ b/client/src/i18n/languages.ts
+@@ -1,51 +1 @@
+-/**
+- * Supported UI / content languages.
+- * The app's primary language is English. Additional languages are listed
+- * alphabetically (by English label) per product spec.
+- *
+- * `flag` is the ISO 3166-1 alpha-2 code consumed by `flag-icons`
+- * (e.g. <span class="fi fi-sa" />).
+- */
+-export type LanguageCode =
+-  | 'en'
+-  | 'ar'
+-  | 'zh'
+-  | 'fr'
+-  | 'id'
+-  | 'fa'
+-  | 'ru'
+-  | 'es'
+-  | 'tr';
+-
+-export interface LanguageMeta {
+-  code: LanguageCode;
+-  label: string;       // English label
+-  nativeLabel: string; // Native label
+-  flag: string;        // ISO 3166-1 alpha-2 country code for flag-icons
+-  dir: 'ltr' | 'rtl';
+-}
+-
+-export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
+-  { code: 'en', label: 'English',    nativeLabel: 'English',  flag: 'gb', dir: 'ltr' },
+-  { code: 'ar', label: 'Arabic',     nativeLabel: 'العربية',  flag: 'sa', dir: 'rtl' },
+-  { code: 'zh', label: 'Chinese',    nativeLabel: '中文',      flag: 'cn', dir: 'ltr' },
+-  { code: 'fr', label: 'French',     nativeLabel: 'Français', flag: 'fr', dir: 'ltr' },
+-  { code: 'id', label: 'Indonesian', nativeLabel: 'Indonesia',flag: 'id', dir: 'ltr' },
+-  { code: 'fa', label: 'Persian',    nativeLabel: 'فارسی',    flag: 'ir', dir: 'rtl' },
+-  { code: 'ru', label: 'Russian',    nativeLabel: 'Русский',  flag: 'ru', dir: 'ltr' },
+-  { code: 'es', label: 'Spanish',    nativeLabel: 'Español',  flag: 'es', dir: 'ltr' },
+-  { code: 'tr', label: 'Turkish',    nativeLabel: 'Türkçe',   flag: 'tr', dir: 'ltr' },
+-];
+-
+-export const DEFAULT_LANGUAGE: LanguageCode = 'en';
+-
+-export const LANGUAGE_CODES: LanguageCode[] = SUPPORTED_LANGUAGES.map(l => l.code);
+-
+-export function isSupportedLanguage(code: string | null | undefined): code is LanguageCode {
+-  return !!code && (LANGUAGE_CODES as string[]).includes(code);
+-}
+-
+-export function getLanguageMeta(code: string | null | undefined): LanguageMeta {
+-  const found = SUPPORTED_LANGUAGES.find(l => l.code === code);
+-  return found ?? SUPPORTED_LANGUAGES[0];
+-}
++export { SUPPORTED_LANGUAGES, LANGUAGE_CODES, DEFAULT_LANGUAGE, getLanguageMeta, isSupportedLanguage, normalizeLanguage, type LanguageCode, type LanguageMeta } from "@shared/languages";
+diff --git a/client/src/pages/agent/Courses.tsx b/client/src/pages/agent/Courses.tsx
+index 6823a9d..5d3d7cb 100644
+--- a/client/src/pages/agent/Courses.tsx
++++ b/client/src/pages/agent/Courses.tsx
+@@ -8,6 +8,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
+ import type { Content, Country } from '@shared/schema';
+ import { CountryFlag } from '@/components/CountryFlag';
+ import { useTranslation } from 'react-i18next';
++import { normalizeLanguage } from '@/i18n/languages';
+ 
+ export default function AgentCourses() {
+   const { t, i18n } = useTranslation();
+@@ -16,7 +17,7 @@ export default function AgentCourses() {
+   const [defaultInitialized, setDefaultInitialized] = useState(false);
+ 
+   // Current UI language — used as ?lang= param so content translations are applied server-side
+-  const currentLang = i18n.resolvedLanguage || i18n.language || 'en';
++  const currentLang = normalizeLanguage(i18n.language);
+ 
+   // Fetch global defaults from settings
+   const { data: defaultsData } = useQuery<{ success: boolean; defaults: { default_country_code: string | null } }>({
+@@ -263,4 +264,4 @@ export default function AgentCourses() {
+       </Tabs>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/server/routes.ts b/server/routes.ts
+index 7355cb7..e7ab0bc 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -25,6 +25,7 @@ import fs from "fs";
+ import sharp from "sharp";
+ import bcrypt from "bcryptjs";
+ import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
++import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/languages";
+ 
+ // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
+ // at module load (not per request).
+@@ -520,7 +521,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+   // Get published content (optionally filtered by countryId)
+   app.get('/api/public/contents', async (req, res) => {
+     try {
+-      const { countryId, lang } = req.query;
++      const { countryId } = req.query;
++      const lang = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
+       const contents = await storage.getContents();
+       const countries = await storage.getCountries();
+       
+@@ -758,8 +760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const authenticatedUser = (req as any).user;
+       const { languagePreference } = req.body || {};
+ 
+-      const supported = ['en', 'ar', 'zh', 'fr', 'id', 'fa', 'ru', 'es', 'tr'];
+-      if (typeof languagePreference !== 'string' || !supported.includes(languagePreference)) {
++      if (!isSupportedLanguage(languagePreference)) {
+         return res.status(400).json({
+           success: false,
+           message: 'Unsupported language',
+@@ -5710,7 +5711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+     const validations = {
+       content_type: ['lesson', 'video', 'image', 'document', 'quiz'],
+       status: ['draft', 'published', 'archived'],
+-      language: ['en', 'tr', 'ru', 'ar', 'az', 'fa'],
++      language: [...LANGUAGE_CODES, 'az'],
+     };
+     res.json({ success: true, headers, validations });
+   });
+@@ -6814,4 +6815,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
+   const httpServer = createServer(app);
+ 
+   return httpServer;
+-}
+\ No newline at end of file
++}
+diff --git a/shared/languages.ts b/shared/languages.ts
+new file mode 100644
+index 0000000..26d281c
+--- /dev/null
++++ b/shared/languages.ts
+@@ -0,0 +1,44 @@
++/** Academy languages in the order used by the main Find And Study website. */
++export const SUPPORTED_LANGUAGES = [
++  { code: 'en', label: 'English', nativeLabel: 'English', flag: 'gb', dir: 'ltr' },
++  { code: 'tr', label: 'Turkish', nativeLabel: 'Türkçe', flag: 'tr', dir: 'ltr' },
++  { code: 'ar', label: 'Arabic', nativeLabel: 'العربية', flag: 'sa', dir: 'rtl' },
++  { code: 'fr', label: 'French', nativeLabel: 'Français', flag: 'fr', dir: 'ltr' },
++  { code: 'ru', label: 'Russian', nativeLabel: 'Русский', flag: 'ru', dir: 'ltr' },
++  { code: 'fa', label: 'Persian', nativeLabel: 'فارسی', flag: 'ir', dir: 'rtl' },
++  { code: 'zh', label: 'Chinese', nativeLabel: '中文', flag: 'cn', dir: 'ltr' },
++  { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी', flag: 'in', dir: 'ltr' },
++  { code: 'es', label: 'Spanish', nativeLabel: 'Español', flag: 'es', dir: 'ltr' },
++  { code: 'id', label: 'Indonesian', nativeLabel: 'Bahasa Indonesia', flag: 'id', dir: 'ltr' },
++  { code: 'ur', label: 'Urdu', nativeLabel: 'اردو', flag: 'pk', dir: 'rtl' },
++  { code: 'tk', label: 'Turkmen', nativeLabel: 'Türkmençe', flag: 'tm', dir: 'ltr' },
++  { code: 'ky', label: 'Kyrgyz', nativeLabel: 'Кыргызча', flag: 'kg', dir: 'ltr' },
++  { code: 'kk', label: 'Kazakh', nativeLabel: 'Қазақша', flag: 'kz', dir: 'ltr' },
++  { code: 'uz', label: 'Uzbek', nativeLabel: 'O‘zbekcha', flag: 'uz', dir: 'ltr' },
++  { code: 'tg', label: 'Tajik', nativeLabel: 'Тоҷикӣ', flag: 'tj', dir: 'ltr' },
++  { code: 'bn', label: 'Bengali', nativeLabel: 'বাংলা', flag: 'bd', dir: 'ltr' },
++  { code: 'pt', label: 'Portuguese', nativeLabel: 'Português', flag: 'pt', dir: 'ltr' },
++  { code: 'ne', label: 'Nepali', nativeLabel: 'नेपाली', flag: 'np', dir: 'ltr' },
++  { code: 'vi', label: 'Vietnamese', nativeLabel: 'Tiếng Việt', flag: 'vn', dir: 'ltr' },
++  { code: 'ko', label: 'Korean', nativeLabel: '한국어', flag: 'kr', dir: 'ltr' },
++  { code: 'uk', label: 'Ukrainian', nativeLabel: 'Українська', flag: 'ua', dir: 'ltr' },
++  { code: 'it', label: 'Italian', nativeLabel: 'Italiano', flag: 'it', dir: 'ltr' },
++] as const;
++
++export type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
++export type LanguageMeta = typeof SUPPORTED_LANGUAGES[number];
++export const DEFAULT_LANGUAGE: LanguageCode = 'en';
++export const LANGUAGE_CODES: LanguageCode[] = SUPPORTED_LANGUAGES.map(language => language.code);
++
++export function isSupportedLanguage(code: unknown): code is LanguageCode {
++  return typeof code === 'string' && LANGUAGE_CODES.includes(code as LanguageCode);
++}
++
++export function normalizeLanguage(code: string | null | undefined): LanguageCode {
++  const base = code?.toLowerCase().split(/[-_]/)[0];
++  return isSupportedLanguage(base) ? base : DEFAULT_LANGUAGE;
++}
++
++export function getLanguageMeta(code: string | null | undefined): LanguageMeta {
++  return SUPPORTED_LANGUAGES.find(language => language.code === normalizeLanguage(code))!;
++}
