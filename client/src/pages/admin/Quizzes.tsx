@@ -343,13 +343,13 @@ export default function AdminQuizzes() {
   const addQuestion = (type: 'boolean' | 'mcq') => {
     const newQuestion: Question = type === 'boolean' 
       ? {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'boolean',
           text: '',
           answer: true
         }
       : {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'mcq',
           text: '',
           options: ['Option 1', 'Option 2'], // Pre-filled to avoid validation issues

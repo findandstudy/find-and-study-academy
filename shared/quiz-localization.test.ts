@@ -11,6 +11,8 @@ test('legacy nested JSON produces the same questions without changing answer key
   assert.deepEqual(parseQuizQuestions(JSON.stringify(JSON.stringify(questions))), questions);
   assert.throws(() => parseQuizQuestions('{broken'));
   assert.throws(() => parseQuizQuestions('{}'));
+  assert.throws(() => parseQuizQuestions([{ ...questions[1], answerIndex: 2 }]));
+  assert.throws(() => parseQuizQuestions([{ ...questions[1], answerIndex: 0.5 }]));
   const duplicateInput = [...questions, questions[0]];
   const repaired = parseQuizQuestions(duplicateInput);
   assert.deepEqual(repaired.map(q => q.id), ['first', 'second', 'first__duplicate_3']);

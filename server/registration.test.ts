@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 // No real database or mail account is used. Exercise the actual HTTP routes,
 // session middleware and password hashing with isolated transactional storage.
 test('self-registration creates an active agent session, denies admin access and rolls back failures', async () => {
-  process.env.DATABASE_URL ||= 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
+  process.env.DATABASE_URL = 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
   const { registerRoutes } = await import('./routes');
   const { storage } = await import('./storage');
   const { db, pool } = await import('./db');
@@ -61,6 +61,18 @@ test('self-registration creates an active agent session, denies admin access and
     assert.equal(me.status, 200);
     assert.equal((await me.json()).user.id, result.user.id);
     assert.equal((await fetch(base + '/api/admin/quizzes', { headers: { cookie } })).status, 403);
+    // In-memory test role only: invalid grading keys/duplicate IDs must be
+    // rejected before the quiz write API ever touches persistence.
+    users[0].role = 'admin';
+    const invalidQuiz = { id: 'qa-invalid-quiz', title: 'QA Quiz', courseId: 'course-1', isFinal: false };
+    for (const questions of [
+      [{ id: 'q1', type: 'mcq', text: 'Pick one', options: ['A', 'B'], answerIndex: 2 }],
+      [{ id: 'q1', type: 'boolean', text: 'First', answer: true }, { id: 'q1', type: 'boolean', text: 'Second', answer: false }],
+    ]) {
+      const invalid = await fetch(base + '/api/admin/quizzes', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ ...invalidQuiz, questions: JSON.stringify(questions) }) });
+      assert.equal(invalid.status, 400);
+    }
+    users[0].role = 'agent';
     assert.equal((await fetch(base + '/api/me')).status, 401);
     assert.equal((await signup({ ...input, email: 'QA@EXAMPLE.INVALID' })).status, 409);
     assert.equal(agencies.length, 1);

@@ -7,6 +7,7 @@ import {
   insertCountrySchema,
   insertContentSchema,
   insertQuizSchema,
+  frontendQuestionSchema,
   insertFindyKeywordMappingSchema,
   type Agency, 
   type InsertAgency,
@@ -37,29 +38,15 @@ import { agencies as agencyTable, users as userTable } from "@shared/schema";
 const VALID_COUNTRY_CODES = new Set(COUNTRY_DIAL_CODES.map((c) => c.code));
 import rateLimit from "express-rate-limit";
 
-// Server-side questions validation schema (matches frontend)
-const questionSchema = z.discriminatedUnion('type', [
-  z.object({
-    id: z.string(),
-    type: z.literal('boolean'),
-    text: z.string().min(1, 'Question text is required'),
-    answer: z.boolean()
-  }),
-  z.object({
-    id: z.string(),
-    type: z.literal('mcq'),
-    text: z.string().min(1, 'Question text is required'),
-    options: z.array(z.string().min(1, 'Option text required')).min(2, 'At least 2 options required').max(6, 'Maximum 6 options allowed'),
-    answerIndex: z.number().min(0)
-  })
-]);
+// Use one question validator for the editor and write API.
+const questionSchema = frontendQuestionSchema;
 
 // Quiz validation schema with questions validation
 const quizValidationSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;
@@ -84,7 +71,7 @@ const quizUpdateSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;

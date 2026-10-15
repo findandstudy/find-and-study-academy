@@ -645,9 +645,13 @@ export const frontendQuestionSchema = z.discriminatedUnion('type', [
     type: z.literal('mcq'),
     text: z.string().min(1, 'Question text is required'),
     options: z.array(z.string().min(1, 'Option text required')).min(2).max(6),
-    answerIndex: z.number().min(0)
+    answerIndex: z.number().int().min(0)
   })
-]);
+]).superRefine((question, context) => {
+  if (question.type === 'mcq' && question.answerIndex >= question.options.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['answerIndex'], message: 'Choose an existing answer option' });
+  }
+});
 
 export type FrontendQuestion = z.infer<typeof frontendQuestionSchema>;
 
