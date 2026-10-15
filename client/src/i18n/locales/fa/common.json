@@ -565,5 +565,31 @@
     "footerContactHead": "تماس",
     "footerRights": "تمام حقوق محفوظ است.",
     "footerLocated": "پلتفرم مشاورهٔ تحصیلی مستقر در ترکیه"
+  },
+  "registration": {
+    "title": "ایجاد حساب آژانس",
+    "subtitle": "برای دسترسی به آموزش‌ها و اطلاعات مقاصد تحصیلی حساب بسازید.",
+    "fullName": "نام و نام خانوادگی",
+    "fullNamePlaceholder": "نام و نام خانوادگی خود را وارد کنید",
+    "agencyName": "نام آژانس",
+    "agencyPlaceholder": "نام آژانس خود را وارد کنید",
+    "country": "کشور",
+    "selectCountry": "کشوری را انتخاب کنید",
+    "mobilePhone": "تلفن همراه",
+    "phoneCountryCode": "پیش‌شماره تلفن کشور",
+    "createPassword": "رمز عبور بسازید",
+    "passwordHint": "حداقل از ۸ نویسه استفاده کنید.",
+    "creating": "در حال ایجاد حساب...",
+    "createAccount": "ایجاد حساب",
+    "alreadyAccount": "قبلاً حساب ساخته‌اید؟",
+    "readyTitle": "حساب شما آماده است",
+    "readyMessage": "اکنون می‌توانید به مرکز آموزش دسترسی داشته باشید.",
+    "pendingTitle": "درخواست دریافت شد",
+    "pendingMessage": "حساب شما در انتظار تأیید است.",
+    "failedTitle": "ثبت‌نام ناموفق بود",
+    "failedMessage": "اطلاعات خود را بررسی کرده و دوباره تلاش کنید.",
+    "invalidPhone": "شماره تلفن همراه معتبر وارد کنید.",
+    "invalidDial": "پیش‌شماره تلفن معتبر انتخاب کنید.",
+    "duplicateEmail": "این ایمیل قبلاً ثبت شده است. وارد حساب شوید."
   }
 }

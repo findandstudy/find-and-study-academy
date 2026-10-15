@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { LANGUAGE_CODES } from '@/i18n/languages';
 import * as XLSX from 'xlsx';
 import { useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,7 +21,8 @@ const COLUMNS = [
 const REQUIRED = ['title', 'slug', 'content_type'];
 const VALID_TYPES = ['lesson', 'video', 'image', 'document', 'quiz'];
 const VALID_STATUSES = ['draft', 'published', 'archived'];
-const VALID_LANGS = ['en', 'tr', 'ru', 'ar', 'az', 'fa', 'uz', 'kk', 'zh', 'es', 'fr'];
+// Preserve legacy Azerbaijani imports while sharing the selectable language catalog.
+const VALID_LANGS: string[] = [...LANGUAGE_CODES, 'az'];
 
 interface RowError { col: string; message: string }
 interface ParsedRow { data: Record<string, string>; errors: RowError[]; selected: boolean }

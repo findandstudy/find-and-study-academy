@@ -1,0 +1,34 @@
+{
+  "registration": {
+    "title": "एजेंसी खाता बनाएँ",
+    "subtitle": "प्रशिक्षण और अध्ययन गंतव्यों की जानकारी पाने के लिए खाता बनाएँ।",
+    "fullName": "पूरा नाम",
+    "fullNamePlaceholder": "अपना पूरा नाम दर्ज करें",
+    "agencyName": "एजेंसी का नाम",
+    "agencyPlaceholder": "अपनी एजेंसी का नाम दर्ज करें",
+    "country": "देश",
+    "selectCountry": "देश चुनें",
+    "mobilePhone": "मोबाइल नंबर",
+    "phoneCountryCode": "देश का फोन कोड",
+    "createPassword": "पासवर्ड बनाएँ",
+    "passwordHint": "कम से कम 8 अक्षर इस्तेमाल करें।",
+    "creating": "खाता बनाया जा रहा है...",
+    "createAccount": "खाता बनाएँ",
+    "alreadyAccount": "पहले से खाता है?",
+    "readyTitle": "आपका खाता तैयार है",
+    "readyMessage": "अब आप प्रशिक्षण केंद्र का उपयोग कर सकते हैं।",
+    "pendingTitle": "आवेदन प्राप्त हुआ",
+    "pendingMessage": "आपका खाता स्वीकृति की प्रतीक्षा में है।",
+    "failedTitle": "पंजीकरण विफल",
+    "failedMessage": "अपनी जानकारी जाँचकर दोबारा प्रयास करें।",
+    "invalidPhone": "वैध मोबाइल नंबर दर्ज करें।",
+    "invalidDial": "देश का वैध फोन कोड चुनें।",
+    "duplicateEmail": "यह ईमेल पहले से पंजीकृत है। कृपया साइन इन करें।"
+  },
+  "auth": {
+    "email": "ईमेल",
+    "emailPlaceholder": "अपना ईमेल दर्ज करें",
+    "password": "पासवर्ड",
+    "signIn": "साइन इन करें"
+  }
+}

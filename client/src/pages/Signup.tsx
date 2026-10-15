@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '@/i18n/languages';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,8 @@ const DEFAULT_COUNTRY = 'TR';
 
 export default function Signup() {
   const [, setLocation] = useLocation();
+  const { t, i18n } = useTranslation();
+  const language = normalizeLanguage(i18n.language);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,24 +38,18 @@ export default function Signup() {
   const { initialize: initializeData } = useDataStore();
   const { toast } = useToast();
 
-  // Sorted list of all world countries (Turkish names) for the Country dropdown.
-  const sortedCountries = useMemo(
-    () => [...WORLD_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
-    [],
-  );
+  const sortedCountries = useMemo(() => {
+    const display = new Intl.DisplayNames([language, 'en'], { type: 'region' });
+    return WORLD_COUNTRIES.map(country => ({ ...country, name: display.of(country.code) || country.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, language));
+  }, [language]);
 
-  // For the dial-code selector we want every country that has a dial code, sorted by Turkish name.
   const dialOptions = useMemo(() => {
-    const nameByCode = new Map(WORLD_COUNTRIES.map((c) => [c.code, c.name]));
-    return COUNTRY_DIAL_CODES
-      .filter((c) => nameByCode.has(c.code))
-      .map((c) => ({
-        code: c.code,
-        dial: c.dial,
-        name: nameByCode.get(c.code) ?? c.code,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-  }, []);
+    const names = new Map(sortedCountries.map(country => [country.code, country.name]));
+    return COUNTRY_DIAL_CODES.filter(country => names.has(country.code))
+      .map(country => ({ code: country.code, dial: country.dial, name: names.get(country.code)! }))
+      .sort((a, b) => a.name.localeCompare(b.name, language));
+  }, [sortedCountries, language]);
 
   const selectedDial = getDialCode(formData.phoneCountry) ?? '';
 
@@ -78,21 +76,25 @@ export default function Signup() {
     }
     if (!localDigits || localDigits.length < 4) {
       toast({
-        title: 'Geçersiz Telefon Numarası',
-        description: 'Lütfen geçerli bir cep telefonu numarası girin.',
+        title: t('registration.failedTitle'),
+        description: t('registration.invalidPhone'),
         variant: 'destructive',
       });
       return;
     }
     if (!selectedDial) {
       toast({
-        title: 'Geçersiz Ülke Kodu',
-        description: 'Lütfen geçerli bir telefon ülke kodu seçin.',
+        title: t('registration.failedTitle'),
+        description: t('registration.invalidDial'),
         variant: 'destructive',
       });
       return;
     }
     const fullPhone = `+${selectedDial}${localDigits}`;
+    if (!/^\+[1-9]\d{5,17}$/.test(fullPhone)) {
+      toast({ title: t('registration.failedTitle'), description: t('registration.invalidPhone'), variant: 'destructive' });
+      return;
+    }
 
     const result = await signup({
       name: formData.name,
@@ -101,24 +103,19 @@ export default function Signup() {
       agencyName: formData.agencyName,
       country: formData.country,
       phone: fullPhone,
+      languagePreference: language,
     });
-    if (result?.pending) {
-      // Closed system: account is created but pending admin/staff approval — do NOT auto-login.
-      // Refresh data store so admins viewing the page see the new agency on next load.
+    if (result?.session) {
       initializeData();
-
-      toast({
-        title: 'Başvurunuz Alındı',
-        description:
-          result.message ||
-          'Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz. Onay e-postası adresinize gönderilecektir.',
-        duration: 8000,
-      });
+      toast({ title: t('registration.readyTitle'), description: t('registration.readyMessage') });
+      setLocation('/agent/dashboard');
+    } else if (result?.pending) {
+      toast({ title: t('registration.pendingTitle'), description: t('registration.pendingMessage'), duration: 8000 });
       setLocation('/login');
     } else {
       toast({
-        title: 'Kayıt Başarısız',
-        description: 'Hesap oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.',
+        title: t('registration.failedTitle'),
+        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : t('registration.failedMessage'),
         variant: 'destructive',
       });
     }
@@ -130,74 +127,84 @@ export default function Signup() {
 
   return (
     <AuthCard
-      title="Create Agent Account"
-      description="Join Find And Study as a certified agent"
+      title={t('registration.title')}
+      description={t('registration.subtitle')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="name">{t('registration.fullName')}</Label>
           <Input
             id="name"
             type="text"
             value={formData.name}
             onChange={(e) => updateField('name', e.target.value)}
-            placeholder="Your full name"
+            placeholder={t('registration.fullNamePlaceholder')}
             required
             autoComplete="name"
+            minLength={2}
+            maxLength={120}
             data-testid="input-name"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('auth.email')}</Label>
           <Input
             id="email"
             type="email"
+            dir="ltr"
             value={formData.email}
             onChange={(e) => updateField('email', e.target.value)}
-            placeholder="Your email address"
+            placeholder={t('auth.emailPlaceholder')}
             required
             autoComplete="email"
+            maxLength={254}
             data-testid="input-email"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
             id="password"
             type="password"
             value={formData.password}
             onChange={(e) => updateField('password', e.target.value)}
-            placeholder="Create a password"
+            placeholder={t('registration.createPassword')}
             required
             autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            aria-describedby="password-hint"
             data-testid="input-password"
           />
+          <p id="password-hint" className="text-xs text-muted-foreground">{t('registration.passwordHint')}</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="agencyName">Agency Name</Label>
+          <Label htmlFor="agencyName">{t('registration.agencyName')}</Label>
           <Input
             id="agencyName"
             type="text"
             value={formData.agencyName}
             onChange={(e) => updateField('agencyName', e.target.value)}
-            placeholder="Your education agency name"
+            placeholder={t('registration.agencyPlaceholder')}
             required
             autoComplete="organization"
+            minLength={2}
+            maxLength={180}
             data-testid="input-agency"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="country">Country</Label>
+          <Label htmlFor="country">{t('registration.country')}</Label>
           <Select
             value={formData.country}
             onValueChange={handleCountryChange}
           >
             <SelectTrigger id="country" data-testid="select-country">
-              <SelectValue placeholder="Ülke seçin" />
+              <SelectValue placeholder={t('registration.selectCountry')} />
             </SelectTrigger>
             <SelectContent className="max-h-72">
               {sortedCountries.map((c) => (
@@ -210,7 +217,7 @@ export default function Signup() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phoneNumber">Mobile Phone</Label>
+          <Label htmlFor="phoneNumber">{t('registration.mobilePhone')}</Label>
           <div className="flex gap-2">
             <Select
               value={formData.phoneCountry}
@@ -218,7 +225,8 @@ export default function Signup() {
             >
               <SelectTrigger
                 className="w-[110px] shrink-0"
-                aria-label="Telefon ülke kodu"
+                dir="ltr"
+                aria-label={t('registration.phoneCountryCode')}
                 data-testid="select-phone-country"
               >
                 <SelectValue>
@@ -243,6 +251,7 @@ export default function Signup() {
             <Input
               id="phoneNumber"
               type="tel"
+              dir="ltr"
               inputMode="tel"
               value={formData.phoneNumber}
               onChange={(e) => updateField('phoneNumber', e.target.value)}
@@ -261,16 +270,16 @@ export default function Signup() {
           disabled={isLoading}
           data-testid="button-submit"
         >
-          {isLoading ? 'Creating Account...' : 'Create Account'}
+          {t(isLoading ? 'registration.creating' : 'registration.createAccount')}
         </Button>
       </form>
 
       <div className="mt-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Already have an account?{' '}
+          {t('registration.alreadyAccount')}{' '}
           <Link href="/login">
             <span className="text-primary hover:underline cursor-pointer">
-              Sign In
+              {t('auth.signIn')}
             </span>
           </Link>
         </p>

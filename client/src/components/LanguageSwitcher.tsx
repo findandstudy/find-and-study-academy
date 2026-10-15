@@ -11,8 +11,8 @@ import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   SUPPORTED_LANGUAGES,
-  isSupportedLanguage,
   getLanguageMeta,
+  normalizeLanguage,
   type LanguageCode,
 } from '@/i18n/languages';
 
@@ -37,11 +37,7 @@ export function LanguageSwitcher({ variant = 'compact', className }: LanguageSwi
   const { user, updateUser } = useAuthStore();
   const { toast } = useToast();
 
-  const currentCode = (isSupportedLanguage(i18n.resolvedLanguage)
-    ? i18n.resolvedLanguage
-    : isSupportedLanguage(i18n.language)
-      ? i18n.language
-      : 'en') as LanguageCode;
+  const currentCode = normalizeLanguage(i18n.language);
   const current = getLanguageMeta(currentCode);
 
   const handleChange = async (code: LanguageCode) => {
@@ -101,7 +97,7 @@ export function LanguageSwitcher({ variant = 'compact', className }: LanguageSwi
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[180px]">
+      <DropdownMenuContent align="end" className="min-w-[220px] max-h-[70vh] overflow-y-auto">
         {SUPPORTED_LANGUAGES.map((lang) => {
           const isActive = lang.code === currentCode;
           return (

@@ -132,6 +132,20 @@ export const quizzes = pgTable("quizzes", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Text translations are independent of the source quiz and its grading keys.
+export const quizTranslations = pgTable("quiz_translations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quizId: varchar("quiz_id").notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
+  language: text("language").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  questions: text("questions").notNull(),
+  sourceHash: text("source_hash").notNull(),
+  status: text("status").notNull().default('draft'),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, table => ({ quizLanguageUnique: unique('quiz_translation_language_unique').on(table.quizId, table.language) }));
+
 // Quiz attempts for progress tracking
 export const attempts = pgTable("attempts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

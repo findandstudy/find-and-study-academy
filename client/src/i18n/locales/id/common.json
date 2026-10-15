@@ -565,5 +565,31 @@
     "footerContactHead": "Kontak",
     "footerRights": "Semua hak dilindungi.",
     "footerLocated": "Platform konsultasi pendidikan berbasis di Türkiye"
+  },
+  "registration": {
+    "title": "Buat akun agen",
+    "subtitle": "Buat akun untuk mengakses pelatihan dan informasi tujuan studi.",
+    "fullName": "Nama lengkap",
+    "fullNamePlaceholder": "Masukkan nama lengkap Anda",
+    "agencyName": "Nama agen",
+    "agencyPlaceholder": "Masukkan nama agen Anda",
+    "country": "Negara",
+    "selectCountry": "Pilih negara",
+    "mobilePhone": "Nomor ponsel",
+    "phoneCountryCode": "Kode telepon negara",
+    "createPassword": "Buat kata sandi",
+    "passwordHint": "Gunakan minimal 8 karakter.",
+    "creating": "Membuat akun...",
+    "createAccount": "Buat akun",
+    "alreadyAccount": "Sudah punya akun?",
+    "readyTitle": "Akun Anda siap",
+    "readyMessage": "Anda sekarang dapat mengakses pusat pelatihan.",
+    "pendingTitle": "Pendaftaran diterima",
+    "pendingMessage": "Akun Anda menunggu persetujuan.",
+    "failedTitle": "Pendaftaran gagal",
+    "failedMessage": "Periksa data Anda dan coba lagi.",
+    "invalidPhone": "Masukkan nomor ponsel yang valid.",
+    "invalidDial": "Pilih kode telepon negara yang valid.",
+    "duplicateEmail": "Email ini sudah terdaftar. Silakan masuk."
   }
 }

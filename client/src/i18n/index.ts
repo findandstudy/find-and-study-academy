@@ -13,6 +13,20 @@ import fa from './locales/fa/common.json';
 import ru from './locales/ru/common.json';
 import es from './locales/es/common.json';
 import tr from './locales/tr/common.json';
+import hi from './locales/hi/common.json';
+import ur from './locales/ur/common.json';
+import tk from './locales/tk/common.json';
+import ky from './locales/ky/common.json';
+import kk from './locales/kk/common.json';
+import uz from './locales/uz/common.json';
+import tg from './locales/tg/common.json';
+import bn from './locales/bn/common.json';
+import pt from './locales/pt/common.json';
+import ne from './locales/ne/common.json';
+import vi from './locales/vi/common.json';
+import ko from './locales/ko/common.json';
+import uk from './locales/uk/common.json';
+import it from './locales/it/common.json';
 
 export const I18N_STORAGE_KEY = 'fas_language';
 
@@ -26,6 +40,20 @@ const resources = {
   ru: { common: ru },
   es: { common: es },
   tr: { common: tr },
+  hi: { common: hi },
+  ur: { common: ur },
+  tk: { common: tk },
+  ky: { common: ky },
+  kk: { common: kk },
+  uz: { common: uz },
+  tg: { common: tg },
+  bn: { common: bn },
+  pt: { common: pt },
+  ne: { common: ne },
+  vi: { common: vi },
+  ko: { common: ko },
+  uk: { common: uk },
+  it: { common: it },
 };
 
 i18n
@@ -70,6 +98,6 @@ function applyDirection(lng: string) {
 }
 
 i18n.on('languageChanged', applyDirection);
-applyDirection(i18n.resolvedLanguage || i18n.language || DEFAULT_LANGUAGE);
+applyDirection(i18n.language || DEFAULT_LANGUAGE);
 
 export default i18n;

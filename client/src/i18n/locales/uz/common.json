@@ -1,0 +1,34 @@
+{
+  "registration": {
+    "title": "Agentlik hisobini yaratish",
+    "subtitle": "O‘quv materiallari va ta’lim yo‘nalishlari haqidagi ma’lumotlarga kirish uchun hisob yarating.",
+    "fullName": "To‘liq ism-familiya",
+    "fullNamePlaceholder": "To‘liq ism-familiyangizni kiriting",
+    "agencyName": "Agentlik nomi",
+    "agencyPlaceholder": "Agentligingiz nomini kiriting",
+    "country": "Mamlakat",
+    "selectCountry": "Mamlakatni tanlang",
+    "mobilePhone": "Mobil telefon",
+    "phoneCountryCode": "Mamlakat telefon kodi",
+    "createPassword": "Parol yarating",
+    "passwordHint": "Kamida 8 ta belgidan foydalaning.",
+    "creating": "Hisob yaratilmoqda...",
+    "createAccount": "Hisob yaratish",
+    "alreadyAccount": "Hisobingiz bormi?",
+    "readyTitle": "Hisobingiz tayyor",
+    "readyMessage": "Endi o‘quv markaziga kirishingiz mumkin.",
+    "pendingTitle": "Ariza qabul qilindi",
+    "pendingMessage": "Hisobingiz tasdiqlanishni kutmoqda.",
+    "failedTitle": "Ro‘yxatdan o‘tish amalga oshmadi",
+    "failedMessage": "Ma’lumotlaringizni tekshirib, qayta urinib ko‘ring.",
+    "invalidPhone": "To‘g‘ri mobil telefon raqamini kiriting.",
+    "invalidDial": "Mamlakatning to‘g‘ri telefon kodini tanlang.",
+    "duplicateEmail": "Bu elektron pochta allaqachon ro‘yxatdan o‘tgan. Hisobingizga kiring."
+  },
+  "auth": {
+    "email": "Elektron pochta",
+    "emailPlaceholder": "Elektron pochtangizni kiriting",
+    "password": "Parol",
+    "signIn": "Kirish"
+  }
+}

@@ -124,11 +124,15 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   });
 
   useEffect(() => {
-    // Auto-select first lesson if none selected
-    if (!selectedLesson && course.sections[0]?.lessons[0]) {
-      setSelectedLesson(course.sections[0].lessons[0]);
-    }
-  }, [course, selectedLesson]);
+    // Replace the selected object when translated lesson data arrives, keeping
+    // the lesson ID where possible instead of retaining the previous language.
+    const lessons = course.sections.flatMap(section => section.lessons);
+    setSelectedLesson(previous => lessons.find(lesson => lesson.id === previous?.id) ?? lessons[0] ?? null);
+  }, [course]);
+
+  useEffect(() => {
+    setActiveQuiz(previous => previous ? quizzes.find(quiz => quiz.id === previous.id) ?? null : null);
+  }, [quizzes]);
 
   const handleLessonComplete = (lessonId: string) => {
     if (!user) return;

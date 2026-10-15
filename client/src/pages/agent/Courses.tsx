@@ -8,6 +8,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import type { Content, Country } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
 import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '@/i18n/languages';
 
 export default function AgentCourses() {
   const { t, i18n } = useTranslation();
@@ -16,7 +17,7 @@ export default function AgentCourses() {
   const [defaultInitialized, setDefaultInitialized] = useState(false);
 
   // Current UI language — used as ?lang= param so content translations are applied server-side
-  const currentLang = i18n.resolvedLanguage || i18n.language || 'en';
+  const currentLang = normalizeLanguage(i18n.language);
 
   // Fetch global defaults from settings
   const { data: defaultsData } = useQuery<{ success: boolean; defaults: { default_country_code: string | null } }>({
@@ -54,7 +55,12 @@ export default function AgentCourses() {
   });
 
   const { data: quizzes = [] } = useQuery({
-    queryKey: ['/api/public/quizzes'],
+    queryKey: ['/api/public/quizzes', currentLang],
+    queryFn: async () => {
+      const response = await fetch(`/api/public/quizzes?lang=${encodeURIComponent(currentLang)}`);
+      if (!response.ok) throw new Error('Could not load quizzes');
+      return response.json();
+    },
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: true,
     refetchOnWindowFocus: true,

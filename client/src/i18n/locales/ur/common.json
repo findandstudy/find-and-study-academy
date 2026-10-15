@@ -1,0 +1,34 @@
+{
+  "registration": {
+    "title": "ایجنسی اکاؤنٹ بنائیں",
+    "subtitle": "تربیت اور تعلیمی مقامات کی معلومات تک رسائی کے لیے اکاؤنٹ بنائیں۔",
+    "fullName": "پورا نام",
+    "fullNamePlaceholder": "اپنا پورا نام درج کریں",
+    "agencyName": "ایجنسی کا نام",
+    "agencyPlaceholder": "اپنی ایجنسی کا نام درج کریں",
+    "country": "ملک",
+    "selectCountry": "ملک منتخب کریں",
+    "mobilePhone": "موبائل نمبر",
+    "phoneCountryCode": "ملک کا فون کوڈ",
+    "createPassword": "پاس ورڈ بنائیں",
+    "passwordHint": "کم از کم 8 حروف استعمال کریں۔",
+    "creating": "اکاؤنٹ بنایا جا رہا ہے...",
+    "createAccount": "اکاؤنٹ بنائیں",
+    "alreadyAccount": "پہلے سے اکاؤنٹ ہے؟",
+    "readyTitle": "آپ کا اکاؤنٹ تیار ہے",
+    "readyMessage": "اب آپ تربیتی مرکز تک رسائی حاصل کر سکتے ہیں۔",
+    "pendingTitle": "درخواست موصول ہوگئی",
+    "pendingMessage": "آپ کا اکاؤنٹ منظوری کا منتظر ہے۔",
+    "failedTitle": "رجسٹریشن ناکام ہوگئی",
+    "failedMessage": "اپنی معلومات چیک کریں اور دوبارہ کوشش کریں۔",
+    "invalidPhone": "درست موبائل نمبر درج کریں۔",
+    "invalidDial": "ملک کا درست فون کوڈ منتخب کریں۔",
+    "duplicateEmail": "یہ ای میل پہلے سے رجسٹرڈ ہے۔ براہ کرم سائن ان کریں۔"
+  },
+  "auth": {
+    "email": "ای میل",
+    "emailPlaceholder": "اپنا ای میل درج کریں",
+    "password": "پاس ورڈ",
+    "signIn": "سائن ان کریں"
+  }
+}

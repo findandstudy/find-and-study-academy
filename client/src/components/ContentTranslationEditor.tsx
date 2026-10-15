@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Check, Globe, PenLine, Bold, Italic, List, ListOrdered, Heading2, Undo, Redo } from "lucide-react";
 import type { Content, ContentTranslation } from "@shared/schema";
-import { SUPPORTED_LANGUAGES, isSupportedLanguage } from "@/i18n/languages";
+import { SUPPORTED_LANGUAGES, normalizeLanguage } from "@/i18n/languages";
 
 function getAuthHeaders(): Record<string, string> {
   const raw = localStorage.getItem("fas_session");
@@ -134,24 +134,16 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
   const { i18n } = useTranslation();
 
   // Derive a valid initial lang from the current UI language
-  const resolvedUiLang = isSupportedLanguage(i18n.resolvedLanguage)
-    ? i18n.resolvedLanguage
-    : isSupportedLanguage(i18n.language)
-      ? i18n.language
-      : 'tr';
+  const resolvedUiLang = normalizeLanguage(i18n.language);
 
   const [selectedLang, setSelectedLang] = useState<string>(resolvedUiLang);
   const [sourceMode, setSourceMode] = useState(false);
 
   // Sync selectedLang whenever the top-right language switcher changes
   useEffect(() => {
-    const lang = isSupportedLanguage(i18n.resolvedLanguage)
-      ? i18n.resolvedLanguage
-      : isSupportedLanguage(i18n.language)
-        ? i18n.language
-        : 'tr';
+    const lang = normalizeLanguage(i18n.language);
     setSelectedLang(lang);
-  }, [i18n.resolvedLanguage, i18n.language]);
+  }, [i18n.language]);
   const [form, setForm] = useState<{ title: string; description: string; content: string; status: string }>({
     title: "",
     description: "",
