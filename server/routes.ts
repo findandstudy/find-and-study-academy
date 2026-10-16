@@ -879,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newAgency = {
         id: agencyId,
         name: agencyName,
-        status: 'active' as const,
+        status: 'pending' as const,
         primaryContactName: name,
         primaryContactEmail: email
       };
@@ -887,8 +887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password before storing
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Self-registration opens the training hub immediately. Existing inactive
-      // accounts remain blocked; this applies only to newly registered agents.
+      // New public registrations require administrator approval before login.
       const newUser = {
         id: userId,
         username: email,
@@ -896,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: name,
         email: email,
         role: 'agent' as const,
-        status: 'active' as const,
+        status: 'inactive' as const,
         agencyId: agencyId,
         country: country,
         phone: normalizedPhone,
@@ -913,28 +912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { createdAgency, createdUser };
       });
 
-      req.session.userId = createdUser.id;
-      await new Promise<void>((resolve, reject) => req.session.save(error => error ? reject(error) : resolve()));
-
-      // Send welcome email to new agent (non-blocking)
-      if (createdUser.emailNotifications) {
-        (async () => {
-          try {
-            const { sendNotificationEmail } = await import('./emailService');
-            await sendNotificationEmail({
-              recipientEmail: createdUser.email,
-              recipientName: createdUser.name,
-              type: 'welcome',
-              data: {
-                agencyName: createdAgency.name
-              }
-            });
-          } catch (err) {
-            console.error('Welcome email error:', err);
-          }
-        })();
-      }
-      
       // Send notification to all admins about new registration (non-blocking)
       (async () => {
         try {
@@ -961,13 +938,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({
         success: true,
-        pending: false,
-        message: 'Your account is ready. Welcome to Find And Study Academy.',
-        user: {
-          id: createdUser.id, name: createdUser.name, email: createdUser.email,
-          role: createdUser.role, agencyId: createdUser.agencyId,
-          languagePreference: createdUser.languagePreference || 'en',
-        },
+        pending: true,
+        message: 'Your application has been received and is awaiting administrator approval.',
       });
     } catch (error) {
       // A concurrent registration may pass the pre-check. The transaction
