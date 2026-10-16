@@ -132,7 +132,7 @@ async function run(plan,c,dir,fetcher=fetch){
      ledger.entries.push(entry);ledger.chargedUSD+=bound.usd;atomicJSON(ledgerFile,ledger);
      let response;
      try{response=await fetcher('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(180000)});}catch{throw Error('API transport failed; reservation retained for review');}
-     if(!response.ok)throw Error('API HTTP '+response.status+'; reservation retained; response body not logged');
+     if(!response.ok){let diagnostic='';try{const error=(await response.json())?.error;diagnostic=['type','code'].map(k=>typeof error?.[k]==='string'&&/^[a-z0-9_]{1,80}$/i.test(error[k])?k+'='+error[k]:'').filter(Boolean).join(' ');}catch{}throw Error('API HTTP '+response.status+(diagnostic?' '+diagnostic:'')+'; reservation retained; response body not logged');}
      let data;try{data=await response.json();}catch{throw Error('Invalid API response; reservation retained');}
      const cost=actualCost(data.usage,c,bound);ledger.chargedUSD+=cost-bound.usd;entry.status='charged';entry.actualUSD=cost;entry.usage=data.usage;atomicJSON(ledgerFile,ledger);
      usage=data.usage;
