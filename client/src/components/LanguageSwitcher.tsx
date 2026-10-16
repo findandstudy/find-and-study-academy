@@ -47,8 +47,8 @@ export function LanguageSwitcher({ variant = 'compact', className }: LanguageSwi
     const meta = getLanguageMeta(code);
 
     toast({
-      title: t('toast.languageChanged'),
-      description: t('toast.languageChangedDescription', { name: meta.nativeLabel }),
+      title: i18n.getFixedT(code)('toast.languageChanged'),
+      description: i18n.getFixedT(code)('toast.languageChangedDescription', { name: meta.nativeLabel }),
     });
 
     // Persist on the user record for cross-device sync
