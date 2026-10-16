@@ -7,5 +7,5 @@
   "pricingVerifiedDate": "",
   "maxOutputTokens": 10000,
   "maxJobsPerRun": 5,
-  "keyFile": "/root/.config/findandstudy-academy/translation.env"
+  "keyFile": "/private/path/translation.env"
 }
