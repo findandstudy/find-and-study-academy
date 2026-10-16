@@ -12,9 +12,10 @@ def main(snapshot_path,destination,raw_guards_path):
   for old in data['contents']:
    source=sources.get(old['id'])
    if not source or present.get((old['id'],language))!='published':continue
-   if '<style' not in (source.get('content') or '') or '<style' in (old.get('content') or ''):continue
-   if old.get('content')==source.get('content'):continue
    guard=guards.get((old['id'],language))
+   raw_empty=bool(guard and guard['existingHashes']['content']==h(''))
+   if '<style' not in (source.get('content') or ''):continue
+   if not raw_empty and ('<style' in (old.get('content') or '') or old.get('content')==source.get('content')):continue
    if not guard or guard['status']!='published':raise ValueError('Missing raw published translation guard')
    if any(h(old.get(k))!=guard['projectedHashes'][k] for k in ['title','description','content']):raise ValueError('Public/raw projection changed; refresh export')
    fields={k:source.get(k) for k in ['title','description','content']}
