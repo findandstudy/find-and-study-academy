@@ -1,3 +1,4 @@
+import { courseText, countryLabel, sectionLabel } from '@/i18n/course-labels';
 import { CourseView } from '@/components/course/CourseView';
 import { useDataStore } from '@/store/data';
 import { Card, CardContent } from '@/components/ui/card';
@@ -165,7 +166,7 @@ export default function AgentCourses() {
     // Create sections from grouped contents
     const sections = Object.entries(contentsBySection).map(([sectionName, sectionContents]) => ({
       id: `section-${sectionName.toLowerCase().replace(/\s+/g, '-')}`,
-      title: sectionName,
+      title: sectionLabel(currentLang, sectionName, countryLabel(currentLang,selectedCountryData.code,selectedCountryData.name)),
       lessons: sectionContents.map(content => {
         // Check if content is actually empty (null, undefined, or only whitespace)
         const hasContent = content.content && content.content.trim().length > 0;
@@ -189,11 +190,11 @@ export default function AgentCourses() {
     // Create dynamic course from admin contents
     return {
       id: `course-${selectedCountryData.id}`,
-      title: `${selectedCountryData.name} Agent Training`,
+      title: `${countryLabel(currentLang,selectedCountryData.code,selectedCountryData.name)} — ${courseText(currentLang,0)}`,
       slug: `${selectedCountryData.code.toLowerCase()}-training`,
       sections
     };
-  }, [selectedCountryData, countryContents, courses, selectedCountry]);
+  }, [selectedCountryData, countryContents, courses, selectedCountry, currentLang]);
 
   if (activeCountries.length === 0) {
     return (
@@ -240,7 +241,7 @@ export default function AgentCourses() {
                 ].join(' ')}
               >
                 <CountryFlag code={country.code} size="md" />
-                <span>{country.name}</span>
+                <span>{countryLabel(currentLang,country.code,country.name)}</span>
               </button>
             );
           })}
