@@ -30,5 +30,9 @@
     "emailPlaceholder": "Электрондық поштаңызды енгізіңіз",
     "password": "Құпиясөз",
     "signIn": "Кіру"
+  },
+  "toast": {
+    "languageChanged": "Тіл өзгертілді",
+    "languageChangedDescription": "Интерфейс енді {{name}} тілінде."
   }
 }
