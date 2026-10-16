@@ -30,5 +30,9 @@
     "emailPlaceholder": "Elektron pochtangizni kiriting",
     "password": "Parol",
     "signIn": "Kirish"
+  },
+  "toast": {
+    "languageChanged": "Til o‘zgartirildi",
+    "languageChangedDescription": "Interfeys endi {{name}} tilida."
   }
 }
