@@ -15,6 +15,9 @@ class RepairTests(unittest.TestCase):
  def run_prepare(self):return prepare(self.snapshot,self.plan,self.manifest,self.out)
  def test_structure_and_guards(self):
   b=self.run_prepare();self.assertEqual(b['mode'],'repair-existing-only');t=b['rows'][0]['translation'];self.assertIn('<style>',t['content']);self.assertIn('<table>',t['content']);self.assertIn('href="https://example.com"',t['content']);self.assertIn('Hola',t['content']);self.assertEqual(b['rows'][0]['existingHashes'],self.manifest['rows'][0]['existingHashes'])
+ def test_control_checkpoint_quarantined_and_retained(self):
+  self.output['strings'][3]='Ho\x00la';self.write();before=(self.out/'draft.json').read_bytes()
+  b=self.run_prepare();self.assertEqual(b['rows'],[]);self.assertEqual(len(b['rejectedDrafts']),1);self.assertEqual(b['rejectedDrafts'][0]['checkpoint'],'draft.json');self.assertEqual((self.out/'draft.json').read_bytes(),before)
  def test_stale_source(self):
   self.source['content']+='changed'
   with self.assertRaisesRegex(ValueError,'Snapshot source changed'):self.run_prepare()
