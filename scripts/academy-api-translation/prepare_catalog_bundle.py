@@ -11,7 +11,7 @@ class Structure(HTMLParser):
  def handle_endtag(self,t):self.events.append(('end',t))
 def reconstruct(item,job,translated):
  if len(translated)!=len(job['strings']):raise ValueError('Wrong string count')
- if any(not isinstance(v,str) or ('__FAS_KEEP_' in v) or (not v.strip() and job['strings'][i].strip()) for i,v in enumerate(translated)):raise ValueError('Invalid translated value')
+ if any(not isinstance(v,str) or ('__FAS_KEEP_' in v) or any(ord(c)<32 and ord(c) not in (9,10,13) for c in v) or (not v.strip() and job['strings'][i].strip()) for i,v in enumerate(translated)):raise ValueError('Invalid translated value')
  if job['kind']=='quiz':
   questions=normalize_questions(item['questions']);index=2;result=[]
   for q in questions:
