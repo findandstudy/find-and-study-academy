@@ -30,5 +30,9 @@
     "emailPlaceholder": "Почтаи электронии худро ворид кунед",
     "password": "Гузарвожа",
     "signIn": "Ворид шудан"
+  },
+  "toast": {
+    "languageChanged": "Забон иваз шуд",
+    "languageChangedDescription": "Интерфейс ҳоло бо забони {{name}} аст."
   }
 }
