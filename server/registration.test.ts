@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 
 // No real database or mail account is used. Exercise the actual HTTP routes,
 // session middleware and password hashing with isolated transactional storage.
-test('self-registration creates an active agent session, denies admin access and rolls back failures', async () => {
+test('self-registration waits for administrator approval, blocks login, then allows approved agents and rolls back failures', async () => {
   process.env.DATABASE_URL = 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
   const { registerRoutes } = await import('./routes');
   const { storage } = await import('./storage');
@@ -46,20 +46,30 @@ test('self-registration creates an active agent session, denies admin access and
     const response = await signup(input);
     assert.equal(response.status, 201);
     const result = await response.json();
-    assert.equal(result.pending, false);
-    assert.equal(result.user.role, 'agent');
-    assert.equal(result.user.languagePreference, 'uk');
-    assert.equal(result.user.password, undefined);
-    assert.equal(users[0].status, 'active');
+    assert.equal(result.pending, true);
+    assert.equal(result.user, undefined);
+    assert.equal(users[0].languagePreference, 'uk');
+    assert.equal(users[0].status, 'inactive');
+    assert.equal(agencies[0].status, 'pending');
+    assert.equal(response.headers.get('set-cookie'), null);
+    assert.equal((await fetch(base + '/api/me')).status, 401);
+    const login = () => fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'qa@example.invalid', password: input.password }) });
+    const denied = await login();
+    assert.equal(denied.status, 403);
+    assert.equal((await denied.json()).pending, true);
+    users[0].status = 'active';
+    agencies[0].status = 'active';
     assert.equal(users[0].email, 'qa@example.invalid');
     assert.equal(users[0].agencyId, agencies[0].id);
     assert.notEqual(users[0].password, input.password);
     assert(await bcrypt.compare(input.password, users[0].password));
-    const cookie = response.headers.get('set-cookie')?.split(';')[0];
+    const approvedLogin = await login();
+    assert.equal(approvedLogin.status, 200);
+    const cookie = approvedLogin.headers.get('set-cookie')?.split(';')[0];
     assert(cookie);
     const me = await fetch(base + '/api/me', { headers: { cookie } });
     assert.equal(me.status, 200);
-    assert.equal((await me.json()).user.id, result.user.id);
+    assert.equal((await me.json()).user.id, users[0].id);
     assert.equal((await fetch(base + '/api/admin/quizzes', { headers: { cookie } })).status, 403);
     // In-memory test role only: invalid grading keys/duplicate IDs must be
     // rejected before the quiz write API ever touches persistence.
