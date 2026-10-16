@@ -3,7 +3,8 @@ import json,sys,urllib.request,hashlib
 from pathlib import Path
 from build_catalog_jobs import digest,lesson_strings
 LANGS='tr ar fr ru fa zh es id'.split()
-def main(snapshot_path,destination):
+def main(snapshot_path,destination,raw_guards_path):
+ raw=json.loads(Path(raw_guards_path).read_text());guards={(r["id"],r["language"]):r for r in raw["rows"]}
  snapshot=json.loads(Path(snapshot_path).read_text());sources={i['id']:i for i in snapshot['contents']};present={(r['id'],r['language']):r['status'] for r in snapshot['lessonTranslations']};jobs=[];manifest=[]
  def h(value):return hashlib.sha256((value or '').encode()).hexdigest()
  for language in LANGS:
@@ -13,9 +14,12 @@ def main(snapshot_path,destination):
    if not source or present.get((old['id'],language))!='published':continue
    if '<style' not in (source.get('content') or '') or '<style' in (old.get('content') or ''):continue
    if old.get('content')==source.get('content'):continue
+   guard=guards.get((old['id'],language))
+   if not guard or guard['status']!='published':raise ValueError('Missing raw published translation guard')
+   if any(h(old.get(k))!=guard['projectedHashes'][k] for k in ['title','description','content']):raise ValueError('Public/raw projection changed; refresh export')
    fields={k:source.get(k) for k in ['title','description','content']}
    job={'version':1,'kind':'lesson','id':source['id'],'title':source['title'],'language':language,'sourceHash':digest(fields),'strings':lesson_strings(source)};job['jobHash']=digest(job);jobs.append(job)
-   manifest.append({'jobHash':job['jobHash'],'id':source['id'],'language':language,'sourceHash':job['sourceHash'],'existingHashes':{k:h(old.get(k)) for k in ['title','description','content']}})
+   manifest.append({'jobHash':job['jobHash'],'id':source['id'],'language':language,'sourceHash':job['sourceHash'],'existingHashes':guard['existingHashes']})
  out=Path(destination)
  with out.open('x') as f:json.dump({'version':1,'sourceLanguage':'en','jobs':jobs,'manualReview':[]},f,ensure_ascii=False)
  out.chmod(0o600)
