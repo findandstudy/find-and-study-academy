@@ -223,7 +223,7 @@ export function generateAdminNewRegistrationEmail(agentName: string, agentEmail:
               <p><strong>Yetkili Kişi:</strong> ${escapeText(agentName)}</p>
               <p><strong>E-posta:</strong> ${escapeText(agentEmail)}</p>
             </div>
-            <p>Yeni hesap eğitim merkezine erişim için aktif olarak oluşturuldu. Acente yönetim panelinden detayları görüntüleyebilirsiniz:</p>
+            <p>Yeni başvuru yönetici onayı bekliyor. Acente hesabı onaylanmadan eğitim merkezine giriş yapılamaz. Başvuruyu yönetim panelinden inceleyebilirsiniz:</p>
             <a href="${appUrl}/admin/agencies" class="button">Acenteleri Yönet</a>
           </div>
           <div class="footer">
