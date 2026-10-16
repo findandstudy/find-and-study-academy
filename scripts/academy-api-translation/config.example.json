@@ -1,0 +1,11 @@
+{
+  "model": "",
+  "approvedBudgetUSD": 0,
+  "inputUSDPerMillionTokens": 0,
+  "outputUSDPerMillionTokens": 0,
+  "pricingSource": "",
+  "pricingVerifiedDate": "",
+  "maxOutputTokens": 10000,
+  "maxJobsPerRun": 5,
+  "keyFile": "/root/.config/findandstudy-academy/translation.env"
+}
