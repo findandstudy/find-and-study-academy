@@ -30,5 +30,9 @@
     "emailPlaceholder": "अपना ईमेल दर्ज करें",
     "password": "पासवर्ड",
     "signIn": "साइन इन करें"
+  },
+  "toast": {
+    "languageChanged": "भाषा बदल दी गई",
+    "languageChangedDescription": "इंटरफ़ेस अब {{name}} में है।"
   }
 }
