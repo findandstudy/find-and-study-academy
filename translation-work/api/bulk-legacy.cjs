@@ -1,9 +1,9 @@
 // Resumes existing drafts. Only missing/invalid rows are sent; one shared budget ledger.
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),cp=require('child_process');
 const root=process.env.ACADEMY_WORK_DIR||'/var/lib/academy-translations',out=root+'/outputs',r=require(root+'/translate.cjs');
-const retry=true,engine=require(root+'/translate-repair-v6.cjs'),stateFile=root+'/bulk-legacy-state.json';
+const retry=true,engine=require(root+'/translate-repair-v7.cjs'),stateFile=root+'/bulk-legacy-state.json';
 const model='gpt-4.1-mini-2025-04-14',policy='academy-visible-strings-v5';
-const repairIdentity=j=>crypto.createHash('sha256').update(JSON.stringify({jobHash:j.jobHash,model,policy:retry?'academy-visible-strings-repair-v6':policy})).digest('hex');
+const repairIdentity=j=>crypto.createHash('sha256').update(JSON.stringify({jobHash:j.jobHash,model,policy:retry?'academy-visible-strings-repair-v7':policy})).digest('hex');
 const identity=j=>crypto.createHash('sha256').update(JSON.stringify({jobHash:j.jobHash,model,policy})).digest('hex');
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));const write=(p,v)=>{fs.writeFileSync(p+'.tmp',JSON.stringify(v,null,2)+'\n',{mode:0o600});fs.renameSync(p+'.tmp',p)};
 const safe=s=>typeof s==='string'&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s)&&!s.includes('__FAS_KEEP_');
