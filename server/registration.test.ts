@@ -14,6 +14,20 @@ test('self-registration waits for administrator approval, blocks login, then all
   const { users: userTable, agencies: agencyTable } = await import('@shared/schema');
   const savedMethods = { getUsers: storage.getUsers, getUser: storage.getUser, transaction: db.transaction };
   let users: any[] = [], agencies: any[] = [], failUserInsert = false;
+  // Model the ordinary account's campaign lookups without opening a real DB connection.
+  // Campaign-specific membership/device behavior is covered by the isolated PG suite.
+  const savedPool = { query: pool.query, connect: pool.connect };
+  const fixtureQuery = async (sql: string, values: any[] = []) => {
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)) return { rows: [], rowCount: 0 };
+    if (sql === 'SELECT id,role,status FROM users WHERE id=$1 FOR UPDATE' || sql === 'SELECT role FROM users WHERE id=$1') {
+      const user = users.find(u => u.id === values[0]);
+      return { rows: user ? [{ id: user.id, role: user.role, status: user.status }] : [], rowCount: user ? 1 : 0 };
+    }
+    if (sql === 'SELECT access_until FROM academy_campaign_members WHERE user_id=$1') return { rows: [], rowCount: 0 };
+    throw new Error('Unexpected isolated registration SQL: ' + sql);
+  };
+  (pool as any).query = fixtureQuery;
+  (pool as any).connect = async () => ({ query: fixtureQuery, release() {} });
   storage.getUsers = async () => users;
   storage.getUser = async id => users.find(user => user.id === id);
   (db as any).transaction = async (callback: any) => {
@@ -97,6 +111,8 @@ test('self-registration waits for administrator approval, blocks login, then all
     storage.getUsers = savedMethods.getUsers;
     storage.getUser = savedMethods.getUser;
     (db as any).transaction = savedMethods.transaction;
+    (pool as any).query = savedPool.query;
+    (pool as any).connect = savedPool.connect;
     await pool.end();
   }
 });
