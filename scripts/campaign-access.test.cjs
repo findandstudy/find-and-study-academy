@@ -13,18 +13,22 @@ function load(file,stubs={}){const m={exports:{}};const text=ts.transpileModule(
  CREATE TABLE agencies(id varchar PRIMARY KEY,name text,status text,primary_contact_name text,primary_contact_email text,country text,contact_phone text);
  CREATE TABLE progresses(user_id text);CREATE TABLE analytics_metrics(id text,metric_type text,user_id text,metric_value text,timestamp timestamptz);`);
  await pool.query(fs.readFileSync(path.join(process.cwd(),'migrations/20261017_campaign_access.sql'),'utf8'));
- await pool.query("INSERT INTO users(id,role,status) VALUES ('admin','admin','active'),('agent','agent','active')");
+ await pool.query("INSERT INTO users(id,role,status) VALUES ('admin','admin','active'),('agent','agent','active'),('legacy','agent','active')");
  const base=z.object({name:z.string(),email:z.string().toLowerCase(),password:z.string().min(8),agencyName:z.string(),country:z.string(),phone:z.string(),languagePreference:z.string().default('en')}).strict();
  const mod=load(path.join(process.cwd(),'server/campaign-access.ts'),{'./db':{pool},'@shared/signup-validation':{publicSignupSchema:base},'./smtp-email':{sendSmtpEmail:async v=>{codes.set(v.to,v.html.match(/<strong>(\d+)<\/strong>/)[1]);return true}}});
  const app=express();app.use(express.json());app.use(session({secret:'isolated-test-secret',resave:false,saveUninitialized:false}));
  const auth=(q,s,n)=>q.headers['x-test-admin']==='yes'?(q.session.userId='admin',n()):s.sendStatus(401);
  mod.registerCampaignAccess(app,auth,auth,(q,s,n)=>n());
+ app.post('/api/signup',(q,s)=>s.json({normal:true}));
+ app.post('/test/legacy',async(q,s)=>{if(await mod.claimAcademyDevice(q,s,'legacy'))q.session.save(()=>s.json({success:true}))});
  app.post('/test/login',async(q,s)=>{if(await mod.claimAcademyDevice(q,s,'agent'))q.session.save(()=>s.json({success:true}))});
  app.get('/test/protected',mod.enforceAcademyAccess,(q,s)=>s.json({success:true}));
  server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const url='http://127.0.0.1:'+server.address().port;
  async function call(route,body,headers={},method='POST'){const r=await fetch(url+route,{method,headers:{'Content-Type':'application/json',...headers},body:body===undefined?undefined:JSON.stringify(body)});let data;try{data=await r.json()}catch{}return {status:r.status,data,cookie:r.headers.getSetCookie().map(x=>x.split(';')[0]).join('; ')}}
  function check(name,fn){fn();passed++;console.log('PASS',name)}
- let r=await call('/api/admin/campaigns',undefined,{},'GET');check('admin auth',()=>assert.equal(r.status,401));
+ let r=await call('/api/signup',{name:'Normal fixture'});check('ordinary signup falls through unchanged',()=>assert.equal(r.data.normal,true));
+ const legacy=await Promise.all([call('/test/legacy',{}),call('/test/legacy',{}),call('/test/legacy',{})]);check('ordinary account device policy unchanged',()=>assert.ok(legacy.every(x=>x.status===200)));
+ r=await call('/api/admin/campaigns',undefined,{},'GET');check('admin auth',()=>assert.equal(r.status,401));
  r=await call('/api/admin/campaigns',{code:'SHARED3000',label:'Test',expiresAt:new Date(Date.now()+86400000).toISOString(),maxUses:1,accessDays:180},{'x-test-admin':'yes'});check('create shared campaign',()=>assert.equal(r.status,201));const campaignId=r.data.id;
  const emails=['a@example.invalid','b@example.invalid'];for(const email of emails){r=await call('/api/signup/email-code',{email,promoCode:'SHARED3000'});assert.equal(r.status,200)}
  const signup=email=>({name:'Test User',email,password:'fixture12345',agencyName:'Test Agency',country:'TR',phone:'+905551234567',languagePreference:'en',promoCode:'SHARED3000',verificationCode:codes.get(email)});
