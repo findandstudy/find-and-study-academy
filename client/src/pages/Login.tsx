@@ -11,37 +11,31 @@ import { useToast } from '@/hooks/use-toast';
 export default function Login() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const [devices,setDevices]=useState<{id:string;label:string;lastSeen:string}[]>([]);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, isLoading } = useAuthStore();
   const { toast } = useToast();
 
+  const complete = async () => {await useAuthStore.getState().initialize();setLocation(useAuthStore.getState().role==='admin'?'/admin/dashboard':'/agent/dashboard');};
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const success = await login({ email, password });
-    if (success) {
-      // Role-based redirect happens in App.tsx after login
-      const session = useAuthStore.getState();
-      if (session.role === 'admin') {
-        setLocation('/admin/dashboard');
-      } else {
-        setLocation('/agent/dashboard');
-      }
-    } else {
-      toast({
-        title: t('common.error'),
-        description: 'Invalid email or password. Please try again.',
-        variant: 'destructive'
-      });
-    }
+    e.preventDefault();setBusy(true);setError('');setDevices([]);
+    try {const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});const data=await response.json();
+      if(data.code==='DEVICE_LIMIT'){setDevices(data.devices);return;}
+      if(!response.ok)throw new Error(data.message||data.code||'Login failed');await complete();
+    }catch(e){setError(e instanceof Error?e.message:'Login failed')}finally{setBusy(false)}
   };
+  const replaceDevice=async(deviceId:string)=>{setBusy(true);setError('');try{const response=await fetch('/api/auth/replace-device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deviceId})});const data=await response.json();if(!response.ok)throw new Error(data.code||'Login failed');await complete()}catch(e){setError(e instanceof Error?e.message:'Login failed')}finally{setBusy(false)}};
 
   return (
     <AuthCard
       title={t('auth.welcomeBack')}
       description={t('auth.signInSubtitle')}
     >
+      {error&&<p role="alert" className="text-destructive">{error}</p>}
+      {devices.length>0&&<section className="space-y-3" aria-label="Device limit"><p>{t('campaign.deviceLimit',{defaultValue:'Two devices are already registered. Choose one to sign out and continue on this device. Other sessions on the removed device will stop working.'})}</p>{devices.map(d=><div key={d.id}><span>{d.label} · {new Date(d.lastSeen).toLocaleString()}</span><Button disabled={busy} variant="outline" onClick={()=>replaceDevice(d.id)}>{t('campaign.replaceDevice',{defaultValue:'Sign out this device and continue'})}</Button></div>)}<Button variant="ghost" onClick={()=>setDevices([])}>{t('common.cancel',{defaultValue:'Cancel'})}</Button></section>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">{t('auth.email')}</Label>
@@ -74,7 +68,7 @@ export default function Login() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isLoading}
+          disabled={isLoading||busy}
           data-testid="button-submit"
         >
           {isLoading ? t('common.loading') : t('auth.signIn')}
