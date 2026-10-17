@@ -1,3 +1,4 @@
+import '@/lib/campaign-i18n';
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
