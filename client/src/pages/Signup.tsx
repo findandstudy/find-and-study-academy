@@ -26,6 +26,7 @@ const DEFAULT_COUNTRY = 'TR';
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation();
+  const {message}=useAcademyUi();
   const language = normalizeLanguage(i18n.language);
   const [formData, setFormData] = useState({
     promoCode: new URLSearchParams(window.location.search).get('promo') || '',
