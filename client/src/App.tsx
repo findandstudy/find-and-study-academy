@@ -1,3 +1,4 @@
+import AdminCampaigns from './pages/admin/Campaigns';
 import { useEffect, useState } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -233,6 +234,7 @@ function Router() {
       </Route>
 
       {/* Admin + Staff Routes */}
+      <Route path="/admin/campaigns"><ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminCampaigns /></AdminLayout></ProtectedRoute></Route>
       <Route path="/admin/operations">
         <ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminOperations /></AdminLayout></ProtectedRoute>
       </Route>
