@@ -1,0 +1,7 @@
+const test=require('node:test'),assert=require('node:assert/strict');process.env.ACADEMY_WORK_DIR=__dirname;const r=require('./translate.cjs'),{salvage,valid}=require('./bulk-repair.cjs');
+const response=fields=>({response:{status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({fields})}]}]}});
+test('reuse valid translated rows and isolate a duplicated protected token',()=>{const p={strings:['Fee 100 EUR','Duration 2 years']};const rows=salvage(p,response({s0:'Gebühr __FAS_KEEP_0_0__ EUR',s1:'__FAS_KEEP_1_0__ __FAS_KEEP_1_0__ Jahre'}));assert.deepEqual(rows,['Gebühr 100 EUR',null])});
+test('reject unexpected numeric changes instead of silently repairing meaning',()=>{assert.deepEqual(salvage({strings:['Fee 100 EUR']},response({s0:'Gebühr __FAS_KEEP_0_0__ EUR 50'})),[null])});
+test('control characters and unexpanded placeholders stay quarantined',()=>{assert.throws(()=>valid({strings:['Text']},['Tex\u0000t']));assert.throws(()=>valid({strings:['Text']},['__FAS_KEEP_0_0__']))});
+test('wrong dictionary shape cannot become a repaired chunk',()=>assert.throws(()=>salvage({strings:['One','Two']},response({s0:'Eins'}))));
+test('source ordering and numeric tokens remain enforced',()=>{assert.throws(()=>valid({strings:['First 1','Second 2']},['Zweite 2','Erste 1']));assert.deepEqual(valid({strings:['First 1','Second 2']},['Erste 1','Zweite 2']),['Erste 1','Zweite 2'])});
