@@ -30,7 +30,8 @@ async function claimDeviceInternal(req:Request,res:Response,userId:string,replac
   if(!u||u.status!=='active')fail(403,'ACCOUNT_PENDING');
   if(u.role!=='agent')return {id:null,devices:[]};
   const membership=(await c.query('SELECT access_until FROM academy_campaign_members WHERE user_id=$1',[userId])).rows[0];
-  if(membership&&new Date(membership.access_until).getTime()<=Date.now())fail(403,'ACCESS_EXPIRED');
+  if(!membership)return {id:null,devices:[]};
+  if(new Date(membership.access_until).getTime()<=Date.now())fail(403,'ACCESS_EXPIRED');
   const devices=(await c.query('SELECT id,label,last_seen,secret_hash FROM academy_devices WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at',[userId])).rows;
   const existing=devices.find((d:any)=>d.secret_hash===hash(secret));
   if(existing){await c.query('UPDATE academy_devices SET last_seen=now() WHERE id=$1',[existing.id]);return {id:existing.id,devices:[]}}
@@ -49,7 +50,8 @@ export async function enforceAcademyAccess(req:Request,res:Response,next:NextFun
  const id=req.session?.userId;if(!id)return next();
  const u=(await pool.query('SELECT role FROM users WHERE id=$1',[id])).rows[0];if(u?.role!=='agent')return next();
  const m=(await pool.query('SELECT access_until FROM academy_campaign_members WHERE user_id=$1',[id])).rows[0];
- if(m&&new Date(m.access_until).getTime()<=Date.now())return void res.status(403).json({success:false,code:'ACCESS_EXPIRED'});
+ if(!m)return next();
+ if(new Date(m.access_until).getTime()<=Date.now())return void res.status(403).json({success:false,code:'ACCESS_EXPIRED'});
  // Adopt pre-deployment sessions under the same two-device lock, without widening their privileges.
  if(!req.session.academyDeviceId){if(!await claimAcademyDevice(req,res,id))return;await new Promise<void>((resolve,reject)=>req.session.save(e=>e?reject(e):resolve()))}
  const d=(await pool.query('SELECT id FROM academy_devices WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL',[req.session.academyDeviceId,id])).rows[0];
@@ -79,7 +81,7 @@ export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,re
   const sent=await sendSmtpEmail({to:v.email,subject:'Academy — Email verification',html:`<p>Your Academy verification code: <strong>${code}</strong></p><p>Valid for 10 minutes. If you did not request this, ignore this email.</p>`});
   if(!sent)fail(503,'EMAIL_DELIVERY_FAILED');res.json({success:true});
  }));
- app.post('/api/signup',rateLimit,endpoint(async(req,res)=>{
+ const campaignSignup=endpoint(async(req,res)=>{
   const v=signupSchema.parse(req.body),password=await bcrypt.hash(v.password,10),userId='agent-'+crypto.randomUUID(),agencyId='agency-'+crypto.randomUUID();
   // Increment failed verification attempts outside the registration transaction so rollback cannot reset them.
   const check=await pool.query('UPDATE academy_email_challenges SET attempts=attempts+1 WHERE email=$1 AND attempts<5 AND expires_at>now() RETURNING code_hash,campaign_id',[v.email]);
@@ -90,7 +92,8 @@ export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,re
    await c.query('INSERT INTO users (id,username,password,name,email,role,status,agency_id,country,phone,language_preference) VALUES ($1,$2,$3,$4,$2,$5,$6,$7,$8,$9,$10)',[userId,v.email,password,v.name,'agent','inactive',agencyId,v.country,v.phone,v.languagePreference]);
    await c.query('INSERT INTO academy_campaign_members (user_id,campaign_id,access_until) VALUES ($1,$2,now()+$3*interval \'1 day\')',[userId,a.id,a.access_days]);
   });res.status(201).json({success:true,pending:true,message:'Your verified application is awaiting administrator approval.'});
- }));
+ });
+ app.post('/api/signup',(req,res,next)=>{if(!req.body?.promoCode)return next();return rateLimit(req,res,()=>campaignSignup(req,res,next));});
  app.post('/api/auth/replace-device',rateLimit,endpoint(async(req,res)=>{
   const user=req.session.pendingDeviceUser;if(!user||!req.session.pendingDeviceUntil||req.session.pendingDeviceUntil<Date.now())fail(401,'LOGIN_REQUIRED');
   const id=z.string().uuid().parse(req.body.deviceId);if(!await claimAcademyDevice(req,res,user!,id))return;
