@@ -5,7 +5,8 @@ from build_catalog_jobs import digest,lesson_strings
 snapshot=json.loads(Path(sys.argv[1]).read_text());raw=json.loads(Path(sys.argv[2]).read_text());sources={s['id']:s for s in snapshot['contents']};jobs=[];manifest=[]
 for old in raw:
  if old['status']!='draft':raise ValueError('Draft-only repair required')
- source=sources[old['content_id']]
+ source=sources.get(old['content_id'])
+ if source is None:continue
  if old['content']==source.get('content'):raise ValueError('Preserve identical draft for separate review')
  fields={k:source.get(k) for k in ['title','description','content']}
  job={'version':1,'kind':'lesson','id':source['id'],'title':source['title'],'language':old['language'],'sourceHash':digest(fields),'strings':lesson_strings(source)};job['jobHash']=digest(job);jobs.append(job)
