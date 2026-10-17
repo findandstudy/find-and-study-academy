@@ -34,12 +34,13 @@ function load(file,stubs={}){const m={exports:{}};const text=ts.transpileModule(
  r=await call('/api/admin/campaigns/'+campaignId,{enabled:false},{'x-test-admin':'yes'},'PATCH');check('pause campaign',()=>assert.equal(r.status,200));
  check('pause keeps existing access',()=>assert.equal((rr.find(x=>x.status===201)).data.pending,true));
  r=await call('/api/signup/email-code',{email:'c@example.invalid',promoCode:'SHARED3000'});check('paused redemption denied',()=>assert.equal(r.status,400));
+ await pool.query("INSERT INTO academy_campaign_members (user_id,campaign_id,access_until) VALUES ('agent',$1,now()+interval '1 day')",[campaignId]);
  const d1=await call('/test/login',{}),d2=await call('/test/login',{}),d3=await call('/test/login',{});check('two devices allowed third blocked',()=>{assert.equal(d1.status,200);assert.equal(d2.status,200);assert.equal(d3.status,409);assert.equal(d3.data.devices.length,2)});
  const replace=await call('/api/auth/replace-device',{deviceId:d3.data.devices[0].id},{cookie:d3.cookie});check('verified login device replacement',()=>assert.equal(replace.status,200));
  r=await call('/test/protected',undefined,{cookie:d1.cookie},'GET');check('removed device session rejected',()=>assert.equal(r.status,401));
  r=await call('/test/protected',undefined,{cookie:replace.cookie},'GET');check('replacement session works',()=>assert.equal(r.status,200));
- const member=(await pool.query('SELECT user_id FROM academy_campaign_members')).rows[0];await pool.query("UPDATE users SET status='active' WHERE id=$1",[member.user_id]);await pool.query("UPDATE academy_campaign_members SET access_until=now()-interval '1 day' WHERE user_id=$1",[member.user_id]);
+ const member=(await pool.query('SELECT user_id FROM academy_campaign_members WHERE user_id<>\'agent\'')).rows[0];await pool.query("UPDATE users SET status='active' WHERE id=$1",[member.user_id]);await pool.query("UPDATE academy_campaign_members SET access_until=now()-interval '1 day' WHERE user_id=$1",[member.user_id]);
  const fakeReq={headers:{},session:{}};const fakeRes={status(n){this.n=n;return this},json(v){this.v=v}};await mod.claimAcademyDevice(fakeReq,fakeRes,member.user_id);check('expired access blocked',()=>assert.equal(fakeRes.n,403));
- const total=(await pool.query('SELECT count(*)::int AS n FROM academy_campaign_members')).rows[0].n;check('existing redemption retained when campaign paused',()=>assert.equal(total,1));
+ const total=(await pool.query('SELECT count(*)::int AS n FROM academy_campaign_members WHERE user_id<>\'agent\'')).rows[0].n;check('existing redemption retained when campaign paused',()=>assert.equal(total,1));
  console.log('ALL',passed,'CHECKS PASSED; no real email sent');
  }finally{if(server)await new Promise(r=>server.close(r));if(pool)await pool.end();await adminPool.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');await adminPool.end()}})().catch(e=>{console.error('TEST FAILED',e.message);process.exitCode=1});
