@@ -1,3 +1,4 @@
+import './campaign-i18n';
 import {useTranslation} from 'react-i18next';
 import {normalizeLanguage,getLanguageMeta} from '@/i18n/languages';
 import catalog from './academy-ui-catalog.json';
