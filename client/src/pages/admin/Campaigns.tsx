@@ -1,3 +1,4 @@
+import '@/lib/campaign-i18n';
 import {useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useTranslation} from 'react-i18next';
