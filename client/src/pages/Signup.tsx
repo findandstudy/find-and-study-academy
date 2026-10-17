@@ -26,6 +26,8 @@ export default function Signup() {
   const { t, i18n } = useTranslation();
   const language = normalizeLanguage(i18n.language);
   const [formData, setFormData] = useState({
+    promoCode: new URLSearchParams(window.location.search).get('promo') || '',
+    verificationCode: '',
     name: '',
     email: '',
     password: '',
@@ -34,6 +36,9 @@ export default function Signup() {
     phoneCountry: DEFAULT_COUNTRY,
     phoneNumber: '',
   });
+  const [campaignMode,setCampaignMode]=useState(new URLSearchParams(window.location.search).has('promo'));
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
   const { signup, isLoading } = useAuthStore();
   const { initialize: initializeData } = useDataStore();
   const { toast } = useToast();
@@ -97,6 +102,8 @@ export default function Signup() {
     }
 
     const result = await signup({
+      promoCode: campaignMode?formData.promoCode:undefined,
+      verificationCode: campaignMode?formData.verificationCode:undefined,
       name: formData.name,
       email: formData.email,
       password: formData.password,
@@ -115,10 +122,22 @@ export default function Signup() {
     } else {
       toast({
         title: t('registration.failedTitle'),
-        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : t('registration.failedMessage'),
+        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : (result?.message || t('registration.failedMessage')),
         variant: 'destructive',
       });
     }
+  };
+
+  const requestCode = async () => {
+    setSendingCode(true);
+    try {
+      const response = await fetch('/api/signup/email-code', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:formData.email,promoCode:formData.promoCode})});
+      const result = await response.json();
+      if(!response.ok) throw new Error(result.code || 'EMAIL_DELIVERY_FAILED');
+      setCodeSent(true);
+      toast({title:t('campaign.codeSent',{defaultValue:'Verification code sent. Check your email.'})});
+    } catch(e) { toast({title:t('common.error'),description:e instanceof Error?e.message:'Request failed',variant:'destructive'}); }
+    finally {setSendingCode(false);}
   };
 
   const updateField = (field: keyof typeof formData, value: string) => {
@@ -131,6 +150,9 @@ export default function Signup() {
       description={t('registration.subtitle')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="flex gap-2"><input type="checkbox" checked={campaignMode} onChange={e=>setCampaignMode(e.target.checked)}/>{t('campaign.haveCode',{defaultValue:'I have an invitation / promo code'})}</label>
+        {campaignMode&&<div className="space-y-2"><Label htmlFor="promoCode">{t('campaign.promoCode',{defaultValue:'Invitation / promo code'})}</Label><Input id="promoCode" required maxLength={64} autoComplete="off" value={formData.promoCode} onChange={e=>updateField('promoCode',e.target.value)}/></div>}
+        {campaignMode&&<p className="text-sm text-muted-foreground">{t('campaign.signupNotice',{defaultValue:'An invitation code and email verification are required. Administrator approval is still required. Free access starts on registration.'})}</p>}
         <div className="space-y-2">
           <Label htmlFor="name">{t('registration.fullName')}</Label>
           <Input
@@ -163,6 +185,7 @@ export default function Signup() {
           />
         </div>
 
+        {campaignMode&&<div className="space-y-2"><Button type="button" variant="outline" disabled={sendingCode||!formData.email||!formData.promoCode} onClick={requestCode}>{t('campaign.sendCode',{defaultValue:'Send email verification code'})}</Button><Label htmlFor="verificationCode">{t('campaign.emailCode',{defaultValue:'6-digit email verification code'})}</Label><Input id="verificationCode" value={formData.verificationCode} onChange={e=>updateField('verificationCode',e.target.value)} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoComplete="one-time-code"/>{codeSent&&<p>{t('campaign.codeExpiry',{defaultValue:'The code expires in 10 minutes. You can request another after 60 seconds.'})}</p>}</div>}
         <div className="space-y-2">
           <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
@@ -287,3 +310,4 @@ export default function Signup() {
     </AuthCard>
   );
 }
+
