@@ -1,3 +1,4 @@
+import {useAcademyUi} from '@/lib/academy-ui';
 import '@/lib/campaign-i18n';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,7 +124,7 @@ export default function Signup() {
     } else {
       toast({
         title: t('registration.failedTitle'),
-        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : (result?.message || t('registration.failedMessage')),
+        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : (campaignMode?message(result?.message||'Request failed'):(result?.message || t('registration.failedMessage'))),
         variant: 'destructive',
       });
     }
@@ -137,7 +138,7 @@ export default function Signup() {
       if(!response.ok) throw new Error(result.code || 'EMAIL_DELIVERY_FAILED');
       setCodeSent(true);
       toast({title:t('campaign.codeSent',{defaultValue:'Verification code sent. Check your email.'})});
-    } catch(e) { toast({title:t('common.error'),description:e instanceof Error?e.message:'Request failed',variant:'destructive'}); }
+    } catch(e) { toast({title:t('common.error'),description:message(e instanceof Error?e.message:'Request failed'),variant:'destructive'}); }
     finally {setSendingCode(false);}
   };
 
