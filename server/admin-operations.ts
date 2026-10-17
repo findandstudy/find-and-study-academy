@@ -76,6 +76,7 @@ export function registerAdminOperations(app: Express, auth: RequestHandler, admi
         if (agency.status!=='pending') return {code:409,message:'Only pending applications can be reviewed'};
         const [updated] = await tx.update(agencyTable).set({status:decision==='approve'?'active':'inactive'}).where(eq(agencyTable.id,agency.id)).returning();
         if (decision==='approve') await tx.update(userTable).set({status:'active'}).where(and(eq(userTable.agencyId,agency.id),eq(userTable.role,'agent'),eq(userTable.status,'inactive')));
+        else await tx.update(userTable).set({status:'inactive'}).where(and(eq(userTable.agencyId,agency.id),eq(userTable.role,'agent')));
         await tx.insert(analyticsMetrics).values({userId:(req as any).user.id,metricType:'admin_action',metricValue:JSON.stringify({agencyId:agency.id,decision,reason:reason.trim()})});
         return {code:200,agency:updated};
       });
