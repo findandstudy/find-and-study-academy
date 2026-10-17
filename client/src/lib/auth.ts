@@ -7,6 +7,8 @@ export interface LoginCredentials {
 }
 
 export interface SignupData {
+  promoCode?: string;
+  verificationCode?: string;
   name: string;
   email: string;
   password: string;
@@ -64,6 +66,8 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        promoCode: data.promoCode,
+        verificationCode: data.verificationCode,
         name: data.name,
         email: data.email,
         password: data.password,
@@ -155,3 +159,4 @@ export const validateSession = async (): Promise<boolean> => {
   logout();
   return false;
 };
+
