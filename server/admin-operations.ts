@@ -34,7 +34,7 @@ export function registerAdminOperations(app: Express, auth: RequestHandler, admi
         const lastActivity = Math.max(0, ...progress.map(p => new Date(p.lastAccessed).getTime()), ...exams.map(a => new Date(a.date).getTime()));
         return { id: u.id, name: u.name, email: u.email, agencyId: u.agencyId, status: u.status, enrolled: progress.length, completed: progress.filter(p => p.percent >= 100).length, averageProgress: progress.length ? Math.round(progress.reduce((n,p) => n + Math.min(100,p.percent),0)/progress.length) : 0, lastActivity: lastActivity ? new Date(lastActivity).toISOString() : null, notStarted: progress.length === 0, stalled: progress.some(p => p.percent < 100) && now-lastActivity > 14*86400000, struggling: exams.length >= 3 && exams.slice().sort((a,b) => +new Date(b.date)-+new Date(a.date)).slice(0,3).every(a => a.scorePercent < 70) };
       });
-      const publishedLessons = contents.filter(c => c.status === 'published');
+      const publishedLessons = contents.filter(c => c.status === 'published' && c.type === 'lesson');
       const activeQuizzes = quizzes.filter(q => q.status === 'active');
       const coverage = LANGUAGE_CODES.filter(l => l !== 'en').map(language => {
         const lessons = new Set(lessonRows.filter(r => r.language === language && r.status === 'published').map(r => r.id));
