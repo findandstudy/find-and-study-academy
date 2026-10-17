@@ -1,0 +1,16 @@
+// Quarantine only orphan placeholder assessments; retain questions, translations and attempts.
+const fs=require('fs'),crypto=require('crypto'),req=require('module').createRequire(process.cwd()+'/package.json');req('dotenv').config({quiet:true});const {Client}=req('pg');
+const root='/var/lib/academy-translations',file=root+'/placeholder-quarantine-plan.json',hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
+const ids=['accommodation-a1','cities-campus-a1','costs-a1','faq-a1','final-1','he-structure-tr-a1','popular-fields-a1','programs-languages-a1','residence-insurance-a1','tr-glance-a1','visa-a1','why-tr-a1','work-intern-a1'];
+function decode(value){for(let i=0;i<4&&typeof value==='string';i++)value=JSON.parse(value);return value}
+function placeholder(q){let a=decode(q.questions);return Array.isArray(a)&&a.length===1&&/^[asd]{1,6}$/i.test(a[0].text||'')&&a[0].type==='boolean';}
+async function main(){let c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();try{await c.query('BEGIN ISOLATION LEVEL SERIALIZABLE');let apply=process.argv.includes('--apply'),plan=apply?JSON.parse(fs.readFileSync(file)):null,rows=[];
+for(const id of ids){let r=await c.query('SELECT * FROM quizzes WHERE id=$1 FOR UPDATE',[id]);if(r.rowCount!==1)throw Error('Missing placeholder source');let q=r.rows[0];if(q.status!=='active'||!placeholder(q))throw Error('Unexpected assessment source: '+id);
+let courses=await c.query('SELECT id FROM courses WHERE id=$1',[q.course_id]);if(courses.rowCount)throw Error('Assessment belongs to real course: '+id);
+let links=await c.query("SELECT id,status FROM contents WHERE quiz_id=$1",[id]);if(links.rows.some(x=>x.status==='published'))throw Error('Published lesson link: '+id);
+if(apply){let old=plan.rows.find(x=>x.id===id);if(!old||old.sourceHash!==hash(q)||JSON.stringify(old.links)!==JSON.stringify(links.rows))throw Error('Source/link changed');await c.query("UPDATE quizzes SET status='draft' WHERE id=$1",[id]);let next=(await c.query('SELECT * FROM quizzes WHERE id=$1',[id])).rows[0];if(hash({...next,status:'active'})!==old.sourceHash)throw Error('Non-status field changed');rows.push({id,status:'draft',questionsRetained:true,attemptsUnchanged:true});}
+else rows.push({id,sourceHash:hash(q),backup:q,links:links.rows});}
+if(apply){fs.writeFileSync(file+'.applied.json',JSON.stringify({rows}),{flag:'wx',mode:0o600});await c.query('COMMIT');let response=await fetch('https://academy.findandstudy.com/api/public/quizzes?lang=en');if(!response.ok)throw Error('Public HTTP');let data=await response.json();if(data.quizzes.some(q=>ids.includes(q.id)))throw Error('Placeholder still public');fs.writeFileSync(file+'.verified.json',JSON.stringify({rows,publicAbsent:true}),{flag:'wx',mode:0o600});console.log(JSON.stringify({mode:'quarantine-and-public-verify',rows:rows.length,questionsChanged:0,attemptsChanged:0}));}
+else{fs.writeFileSync(file,JSON.stringify({rows}),{flag:'wx',mode:0o600});await c.query('ROLLBACK');console.log(JSON.stringify({mode:'dry-run',rows:rows.length,publishedLinks:0,realCourses:0}));}
+}catch(e){await c.query('ROLLBACK');throw e}finally{await c.end()}}
+module.exports={placeholder};if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1});
