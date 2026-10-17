@@ -1,5 +1,5 @@
 // Reversible source-title-only repair. Questions, scoring and attempt history stay unchanged.
-const fs=require('fs'),crypto=require('crypto');require('dotenv').config({quiet:true});const {Client}=require('pg');
+const fs=require('fs'),crypto=require('crypto');const req=require('module').createRequire(process.cwd()+'/package.json');req('dotenv').config({quiet:true});const {Client}=req('pg');
 const root='/var/lib/academy-translations',file=root+'/quiz-title-source-plan.json',sha=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const titles={'quiz-1789653011875':'Italy — Final Exam','quiz-1789722033819':'Student Admissions and Study Permits — Quiz'};
 (async()=>{const c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();try{await c.query('BEGIN ISOLATION LEVEL SERIALIZABLE');let rows=[];
