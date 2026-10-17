@@ -2,7 +2,7 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict'),crypto=require('crypto');
 const {createRequire}=require('module');const req=createRequire(process.cwd()+'/package.json');
 const {Pool}=req('pg'),ts=req('typescript'),express=req('express'),session=req('express-session'),{z}=req('zod');
-req('dotenv').config({quiet:true});
+req('dotenv').config({quiet:true,path:process.env.CAMPAIGN_TEST_ENV_FILE||'.env'});
 const schema='campaign_test_'+crypto.randomBytes(8).toString('hex');
 const adminPool=new Pool({connectionString:process.env.DATABASE_URL});let pool,server,passed=0;
 const codes=new Map();
