@@ -30,6 +30,7 @@ import AgentLeaderboard from './pages/agent/Leaderboard';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminOperations from './pages/admin/Operations';
 import AdminProfile from './pages/admin/Profile';
 import AdminContentCountries from './pages/admin/ContentCountries';
 import AdminQuizzes from './pages/admin/Quizzes';
@@ -232,6 +233,10 @@ function Router() {
       </Route>
 
       {/* Admin + Staff Routes */}
+      <Route path="/admin/operations">
+        <ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminOperations /></AdminLayout></ProtectedRoute>
+      </Route>
+
       <Route path="/admin/dashboard">
         <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
@@ -494,3 +499,4 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
