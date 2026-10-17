@@ -57,6 +57,7 @@ const navigationGroups: NavGroup[] = [
     fallback: 'General',
     items: [
       { i18nKey: 'dashboard', fallback: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { i18nKey: 'campaigns', fallback: 'Invitation campaigns', href: '/admin/campaigns', icon: Users, adminOnly: true },
       { i18nKey: 'operations', fallback: 'Operasyon Merkezi', href: '/admin/operations', icon: LayoutDashboard },
       { i18nKey: 'profile', fallback: 'Profile', href: '/admin/profile', icon: User },
     ],
