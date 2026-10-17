@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 66054)
-Total output lines: 6766
-
 import { registerAdminOperations } from './admin-operations';
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
@@ -3610,7 +3607,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get complete user data from storage (already verified by requireAuth)
       const users = await storage.getUsers();
-      const user = users.fi…1054 tokens truncated…     await storage.deleteAgency(id);
+      const user = users.find(u => u.id === authenticatedUser.id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Return user data without password, using server-validated role
+      const { password, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        user: userWithoutPassword,
+        role: user.role  // Use server-side role, not client-provided
+      });
+    } catch (error) {
+      console.error('Get current user error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching user data'
+      });
+    }
+  });
+
+  // Admin-only middleware
+  async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = (req as any).user;
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+      
+      next();
+    } catch (error) {
+      res.status(403).json({
+        success: false,
+        message: 'Authorization failed'
+      });
+    }
+  }
+
+  // Admin or Staff middleware (operational roles)
+  async function requireAdminOrStaff(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = (req as any).user;
+      if (!user || !['admin', 'staff'].includes(user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin or Staff access required'
+        });
+      }
+      next();
+    } catch (error) {
+      res.status(403).json({ success: false, message: 'Authorization failed' });
+    }
+  }
+
+  // Agency management routes (admin only)
+  app.get('/api/admin/agencies', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const agencies = await storage.getAgencies();
+      res.json({
+        success: true,
+        agencies
+      });
+    } catch (error) {
+      console.error('Get agencies error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve agencies'
+      });
+    }
+  });
+
+  app.post('/api/admin/agencies', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const validation = insertAgencySchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid agency data',
+          errors: validation.error.errors
+        });
+      }
+
+      const agency = await storage.createAgency(validation.data);
+      
+      res.status(201).json({
+        success: true,
+        agency
+      });
+    } catch (error) {
+      console.error('Create agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create agency'
+      });
+    }
+  });
+
+  app.patch('/api/admin/agencies/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validation = insertAgencySchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid agency data',
+          errors: validation.error.errors
+        });
+      }
+
+      // Check if agency exists
+      const existingAgency = await storage.getAgencyById(id);
+      if (!existingAgency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      const agency = await storage.updateAgency(id, validation.data);
+      
+      res.json({
+        success: true,
+        agency
+      });
+    } catch (error) {
+      console.error('Update agency error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update agency'
+      });
+    }
+  });
+
+  app.delete('/api/admin/agencies/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Check if agency exists
+      const existingAgency = await storage.getAgencyById(id);
+      if (!existingAgency) {
+        return res.status(404).json({
+          success: false,
+          message: 'Agency not found'
+        });
+      }
+
+      await storage.deleteAgency(id);
       
       res.json({
         success: true,
@@ -6609,4 +6763,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
-
