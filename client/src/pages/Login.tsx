@@ -1,3 +1,4 @@
+import {useAcademyUi} from '@/lib/academy-ui';
 import '@/lib/campaign-i18n';
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
@@ -11,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
   const { t } = useTranslation();
+  const {message,locale,dir}=useAcademyUi();
   const [, setLocation] = useLocation();
   const [devices,setDevices]=useState<{id:string;label:string;lastSeen:string}[]>([]);
   const [busy,setBusy]=useState(false);
@@ -35,8 +37,8 @@ export default function Login() {
       title={t('auth.welcomeBack')}
       description={t('auth.signInSubtitle')}
     >
-      {error&&<p role="alert" className="text-destructive">{error}</p>}
-      {devices.length>0&&<section className="space-y-3" aria-label="Device limit"><p>{t('campaign.deviceLimit',{defaultValue:'Two devices are already registered. Choose one to sign out and continue on this device. Other sessions on the removed device will stop working.'})}</p>{devices.map(d=><div key={d.id}><span>{d.label} · {new Date(d.lastSeen).toLocaleString()}</span><Button disabled={busy} variant="outline" onClick={()=>replaceDevice(d.id)}>{t('campaign.replaceDevice',{defaultValue:'Sign out this device and continue'})}</Button></div>)}<Button variant="ghost" onClick={()=>setDevices([])}>{t('common.cancel',{defaultValue:'Cancel'})}</Button></section>}
+      {error&&<p role="alert" className="text-destructive">{/^[A-Z_]+$/.test(error)?message(error):error}</p>}
+      {devices.length>0&&<section className="space-y-3" dir={dir} aria-label={t('campaign.deviceLimit')}><p>{t('campaign.deviceLimit',{defaultValue:'Two devices are already registered. Choose one to sign out and continue on this device. Other sessions on the removed device will stop working.'})}</p>{devices.map(d=><div key={d.id}><span>{d.label} · {new Date(d.lastSeen).toLocaleString(locale)}</span><Button disabled={busy} variant="outline" onClick={()=>replaceDevice(d.id)}>{t('campaign.replaceDevice',{defaultValue:'Sign out this device and continue'})}</Button></div>)}<Button variant="ghost" onClick={()=>setDevices([])}>{t('common.cancel',{defaultValue:'Cancel'})}</Button></section>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">{t('auth.email')}</Label>
