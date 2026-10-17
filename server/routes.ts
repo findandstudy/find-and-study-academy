@@ -1,3 +1,4 @@
+import { registerCampaignAccess, claimAcademyDevice, enforceAcademyAccess } from './campaign-access';
 import { registerAdminOperations } from './admin-operations';
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
@@ -128,6 +129,10 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
         message: 'Hesabınız henüz onaylanmadı veya pasif durumda. Lütfen yöneticinizle iletişime geçin.'
       });
     }
+
+    let accessAllowed=false;
+    await enforceAcademyAccess(req,res,()=>{accessAllowed=true});
+    if(!accessAllowed)return;
 
     // Add VERIFIED user info to request (role comes from server, not client)
     (req as any).user = { 
@@ -472,6 +477,7 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit);
   registerAdminOperations(app, requireAuth, requireAdmin);
   // PUBLIC API endpoints for agents (no authentication required for published content)
   
@@ -684,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist the authenticated user id in the cookie-based session. From
       // this point on every request from this browser will be authenticated
       // via the httpOnly session cookie, not via any client-supplied header.
-      req.session.userId = user.id;
+      if (!await claimAcademyDevice(req, res, user.id)) return;
       // Force-save before responding so the Set-Cookie header is reliably
       // attached to this response (avoids race with res.json on some stores).
       await new Promise<void>((resolve, reject) => {
@@ -846,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.status !== 'active') return res.status(403).send('Hesabınız pasif durumda. Yöneticinizle iletişime geçin.');
 
-      req.session.userId = user.id;
+      if (!await claimAcademyDevice(req, res, user.id)) return;
       await new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
       const dest = (user.role === 'admin' || user.role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
       return res.redirect(302, dest);
