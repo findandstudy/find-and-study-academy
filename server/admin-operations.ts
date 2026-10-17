@@ -1,7 +1,7 @@
 import type { Express, RequestHandler } from 'express';
 import { storage } from './storage';
 import { db } from './db';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { analyticsMetrics, contentTranslations, quizTranslations, agencies as agencyTable, users as userTable } from '@shared/schema';
 import { LANGUAGE_CODES } from '@shared/languages';
 
@@ -43,6 +43,28 @@ export function registerAdminOperations(app: Express, auth: RequestHandler, admi
       });
       res.json({ success: true, generatedAt: new Date().toISOString(), agencies: agencies.map(a=>({...a,primaryContactEmail:a.primaryContactEmail||a.contactEmail,phone:a.phone||a.contactPhone})), agents, coverage, history: history.map(h=>({...h,actor:users.find(u=>u.id===h.userId)?.name ?? 'Deleted user'})), countries, attempts: attempts.map(a=>({userId:a.userId,date:a.date,scorePercent:a.scorePercent})), certificates: certificates.map(c=>({userId:c.userId,issuedAt:c.issuedAt,scorePercent:c.scorePercent})), progresses: progresses.map(p=>({userId:p.userId,courseId:p.courseId,percent:p.percent,lastAccessed:p.lastAccessed})) });
     } catch { res.status(500).json({success:false,message:'Could not load operations data'}); }
+  });
+  app.post('/api/admin/operations/agencies/:id/merge', auth, admin, async (req,res) => {
+    const {targetId,reason,expectedMemberIds}=req.body;
+    if(typeof targetId!=='string'||targetId===req.params.id||typeof reason!=='string'||!reason.trim()||reason.length>1000||!Array.isArray(expectedMemberIds)||!expectedMemberIds.every(x=>typeof x==='string')) return res.status(400).json({success:false,message:'Two different agencies, member preview and a reason are required'});
+    try {
+      const result=await db.transaction(async tx=>{
+        const locked=await tx.select().from(agencyTable).where(inArray(agencyTable.id,[req.params.id,targetId])).orderBy(asc(agencyTable.id)).for('update');
+        const source=locked.find(a=>a.id===req.params.id),target=locked.find(a=>a.id===targetId);
+        if(!source||!target)return {code:404,message:'Agency not found'};
+        const key=(v:string)=>v.normalize('NFKC').toLocaleLowerCase().replace(new RegExp('[^\\p{L}\\p{N}]','gu'),'');
+        if(source.status!=='active'||target.status!=='active'||!key(source.name)||key(source.name)!==key(target.name))return {code:409,message:'Only active duplicate-name agencies can be merged'};
+        const members=await tx.select().from(userTable).where(eq(userTable.agencyId,source.id)).for('update');
+        const memberIds=members.map(m=>m.id).sort();
+        if(members.some(m=>m.role!=='agent')||JSON.stringify(memberIds)!==JSON.stringify([...expectedMemberIds].sort()))return {code:409,message:'Membership changed or contains non-agent accounts; refresh the preview'};
+        await tx.update(userTable).set({agencyId:target.id}).where(eq(userTable.agencyId,source.id));
+        await tx.update(agencyTable).set({status:'inactive'}).where(eq(agencyTable.id,source.id));
+        await tx.insert(analyticsMetrics).values({userId:(req as any).user.id,metricType:'admin_action',metricValue:JSON.stringify({operation:'agency_merge',sourceId:source.id,targetId:target.id,sourceName:source.name,targetName:target.name,memberIds,reason:reason.trim(),previousSourceStatus:source.status})});
+        return {code:200,moved:memberIds.length};
+      });
+      if(result.code!==200)return res.status(result.code).json({success:false,message:result.message});
+      res.json({success:true,moved:result.moved});
+    }catch{res.status(500).json({success:false,message:'Merge could not be saved'});}
   });
   app.post('/api/admin/operations/agencies/:id/decision', auth, admin, async (req, res) => {
     const {decision,reason}=req.body;
