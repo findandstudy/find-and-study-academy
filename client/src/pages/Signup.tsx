@@ -1,3 +1,4 @@
+import '@/lib/campaign-i18n';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { normalizeLanguage } from '@/i18n/languages';
