@@ -79,7 +79,7 @@ test('self-registration waits for administrator approval, blocks login, then all
     assert(await bcrypt.compare(input.password, users[0].password));
     const approvedLogin = await login();
     assert.equal(approvedLogin.status, 200);
-    const cookie = approvedLogin.headers.get('set-cookie')?.split(';')[0];
+    const cookie = approvedLogin.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
     assert(cookie);
     const me = await fetch(base + '/api/me', { headers: { cookie } });
     assert.equal(me.status, 200);
