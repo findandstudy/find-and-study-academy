@@ -925,12 +925,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAgency(id: string, updates: Partial<InsertAgency>): Promise<Agency> {
-    const [agency] = await db
-      .update(agencies)
-      .set(updates)
-      .where(eq(agencies.id, id))
-      .returning();
-    return agency;
+    return await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(agencies)
+        .where(eq(agencies.id, id)).for('update');
+      if (!existing) throw new Error('Agency not found');
+      const [agency] = await tx.update(agencies).set(updates)
+        .where(eq(agencies.id, id)).returning();
+      // A pending application and its inactive agent account are approved together.
+      // Editing an already active agency must never reactivate suspended users.
+      if (existing.status === 'pending' && updates.status === 'active') {
+        await tx.update(users).set({ status: 'active' }).where(and(
+          eq(users.agencyId, id), eq(users.role, 'agent'), eq(users.status, 'inactive')
+        ));
+      }
+      return agency;
+    });
   }
 
   async deleteAgency(id: string): Promise<void> {

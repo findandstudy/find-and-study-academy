@@ -586,5 +586,31 @@
     "footerContactHead": "Contact",
     "footerRights": "All rights reserved.",
     "footerLocated": "Türkiye-based education consultancy platform"
+  },
+  "registration": {
+    "title": "Create agent account",
+    "subtitle": "Create an account to access training and destination information.",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Enter your full name",
+    "agencyName": "Agency name",
+    "agencyPlaceholder": "Enter your agency name",
+    "country": "Country",
+    "selectCountry": "Select a country",
+    "mobilePhone": "Mobile phone",
+    "phoneCountryCode": "Phone country code",
+    "createPassword": "Create a password",
+    "passwordHint": "Use at least 8 characters.",
+    "creating": "Creating account...",
+    "createAccount": "Create account",
+    "alreadyAccount": "Already have an account?",
+    "readyTitle": "Your account is ready",
+    "readyMessage": "You can now access the training hub.",
+    "pendingTitle": "Application received",
+    "pendingMessage": "Your account is awaiting approval.",
+    "failedTitle": "Registration failed",
+    "failedMessage": "Check your details and try again.",
+    "invalidPhone": "Enter a valid mobile phone number.",
+    "invalidDial": "Select a valid phone country code.",
+    "duplicateEmail": "This email is already registered. Sign in instead."
   }
 }

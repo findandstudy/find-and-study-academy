@@ -565,5 +565,31 @@
     "footerContactHead": "Contact",
     "footerRights": "Tous droits réservés.",
     "footerLocated": "Plateforme de conseil éducatif basée en Türkiye"
+  },
+  "registration": {
+    "title": "Créer un compte d’agence",
+    "subtitle": "Créez un compte pour accéder aux formations et aux informations sur les destinations.",
+    "fullName": "Nom complet",
+    "fullNamePlaceholder": "Saisissez votre nom complet",
+    "agencyName": "Nom de l’agence",
+    "agencyPlaceholder": "Saisissez le nom de votre agence",
+    "country": "Pays",
+    "selectCountry": "Sélectionnez un pays",
+    "mobilePhone": "Téléphone mobile",
+    "phoneCountryCode": "Indicatif téléphonique du pays",
+    "createPassword": "Créez un mot de passe",
+    "passwordHint": "Utilisez au moins 8 caractères.",
+    "creating": "Création du compte...",
+    "createAccount": "Créer un compte",
+    "alreadyAccount": "Vous avez déjà un compte ?",
+    "readyTitle": "Votre compte est prêt",
+    "readyMessage": "Vous pouvez maintenant accéder au centre de formation.",
+    "pendingTitle": "Demande reçue",
+    "pendingMessage": "Votre compte est en attente d’approbation.",
+    "failedTitle": "Échec de l’inscription",
+    "failedMessage": "Vérifiez vos informations et réessayez.",
+    "invalidPhone": "Saisissez un numéro de téléphone mobile valide.",
+    "invalidDial": "Sélectionnez un indicatif téléphonique valide.",
+    "duplicateEmail": "Cette adresse e-mail est déjà enregistrée. Connectez-vous."
   }
 }

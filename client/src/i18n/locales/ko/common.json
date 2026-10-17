@@ -1,0 +1,38 @@
+{
+  "registration": {
+    "title": "에이전시 계정 만들기",
+    "subtitle": "교육 및 유학 국가 정보에 접근하려면 계정을 만드세요.",
+    "fullName": "성명",
+    "fullNamePlaceholder": "성명을 입력하세요",
+    "agencyName": "에이전시 이름",
+    "agencyPlaceholder": "에이전시 이름을 입력하세요",
+    "country": "국가",
+    "selectCountry": "국가를 선택하세요",
+    "mobilePhone": "휴대전화",
+    "phoneCountryCode": "국가 전화번호 코드",
+    "createPassword": "비밀번호 만들기",
+    "passwordHint": "8자 이상을 사용하세요.",
+    "creating": "계정 생성 중...",
+    "createAccount": "계정 만들기",
+    "alreadyAccount": "이미 계정이 있나요?",
+    "readyTitle": "계정이 준비되었습니다",
+    "readyMessage": "이제 교육 허브를 이용할 수 있습니다.",
+    "pendingTitle": "신청이 접수되었습니다",
+    "pendingMessage": "계정이 승인 대기 중입니다.",
+    "failedTitle": "가입 실패",
+    "failedMessage": "입력 정보를 확인하고 다시 시도하세요.",
+    "invalidPhone": "유효한 휴대전화 번호를 입력하세요.",
+    "invalidDial": "유효한 국가 전화번호 코드를 선택하세요.",
+    "duplicateEmail": "이미 등록된 이메일입니다. 로그인하세요."
+  },
+  "auth": {
+    "email": "이메일",
+    "emailPlaceholder": "이메일을 입력하세요",
+    "password": "비밀번호",
+    "signIn": "로그인"
+  },
+  "toast": {
+    "languageChanged": "언어가 변경되었습니다",
+    "languageChangedDescription": "이제 인터페이스가 {{name}}로 표시됩니다."
+  }
+}

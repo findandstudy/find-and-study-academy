@@ -1,0 +1,38 @@
+{
+  "registration": {
+    "title": "Agentlik hasabyny dörediň",
+    "subtitle": "Okuwlara we okuw ýurtlary baradaky maglumatlara girmek üçin hasap dörediň.",
+    "fullName": "Doly ady",
+    "fullNamePlaceholder": "Doly adyňyzy giriziň",
+    "agencyName": "Agentligiň ady",
+    "agencyPlaceholder": "Agentligiňiziň adyny giriziň",
+    "country": "Ýurt",
+    "selectCountry": "Ýurdy saýlaň",
+    "mobilePhone": "Jübi telefony",
+    "phoneCountryCode": "Ýurdyň telefon kody",
+    "createPassword": "Açar sözi dörediň",
+    "passwordHint": "Azyndan 8 nyşan ulanyň.",
+    "creating": "Hasap döredilýär...",
+    "createAccount": "Hasap döret",
+    "alreadyAccount": "Hasabyňyz barmy?",
+    "readyTitle": "Hasabyňyz taýýar",
+    "readyMessage": "Indi okuw merkezine girip bilersiňiz.",
+    "pendingTitle": "Arza alyndy",
+    "pendingMessage": "Hasabyňyz tassyklamaga garaşýar.",
+    "failedTitle": "Hasaba alyş başa barmady",
+    "failedMessage": "Maglumatlaryňyzy barlap, gaýtadan synanyşyň.",
+    "invalidPhone": "Dogry jübi telefon belgisini giriziň.",
+    "invalidDial": "Ýurdyň dogry telefon koduny saýlaň.",
+    "duplicateEmail": "Bu e-poçta eýýäm hasaba alnan. Hasabyňyza giriň."
+  },
+  "auth": {
+    "email": "E-poçta",
+    "emailPlaceholder": "E-poçtaňyzy giriziň",
+    "password": "Açar söz",
+    "signIn": "Giriş"
+  },
+  "toast": {
+    "languageChanged": "Dil üýtgedildi",
+    "languageChangedDescription": "Interfeýs indi {{name}} dilinde."
+  }
+}

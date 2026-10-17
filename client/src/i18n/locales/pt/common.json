@@ -1,0 +1,38 @@
+{
+  "registration": {
+    "title": "Criar conta de agência",
+    "subtitle": "Crie uma conta para aceder à formação e às informações sobre destinos.",
+    "fullName": "Nome completo",
+    "fullNamePlaceholder": "Introduza o seu nome completo",
+    "agencyName": "Nome da agência",
+    "agencyPlaceholder": "Introduza o nome da sua agência",
+    "country": "País",
+    "selectCountry": "Selecione um país",
+    "mobilePhone": "Telemóvel",
+    "phoneCountryCode": "Indicativo telefónico do país",
+    "createPassword": "Crie uma palavra-passe",
+    "passwordHint": "Utilize pelo menos 8 caracteres.",
+    "creating": "A criar conta...",
+    "createAccount": "Criar conta",
+    "alreadyAccount": "Já tem uma conta?",
+    "readyTitle": "A sua conta está pronta",
+    "readyMessage": "Já pode aceder ao centro de formação.",
+    "pendingTitle": "Candidatura recebida",
+    "pendingMessage": "A sua conta aguarda aprovação.",
+    "failedTitle": "Falha no registo",
+    "failedMessage": "Verifique os seus dados e tente novamente.",
+    "invalidPhone": "Introduza um número de telemóvel válido.",
+    "invalidDial": "Selecione um indicativo telefónico válido.",
+    "duplicateEmail": "Este e-mail já está registado. Inicie sessão."
+  },
+  "auth": {
+    "email": "E-mail",
+    "emailPlaceholder": "Introduza o seu e-mail",
+    "password": "Palavra-passe",
+    "signIn": "Iniciar sessão"
+  },
+  "toast": {
+    "languageChanged": "Idioma alterado",
+    "languageChangedDescription": "A interface está agora em {{name}}."
+  }
+}

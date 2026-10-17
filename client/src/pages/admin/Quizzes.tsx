@@ -40,6 +40,9 @@ import {
   type FrontendQuestion
 } from '@shared/schema';
 import { z } from 'zod';
+import { QuizTranslationEditor } from '@/components/QuizTranslationEditor';
+import { Globe } from 'lucide-react';
+import { parseQuizQuestions } from '@shared/quiz-localization';
 
 // Use shared question schema from shared/schema.ts
 
@@ -67,6 +70,7 @@ export default function AdminQuizzes() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizDTO | null>(null);
+  const [translationQuiz, setTranslationQuiz] = useState<QuizDTO | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'final' | 'regular'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'title-asc' | 'title-desc' | 'questions-desc' | 'questions-asc' | 'pass-desc' | 'pass-asc'>('title-asc');
@@ -87,7 +91,7 @@ export default function AdminQuizzes() {
       // Backend already parses questions JSON - use directly as array
       return data.quizzes.map((quiz) => ({
         ...quiz,
-        questions: Array.isArray(quiz.questions) ? quiz.questions : [],
+        questions: parseQuizQuestions(quiz.questions),
       })) as QuizDTO[];
     }
   });
@@ -339,13 +343,13 @@ export default function AdminQuizzes() {
   const addQuestion = (type: 'boolean' | 'mcq') => {
     const newQuestion: Question = type === 'boolean' 
       ? {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'boolean',
           text: '',
           answer: true
         }
       : {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'mcq',
           text: '',
           options: ['Option 1', 'Option 2'], // Pre-filled to avoid validation issues
@@ -919,6 +923,9 @@ export default function AdminQuizzes() {
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0">
+                    <Button size="icon" variant="outline" onClick={() => setTranslationQuiz(quiz)} aria-label={`Translate ${quiz.title}`} data-testid={`button-translate-quiz-${quiz.id}`}>
+                      <Globe className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="outline"
@@ -949,6 +956,7 @@ export default function AdminQuizzes() {
           )}
         </CardContent>
       </Card>
+      {translationQuiz && <QuizTranslationEditor quiz={translationQuiz} onClose={() => setTranslationQuiz(null)} />}
     </div>
   );
 }

@@ -197,6 +197,7 @@ export default function AdminAgencies() {
       return { json, memberSuccess, memberFailed, memberTotal: memberIds.length };
     },
     onSuccess: async ({ memberSuccess, memberFailed, memberTotal }) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       if (memberTotal > 0) {
@@ -227,6 +228,7 @@ export default function AdminAgencies() {
       return response.json();
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: "Success", description: "Agency updated successfully" });
@@ -245,6 +247,7 @@ export default function AdminAgencies() {
       return response.json();
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: "Success", description: "Agency deleted successfully" });
@@ -262,6 +265,7 @@ export default function AdminAgencies() {
       return apiRequest('POST', '/api/admin/agencies/bulk-status', data);
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: 'Success', description: 'Agency statuses updated successfully' });
@@ -293,6 +297,7 @@ export default function AdminAgencies() {
     },
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       toast({
         title: variables.agencyId ? 'Üye eklendi' : 'Üye kaldırıldı',
@@ -314,6 +319,7 @@ export default function AdminAgencies() {
       return apiRequest('POST', '/api/admin/agencies/bulk-delete', { agencyIds });
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       toast({ title: 'Success', description: 'Agencies deleted successfully' });
@@ -1555,3 +1561,4 @@ export default function AdminAgencies() {
     </div>
   );
 }
+

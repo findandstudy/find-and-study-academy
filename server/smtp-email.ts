@@ -192,6 +192,7 @@ export function generateCourseCompletionEmail(name: string, courseName: string):
 
 export function generateAdminNewRegistrationEmail(agentName: string, agentEmail: string, agencyName: string): { subject: string; html: string } {
   const appUrl = process.env.APP_URL || 'http://localhost:5000';
+  const escapeText = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
   
   return {
     subject: `Yeni Acente Kaydı: ${agencyName}`,
@@ -218,11 +219,11 @@ export function generateAdminNewRegistrationEmail(agentName: string, agentEmail:
           <div class="content">
             <p>Yeni bir acente sisteme kaydoldu:</p>
             <div class="info-box">
-              <p><strong>Acente Adı:</strong> ${agencyName}</p>
-              <p><strong>Yetkili Kişi:</strong> ${agentName}</p>
-              <p><strong>E-posta:</strong> ${agentEmail}</p>
+              <p><strong>Acente Adı:</strong> ${escapeText(agencyName)}</p>
+              <p><strong>Yetkili Kişi:</strong> ${escapeText(agentName)}</p>
+              <p><strong>E-posta:</strong> ${escapeText(agentEmail)}</p>
             </div>
-            <p>Acente yönetim panelinden detayları görüntüleyebilir ve onaylayabilirsiniz:</p>
+            <p>Yeni başvuru yönetici onayı bekliyor. Acente hesabı onaylanmadan eğitim merkezine giriş yapılamaz. Başvuruyu yönetim panelinden inceleyebilirsiniz:</p>
             <a href="${appUrl}/admin/agencies" class="button">Acenteleri Yönet</a>
           </div>
           <div class="footer">

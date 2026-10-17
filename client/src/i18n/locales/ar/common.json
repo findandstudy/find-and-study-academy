@@ -565,5 +565,31 @@
     "footerContactHead": "التواصل",
     "footerRights": "جميع الحقوق محفوظة.",
     "footerLocated": "منصة استشارات تعليمية مقرها تركيا"
+  },
+  "registration": {
+    "title": "إنشاء حساب وكالة",
+    "subtitle": "أنشئ حسابًا للوصول إلى التدريب ومعلومات وجهات الدراسة.",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "أدخل اسمك الكامل",
+    "agencyName": "اسم الوكالة",
+    "agencyPlaceholder": "أدخل اسم وكالتك",
+    "country": "الدولة",
+    "selectCountry": "اختر دولة",
+    "mobilePhone": "الهاتف المحمول",
+    "phoneCountryCode": "رمز الاتصال الدولي",
+    "createPassword": "أنشئ كلمة مرور",
+    "passwordHint": "استخدم 8 أحرف على الأقل.",
+    "creating": "جارٍ إنشاء الحساب...",
+    "createAccount": "إنشاء حساب",
+    "alreadyAccount": "لديك حساب بالفعل؟",
+    "readyTitle": "حسابك جاهز",
+    "readyMessage": "يمكنك الآن الوصول إلى مركز التدريب.",
+    "pendingTitle": "تم استلام الطلب",
+    "pendingMessage": "حسابك بانتظار الموافقة.",
+    "failedTitle": "تعذّر التسجيل",
+    "failedMessage": "تحقق من بياناتك وحاول مجددًا.",
+    "invalidPhone": "أدخل رقم هاتف محمول صالحًا.",
+    "invalidDial": "اختر رمز اتصال دوليًا صالحًا.",
+    "duplicateEmail": "هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول."
   }
 }

@@ -10,7 +10,7 @@ import { submitAttempt } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Quiz, Question, Attempt } from '../../types';
-import type { FrontendQuestion } from '@shared/schema';
+import { parseQuizQuestions } from '@shared/quiz-localization';
 
 interface QuizModalProps {
   quiz: Quiz;
@@ -19,24 +19,8 @@ interface QuizModalProps {
 }
 
 export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProps) {
-  // Normalize quiz.questions - parse if string, ensure array
-  const quiz = {
-    ...quizProp,
-    questions: ((): FrontendQuestion[] => {
-      if (!quizProp.questions) return [];
-      if (Array.isArray(quizProp.questions)) return quizProp.questions as FrontendQuestion[];
-      if (typeof quizProp.questions === 'string') {
-        try {
-          return JSON.parse(quizProp.questions) as FrontendQuestion[];
-        } catch (e) {
-          console.error('Failed to parse quiz questions:', e);
-          return [];
-        }
-      }
-      return [];
-    })()
-  };
-  
+  const quiz = { ...quizProp, questions: parseQuizQuestions(quizProp.questions) };
+
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: string]: boolean | number }>({});
   const [showResults, setShowResults] = useState(false);
@@ -175,7 +159,11 @@ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProp
   };
 
   const closeModal = () => {
-    if (showResults) {
+    if (quiz.questions.length === 0) {
+    return <Card role="alert"><CardContent className="p-6 space-y-4"><p>This quiz has no questions available yet.</p><Button onClick={onClose}>Close</Button></CardContent></Card>;
+  }
+
+  if (showResults) {
       const correct = Object.keys(answers).filter(qId => {
         const question = quiz.questions.find(q => q.id === qId);
         const userAnswer = answers[qId];

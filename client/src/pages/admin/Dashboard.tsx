@@ -68,13 +68,17 @@ export default function AdminDashboard() {
     queryKey: ['/api/courses'],
   });
 
+  const countriesQuery = useQuery<{ success: boolean; countries: { id: string; name: string }[] }>({
+    queryKey: ['/api/public/countries'],
+  });
+
   const isLoading =
     usersQuery.isLoading ||
     agenciesQuery.isLoading ||
     announcementsQuery.isLoading ||
     certificatesQuery.isLoading ||
     progressesQuery.isLoading ||
-    coursesQuery.isLoading;
+    coursesQuery.isLoading || countriesQuery.isLoading;
 
   const users = usersQuery.data?.users ?? [];
   const agencies = agenciesQuery.data?.agencies ?? [];
@@ -94,7 +98,7 @@ export default function AdminDashboard() {
 
   // Course completion rate
   const totalEnrollments = progresses.length;
-  const completedCourses = progresses.filter(p => p.percent === 100).length;
+  const completedCourses = progresses.filter(p => p.percent >= 100).length;
   const completionRate =
     totalEnrollments > 0 ? Math.round((completedCourses / totalEnrollments) * 100) : 0;
 
@@ -147,18 +151,21 @@ export default function AdminDashboard() {
   ];
 
   // Course enrollment data for charts
-  const courseEnrollmentData = courses
-    .map(course => {
-      const enrollments = progresses.filter(p => p.courseId === course.id);
-      const completed = enrollments.filter(p => p.percent === 100).length;
-      return {
-        name: course.title.length > 20 ? course.title.substring(0, 20) + '...' : course.title,
-        enrolled: enrollments.length,
-        completed,
-        inProgress: enrollments.length - completed,
-      };
-    })
-    .filter(d => d.enrolled > 0);
+  const courseNames = new Map(courses.map(course => [course.id, course.title]));
+  for (const country of countriesQuery.data?.countries ?? []) {
+    courseNames.set(`course-${country.id}`, country.name);
+  }
+  const enrollmentGroups = new Map<string, { name: string; enrolled: number; completed: number; inProgress: number }>();
+  for (const progress of progresses) {
+    const title = courseNames.get(progress.courseId);
+    const name = title ?? `Unlisted course (${progress.courseId.slice(0, 8)})`;
+    const group = enrollmentGroups.get(progress.courseId) ?? { name, enrolled: 0, completed: 0, inProgress: 0 };
+    group.enrolled++;
+    if (progress.percent >= 100) group.completed++;
+    else group.inProgress++;
+    enrollmentGroups.set(progress.courseId, group);
+  }
+  const courseEnrollmentData = Array.from(enrollmentGroups.values());
 
   // Certificate distribution by score
   const scoreRanges = [
@@ -389,3 +396,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

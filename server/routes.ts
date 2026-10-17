@@ -1,3 +1,4 @@
+import { registerAdminOperations } from './admin-operations';
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, enrichWithTurkishKeywords, expandTurkishQueryTerms } from "./storage";
@@ -7,6 +8,7 @@ import {
   insertCountrySchema,
   insertContentSchema,
   insertQuizSchema,
+  frontendQuestionSchema,
   insertFindyKeywordMappingSchema,
   type Agency, 
   type InsertAgency,
@@ -25,35 +27,27 @@ import fs from "fs";
 import sharp from "sharp";
 import bcrypt from "bcryptjs";
 import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
+import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/languages";
+import { parseQuizQuestions } from "@shared/quiz-localization";
+import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translations";
+import { publicSignupSchema } from "@shared/signup-validation";
+import { db } from "./db";
+import { agencies as agencyTable, users as userTable } from "@shared/schema";
 
 // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
 // at module load (not per request).
 const VALID_COUNTRY_CODES = new Set(COUNTRY_DIAL_CODES.map((c) => c.code));
 import rateLimit from "express-rate-limit";
 
-// Server-side questions validation schema (matches frontend)
-const questionSchema = z.discriminatedUnion('type', [
-  z.object({
-    id: z.string(),
-    type: z.literal('boolean'),
-    text: z.string().min(1, 'Question text is required'),
-    answer: z.boolean()
-  }),
-  z.object({
-    id: z.string(),
-    type: z.literal('mcq'),
-    text: z.string().min(1, 'Question text is required'),
-    options: z.array(z.string().min(1, 'Option text required')).min(2, 'At least 2 options required').max(6, 'Maximum 6 options allowed'),
-    answerIndex: z.number().min(0)
-  })
-]);
+// Use one question validator for the editor and write API.
+const questionSchema = frontendQuestionSchema;
 
 // Quiz validation schema with questions validation
 const quizValidationSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;
@@ -78,7 +72,7 @@ const quizUpdateSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;
@@ -478,6 +472,7 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerAdminOperations(app, requireAuth, requireAdmin);
   // PUBLIC API endpoints for agents (no authentication required for published content)
   
   // Get active countries with published content
@@ -520,7 +515,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get published content (optionally filtered by countryId)
   app.get('/api/public/contents', async (req, res) => {
     try {
-      const { countryId, lang } = req.query;
+      const { countryId } = req.query;
+      const lang = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
       const contents = await storage.getContents();
       const countries = await storage.getCountries();
       
@@ -578,24 +574,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter only active quizzes for agent access
       const activeQuizzes = quizzes.filter(q => q.status === 'active');
       
-      // Parse questions JSON string to array for each quiz
-      const parsedQuizzes = activeQuizzes.map(quiz => {
-        let questions = [];
-        if (quiz.questions) {
-          try {
-            questions = typeof quiz.questions === 'string' 
-              ? JSON.parse(quiz.questions) 
-              : quiz.questions;
-          } catch (e) {
-            console.error(`Failed to parse questions for quiz ${quiz.id}:`, e);
-            questions = [];
-          }
-        }
-        return {
-          ...quiz,
-          questions
-        };
-      });
+      const language = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
+      const parsedQuizzes = await localizeQuizzes(activeQuizzes, language);
       
       res.json({
         success: true,
@@ -664,7 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const users = await storage.getUsers();
-      const user = users.find(u => u.email === email);
+      const user = users.find(u => typeof email === 'string' && u.email.trim().toLowerCase() === email.trim().toLowerCase());
 
       if (!user) {
         return res.status(401).json({
@@ -758,8 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authenticatedUser = (req as any).user;
       const { languagePreference } = req.body || {};
 
-      const supported = ['en', 'ar', 'zh', 'fr', 'id', 'fa', 'ru', 'es', 'tr'];
-      if (typeof languagePreference !== 'string' || !supported.includes(languagePreference)) {
+      if (!isSupportedLanguage(languagePreference)) {
         return res.status(400).json({
           success: false,
           message: 'Unsupported language',
@@ -879,36 +858,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/signup', authRateLimit, async (req, res) => {
     try {
-      const { name, email, password, agencyName, country, phone } = req.body;
-
-      if (!name || !email || !password || !agencyName || !country || !phone) {
-        return res.status(400).json({
-          success: false,
-          message: 'All fields are required'
-        });
+      const validation = publicSignupSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: validation.error.issues[0]?.message || 'Invalid registration data', errors: validation.error.issues.map(issue => ({ field: issue.path[0], message: issue.message })) });
       }
-
-      // Validate country against the real ISO 3166-1 alpha-2 set we ship in
-      // shared/country-dial-codes.ts (computed once at module load above).
-      if (typeof country !== 'string' || !VALID_COUNTRY_CODES.has(country)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid country code'
-        });
-      }
-
-      // Validate phone: E.164-ish — leading "+", 6–18 digits total
-      if (typeof phone !== 'string' || !/^\+\d{6,18}$/.test(phone.replace(/\s+/g, ''))) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid phone number'
-        });
-      }
-      const normalizedPhone = phone.replace(/\s+/g, '');
+      const { name, email, password, agencyName, country, phone: normalizedPhone, languagePreference } = validation.data;
 
       // Check if email already exists
       const users = await storage.getUsers();
-      const existingUser = users.find(u => u.email === email);
+      const existingUser = users.find(u => u.email.trim().toLowerCase() === email);
       if (existingUser) {
         return res.status(409).json({
           success: false,
@@ -916,14 +874,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const userId = `agent-${Date.now()}`;
-      const agencyId = `agency-${Date.now()}`;
+      const userId = `agent-${crypto.randomUUID()}`;
+      const agencyId = `agency-${crypto.randomUUID()}`;
 
       // Create agency
       const newAgency = {
         id: agencyId,
         name: agencyName,
-        status: 'active' as const,
+        status: 'pending' as const,
         primaryContactName: name,
         primaryContactEmail: email
       };
@@ -931,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password before storing
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user — closed system: new agents start as INACTIVE and require admin/staff approval
+      // New public registrations require administrator approval before login.
       const newUser = {
         id: userId,
         username: email,
@@ -943,34 +901,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agencyId: agencyId,
         country: country,
         phone: normalizedPhone,
+        languagePreference,
         emailNotifications: true,
         courseCompletionNotif: true,
         certificateNotif: true,
         announcementNotif: true
       };
 
-      const createdAgency = await storage.createAgency(newAgency);
-      const createdUser = await storage.createUser(newUser);
+      const { createdAgency, createdUser } = await db.transaction(async tx => {
+        const [createdAgency] = await tx.insert(agencyTable).values(newAgency).returning();
+        const [createdUser] = await tx.insert(userTable).values(newUser).returning();
+        return { createdAgency, createdUser };
+      });
 
-      // Send welcome email to new agent (non-blocking)
-      if (createdUser.emailNotifications) {
-        (async () => {
-          try {
-            const { sendNotificationEmail } = await import('./emailService');
-            await sendNotificationEmail({
-              recipientEmail: createdUser.email,
-              recipientName: createdUser.name,
-              type: 'welcome',
-              data: {
-                agencyName: createdAgency.name
-              }
-            });
-          } catch (err) {
-            console.error('Welcome email error:', err);
-          }
-        })();
-      }
-      
       // Send notification to all admins about new registration (non-blocking)
       (async () => {
         try {
@@ -995,13 +938,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
 
-      // Closed system — do NOT return a session/user. The applicant must wait for admin/staff approval.
       res.status(201).json({
         success: true,
         pending: true,
-        message: 'Başvurunuz alındı. Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz.'
+        message: 'Your application has been received and is awaiting administrator approval.',
       });
     } catch (error) {
+      // A concurrent registration may pass the pre-check. The transaction
+      // rolls back the agency too, so retries never create orphan agencies.
+      const databaseCode = (error as any)?.code || (error as any)?.cause?.code;
+      if (databaseCode === '23505') return res.status(409).json({ success: false, message: 'Email already registered' });
       console.error('Signup error:', error);
       res.status(500).json({
         success: false,
@@ -4862,7 +4808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions JSON for each quiz
       const quizzesWithParsedQuestions = quizzes.map(quiz => ({
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       }));
       
       res.json({
@@ -4893,7 +4839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert questions array to JSON string for storage
       const quizData = {
         ...validation.data,
-        questions: JSON.stringify(validation.data.questions || [])
+        questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
       };
 
       const quiz = await storage.createQuiz(quizData);
@@ -4901,7 +4847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions back to object for response
       const responseQuiz = {
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       };
       
       res.status(201).json({
@@ -4960,7 +4906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = {
         ...validation.data,
         ...(validation.data.questions && {
-          questions: JSON.stringify(validation.data.questions)
+          questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
         })
       };
 
@@ -4969,7 +4915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions back to object for response
       const responseQuiz = {
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       };
       
       res.json({
@@ -5710,7 +5656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const validations = {
       content_type: ['lesson', 'video', 'image', 'document', 'quiz'],
       status: ['draft', 'published', 'archived'],
-      language: ['en', 'tr', 'ru', 'ar', 'az', 'fa'],
+      language: [...LANGUAGE_CODES, 'az'],
     };
     res.json({ success: true, headers, validations });
   });
@@ -6810,6 +6756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, message: 'Failed to fetch translation' });
     }
   });
+
+  registerQuizTranslationRoutes(app, requireAuth, requireAdmin);
 
   const httpServer = createServer(app);
 

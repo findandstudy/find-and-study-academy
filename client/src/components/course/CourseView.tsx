@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { courseText } from '@/i18n/course-labels';
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,8 @@ interface CourseViewProps {
 }
 
 export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseViewProps) {
+  const { i18n } = useTranslation();
+  const label = (index:number, values:Record<string,string|number>={}) => courseText(i18n.language,index,values);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after quiz completion
@@ -124,11 +128,15 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   });
 
   useEffect(() => {
-    // Auto-select first lesson if none selected
-    if (!selectedLesson && course.sections[0]?.lessons[0]) {
-      setSelectedLesson(course.sections[0].lessons[0]);
-    }
-  }, [course, selectedLesson]);
+    // Replace the selected object when translated lesson data arrives, keeping
+    // the lesson ID where possible instead of retaining the previous language.
+    const lessons = course.sections.flatMap(section => section.lessons);
+    setSelectedLesson(previous => lessons.find(lesson => lesson.id === previous?.id) ?? lessons[0] ?? null);
+  }, [course]);
+
+  useEffect(() => {
+    setActiveQuiz(previous => previous ? quizzes.find(quiz => quiz.id === previous.id) ?? null : null);
+  }, [quizzes]);
 
   const handleLessonComplete = (lessonId: string) => {
     if (!user) return;
@@ -177,9 +185,9 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
             {/* Circular Progress */}
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="text-xs text-muted-foreground mb-1">Overall Progress</div>
+                <div className="text-xs text-muted-foreground mb-1">{label(1)}</div>
                 <div className="text-2xl font-bold text-primary">{progressPercent}%</div>
-                <div className="text-xs text-muted-foreground">{completedLessons.length} of {totalLessons} lessons</div>
+                <div className="text-xs text-muted-foreground">{label(2,{done:completedLessons.length,total:totalLessons})}</div>
               </div>
               <div className="relative w-20 h-20">
                 <svg className="transform -rotate-90 w-20 h-20">
@@ -275,9 +283,9 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                   data-testid="button-final-quiz"
                 >
                   <Award className="w-4 h-4 mr-2" />
-                  Final Exam
-                  {progressPercent < 100 && ' (Complete all lessons)'}
-                  {progressPercent >= 100 && miniQuizzes.length > 0 && !allMiniQuizzesCompleted && ' (Complete all quizzes)'}
+                  {label(4)}
+                  {progressPercent < 100 && (' ('+label(5)+')')}
+                  {progressPercent >= 100 && miniQuizzes.length > 0 && !allMiniQuizzesCompleted && (' ('+label(6)+')')}
                 </Button>
               </div>
             )}
@@ -305,7 +313,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                 </CardTitle>
                 {completedLessons.includes(selectedLesson.id) && (
                   <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
-                    ✓ Completed
+                    ✓ {label(3)}
                   </Badge>
                 )}
               </div>
@@ -326,9 +334,9 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                         <PlayCircle className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">Mini Quiz</h3>
+                        <h3 className="font-semibold">{label(7)}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Test your knowledge before moving forward
+                          {label(8)}
                         </p>
                       </div>
                     </div>
@@ -338,7 +346,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                       data-testid={`button-start-quiz-${selectedLesson.id}`}
                     >
                       <PlayCircle className="w-4 h-4 mr-2" />
-                      Start Quiz
+                      {label(9)}
                     </Button>
                   </div>
                 </div>
@@ -372,8 +380,8 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                       data-testid={`button-complete-lesson-${selectedLesson.id}`}
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Mark as Complete
-                      {lessonQuiz && !quizPassed && ' (Complete quiz first)'}
+                      {label(10)}
+                      {lessonQuiz && !quizPassed && (' ('+label(11)+')')}
                     </Button>
                   </div>
                 );
@@ -386,7 +394,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
               <div className="p-6 rounded-full bg-primary/5 w-fit mx-auto mb-4">
                 <BookOpen className="w-16 h-16 text-primary/40" />
               </div>
-              <p className="text-muted-foreground text-lg">Select a lesson to start learning</p>
+              <p className="text-muted-foreground text-lg">{label(12)}</p>
             </div>
           </Card>
         )}
