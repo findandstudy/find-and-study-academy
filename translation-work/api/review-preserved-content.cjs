@@ -3,7 +3,7 @@ const fs=require('fs'),crypto=require('crypto'),req=require('module').createRequ
 const p='/var/lib/academy-translations',languages='tr ar fr ru fa zh hi es id ur tk ky kk uz tg bn pt ne vi ko uk it'.split(' '),read=f=>JSON.parse(fs.readFileSync(f));
 const canonical=v=>v instanceof Date?v.toISOString():Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(canonical(v))).digest('hex');
-function decode(v){for(let i=0;i<4&&typeof v==='string';i++)v=JSON.parse(v);if(!Array.isArray(v))throw Error('Invalid quiz');return v}
+function decode(v){for(let i=0;i<4&&typeof v==='string';i++)v=JSON.parse(v);if(!Array.isArray(v))throw Error('Invalid quiz');const reserved=new Set(v.map(q=>q.id)),seen=new Set();return v.map((q,i)=>{q={...q};if(seen.has(q.id)){let id=q.id+'__duplicate_'+(i+1);while(reserved.has(id)||seen.has(id))id+='_';q.id=id;}seen.add(q.id);return q;});}
 const mapping={
 'accommodation-a1':'accommodation_options_tr_qz01','cities-campus-a1':'turkiye_cities_campus_life_qz01','costs-a1':'cost_living_budget_tr_qz01','he-structure-tr-a1':'higher_education_turkiye_structure_qz01','popular-fields-a1':'turkiye_popular_fields_qz01','programs-languages-a1':'program_types_languages_tr_en_qz01','residence-insurance-a1':'residence_permit_health_insurance_tr_qz01','visa-a1':'student_visa_policies_tr_qz01','why-tr-a1':'why_turkiye_academic_career_qz01','work-intern-a1':'work_internship_tr_qz01','final-1':'study_in_turkiye_agency_qz01'};
 (async()=>{let c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();try{await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
