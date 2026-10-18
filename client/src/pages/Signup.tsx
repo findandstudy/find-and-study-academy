@@ -148,7 +148,7 @@ export default function Signup() {
     } else {
       toast({
         title: t('registration.failedTitle'),
-        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : (campaignMode?message(result?.message||'Request failed'):(result?.message || t('registration.failedMessage'))),
+        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : (campaignMode?message(result?.message||'Request failed'):t('registration.failedMessage')),
         variant: 'destructive',
       });
     }
