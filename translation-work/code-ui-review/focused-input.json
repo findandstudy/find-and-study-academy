@@ -1,0 +1,224 @@
+{
+  "languages": [
+    "en",
+    "tr",
+    "ar",
+    "fr",
+    "ru",
+    "fa",
+    "zh",
+    "hi",
+    "es",
+    "id",
+    "ur",
+    "tk",
+    "ky",
+    "kk",
+    "uz",
+    "tg",
+    "bn",
+    "pt",
+    "ne",
+    "vi",
+    "ko",
+    "uk",
+    "it"
+  ],
+  "items": [
+    {
+      "key": "legacy.e96375b4d43ccc2e",
+      "source": "Full name of the user / Kullanıcının tam adı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 384
+        }
+      ],
+      "values": {
+        "en": "Full name of the user"
+      },
+      "requestSource": "Full name of the user"
+    },
+    {
+      "key": "legacy.a0d616be43fd10e9",
+      "source": "Must be a valid, unique email address. / Geçerli ve benzersiz bir e-posta olmalı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 385
+        }
+      ],
+      "values": {
+        "en": "Must be a valid, unique email address."
+      },
+      "requestSource": "Must be a valid, unique email address."
+    },
+    {
+      "key": "legacy.9cf137215181499e",
+      "source": "Must be unique. Letters, numbers, dot, underscore, dash. / Benzersiz, boşluksuz.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 386
+        }
+      ],
+      "values": {
+        "en": "Must be unique. Letters, numbers, dot, underscore, dash."
+      },
+      "requestSource": "Must be unique. Letters, numbers, dot, underscore, dash."
+    },
+    {
+      "key": "legacy.1bc5cb0db479c96d",
+      "source": "Minimum 6 characters. Will be hashed on the server. / En az 6 karakter, sunucuda şifrelenir.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 387
+        }
+      ],
+      "values": {
+        "en": "Minimum 6 characters. Will be hashed on the server."
+      },
+      "requestSource": "Minimum 6 characters. Will be hashed on the server."
+    },
+    {
+      "key": "legacy.a7ac8bf767635fae",
+      "source": "Default: agent. / Varsayılan: agent.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 388
+        }
+      ],
+      "values": {
+        "en": "Default: agent."
+      },
+      "requestSource": "Default: agent."
+    },
+    {
+      "key": "legacy.7b6963136014f85d",
+      "source": "Default: active. / Varsayılan: active.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 389
+        }
+      ],
+      "values": {
+        "en": "Default: active."
+      },
+      "requestSource": "Default: active."
+    },
+    {
+      "key": "legacy.36b4039c069b0b90",
+      "source": "Optional agency or company name. / Opsiyonel firma adı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 390
+        }
+      ],
+      "values": {
+        "en": "Optional agency or company name."
+      },
+      "requestSource": "Optional agency or company name."
+    },
+    {
+      "key": "legacy.4332ad3fd58d1589",
+      "source": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none. / 2 harfli ülke kodu, boş bırakılabilir.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 391
+        }
+      ],
+      "values": {
+        "en": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none."
+      },
+      "requestSource": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none."
+    },
+    {
+      "key": "legacy.4b942a29ef8cc49f",
+      "source": "Optional. Must start with \"+\" and have 6–18 digits total. / Opsiyonel, \"+\" ile başlamalı, 6–18 rakam.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 392
+        }
+      ],
+      "values": {
+        "en": "Optional. Must start with \"+\" and have 6–18 digits total."
+      },
+      "requestSource": "Optional. Must start with \"+\" and have 6–18 digits total."
+    },
+    {
+      "key": "legacy.9824464695b59e83",
+      "source": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path. / Genel erişime açık URL veya /uploads/... yolu.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 393
+        }
+      ],
+      "values": {
+        "en": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path."
+      },
+      "requestSource": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path."
+    },
+    {
+      "key": "legacy.fc1a4cd96859e294",
+      "source": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker. / Boş bırakılırsa diyalogdaki seçici kullanılır.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 394
+        }
+      ],
+      "values": {
+        "en": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker."
+      },
+      "requestSource": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker."
+    },
+    {
+      "key": "legacy.52b051f6c39dbc7d",
+      "source": "Fill in the {value0} sheet with your data",
+      "requestSource": "Fill in the {value0} sheet with your data",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "Fill in the {value0} sheet with your data"
+      }
+    },
+    {
+      "key": "legacy.2332c8121656b9e6",
+      "source": "See the {value0} sheet for field descriptions",
+      "requestSource": "See the {value0} sheet for field descriptions",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "See the {value0} sheet for field descriptions"
+      }
+    },
+    {
+      "key": "legacy.a161f28561ebc6ce",
+      "source": "Chunks retrieved: {value0}",
+      "requestSource": "Chunks retrieved: {value0}",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "Chunks retrieved: {value0}"
+      }
+    }
+  ]
+}
