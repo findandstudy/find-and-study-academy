@@ -1,6 +1,6 @@
 import {useAcademyUi} from '@/lib/academy-ui';
 import '@/lib/campaign-i18n';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { normalizeLanguage } from '@/i18n/languages';
 import { Link, useLocation } from 'wouter';
@@ -26,7 +26,11 @@ const DEFAULT_COUNTRY = 'TR';
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation();
-  const {message}=useAcademyUi();
+  const {message, dir}=useAcademyUi();
+  const [step, setStep] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { headingRef.current?.focus(); }, [step]);
   const language = normalizeLanguage(i18n.language);
   const [formData, setFormData] = useState({
     promoCode: new URLSearchParams(window.location.search).get('promo') || '',
@@ -75,6 +79,21 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const target = step < 2 ? step : [0, 1, 2].find(index => {
+      const fields = formRef.current?.querySelectorAll<HTMLInputElement>(`[data-step="${index}"] input`);
+      return fields && Array.from(fields).some(field => !field.checkValidity());
+    });
+    if (target !== undefined) {
+      const fields = formRef.current?.querySelectorAll<HTMLInputElement>(`[data-step="${target}"] input`);
+      const invalid = fields && Array.from(fields).find(field => !field.checkValidity());
+      if (invalid) {
+        setStep(target);
+        requestAnimationFrame(() => { invalid.focus(); invalid.reportValidity(); });
+        return;
+      }
+      if (step < 2) { setStep(step + 1); return; }
+    }
+
     // Normalize the local number toward E.164: strip everything that isn't a
     // digit, then drop a single leading national trunk "0" (common in TR / EU
     // formats like "0532 ..." which becomes "+90 532 ...").
@@ -88,6 +107,7 @@ export default function Signup() {
         description: t('registration.invalidPhone'),
         variant: 'destructive',
       });
+      setStep(1);
       return;
     }
     if (!selectedDial) {
@@ -101,6 +121,7 @@ export default function Signup() {
     const fullPhone = `+${selectedDial}${localDigits}`;
     if (!/^\+[1-9]\d{5,17}$/.test(fullPhone)) {
       toast({ title: t('registration.failedTitle'), description: t('registration.invalidPhone'), variant: 'destructive' });
+      setStep(1);
       return;
     }
 
@@ -144,18 +165,28 @@ export default function Signup() {
   };
 
   const updateField = (field: keyof typeof formData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'email' || field === 'promoCode') {
+      setCodeSent(false);
+      setFormData(prev => ({ ...prev, [field]: value, verificationCode: '' }));
+    } else setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <AuthCard
+      variant="signup"
       title={t('registration.title')}
       description={t('registration.subtitle')}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="flex gap-2"><input type="checkbox" checked={campaignMode} onChange={e=>setCampaignMode(e.target.checked)}/>{t('campaign.haveCode',{defaultValue:'I have an invitation / promo code'})}</label>
-        {campaignMode&&<div className="space-y-2"><Label htmlFor="promoCode">{t('campaign.promoCode',{defaultValue:'Invitation / promo code'})}</Label><Input id="promoCode" required maxLength={64} autoComplete="off" value={formData.promoCode} onChange={e=>updateField('promoCode',e.target.value)}/></div>}
-        {campaignMode&&<p className="text-sm text-muted-foreground">{t('campaign.signupNotice',{defaultValue:'An invitation code and email verification are required. Administrator approval is still required. Free access starts on registration.'})}</p>}
+      <form ref={formRef} noValidate onSubmit={handleSubmit} dir={dir} className="space-y-4">
+        <ol className="grid grid-cols-3 gap-2" aria-label={t('registration.title')}>
+          {[t('registration.fullName'), t('registration.agencyName'), t('registration.createAccount')].map((label, index) => (
+            <li key={index} aria-current={step === index ? 'step' : undefined} className={`rounded-lg border px-2 py-3 text-sm break-words ${step === index ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 text-muted-foreground'}`}>
+              <span className="block font-semibold">{index + 1}. {label}</span>
+            </li>
+          ))}
+        </ol>
+        <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold outline-none">{[t('registration.fullName'), t('registration.agencyName'), t('registration.createAccount')][step]}</h2>
+        <fieldset data-step="0" hidden={step !== 0} className="space-y-4 min-w-0">
         <div className="space-y-2">
           <Label htmlFor="name">{t('registration.fullName')}</Label>
           <Input
@@ -188,7 +219,6 @@ export default function Signup() {
           />
         </div>
 
-        {campaignMode&&<div className="space-y-2"><Button type="button" variant="outline" disabled={sendingCode||!formData.email||!formData.promoCode} onClick={requestCode}>{t('campaign.sendCode',{defaultValue:'Send email verification code'})}</Button><Label htmlFor="verificationCode">{t('campaign.emailCode',{defaultValue:'6-digit email verification code'})}</Label><Input id="verificationCode" value={formData.verificationCode} onChange={e=>updateField('verificationCode',e.target.value)} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoComplete="one-time-code"/>{codeSent&&<p>{t('campaign.codeExpiry',{defaultValue:'The code expires in 10 minutes. You can request another after 60 seconds.'})}</p>}</div>}
         <div className="space-y-2">
           <Label htmlFor="password">{t('auth.password')}</Label>
           <Input
@@ -207,6 +237,8 @@ export default function Signup() {
           <p id="password-hint" className="text-xs text-muted-foreground">{t('registration.passwordHint')}</p>
         </div>
 
+        </fieldset>
+        <fieldset data-step="1" hidden={step !== 1} className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 [&[hidden]]:hidden">
         <div className="space-y-2">
           <Label htmlFor="agencyName">{t('registration.agencyName')}</Label>
           <Input
@@ -285,22 +317,35 @@ export default function Signup() {
               required
               autoComplete="tel-national"
               data-testid="input-phone"
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
           </div>
         </div>
 
+        </fieldset>
+        <fieldset data-step="2" hidden={step !== 2} className="space-y-4 min-w-0">
+          <dl className="rounded-lg bg-muted/40 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs break-words">
+            {[[t('registration.fullName'), formData.name], [t('auth.email'), formData.email], [t('registration.agencyName'), formData.agencyName], [t('registration.country'), sortedCountries.find(c => c.code === formData.country)?.name]].map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="font-medium break-all">{value}</dd></div>)}
+          </dl>
+        <label className="flex gap-2"><input type="checkbox" checked={campaignMode} onChange={e=>setCampaignMode(e.target.checked)}/>{t('campaign.haveCode',{defaultValue:'I have an invitation / promo code'})}</label>
+        {campaignMode&&<div className="space-y-2"><Label htmlFor="promoCode">{t('campaign.promoCode',{defaultValue:'Invitation / promo code'})}</Label><Input id="promoCode" required maxLength={64} autoComplete="off" value={formData.promoCode} onChange={e=>updateField('promoCode',e.target.value)}/></div>}
+        {campaignMode&&<p className="text-sm text-muted-foreground">{t('campaign.signupNotice',{defaultValue:'An invitation code and email verification are required. Administrator approval is still required. Free access starts on registration.'})}</p>}
+        {campaignMode&&<div className="space-y-2"><Button type="button" variant="outline" disabled={sendingCode||!formData.email||!formData.promoCode} onClick={requestCode}>{t('campaign.sendCode',{defaultValue:'Send email verification code'})}</Button><Label className="block" htmlFor="verificationCode">{t('campaign.emailCode',{defaultValue:'6-digit email verification code'})}</Label><Input id="verificationCode" value={formData.verificationCode} onChange={e=>updateField('verificationCode',e.target.value)} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoComplete="one-time-code"/>{codeSent&&<p>{t('campaign.codeExpiry',{defaultValue:'The code expires in 10 minutes. You can request another after 60 seconds.'})}</p>}</div>}
+        </fieldset>
+        <div className="flex gap-3 border-t pt-4">
+          {step > 0 && <Button type="button" variant="outline" disabled={isLoading || sendingCode} onClick={() => setStep(step - 1)}>{t('common.back')}</Button>}
         <Button
           type="submit"
           className="w-full"
           disabled={isLoading}
           data-testid="button-submit"
         >
-          {t(isLoading ? 'registration.creating' : 'registration.createAccount')}
+          {step < 2 ? t('common.continue') : t(isLoading ? 'registration.creating' : 'registration.createAccount')}
         </Button>
+        </div>
       </form>
 
-      <div className="mt-6 text-center">
+      <div className="mt-3 text-center">
         <p className="text-sm text-muted-foreground">
           {t('registration.alreadyAccount')}{' '}
           <Link href="/login">
