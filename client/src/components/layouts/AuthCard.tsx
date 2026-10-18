@@ -13,9 +13,15 @@ interface AuthCardProps {
 export function AuthCard({ children, title, description, variant }: AuthCardProps) {
   return (
     <div
-      className={`min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative ${variant === 'signup' ? 'py-16 sm:py-12 bg-gradient-to-br from-slate-50 via-white to-blue-50' : ''}`}
+      className={`min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative ${variant === 'signup' ? 'py-16 sm:py-12 bg-slate-50 isolate' : ''}`}
       style={variant === 'signup' ? undefined : { backgroundImage: `url(${backgroundImage})` }}
     >
+      {variant === 'signup' && <>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 hidden xl:block" style={{width:'min(320px, calc((100% - 680px) / 2))', backgroundImage:`url(${backgroundImage})`, backgroundSize:'auto 70%', backgroundPosition:'left center', backgroundRepeat:'no-repeat'}} />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden xl:block" style={{width:'calc((100% - 680px) / 2)', backgroundImage:`url(${backgroundImage})`, backgroundSize:'auto 100%', backgroundPosition:'right center', backgroundRepeat:'no-repeat'}} />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-primary xl:hidden" />
+        <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 h-40 w-5 rounded-bl-full bg-red-600 xl:hidden" />
+      </>}
       {/* Language picker — top-right corner so unauthenticated users can pick before signing in */}
       <div className="absolute top-3 right-3 z-10">
         <div className="rounded-md backdrop-blur-sm bg-background/80 px-1">
@@ -23,7 +29,7 @@ export function AuthCard({ children, title, description, variant }: AuthCardProp
         </div>
       </div>
 
-      <Card className={`w-full backdrop-blur-sm bg-background/95 ${variant === 'signup' ? 'max-w-[640px] bg-white shadow-sm' : 'max-w-md'}`}>
+      <Card className={`relative w-full backdrop-blur-sm bg-background/95 ${variant === 'signup' ? 'max-w-[640px] bg-white shadow-sm' : 'max-w-md'}`}>
         <CardHeader className="space-y-0 text-center pt-3 pb-1">
           <div className="mb-2">
             <img
