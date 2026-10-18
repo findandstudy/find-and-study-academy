@@ -25,8 +25,9 @@ export async function processOne(fetcher?:typeof fetch,testing?:{configuration:a
  const apiJob:any={kind:j.kind,id:j.source_id,title:source.title,language:j.language,sourceHash:j.source_hash,strings,fieldPaths:indices.map(i=>m.fields[i].path)};apiJob.jobHash=runner.jobDigest(apiJob);const c=testing?.configuration||config();if(!testing)clearOwnedDeadLock();
  await runner.run({jobs:[apiJob]},c,ioDir,fetcher);
  // Resolve only the exact validated checkpoint produced for this job and policy.
- const matches=fs.readdirSync(ioDir).filter(n=>/^[a-f0-9]{64}\.json$/.test(n)).map(n=>{try{return JSON.parse(fs.readFileSync(ioDir+'/'+n,'utf8'));}catch{return null;}}).filter(d=>d?.jobHash===apiJob.jobHash&&d?.model===c.model&&d?.policy==='academy-queue-visible-strings-v1');
- if(matches.length!==1)throw Error('VALIDATION_REVIEW_REQUIRED');completed=runner.validate(apiJob,{strings:matches[0].strings.map((text:string,index:number)=>({index,text}))});}
+ const checkpoint=ioDir+'/'+hash({jobHash:apiJob.jobHash,model:c.model,policy:'academy-queue-visible-strings-v1'})+'.json';
+ if(!fs.existsSync(checkpoint))throw Error('VALIDATION_REVIEW_REQUIRED');const saved=JSON.parse(fs.readFileSync(checkpoint,'utf8'));if(saved.jobHash!==apiJob.jobHash||saved.model!==c.model||saved.policy!=='academy-queue-visible-strings-v1')throw Error('VALIDATION_REVIEW_REQUIRED');completed=runner.validate(apiJob,{strings:saved.strings.map((text:string,index:number)=>({index,text}))});}
+
  const all=reuse.map(x=>x??'');indices.forEach((index,i)=>all[index]=completed[i]);const draft=validateResult(j.kind,sourceSnapshot,reconstruct(j.kind,sourceSnapshot,all));
  const fresh=await readSource(j.kind,j.source_id);if(!fresh||sourceHash(j.kind,fresh)!==j.source_hash){await database.query("UPDATE academy_translation_jobs SET state='superseded',updated_at=now() WHERE id=$1",[j.id]);return true;}
  await database.query("UPDATE academy_translation_jobs SET draft=$2,state='ready',error=NULL,updated_at=now() WHERE id=$1 AND state='processing'",[j.id,JSON.stringify(draft)]);
