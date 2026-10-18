@@ -27,7 +27,7 @@ export default function Login() {
     e.preventDefault();setBusy(true);setError('');setDevices([]);
     try {const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});const data=await response.json();
       if(data.code==='DEVICE_LIMIT'){setDevices(data.devices);return;}
-      if(!response.ok)throw new Error(data.message||data.code||'Login failed');await complete();
+      if(!response.ok)throw new Error(data.pending?'ACCOUNT_PENDING':(data.code||data.message||'Login failed'));await complete();
     }catch(e){setError(e instanceof Error?e.message:'Login failed')}finally{setBusy(false)}
   };
   const replaceDevice=async(deviceId:string)=>{setBusy(true);setError('');try{const response=await fetch('/api/auth/replace-device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deviceId})});const data=await response.json();if(!response.ok)throw new Error(data.code||'Login failed');await complete()}catch(e){setError(e instanceof Error?e.message:'Login failed')}finally{setBusy(false)}};
@@ -37,7 +37,7 @@ export default function Login() {
       title={t('auth.welcomeBack')}
       description={t('auth.signInSubtitle')}
     >
-      {error&&<p role="alert" className="text-destructive">{/^[A-Z_]+$/.test(error)?message(error):error}</p>}
+      {error&&<p role="alert" className="text-destructive">{/^[A-Z_]+$/.test(error)?message(error):t('registration.failedMessage')}</p>}
       {devices.length>0&&<section className="space-y-3" dir={dir} aria-label={t('campaign.deviceLimit')}><p>{t('campaign.deviceLimit',{defaultValue:'Two devices are already registered. Choose one to sign out and continue on this device. Other sessions on the removed device will stop working.'})}</p>{devices.map(d=><div key={d.id}><span>{d.label} · {new Date(d.lastSeen).toLocaleString(locale)}</span><Button disabled={busy} variant="outline" onClick={()=>replaceDevice(d.id)}>{t('campaign.replaceDevice',{defaultValue:'Sign out this device and continue'})}</Button></div>)}<Button variant="ghost" onClick={()=>setDevices([])}>{t('common.cancel',{defaultValue:'Cancel'})}</Button></section>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
