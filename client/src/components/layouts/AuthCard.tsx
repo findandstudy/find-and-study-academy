@@ -1,3 +1,4 @@
+import {usePublicUi} from '@/lib/public-ui';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
@@ -11,13 +12,17 @@ interface AuthCardProps {
 }
 
 export function AuthCard({ children, title, description, variant }: AuthCardProps) {
+  const {tl}=usePublicUi();
   return (
     <div
       className={`min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative ${variant === 'signup' ? 'py-16 sm:py-12 bg-slate-50 isolate' : ''}`}
       style={variant === 'signup' ? undefined : { backgroundImage: `url(${backgroundImage})` }}
     >
       {variant === 'signup' && <>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 hidden xl:block" style={{width:'min(320px, calc((100% - 680px) / 2))', backgroundImage:`url(${backgroundImage})`, backgroundSize:'auto 70%', backgroundPosition:'left center', backgroundRepeat:'no-repeat'}} />
+        <aside className="pointer-events-none absolute inset-y-0 left-0 hidden xl:flex flex-col justify-center items-center gap-4 px-5 text-center" style={{width:'min(320px, calc((100% - 680px) / 2))'}}>
+          <img src={logoImage} alt="Find & Study" className="w-56 max-w-full h-auto" />
+          <p className="text-primary font-semibold text-lg break-words">{tl('home.heroBadge')}</p>
+        </aside>
         <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden xl:block" style={{width:'calc((100% - 680px) / 2)', backgroundImage:`url(${backgroundImage})`, backgroundSize:'auto 100%', backgroundPosition:'right center', backgroundRepeat:'no-repeat'}} />
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-primary xl:hidden" />
         <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 h-40 w-5 rounded-bl-full bg-red-600 xl:hidden" />
