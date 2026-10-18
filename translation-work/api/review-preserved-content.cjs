@@ -1,7 +1,7 @@
 // Read-only content audit; no personal details, paid API requests or database writes.
 const fs=require('fs'),crypto=require('crypto'),req=require('module').createRequire(process.cwd()+'/package.json');req('dotenv').config({quiet:true});const {Client}=req('pg');
 const p='/var/lib/academy-translations',languages='tr ar fr ru fa zh hi es id ur tk ky kk uz tg bn pt ne vi ko uk it'.split(' '),read=f=>JSON.parse(fs.readFileSync(f));
-const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+const canonical=v=>v instanceof Date?v.toISOString():Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(canonical(v))).digest('hex');
 function decode(v){for(let i=0;i<4&&typeof v==='string';i++)v=JSON.parse(v);if(!Array.isArray(v))throw Error('Invalid quiz');return v}
 const mapping={
