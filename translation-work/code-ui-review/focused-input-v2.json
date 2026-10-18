@@ -1,0 +1,539 @@
+{
+  "languages": [
+    "en",
+    "tr",
+    "ar",
+    "fr",
+    "ru",
+    "fa",
+    "zh",
+    "hi",
+    "es",
+    "id",
+    "ur",
+    "tk",
+    "ky",
+    "kk",
+    "uz",
+    "tg",
+    "bn",
+    "pt",
+    "ne",
+    "vi",
+    "ko",
+    "uk",
+    "it"
+  ],
+  "items": [
+    {
+      "key": "legacy.e96375b4d43ccc2e",
+      "source": "Full name of the user / Kullanıcının tam adı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 384
+        }
+      ],
+      "values": {
+        "en": "Full name of the user"
+      },
+      "requestSource": "Full name of the user"
+    },
+    {
+      "key": "legacy.a0d616be43fd10e9",
+      "source": "Must be a valid, unique email address. / Geçerli ve benzersiz bir e-posta olmalı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 385
+        }
+      ],
+      "values": {
+        "en": "Must be a valid, unique email address."
+      },
+      "requestSource": "Must be a valid, unique email address."
+    },
+    {
+      "key": "legacy.9cf137215181499e",
+      "source": "Must be unique. Letters, numbers, dot, underscore, dash. / Benzersiz, boşluksuz.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 386
+        }
+      ],
+      "values": {
+        "en": "Must be unique. Letters, numbers, dot, underscore, dash."
+      },
+      "requestSource": "Must be unique. Letters, numbers, dot, underscore, dash."
+    },
+    {
+      "key": "legacy.1bc5cb0db479c96d",
+      "source": "Minimum 6 characters. Will be hashed on the server. / En az 6 karakter, sunucuda şifrelenir.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 387
+        }
+      ],
+      "values": {
+        "en": "Minimum 6 characters. Will be hashed on the server."
+      },
+      "requestSource": "Minimum 6 characters. Will be hashed on the server."
+    },
+    {
+      "key": "legacy.a7ac8bf767635fae",
+      "source": "Default: agent. / Varsayılan: agent.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 388
+        }
+      ],
+      "values": {
+        "en": "Default: agent."
+      },
+      "requestSource": "Default: agent."
+    },
+    {
+      "key": "legacy.7b6963136014f85d",
+      "source": "Default: active. / Varsayılan: active.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 389
+        }
+      ],
+      "values": {
+        "en": "Default: active."
+      },
+      "requestSource": "Default: active."
+    },
+    {
+      "key": "legacy.36b4039c069b0b90",
+      "source": "Optional agency or company name. / Opsiyonel firma adı.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 390
+        }
+      ],
+      "values": {
+        "en": "Optional agency or company name."
+      },
+      "requestSource": "Optional agency or company name."
+    },
+    {
+      "key": "legacy.4332ad3fd58d1589",
+      "source": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none. / 2 harfli ülke kodu, boş bırakılabilir.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 391
+        }
+      ],
+      "values": {
+        "en": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none."
+      },
+      "requestSource": "2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none."
+    },
+    {
+      "key": "legacy.4b942a29ef8cc49f",
+      "source": "Optional. Must start with \"+\" and have 6–18 digits total. / Opsiyonel, \"+\" ile başlamalı, 6–18 rakam.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 392
+        }
+      ],
+      "values": {
+        "en": "Optional. Must start with \"+\" and have 6–18 digits total."
+      },
+      "requestSource": "Optional. Must start with \"+\" and have 6–18 digits total."
+    },
+    {
+      "key": "legacy.9824464695b59e83",
+      "source": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path. / Genel erişime açık URL veya /uploads/... yolu.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 393
+        }
+      ],
+      "values": {
+        "en": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path."
+      },
+      "requestSource": "Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path."
+    },
+    {
+      "key": "legacy.fc1a4cd96859e294",
+      "source": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker. / Boş bırakılırsa diyalogdaki seçici kullanılır.",
+      "kind": "template-instructions",
+      "locations": [
+        {
+          "file": "pages/admin/Users.tsx",
+          "line": 394
+        }
+      ],
+      "values": {
+        "en": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker."
+      },
+      "requestSource": "Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker."
+    },
+    {
+      "key": "legacy.52b051f6c39dbc7d",
+      "source": "Fill in the {value0} sheet with your data",
+      "requestSource": "Fill in the {value0} sheet with your data",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "Fill in the {value0} sheet with your data"
+      }
+    },
+    {
+      "key": "legacy.2332c8121656b9e6",
+      "source": "See the {value0} sheet for field descriptions",
+      "requestSource": "See the {value0} sheet for field descriptions",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "See the {value0} sheet for field descriptions"
+      }
+    },
+    {
+      "key": "legacy.a161f28561ebc6ce",
+      "source": "Chunks retrieved: {value0}",
+      "requestSource": "Chunks retrieved: {value0}",
+      "kind": "complete-message",
+      "locations": [],
+      "values": {
+        "en": "Chunks retrieved: {value0}"
+      }
+    },
+    {
+      "key": "legacy.0d21bd52022ca7f7",
+      "source": "Online",
+      "requestSource": "Online",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Online"
+      }
+    },
+    {
+      "key": "legacy.334d016f755cd6dc",
+      "source": "Hello!",
+      "requestSource": "Hello!",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Hello!"
+      }
+    },
+    {
+      "key": "legacy.fa9289105135da36",
+      "source": "I'm Findy, your Find And Study assistant. How can I help you today?",
+      "requestSource": "I'm Findy, your Find And Study assistant. How can I help you today?",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "I'm Findy, your Find And Study assistant. How can I help you today?"
+      }
+    },
+    {
+      "key": "legacy.aa83d96666061924",
+      "source": "Powered by AI",
+      "requestSource": "Powered by AI",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Powered by AI"
+      }
+    },
+    {
+      "key": "legacy.0d3f1ad812940ea1",
+      "source": "Minimize Findy",
+      "requestSource": "Minimize Findy",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Minimize Findy"
+      }
+    },
+    {
+      "key": "legacy.d72e311c4ddaf4ac",
+      "source": "Minimize",
+      "requestSource": "Minimize",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Minimize"
+      }
+    },
+    {
+      "key": "legacy.8643897795b9bd16",
+      "source": "Chat with Findy",
+      "requestSource": "Chat with Findy",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Chat with Findy"
+      }
+    },
+    {
+      "key": "legacy.3b14c5dc986f2a36",
+      "source": "Close chat",
+      "requestSource": "Close chat",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Close chat"
+      }
+    },
+    {
+      "key": "legacy.e9bddf7360b6dc62",
+      "source": "Type your message...",
+      "requestSource": "Type your message...",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Type your message..."
+      }
+    },
+    {
+      "key": "legacy.bed8912191368c87",
+      "source": "Type your message",
+      "requestSource": "Type your message",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Type your message"
+      }
+    },
+    {
+      "key": "legacy.93a26b1eaff99b3a",
+      "source": "Send message",
+      "requestSource": "Send message",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Send message"
+      }
+    },
+    {
+      "key": "legacy.20d009893e724d7d",
+      "source": "Normalized query tokens",
+      "requestSource": "Normalized query tokens",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Normalized query tokens"
+      }
+    },
+    {
+      "key": "legacy.fe00bd2029baf74e",
+      "source": "Expanded / matched terms",
+      "requestSource": "Expanded / matched terms",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Expanded / matched terms"
+      }
+    },
+    {
+      "key": "legacy.213a9822c38a965c",
+      "source": "Active filters",
+      "requestSource": "Active filters",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Active filters"
+      }
+    },
+    {
+      "key": "legacy.140bedbf9c3f6d56",
+      "source": "none",
+      "requestSource": "none",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "none"
+      }
+    },
+    {
+      "key": "legacy.4823b216dd99a066",
+      "source": "Debug trace — {value0} matched chunks",
+      "requestSource": "Debug trace — {value0} matched chunks",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Debug trace — {value0} matched chunks"
+      }
+    },
+    {
+      "key": "legacy.7b6262a0f666f807",
+      "source": "#{value0} score: {value1}",
+      "requestSource": "#{value0} score: {value1}",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "#{value0} score: {value1}"
+      }
+    },
+    {
+      "key": "legacy.1df43fd336c39b04",
+      "source": "Top {value0} scored chunks",
+      "requestSource": "Top {value0} scored chunks",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Top {value0} scored chunks"
+      }
+    },
+    {
+      "key": "legacy.a8962c964dae6c2d",
+      "source": "No response received",
+      "requestSource": "No response received",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "No response received"
+      }
+    },
+    {
+      "key": "legacy.7ed7d8d00bf47d9e",
+      "source": "Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.",
+      "requestSource": "Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "tr": "Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin."
+      }
+    },
+    {
+      "key": "legacy.2697f8e34d1b2731",
+      "source": "Educational platform for Find And Study agents with courses, quizzes, certificates, and comprehensive training materials.",
+      "requestSource": "Educational platform for Find And Study agents with courses, quizzes, certificates, and comprehensive training materials.",
+      "kind": "widget-message",
+      "locations": [
+        {
+          "file": "client/public/findy-launcher.js + client/index.html",
+          "line": 1
+        }
+      ],
+      "values": {
+        "en": "Educational platform for Find And Study agents with courses, quizzes, certificates, and comprehensive training materials."
+      }
+    }
+  ]
+}
