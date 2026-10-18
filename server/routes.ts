@@ -1,3 +1,4 @@
+import {registerTranslationControl} from './translation-control';
 import { registerCampaignAccess, claimAcademyDevice, enforceAcademyAccess } from './campaign-access';
 import { registerAdminOperations } from './admin-operations';
 import type { Express, Request, Response, NextFunction } from "express";
@@ -479,6 +480,7 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 export async function registerRoutes(app: Express): Promise<Server> {
   registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit);
   registerAdminOperations(app, requireAuth, requireAdmin);
+  registerTranslationControl(app, requireAuth, requireAdmin);
   // PUBLIC API endpoints for agents (no authentication required for published content)
   
   // Get active countries with published content
