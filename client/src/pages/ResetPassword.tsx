@@ -1,3 +1,4 @@
+import {usePublicUi} from '@/lib/public-ui';
 import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ResetPassword() {
+  const {tl,locale}=usePublicUi();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [token, setToken] = useState('');
@@ -23,7 +25,7 @@ export default function ResetPassword() {
     const tokenParam = params.get('token');
     
     if (!tokenParam) {
-      setError('Invalid or missing reset token');
+      setError("Invalid or missing reset token");
     } else {
       setToken(tokenParam);
     }
@@ -35,13 +37,13 @@ export default function ResetPassword() {
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     // Validate password length
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setError("Password must be at least 6 characters long");
       return;
     }
 
@@ -62,20 +64,20 @@ export default function ResetPassword() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to reset password');
+        throw new Error(data.message || "Failed to reset password");
       }
 
       toast({
-        title: 'Success',
-        description: 'Your password has been reset successfully',
+        title: tl("Success"),
+        description: tl("Your password has been reset successfully"),
       });
 
       setIsSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password');
+      setError(err.message || "Failed to reset password");
       toast({
-        title: 'Error',
-        description: err.message || 'Failed to reset password',
+        title: tl("Error"),
+        description: tl(err.message || "Failed to reset password"),
         variant: 'destructive',
       });
     } finally {
@@ -86,8 +88,8 @@ export default function ResetPassword() {
   if (isSuccess) {
     return (
       <AuthCard
-        title="Password Reset Successful"
-        description="Your password has been updated"
+        title={tl("Password Reset Successful")}
+        description={tl("Your password has been updated")}
       >
         <div className="text-center space-y-4">
           <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
@@ -96,14 +98,12 @@ export default function ResetPassword() {
           
           <div>
             <p className="text-sm text-muted-foreground mb-4">
-              Your password has been successfully reset. You can now sign in with your new password.
-            </p>
+              {tl("Your password has been successfully reset. You can now sign in with your new password.")}</p>
           </div>
 
           <Link href="/login">
             <Button className="w-full" data-testid="button-go-to-login">
-              Go to Sign In
-            </Button>
+              {tl("Go to Sign In")}</Button>
           </Link>
         </div>
       </AuthCard>
@@ -113,8 +113,8 @@ export default function ResetPassword() {
   if (!token && error) {
     return (
       <AuthCard
-        title="Invalid Reset Link"
-        description="This password reset link is invalid or has expired"
+        title={tl("Invalid Reset Link")}
+        description={tl("This password reset link is invalid or has expired")}
       >
         <div className="text-center space-y-4">
           <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center">
@@ -123,21 +123,19 @@ export default function ResetPassword() {
           
           <div>
             <p className="text-sm text-muted-foreground mb-4">
-              {error}
+              {tl(error)}
             </p>
           </div>
 
           <Link href="/forgot-password">
             <Button className="w-full" data-testid="button-request-new-link">
-              Request New Reset Link
-            </Button>
+              {tl("Request New Reset Link")}</Button>
           </Link>
 
           <Link href="/login">
             <Button variant="outline" className="w-full">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Sign In
-            </Button>
+              {tl("Back to Sign In")}</Button>
           </Link>
         </div>
       </AuthCard>
@@ -146,42 +144,41 @@ export default function ResetPassword() {
 
   return (
     <AuthCard
-      title="Reset Password"
-      description="Enter your new password"
+      title={tl("Reset Password")}
+      description={tl("Enter your new password")}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm" data-testid="error-message">
-            {error}
+            {tl(error)}
           </div>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="newPassword">New Password</Label>
+          <Label htmlFor="newPassword">{tl("New Password")}</Label>
           <Input
             id="newPassword"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Enter new password"
+            placeholder={tl("Enter new password")}
             required
             minLength={6}
             disabled={isLoading}
             data-testid="input-new-password"
           />
           <p className="text-xs text-muted-foreground">
-            Must be at least 6 characters long
-          </p>
+            {tl("Must be at least 6 characters long")}</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Label htmlFor="confirmPassword">{tl("Confirm Password")}</Label>
           <Input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password"
+            placeholder={tl("Confirm new password")}
             required
             minLength={6}
             disabled={isLoading}
@@ -195,7 +192,7 @@ export default function ResetPassword() {
           disabled={isLoading}
           data-testid="button-reset-password"
         >
-          {isLoading ? 'Resetting Password...' : 'Reset Password'}
+          {isLoading ? tl("Resetting Password...") : tl("Reset Password")}
         </Button>
       </form>
 
@@ -203,8 +200,7 @@ export default function ResetPassword() {
         <Link href="/login">
           <span className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
             <ArrowLeft className="w-3 h-3 inline mr-1" />
-            Back to Sign In
-          </span>
+            {tl("Back to Sign In")}</span>
         </Link>
       </div>
     </AuthCard>
