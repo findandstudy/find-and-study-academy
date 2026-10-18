@@ -1,0 +1,22 @@
+{
+  "home": {
+    "auth.forgotPassword": "Forgot password?",
+    "auth.newAgent": "New agent?",
+    "auth.passwordPlaceholder": "Enter your password",
+    "auth.signInSubtitle": "Sign in to your Find And Study account",
+    "auth.signUp": "Sign Up",
+    "auth.welcomeBack": "Welcome Back",
+    "common.back": "Back",
+    "common.cancel": "Cancel",
+    "common.continue": "Continue",
+    "common.error": "Error",
+    "common.loading": "Loading...",
+    "common.next": "Next",
+    "language.current": "Current language: {{name}}",
+    "language.label": "Language",
+    "language.select": "Select language",
+    "toast.languageChanged": "Language changed",
+    "toast.languageChangedDescription": "The interface is now in {{name}}."
+  },
+  "phrases": []
+}
