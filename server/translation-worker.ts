@@ -18,7 +18,7 @@ export async function processOne(fetcher?:typeof fetch,testing?:{configuration:a
  try{
  const source=await readSource(j.kind,j.source_id);if(!source||sourceHash(j.kind,source)!==j.source_hash){await database.query("UPDATE academy_translation_jobs SET state='superseded',updated_at=now() WHERE id=$1",[j.id]);return true;}
  if(!source.title?.trim())throw Error('MISSING_SOURCE_TITLE');const sourceSnapshot=sourceValue(j.kind,source),m=manifest(j.kind,sourceSnapshot);
- const base=j.base_translation?{title:j.base_translation.title,description:j.base_translation.description,...(j.kind==='quiz'?{questions:JSON.parse(j.base_translation.questions)}:{content:j.base_translation.content})}:null;
+ const base=j.reuse_translation||(j.base_translation?{title:j.base_translation.title,description:j.base_translation.description,...(j.kind==='quiz'?{questions:JSON.parse(j.base_translation.questions)}:{content:j.base_translation.content})}:null);
  const reuse=reuseFragments(j.kind,j.previous_snapshot,base,sourceSnapshot),indices=reuse.map((text,i)=>text===null?i:-1).filter(i=>i>=0),strings=indices.map(i=>m.fields[i].text);
  let completed:string[]=[];
  if(strings.length){const budget=testing?{accountedUSD:JSON.parse(fs.readFileSync(ioDir+'/budget-ledger.json','utf8')).chargedUSD,remainingUSD:100-JSON.parse(fs.readFileSync(ioDir+'/budget-ledger.json','utf8')).chargedUSD}:budgetSummary();if(budget.accountedUSD===null)throw Error('BUDGET_UNAVAILABLE');if(budget.remainingUSD===0)throw Error('BUDGET_LIMIT');
