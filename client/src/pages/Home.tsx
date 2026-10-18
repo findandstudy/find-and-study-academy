@@ -1,3 +1,4 @@
+import {usePublicUi} from '@/lib/public-ui';
 import { useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,7 @@ const BRAND_RED_DEEP = '#C8161D';
 
 export default function Home() {
   const { t, i18n } = useTranslation();
+  const {tl}=usePublicUi();
   const [, setLocation] = useLocation();
   const { user, role } = useAuthStore();
 
@@ -53,15 +55,15 @@ export default function Home() {
   }, [user, role, setLocation]);
 
   const features = [
-    { icon: BookOpen, title: t('home.f1Title'), description: t('home.f1Desc') },
-    { icon: Award, title: t('home.f2Title'), description: t('home.f2Desc') },
-    { icon: Package, title: t('home.f3Title'), description: t('home.f3Desc') },
-    { icon: Trophy, title: t('home.f4Title'), description: t('home.f4Desc') },
+    { icon: BookOpen, title: tl('home.f1Title'), description: tl('home.f1Desc') },
+    { icon: Award, title: tl('home.f2Title'), description: tl('home.f2Desc') },
+    { icon: Package, title: tl('home.f3Title'), description: tl('home.f3Desc') },
+    { icon: Trophy, title: tl('home.f4Title'), description: tl('home.f4Desc') },
   ];
   const heroBullets = [
-    t('home.heroBullet1'),
-    t('home.heroBullet2'),
-    t('home.heroBullet3'),
+    tl('home.heroBullet1'),
+    tl('home.heroBullet2'),
+    tl('home.heroBullet3'),
   ];
 
   return (
@@ -80,12 +82,12 @@ export default function Home() {
             <LanguageSwitcher variant="inline" />
             <Link href="/login">
               <Button variant="ghost" size="sm" data-testid="link-nav-login">
-                {t('home.navLogin')}
+                {tl('home.navLogin')}
               </Button>
             </Link>
             <Link href="/signup">
               <Button size="sm" data-testid="link-nav-signup">
-                {t('home.navSignup')}
+                {tl('home.navSignup')}
               </Button>
             </Link>
           </nav>
@@ -114,7 +116,7 @@ export default function Home() {
                 data-testid="badge-hero-tag"
               >
                 <GraduationCap className="w-3 h-3 mr-1" style={{ color: BRAND_RED }} />
-                {t('home.heroBadge')}
+                {tl('home.heroBadge')}
               </Badge>
               <h1
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] mb-4 tracking-tight"
@@ -126,14 +128,14 @@ export default function Home() {
                   className="block text-2xl sm:text-3xl lg:text-4xl font-semibold mt-3 text-slate-700"
                   data-testid="text-hero-subtitle"
                 >
-                  {t('home.heroSubtitle')}
+                  {tl('home.heroSubtitle')}
                 </span>
               </h1>
               <p
                 className="text-base sm:text-lg text-slate-600 mb-7 max-w-2xl leading-relaxed"
                 data-testid="text-hero-description"
               >
-                {t('home.heroDescription')}
+                {tl('home.heroDescription')}
               </p>
 
               <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2 mb-8 max-w-2xl">
@@ -152,13 +154,13 @@ export default function Home() {
               <div className="flex flex-wrap gap-3">
                 <Link href="/signup">
                   <Button size="lg" data-testid="button-cta-signup">
-                    {t('home.ctaStart')}
+                    {tl('home.ctaStart')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <Link href="/login">
                   <Button size="lg" variant="outline" data-testid="button-cta-login">
-                    {t('home.ctaLoginPortal')}
+                    {tl('home.ctaLoginPortal')}
                   </Button>
                 </Link>
               </div>
@@ -187,21 +189,21 @@ export default function Home() {
                           Find And Study Academy
                         </p>
                         <p className="text-lg font-bold" style={{ color: BRAND_NAVY }}>
-                          {t('home.cardTitle')}
+                          {tl('home.cardTitle')}
                         </p>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <FeatureRow icon={BookOpen} label={t('home.cardRow1')} />
-                      <FeatureRow icon={Award} label={t('home.cardRow2')} />
-                      <FeatureRow icon={Package} label={t('home.cardRow3')} />
-                      <FeatureRow icon={Trophy} label={t('home.cardRow4')} />
+                      <FeatureRow icon={BookOpen} label={tl('home.cardRow1')} />
+                      <FeatureRow icon={Award} label={tl('home.cardRow2')} />
+                      <FeatureRow icon={Package} label={tl('home.cardRow3')} />
+                      <FeatureRow icon={Trophy} label={tl('home.cardRow4')} />
                     </div>
                     <div
                       className="mt-6 rounded-md p-3 text-sm font-semibold text-white text-center"
                       style={{ background: BRAND_RED_DEEP }}
                     >
-                      {t('home.cardCta')}
+                      {tl('home.cardCta')}
                     </div>
                   </CardContent>
                 </Card>
@@ -219,9 +221,9 @@ export default function Home() {
               className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
               style={{ color: BRAND_NAVY }}
             >
-              {t('home.featuresTitle')}
+              {tl('home.featuresTitle')}
             </h2>
-            <p className="text-slate-600">{t('home.featuresSubtitle')}</p>
+            <p className="text-slate-600">{tl('home.featuresSubtitle')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((f, i) => (
@@ -255,21 +257,21 @@ export default function Home() {
             className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
             style={{ color: BRAND_NAVY }}
           >
-            {t('home.ctaBottomTitle')}
+            {tl('home.ctaBottomTitle')}
           </h2>
           <p className="text-slate-600 mb-7 max-w-2xl mx-auto leading-relaxed">
-            {t('home.ctaBottomDesc')}
+            {tl('home.ctaBottomDesc')}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/signup">
               <Button size="lg" data-testid="button-cta-signup-bottom">
-                {t('home.ctaBottomSignup')}
+                {tl('home.ctaBottomSignup')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link href="/login">
               <Button size="lg" variant="outline" data-testid="button-cta-login-bottom">
-                {t('home.ctaBottomLogin')}
+                {tl('home.ctaBottomLogin')}
               </Button>
             </Link>
           </div>
@@ -286,7 +288,7 @@ export default function Home() {
                 alt="Find And Study"
                 className="h-10 w-auto object-contain mb-4"
               />
-              <p className="text-slate-600 leading-relaxed max-w-sm">{t('home.footerTagline')}</p>
+              <p className="text-slate-600 leading-relaxed max-w-sm">{tl('home.footerTagline')}</p>
             </div>
 
             <div className="md:col-span-3">
@@ -294,7 +296,7 @@ export default function Home() {
                 className="font-semibold mb-4 text-xs uppercase tracking-wider"
                 style={{ color: BRAND_NAVY }}
               >
-                {t('home.footerLinksHead')}
+                {tl('home.footerLinksHead')}
               </h4>
               <ul className="space-y-1 text-slate-600">
                 <li>
@@ -303,7 +305,7 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-login"
                   >
-                    {t('home.footerLoginLink')}
+                    {tl('home.footerLoginLink')}
                   </Link>
                 </li>
                 <li>
@@ -312,7 +314,7 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-signup"
                   >
-                    {t('home.footerSignupLink')}
+                    {tl('home.footerSignupLink')}
                   </Link>
                 </li>
                 <li>
@@ -321,7 +323,7 @@ export default function Home() {
                     className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
                     data-testid="link-footer-verify"
                   >
-                    {t('home.footerVerifyLink')}
+                    {tl('home.footerVerifyLink')}
                   </Link>
                 </li>
               </ul>
@@ -332,7 +334,7 @@ export default function Home() {
                 className="font-semibold mb-4 text-xs uppercase tracking-wider"
                 style={{ color: BRAND_NAVY }}
               >
-                {t('home.footerContactHead')}
+                {tl('home.footerContactHead')}
               </h4>
               <ul className="space-y-1 text-slate-600">
                 <li>
@@ -372,8 +374,8 @@ export default function Home() {
           </div>
 
           <div className="border-t border-slate-200 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} Find And Study Academy. {t('home.footerRights')}</span>
-            <span className="text-slate-400">{t('home.footerLocated')}</span>
+            <span>© {new Date().getFullYear()} Find And Study Academy. {tl('home.footerRights')}</span>
+            <span className="text-slate-400">{tl('home.footerLocated')}</span>
           </div>
         </div>
       </footer>
