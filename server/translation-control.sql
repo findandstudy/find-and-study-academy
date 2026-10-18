@@ -3,6 +3,11 @@ CREATE TABLE IF NOT EXISTS academy_translation_sources (
  snapshot jsonb NOT NULL, title text NOT NULL, source_language text NOT NULL DEFAULT 'en', eligible boolean NOT NULL DEFAULT true,
  updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(kind,source_id)
 );
+CREATE TABLE IF NOT EXISTS academy_translation_source_versions (
+ kind text NOT NULL,source_id text NOT NULL,source_hash text NOT NULL,snapshot jsonb NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,source_id,source_hash),
+ FOREIGN KEY(kind,source_id) REFERENCES academy_translation_sources(kind,source_id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS academy_translation_targets (
  kind text NOT NULL, source_id text NOT NULL, language text NOT NULL,
  locked boolean NOT NULL DEFAULT false, published_hash text, updated_at timestamptz NOT NULL DEFAULT now(),
@@ -10,7 +15,7 @@ CREATE TABLE IF NOT EXISTS academy_translation_targets (
 );
 CREATE TABLE IF NOT EXISTS academy_translation_jobs (
  id bigserial PRIMARY KEY, kind text NOT NULL, source_id text NOT NULL, language text NOT NULL, source_hash text NOT NULL,
- source_snapshot jsonb NOT NULL, previous_snapshot jsonb, base_translation jsonb, base_hash text NOT NULL,
+ source_snapshot jsonb NOT NULL, previous_snapshot jsonb, base_translation jsonb, reuse_translation jsonb, base_hash text NOT NULL,
  state text NOT NULL DEFAULT 'queued' CHECK(state IN ('queued','processing','ready','failed','budget_wait','locked','superseded','published','cancelled')),
  draft jsonb, attempts integer NOT NULL DEFAULT 0, error text, not_before timestamptz NOT NULL DEFAULT now(),
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), actor_id text,
