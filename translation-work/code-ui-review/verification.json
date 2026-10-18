@@ -1,0 +1,53 @@
+{
+  "state": "AWAITING_USER_REVIEW",
+  "published": false,
+  "languages": 23,
+  "newSourceLabels": 1403,
+  "resolvedDynamicDictionaryKeys": 62,
+  "newReviewRows": 33695,
+  "combinedReviewRows": 39722,
+  "sourceFilesAudited": 150,
+  "liveSourceFilesVerified": 132,
+  "liveLocaleFilesVerified": 21,
+  "liveFilesUnchanged": true,
+  "manualPublications": 0,
+  "sourceDraftJobsInSeparateWorker": {
+    "queued": 6523,
+    "ready": 448
+  },
+  "checks": {
+    "typecheck": "passed",
+    "productionBuild": "passed locally only",
+    "protectedValuesRows": 33695,
+    "localeDigitEquivalence": "one reused Persian digit kept unchanged",
+    "fullCatalogMissingKeys": 0,
+    "newMissingLabelProbe": "detected in all 23 languages",
+    "browser": {
+      "checks": 138,
+      "languages": 23,
+      "routes": 6,
+      "widgetOpenClosePreserved": true,
+      "externalRequestsBlocked": true,
+      "errors": []
+    },
+    "reviewFile": "23 languages, filters, edit retention, 39722-record export, mobile passed",
+    "ledgerTestsPassed": 4
+  },
+  "budget": {
+    "capUSD": 100,
+    "accountedUSD": 26.0559188,
+    "actualUSD": 25.8940468,
+    "remainingUSD": 73.9440812,
+    "snapshotAt": "2026-10-18T07:43:43.320701+00:00"
+  },
+  "runtimeContentPolicy": "User content, chat replies, permission/scope identifiers, API payloads, examples and technical import columns are preserved. Externally generated messages are not automatically sent for translation.",
+  "reviewedScannerFalsePositives": [
+    "components/examples/CourseViewExample.tsx",
+    "components/ui/toast.tsx",
+    "data/seed.ts",
+    "hooks/use-toast.ts",
+    "i18n/index.ts",
+    "lib/queryClient.ts",
+    "store/data.ts"
+  ]
+}
