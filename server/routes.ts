@@ -539,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If a language is requested, fetch all translations for that language in one query
       // and overlay title/description/content fields when a published translation exists
       let translationMap: Map<string, any> = new Map();
-      if (lang && typeof lang === 'string' && lang !== 'en') {
+      if (lang && typeof lang === 'string') {
         const translations = await storage.getTranslationsByLanguage(lang);
         for (const t of translations) {
           if (t.status === 'published') {
