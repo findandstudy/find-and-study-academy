@@ -1,3 +1,4 @@
+import stepLabels from '@/lib/signup-steps.json';
 import {useAcademyUi} from '@/lib/academy-ui';
 import '@/lib/campaign-i18n';
 import { useMemo, useState, useRef, useEffect } from 'react';
@@ -32,6 +33,7 @@ export default function Signup() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { headingRef.current?.focus(); }, [step]);
   const language = normalizeLanguage(i18n.language);
+  const steps = stepLabels[language as keyof typeof stepLabels] || stepLabels.en;
   const [formData, setFormData] = useState({
     promoCode: new URLSearchParams(window.location.search).get('promo') || '',
     verificationCode: '',
@@ -177,16 +179,16 @@ export default function Signup() {
       title={t('registration.title')}
       description={t('registration.subtitle')}
     >
-      <form ref={formRef} noValidate onSubmit={handleSubmit} dir={dir} className="space-y-4">
+      <form ref={formRef} noValidate onSubmit={handleSubmit} dir={dir} className="space-y-3">
         <ol className="grid grid-cols-3 gap-2" aria-label={t('registration.title')}>
-          {[t('registration.fullName'), t('registration.agencyName'), t('registration.createAccount')].map((label, index) => (
-            <li key={index} aria-current={step === index ? 'step' : undefined} className={`rounded-lg border px-2 py-3 text-sm break-words ${step === index ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 text-muted-foreground'}`}>
+          {steps.map((label, index) => (
+            <li key={index} aria-current={step === index ? 'step' : undefined} className={`rounded-lg border px-2 py-2 text-sm break-words ${step === index ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 text-muted-foreground'}`}>
               <span className="block font-semibold">{index + 1}. {label}</span>
             </li>
           ))}
         </ol>
-        <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold outline-none">{[t('registration.fullName'), t('registration.agencyName'), t('registration.createAccount')][step]}</h2>
-        <fieldset data-step="0" hidden={step !== 0} className="space-y-4 min-w-0">
+        <h2 ref={headingRef} tabIndex={-1} className="sr-only">{steps[step]}</h2>
+        <fieldset data-step="0" hidden={step !== 0} className="space-y-3 min-w-0">
         <div className="space-y-2">
           <Label htmlFor="name">{t('registration.fullName')}</Label>
           <Input
@@ -323,7 +325,7 @@ export default function Signup() {
         </div>
 
         </fieldset>
-        <fieldset data-step="2" hidden={step !== 2} className="space-y-4 min-w-0">
+        <fieldset data-step="2" hidden={step !== 2} className="space-y-3 min-w-0">
           <dl className="rounded-lg bg-muted/40 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs break-words">
             {[[t('registration.fullName'), formData.name], [t('auth.email'), formData.email], [t('registration.agencyName'), formData.agencyName], [t('registration.country'), sortedCountries.find(c => c.code === formData.country)?.name]].map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="font-medium break-all">{value}</dd></div>)}
           </dl>
@@ -337,7 +339,7 @@ export default function Signup() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isLoading}
+          disabled={isLoading || sendingCode}
           data-testid="button-submit"
         >
           {step < 2 ? t('common.continue') : t(isLoading ? 'registration.creating' : 'registration.createAccount')}
