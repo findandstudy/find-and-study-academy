@@ -1,0 +1,101 @@
+{
+  "state": "AWAITING_USER_REVIEW",
+  "published": false,
+  "entries": 6027,
+  "languagesPrepared": 21,
+  "languagesChecked": 23,
+  "remainingKnownMissingInDrafts": 0,
+  "liveTranslationFilesUnchanged": true,
+  "protectedValuesValidated": true,
+  "dynamicReferencesForDeveloperReview": 11,
+  "unmarkedFilesForDeveloperReview": [
+    "components/BulkUploadWizard.tsx",
+    "components/IntegrationApiKeys.tsx",
+    "components/IntegrationEventLog.tsx",
+    "components/PopupRenderer.tsx",
+    "components/VideoPlayer.tsx",
+    "components/course/QuizModal.tsx",
+    "components/examples/CourseViewExample.tsx",
+    "components/ui/breadcrumb.tsx",
+    "components/ui/carousel.tsx",
+    "components/ui/dialog.tsx",
+    "components/ui/pagination.tsx",
+    "components/ui/sheet.tsx",
+    "components/ui/sidebar.tsx",
+    "components/ui/toast.tsx",
+    "data/seed.ts",
+    "hooks/use-toast.ts",
+    "i18n/index.ts",
+    "lib/queryClient.ts",
+    "pages/admin/Agencies.tsx",
+    "pages/admin/Announcements.tsx",
+    "pages/admin/Certificates.tsx",
+    "pages/admin/ContentCountries.tsx",
+    "pages/admin/FindyAI.tsx",
+    "pages/admin/Integrations.tsx",
+    "pages/admin/Quizzes.tsx",
+    "pages/admin/SettingsPayments.tsx",
+    "pages/admin/Users.tsx",
+    "pages/agent/Agency.tsx",
+    "pages/agent/ExamsOrders.tsx",
+    "pages/agent/Leaderboard.tsx",
+    "pages/agent/Subscriptions.tsx",
+    "pages/not-found.tsx",
+    "store/auth.ts",
+    "store/data.ts"
+  ],
+  "budget": {
+    "capUSD": 100,
+    "accountedUSD": 25.015985999999867,
+    "actualUSD": 24.854114000000028,
+    "remainingUSD": 74.98401400000013
+  },
+  "generatedAt": "2026-10-18T06:55:53.262Z",
+  "localDraftCorrections": [
+    {
+      "language": "tk",
+      "key": "common.status",
+      "before": "Status",
+      "after": "Ýagdaý"
+    },
+    {
+      "language": "tk",
+      "key": "admin.partnerZone.type",
+      "before": "Type",
+      "after": "Görnüşi"
+    },
+    {
+      "language": "tk",
+      "key": "admin.partnerZone.statusLabel",
+      "before": "Status",
+      "after": "Ýagdaý"
+    },
+    {
+      "language": "tk",
+      "key": "admin.popups.statusLabel",
+      "before": "Status",
+      "after": "Ýagdaý"
+    },
+    {
+      "language": "tk",
+      "key": "admin.popups.colStatus",
+      "before": "Status",
+      "after": "Ýagdaý"
+    },
+    {
+      "language": "kk",
+      "key": "agent.certificates.certifiedAgent",
+      "before": "Certified Find And Study Agent",
+      "after": "Сертификатталған Find And Study агенті"
+    }
+  ],
+  "uiReviewChecks": [
+    "21 language render",
+    "edit retention",
+    "6027-record export",
+    "RTL",
+    "mobile overflow"
+  ],
+  "ledgerTestsPassed": 4,
+  "sourceGuarded": true
+}
