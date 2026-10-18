@@ -13,8 +13,8 @@ interface AuthCardProps {
 export function AuthCard({ children, title, description, variant }: AuthCardProps) {
   return (
     <div
-      className={`min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative ${variant === 'signup' ? 'py-14 sm:py-10' : ''}`}
-      style={{ backgroundImage: `url(${backgroundImage})` }}
+      className={`min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative ${variant === 'signup' ? 'py-16 sm:py-12 bg-gradient-to-br from-slate-50 via-white to-blue-50' : ''}`}
+      style={variant === 'signup' ? undefined : { backgroundImage: `url(${backgroundImage})` }}
     >
       {/* Language picker — top-right corner so unauthenticated users can pick before signing in */}
       <div className="absolute top-3 right-3 z-10">
@@ -23,7 +23,7 @@ export function AuthCard({ children, title, description, variant }: AuthCardProp
         </div>
       </div>
 
-      <Card className={`w-full backdrop-blur-sm bg-background/95 ${variant === 'signup' ? 'max-w-3xl' : 'max-w-md'}`}>
+      <Card className={`w-full backdrop-blur-sm bg-background/95 ${variant === 'signup' ? 'max-w-[640px] bg-white shadow-sm' : 'max-w-md'}`}>
         <CardHeader className="space-y-0 text-center pt-3 pb-1">
           <div className="mb-2">
             <img
