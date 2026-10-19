@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { Play, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -59,12 +60,12 @@ export function VideoPlayer({ videoUrl, title, duration }: VideoPlayerProps) {
     switch (videoType) {
       case 'youtube': {
         const videoId = getYouTubeVideoId(videoUrl);
-        if (!videoId) return <div className="text-muted-foreground">Invalid YouTube URL</div>;
+        if (!videoId) return <div className="text-muted-foreground">{legacyUi("Invalid YouTube URL")}</div>;
         
         return (
           <iframe
             src={`https://www.youtube.com/embed/${videoId}`}
-            title={title || 'YouTube video'}
+            title={title || legacyUi("YouTube video")}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="w-full h-full"
@@ -75,12 +76,12 @@ export function VideoPlayer({ videoUrl, title, duration }: VideoPlayerProps) {
       
       case 'vimeo': {
         const videoId = getVimeoVideoId(videoUrl);
-        if (!videoId) return <div className="text-muted-foreground">Invalid Vimeo URL</div>;
+        if (!videoId) return <div className="text-muted-foreground">{legacyUi("Invalid Vimeo URL")}</div>;
         
         return (
           <iframe
             src={`https://player.vimeo.com/video/${videoId}`}
-            title={title || 'Vimeo video'}
+            title={title || legacyUi("Vimeo video")}
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
             className="w-full h-full"
@@ -97,15 +98,13 @@ export function VideoPlayer({ videoUrl, title, duration }: VideoPlayerProps) {
             className="w-full h-full bg-black"
             data-testid="video-player"
           >
-            Your browser does not support the video tag.
-          </video>
+            {legacyUi("Your browser does not support the video tag.")}</video>
         );
       
       default:
         return (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            Unsupported video format
-          </div>
+            {legacyUi("Unsupported video format")}</div>
         );
     }
   };

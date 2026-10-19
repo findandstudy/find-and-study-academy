@@ -1,0 +1,10 @@
+const fs=require('fs'),cp=require('child_process'),p='/var/lib/academy-translations';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const run=(name,args=[])=>cp.execFileSync('node',[p+'/'+name,...args],{cwd:'/var/www/academy.findandstudy.com',stdio:'inherit'});
+(async()=>{while(fs.existsSync(p+'/bulk-worker.lock')||fs.existsSync(p+'/outputs/run.lock'))await sleep(2000);
+let state=JSON.parse(fs.readFileSync(p+'/bulk-draft-state.json'));if(state.status==='stopped-on-error')throw Error('Draft repair stopped; review before source mutations');
+if(!fs.existsSync(p+'/quiz-title-source-plan.json'))run('repair-quiz-titles.cjs');
+if(!fs.existsSync(p+'/quiz-title-source-plan.json.applied.json'))run('repair-quiz-titles.cjs',['--apply']);
+if(!fs.existsSync(p+'/quiz-title-source-plan.json.verified.json'))throw Error('Title source public verification required');
+run('bulk-quiz-titles.cjs');
+})().catch(e=>{console.error(e.message);process.exitCode=1});

@@ -1,3 +1,4 @@
+import { legacyCountry, legacyUi, legacyLocale, legacyMessage } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
@@ -117,7 +118,7 @@ const getProviderBadge = (provider: string, isActive: boolean) => {
       <Badge variant={colors[provider as keyof typeof colors] || 'secondary'}>
         {provider}
       </Badge>
-      {isActive && <Badge variant="outline" className="text-green-600">Active</Badge>}
+      {isActive && <Badge variant="outline" className="text-green-600">{legacyUi("Active")}</Badge>}
     </div>
   );
 };
@@ -153,10 +154,10 @@ function DefaultsTabContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings/defaults'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
-      toast({ title: 'Saved', description: 'Default settings updated.' });
+      toast({ title: legacyUi("Saved"), description: legacyUi("Default settings updated.") });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to save setting.', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to save setting."), variant: 'destructive' });
     },
   });
 
@@ -166,42 +167,42 @@ function DefaultsTabContent() {
     if (supportEmail) saveDefaultMutation.mutate({ key: 'support_email', value: supportEmail });
   };
 
-  if (defaultsLoading) return <div className="py-8 text-center text-muted-foreground">Loading defaults...</div>;
+  if (defaultsLoading) return <div className="py-8 text-center text-muted-foreground">{legacyUi("Loading defaults...")}</div>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Platform Defaults</CardTitle>
-        <CardDescription>Configure default settings applied platform-wide.</CardDescription>
+        <CardTitle>{legacyUi("Platform Defaults")}</CardTitle>
+        <CardDescription>{legacyUi("Configure default settings applied platform-wide.")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label>Default Country</Label>
+          <Label>{legacyUi("Default Country")}</Label>
           <Select value={defaultCountry} onValueChange={setDefaultCountry}>
             <SelectTrigger data-testid="select-default-country">
-              <SelectValue placeholder="Select default country..." />
+              <SelectValue placeholder={legacyUi("Select default country...")} />
             </SelectTrigger>
             <SelectContent>
-              {countries.map((c: any) => (
+              {countries.filter((c: any) => /^[A-Z]{2}$/.test(c.code)).map((c: any) => (
                 <SelectItem key={c.code} value={c.code}>
-                  {c.flag ? <span className="mr-2">{c.flag}</span> : null}{c.name} ({c.code})
+                  {c.flag ? <span className="mr-2">{c.flag}</span> : null}{legacyCountry(c.code,c.name)} ({c.code})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">New agents will see this country's courses by default.</p>
+          <p className="text-xs text-muted-foreground">{legacyUi("New agents will see this country's courses by default.")}</p>
         </div>
         <div className="space-y-2">
-          <Label>Platform Name</Label>
+          <Label>{legacyUi("Platform Name")}</Label>
           <Input
             value={platformName}
             onChange={(e) => setPlatformName(e.target.value)}
-            placeholder="Find And Study Academy"
+            placeholder={legacyUi("Find And Study Academy")}
             data-testid="input-platform-name"
           />
         </div>
         <div className="space-y-2">
-          <Label>Support Email</Label>
+          <Label>{legacyUi("Support Email")}</Label>
           <Input
             value={supportEmail}
             onChange={(e) => setSupportEmail(e.target.value)}
@@ -210,7 +211,7 @@ function DefaultsTabContent() {
           />
         </div>
         <Button onClick={handleSave} disabled={saveDefaultMutation.isPending} data-testid="button-save-defaults">
-          {saveDefaultMutation.isPending ? 'Saving...' : 'Save Defaults'}
+          {saveDefaultMutation.isPending ? legacyUi("Saving...") : legacyUi("Save Defaults")}
         </Button>
       </CardContent>
     </Card>
@@ -285,16 +286,16 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
       toast({
-        title: 'Success',
-        description: 'Setting created successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Setting created successfully."),
       });
       setIsCreateSettingDialogOpen(false);
       settingForm.reset();
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to create setting.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to create setting."),
         variant: 'destructive',
       });
     },
@@ -306,8 +307,8 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
       toast({
-        title: 'Success',
-        description: 'Setting updated successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Setting updated successfully."),
       });
       setIsEditSettingDialogOpen(false);
       setEditingSetting(null);
@@ -315,8 +316,8 @@ export default function AdminSettingsPayments() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to update setting.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to update setting."),
         variant: 'destructive',
       });
     },
@@ -328,14 +329,14 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
       toast({
-        title: 'Success',
-        description: 'Setting deleted successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Setting deleted successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to delete setting.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to delete setting."),
         variant: 'destructive',
       });
     },
@@ -348,16 +349,16 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/payment-configs'] });
       toast({
-        title: 'Success',
-        description: 'Payment configuration created successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Payment configuration created successfully."),
       });
       setIsCreatePaymentDialogOpen(false);
       paymentForm.reset();
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to create payment configuration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to create payment configuration."),
         variant: 'destructive',
       });
     },
@@ -369,8 +370,8 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/payment-configs'] });
       toast({
-        title: 'Success',
-        description: 'Payment configuration updated successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Payment configuration updated successfully."),
       });
       setIsEditPaymentDialogOpen(false);
       setEditingPaymentConfig(null);
@@ -378,8 +379,8 @@ export default function AdminSettingsPayments() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to update payment configuration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to update payment configuration."),
         variant: 'destructive',
       });
     },
@@ -391,14 +392,14 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/payment-configs'] });
       toast({
-        title: 'Success',
-        description: 'Payment configuration activated successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Payment configuration activated successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to activate payment configuration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to activate payment configuration."),
         variant: 'destructive',
       });
     },
@@ -410,14 +411,14 @@ export default function AdminSettingsPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/payment-configs'] });
       toast({
-        title: 'Success',
-        description: 'Payment configuration deleted successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Payment configuration deleted successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to delete payment configuration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to delete payment configuration."),
         variant: 'destructive',
       });
     },
@@ -489,26 +490,22 @@ export default function AdminSettingsPayments() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">Settings & Payments</h1>
+        <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">{legacyUi("Settings & Payments")}</h1>
         <p className="text-muted-foreground mt-1">
-          Manage system configuration and payment provider settings.
-        </p>
+          {legacyUi("Manage system configuration and payment provider settings.")}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="settings" data-testid="tab-settings">
             <Settings className="w-4 h-4 mr-2" />
-            System Settings
-          </TabsTrigger>
+            {legacyUi("System Settings")}</TabsTrigger>
           <TabsTrigger value="payments" data-testid="tab-payments">
             <CreditCard className="w-4 h-4 mr-2" />
-            Payment Configuration
-          </TabsTrigger>
+            {legacyUi("Payment Configuration")}</TabsTrigger>
           <TabsTrigger value="defaults" data-testid="tab-defaults">
             <Globe className="w-4 h-4 mr-2" />
-            Defaults
-          </TabsTrigger>
+            {legacyUi("Defaults")}</TabsTrigger>
         </TabsList>
 
         {/* System Settings Tab */}
@@ -517,7 +514,7 @@ export default function AdminSettingsPayments() {
             <div className="flex items-center space-x-2">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search settings..."
+                placeholder={legacyUi("Search settings...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -529,12 +526,11 @@ export default function AdminSettingsPayments() {
               <DialogTrigger asChild>
                 <Button data-testid="button-create-setting">
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Setting
-                </Button>
+                  {legacyUi("Create Setting")}</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create System Setting</DialogTitle>
+                  <DialogTitle>{legacyUi("Create System Setting")}</DialogTitle>
                 </DialogHeader>
                 <Form {...settingForm}>
                   <form onSubmit={settingForm.handleSubmit(handleCreateSetting)} className="space-y-4">
@@ -660,14 +656,13 @@ export default function AdminSettingsPayments() {
                         onClick={() => setIsCreateSettingDialogOpen(false)}
                         data-testid="button-cancel-create-setting"
                       >
-                        Cancel
-                      </Button>
+                        {legacyUi("Cancel")}</Button>
                       <Button
                         type="submit"
                         disabled={createSettingMutation.isPending}
                         data-testid="button-submit-create-setting"
                       >
-                        {createSettingMutation.isPending ? 'Creating...' : 'Create'}
+                        {createSettingMutation.isPending ? legacyUi("Creating...") : legacyUi("Create")}
                       </Button>
                     </div>
                   </form>
@@ -681,7 +676,7 @@ export default function AdminSettingsPayments() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="w-5 h-5" />
-                System Settings ({filteredSettings.length})
+                {legacyUi("System Settings (")}{filteredSettings.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -694,15 +689,14 @@ export default function AdminSettingsPayments() {
               ) : filteredSettings.length === 0 ? (
                 <div className="text-center py-8">
                   <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Settings Found</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-2">{legacyUi("No Settings Found")}</h3>
                   <p className="text-muted-foreground mb-4">
-                    {searchTerm ? 'No settings match your search criteria.' : 'Get started by creating your first system setting.'}
+                    {searchTerm ? legacyUi("No settings match your search criteria.") : legacyUi("Get started by creating your first system setting.")}
                   </p>
                   {!searchTerm && (
                     <Button onClick={() => setIsCreateSettingDialogOpen(true)} data-testid="button-create-first-setting">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create First Setting
-                    </Button>
+                      {legacyUi("Create First Setting")}</Button>
                   )}
                 </div>
               ) : (
@@ -710,13 +704,13 @@ export default function AdminSettingsPayments() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Key</TableHead>
-                        <TableHead>Value</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Public</TableHead>
-                        <TableHead>Updated</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{legacyUi("Key")}</TableHead>
+                        <TableHead>{legacyUi("Value")}</TableHead>
+                        <TableHead>{legacyUi("Category")}</TableHead>
+                        <TableHead>{legacyUi("Type")}</TableHead>
+                        <TableHead>{legacyUi("Public")}</TableHead>
+                        <TableHead>{legacyUi("Updated")}</TableHead>
+                        <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -752,7 +746,7 @@ export default function AdminSettingsPayments() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {new Date(setting.updatedAt).toLocaleDateString()}
+                            {new Date(setting.updatedAt).toLocaleDateString(legacyLocale())}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -773,20 +767,18 @@ export default function AdminSettingsPayments() {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Setting</AlertDialogTitle>
+                                    <AlertDialogTitle>{legacyUi("Delete Setting")}</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Are you sure you want to delete the setting "{setting.key}"? This action cannot be undone.
-                                    </AlertDialogDescription>
+                                      {legacyUi("Are you sure you want to delete the setting \"{value0}\"? This action cannot be undone.",{value0:setting.key})}</AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => handleDeleteSetting(setting.key)}
                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                       data-testid={`button-confirm-delete-setting-${setting.id}`}
                                     >
-                                      Delete
-                                    </AlertDialogAction>
+                                      {legacyUi("Delete")}</AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
@@ -809,12 +801,11 @@ export default function AdminSettingsPayments() {
               <DialogTrigger asChild>
                 <Button data-testid="button-create-payment-config">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Payment Provider
-                </Button>
+                  {legacyUi("Add Payment Provider")}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Add Payment Provider</DialogTitle>
+                  <DialogTitle>{legacyUi("Add Payment Provider")}</DialogTitle>
                 </DialogHeader>
                 <Form {...paymentForm}>
                   <form onSubmit={paymentForm.handleSubmit(handleCreatePaymentConfig)} className="space-y-4">
@@ -976,14 +967,13 @@ export default function AdminSettingsPayments() {
                         onClick={() => setIsCreatePaymentDialogOpen(false)}
                         data-testid="button-cancel-create-payment"
                       >
-                        Cancel
-                      </Button>
+                        {legacyUi("Cancel")}</Button>
                       <Button
                         type="submit"
                         disabled={createPaymentConfigMutation.isPending}
                         data-testid="button-submit-create-payment"
                       >
-                        {createPaymentConfigMutation.isPending ? 'Creating...' : 'Create'}
+                        {createPaymentConfigMutation.isPending ? legacyUi("Creating...") : legacyUi("Create")}
                       </Button>
                     </div>
                   </form>
@@ -997,7 +987,7 @@ export default function AdminSettingsPayments() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Payment Providers ({paymentConfigs.length})
+                {legacyUi("Payment Providers (")}{paymentConfigs.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1010,27 +1000,25 @@ export default function AdminSettingsPayments() {
               ) : paymentConfigs.length === 0 ? (
                 <div className="text-center py-8">
                   <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Payment Providers</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-2">{legacyUi("No Payment Providers")}</h3>
                   <p className="text-muted-foreground mb-4">
-                    Configure your first payment provider to enable transactions.
-                  </p>
+                    {legacyUi("Configure your first payment provider to enable transactions.")}</p>
                   <Button onClick={() => setIsCreatePaymentDialogOpen(true)} data-testid="button-create-first-payment">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Payment Provider
-                  </Button>
+                    {legacyUi("Add Payment Provider")}</Button>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Provider</TableHead>
-                        <TableHead>Display Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Public Key</TableHead>
-                        <TableHead>Secret Key</TableHead>
-                        <TableHead>Updated</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{legacyUi("Provider")}</TableHead>
+                        <TableHead>{legacyUi("Display Name")}</TableHead>
+                        <TableHead>{legacyUi("Status")}</TableHead>
+                        <TableHead>{legacyUi("Public Key")}</TableHead>
+                        <TableHead>{legacyUi("Secret Key")}</TableHead>
+                        <TableHead>{legacyUi("Updated")}</TableHead>
+                        <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1041,7 +1029,7 @@ export default function AdminSettingsPayments() {
                           </TableCell>
                           <TableCell>
                             <span data-testid={`text-payment-display-name-${config.id}`}>
-                              {config.displayName || 'Unnamed Configuration'}
+                              {config.displayName || legacyUi("Unnamed Configuration")}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -1052,7 +1040,7 @@ export default function AdminSettingsPayments() {
                                 <AlertCircle className="w-4 h-4 text-red-600" />
                               )}
                               <span className={config.enabled ? 'text-green-600' : 'text-red-600'}>
-                                {config.enabled ? 'Enabled' : 'Disabled'}
+                                {config.enabled ? legacyUi("Enabled") : legacyUi("Disabled")}
                               </span>
                             </div>
                           </TableCell>
@@ -1083,7 +1071,7 @@ export default function AdminSettingsPayments() {
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {new Date(config.updatedAt).toLocaleDateString()}
+                            {new Date(config.updatedAt).toLocaleDateString(legacyLocale())}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -1116,20 +1104,18 @@ export default function AdminSettingsPayments() {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Payment Configuration</AlertDialogTitle>
+                                    <AlertDialogTitle>{legacyUi("Delete Payment Configuration")}</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Are you sure you want to delete this payment provider configuration? This action cannot be undone and may affect payment processing.
-                                    </AlertDialogDescription>
+                                      {legacyUi("Are you sure you want to delete this payment provider configuration? This action cannot be undone and may affect payment processing.")}</AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => handleDeletePaymentConfig(config.id)}
                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                       data-testid={`button-confirm-delete-payment-${config.id}`}
                                     >
-                                      Delete
-                                    </AlertDialogAction>
+                                      {legacyUi("Delete")}</AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
@@ -1155,7 +1141,7 @@ export default function AdminSettingsPayments() {
       <Dialog open={isEditSettingDialogOpen} onOpenChange={setIsEditSettingDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit System Setting</DialogTitle>
+            <DialogTitle>{legacyUi("Edit System Setting")}</DialogTitle>
           </DialogHeader>
           <Form {...settingForm}>
             <form onSubmit={settingForm.handleSubmit(handleEditSetting)} className="space-y-4">
@@ -1281,14 +1267,13 @@ export default function AdminSettingsPayments() {
                   onClick={() => setIsEditSettingDialogOpen(false)}
                   data-testid="button-cancel-edit-setting"
                 >
-                  Cancel
-                </Button>
+                  {legacyUi("Cancel")}</Button>
                 <Button
                   type="submit"
                   disabled={updateSettingMutation.isPending}
                   data-testid="button-submit-edit-setting"
                 >
-                  {updateSettingMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updateSettingMutation.isPending ? legacyUi("Saving...") : legacyUi("Save Changes")}
                 </Button>
               </div>
             </form>
@@ -1300,7 +1285,7 @@ export default function AdminSettingsPayments() {
       <Dialog open={isEditPaymentDialogOpen} onOpenChange={setIsEditPaymentDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Payment Configuration</DialogTitle>
+            <DialogTitle>{legacyUi("Edit Payment Configuration")}</DialogTitle>
           </DialogHeader>
           <Form {...paymentForm}>
             <form onSubmit={paymentForm.handleSubmit(handleEditPaymentConfig)} className="space-y-4">
@@ -1462,14 +1447,13 @@ export default function AdminSettingsPayments() {
                   onClick={() => setIsEditPaymentDialogOpen(false)}
                   data-testid="button-cancel-edit-payment"
                 >
-                  Cancel
-                </Button>
+                  {legacyUi("Cancel")}</Button>
                 <Button
                   type="submit"
                   disabled={updatePaymentConfigMutation.isPending}
                   data-testid="button-submit-edit-payment"
                 >
-                  {updatePaymentConfigMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updatePaymentConfigMutation.isPending ? legacyUi("Saving...") : legacyUi("Save Changes")}
                 </Button>
               </div>
             </form>

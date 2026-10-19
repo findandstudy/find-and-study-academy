@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale, legacyMessage } from "@/lib/legacy-ui";
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +65,7 @@ export default function AgentCertificates() {
       // If course not found, use placeholder data to still generate certificate
       const courseData = course || {
         id: certificate.courseId,
-        title: 'Find And Study Agent Training',
+        title: legacyUi("Find And Study Agent Training"),
         slug: 'agent-training'
       };
 
@@ -84,7 +85,7 @@ export default function AgentCertificates() {
       console.error('Certificate PDF generation error:', error);
       toast({
         title: t('agent.certificates.toast.downloadFailed'),
-        description: error instanceof Error ? error.message : t('agent.certificates.toast.downloadFailedDescription'),
+        description: error instanceof Error ? legacyMessage(error.message) : t('agent.certificates.toast.downloadFailedDescription'),
         variant: 'destructive'
       });
     }
@@ -111,7 +112,7 @@ export default function AgentCertificates() {
       console.error('Badge generation error:', error);
       toast({
         title: t('agent.certificates.toast.downloadFailed'),
-        description: error instanceof Error ? error.message : t('agent.certificates.toast.badgeError'),
+        description: error instanceof Error ? legacyMessage(error.message) : t('agent.certificates.toast.badgeError'),
         variant: 'destructive'
       });
     }
@@ -177,7 +178,7 @@ export default function AgentCertificates() {
                       </div>
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(certificate.issuedAt).toLocaleDateString()}
+                        {new Date(certificate.issuedAt).toLocaleDateString(legacyLocale())}
                       </div>
                     </div>
 

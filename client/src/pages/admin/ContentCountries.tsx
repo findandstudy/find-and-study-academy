@@ -1,3 +1,4 @@
+import { legacyUi, legacyStatus, legacyMessage } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,9 +82,9 @@ export default function AdminContentCountries() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || 'Upload failed');
       onSuccess(data.url, data.originalName, data.size);
-      toast({ title: 'Dosya yüklendi', description: data.originalName });
+      toast({ title: legacyUi("Dosya yüklendi"), description: data.originalName });
     } catch (err: any) {
-      toast({ title: 'Yükleme hatası', description: err.message, variant: 'destructive' });
+      toast({ title: legacyUi("Yükleme hatası"), description: legacyMessage(err.message), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -110,7 +111,7 @@ export default function AdminContentCountries() {
   // ── Download All Content ────────────────────────────────────────────────────
   const downloadAllContent = () => {
     if (contents.length === 0) {
-      toast({ title: 'No data', description: 'There is no content to download.', variant: 'destructive' });
+      toast({ title: legacyUi("No data"), description: legacyUi("There is no content to download."), variant: 'destructive' });
       return;
     }
     const wb = XLSX.utils.book_new();
@@ -152,32 +153,7 @@ export default function AdminContentCountries() {
 
     const dateStr = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `content_export_${dateStr}.xlsx`);
-    toast({ title: 'Download started', description: `Exported ${contents.length} content items and ${countries.length} countries.` });
-  };
-
-  // The Excel export intentionally contains readable text. Translation work
-  // also needs the original markup, which can exceed Excel's cell limit.
-  const downloadHtmlSource = () => {
-    if (contents.length === 0) {
-      toast({ title: 'No data', description: 'There is no content to download.', variant: 'destructive' });
-      return;
-    }
-    const rows = contents.map(c => ({
-      id: c.id,
-      title: c.title,
-      countryId: c.countryId,
-      language: c.language,
-      contentHtml: c.content || '',
-    }));
-    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `content_html_source_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    toast({ title: legacyUi("Download started"), description: legacyUi("Exported {value0} content items and {value1} countries.",{value0:contents.length,value1:countries.length}) });
   };
 
   // Country form
@@ -227,13 +203,13 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Country created successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Country created successfully") });
       setIsCountryDialogOpen(false);
       countryForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/countries'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to create country', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to create country"), variant: 'destructive' });
     }
   });
 
@@ -243,14 +219,14 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Country updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Country updated successfully") });
       setIsCountryDialogOpen(false);
       setEditingCountry(null);
       countryForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/countries'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to update country', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to update country"), variant: 'destructive' });
     }
   });
 
@@ -260,11 +236,11 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Country deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Country deleted successfully") });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/countries'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete country', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to delete country"), variant: 'destructive' });
     }
   });
 
@@ -274,11 +250,11 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Country status updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Country status updated successfully") });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/countries'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to update country status', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to update country status"), variant: 'destructive' });
     }
   });
 
@@ -289,13 +265,13 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Content created successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Content created successfully") });
       setIsContentDialogOpen(false);
       contentForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/contents'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to create content', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to create content"), variant: 'destructive' });
     }
   });
 
@@ -305,14 +281,14 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Content updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Content updated successfully") });
       setIsContentDialogOpen(false);
       setEditingContent(null);
       contentForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/contents'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to update content', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to update content"), variant: 'destructive' });
     }
   });
 
@@ -322,11 +298,11 @@ export default function AdminContentCountries() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Content deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Content deleted successfully") });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/contents'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete content', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to delete content"), variant: 'destructive' });
     }
   });
 
@@ -412,7 +388,7 @@ export default function AdminContentCountries() {
   };
 
   const handleDeleteCountry = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this country? This action cannot be undone.')) {
+    if (window.confirm(legacyUi("Are you sure you want to delete this country? This action cannot be undone."))) {
       deleteCountryMutation.mutate(id);
     }
   };
@@ -423,7 +399,7 @@ export default function AdminContentCountries() {
   };
 
   const handleDeleteContent = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
+    if (window.confirm(legacyUi("Are you sure you want to delete this content? This action cannot be undone."))) {
       deleteContentMutation.mutate(id);
     }
   };
@@ -448,7 +424,7 @@ export default function AdminContentCountries() {
     
     return (
       <Badge variant={variants[status] || 'secondary'}>
-        {status}
+        {legacyStatus(status)}
       </Badge>
     );
   };
@@ -456,22 +432,19 @@ export default function AdminContentCountries() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Content & Countries</h1>
+        <h1 className="text-3xl font-bold text-foreground">{legacyUi("Content & Countries")}</h1>
         <p className="text-muted-foreground mt-1">
-          Manage countries and content for the educational platform.
-        </p>
+          {legacyUi("Manage countries and content for the educational platform.")}</p>
       </div>
 
       <Tabs defaultValue="countries" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="countries" className="flex items-center gap-2" data-testid="tab-countries">
             <Globe className="w-4 h-4" />
-            Countries
-          </TabsTrigger>
+            {legacyUi("Countries")}</TabsTrigger>
           <TabsTrigger value="content" className="flex items-center gap-2" data-testid="tab-content">
             <FileText className="w-4 h-4" />
-            Content
-          </TabsTrigger>
+            {legacyUi("Content")}</TabsTrigger>
         </TabsList>
 
         {/* Countries Management */}
@@ -481,19 +454,17 @@ export default function AdminContentCountries() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="w-5 h-5" />
-                  Country Management
-                </CardTitle>
+                  {legacyUi("Country Management")}</CardTitle>
                 <Dialog open={isCountryDialogOpen} onOpenChange={setIsCountryDialogOpen}>
                   <DialogTrigger asChild>
                     <Button onClick={() => openCountryDialog()} data-testid="button-add-country">
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Country
-                    </Button>
+                      {legacyUi("Add Country")}</Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                       <DialogTitle>
-                        {editingCountry ? 'Edit Country' : 'Add New Country'}
+                        {editingCountry ? legacyUi("Edit Country") : legacyUi("Add New Country")}
                       </DialogTitle>
                     </DialogHeader>
                     <Form {...countryForm}>
@@ -578,14 +549,13 @@ export default function AdminContentCountries() {
                         />
                         <div className="flex justify-end space-x-2">
                           <Button type="button" variant="outline" onClick={() => setIsCountryDialogOpen(false)}>
-                            Cancel
-                          </Button>
+                            {legacyUi("Cancel")}</Button>
                           <Button 
                             type="submit" 
                             disabled={createCountryMutation.isPending || updateCountryMutation.isPending}
                             data-testid="button-save-country"
                           >
-                            {editingCountry ? 'Update Country' : 'Create Country'}
+                            {editingCountry ? legacyUi("Update Country") : legacyUi("Create Country")}
                           </Button>
                         </div>
                       </form>
@@ -596,7 +566,7 @@ export default function AdminContentCountries() {
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
                 <Input
-                  placeholder="Search countries..."
+                  placeholder={legacyUi("Search countries...")}
                   value={searchCountry}
                   onChange={(e) => setSearchCountry(e.target.value)}
                   className="max-w-sm"
@@ -606,7 +576,7 @@ export default function AdminContentCountries() {
             </CardHeader>
             <CardContent>
               {countriesLoading ? (
-                <div className="text-center py-4">Loading countries...</div>
+                <div className="text-center py-4">{legacyUi("Loading countries...")}</div>
               ) : (
                 <div className="space-y-2">
                   {filteredCountries.map((country) => (
@@ -616,7 +586,7 @@ export default function AdminContentCountries() {
                         <div>
                           <div className="font-medium">{country.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            Code: {country.code} • {getStatusBadge(country.status)}
+                            {legacyUi("Code: ")}{country.code} • {getStatusBadge(country.status)}
                           </div>
                           {country.description && (
                             <div className="text-sm text-muted-foreground mt-1">{country.description}</div>
@@ -630,7 +600,7 @@ export default function AdminContentCountries() {
                           onClick={() => handleToggleCountryStatus(country.id, country.status)}
                           disabled={toggleCountryStatusMutation.isPending}
                           data-testid={`button-toggle-country-${country.id}`}
-                          title={country.status === 'active' ? 'Deactivate country' : 'Activate country'}
+                          title={country.status === 'active' ? legacyUi("Deactivate country") : legacyUi("Activate country")}
                         >
                           {country.status === 'active' ? (
                             <Power className="w-4 h-4 text-white" />
@@ -659,7 +629,7 @@ export default function AdminContentCountries() {
                   ))}
                   {filteredCountries.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      {searchCountry ? 'No countries found matching your search.' : 'No countries added yet.'}
+                      {searchCountry ? legacyUi("No countries found matching your search.") : legacyUi("No countries added yet.")}
                     </div>
                   )}
                 </div>
@@ -675,8 +645,7 @@ export default function AdminContentCountries() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Content Management
-                </CardTitle>
+                  {legacyUi("Content Management")}</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="outline"
@@ -684,31 +653,24 @@ export default function AdminContentCountries() {
                     data-testid="button-download-all-content"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download All
-                  </Button>
-                  <Button variant="outline" onClick={downloadHtmlSource} data-testid="button-download-html-source">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download HTML Source
-                  </Button>
+                    {legacyUi("Download All")}</Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsBulkUploadOpen(true)}
                     data-testid="button-bulk-upload"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    Bulk Upload
-                  </Button>
+                    {legacyUi("Bulk Upload")}</Button>
                   <Dialog open={isContentDialogOpen} onOpenChange={setIsContentDialogOpen}>
                     <DialogTrigger asChild>
                       <Button onClick={() => openContentDialog()} data-testid="button-add-content">
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Content
-                      </Button>
+                        {legacyUi("Add Content")}</Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>
-                        {editingContent ? 'Edit Content' : 'Add New Content'}
+                        {editingContent ? legacyUi("Edit Content") : legacyUi("Add New Content")}
                       </DialogTitle>
                     </DialogHeader>
                     <Form {...contentForm}>
@@ -974,8 +936,7 @@ export default function AdminContentCountries() {
                                 onClick={() => { setVideoUploadMode('url'); setUploadedVideoName(null); }}
                               >
                                 <Link className="w-3 h-3 mr-1" />
-                                URL
-                              </Button>
+                                {legacyUi("URL")}</Button>
                               <Button
                                 type="button"
                                 size="sm"
@@ -983,8 +944,7 @@ export default function AdminContentCountries() {
                                 onClick={() => setVideoUploadMode('file')}
                               >
                                 <Upload className="w-3 h-3 mr-1" />
-                                Dosya Yükle
-                              </Button>
+                                {legacyUi("Dosya Yükle")}</Button>
                             </div>
 
                             <FormField
@@ -1104,8 +1064,7 @@ export default function AdminContentCountries() {
                                 onClick={() => { setDocUploadMode('url'); setUploadedDocName(null); }}
                               >
                                 <Link className="w-3 h-3 mr-1" />
-                                URL
-                              </Button>
+                                {legacyUi("URL")}</Button>
                               <Button
                                 type="button"
                                 size="sm"
@@ -1113,8 +1072,7 @@ export default function AdminContentCountries() {
                                 onClick={() => setDocUploadMode('file')}
                               >
                                 <Upload className="w-3 h-3 mr-1" />
-                                Dosya Yükle
-                              </Button>
+                                {legacyUi("Dosya Yükle")}</Button>
                             </div>
 
                             <FormField
@@ -1287,14 +1245,13 @@ export default function AdminContentCountries() {
 
                         <div className="flex justify-end space-x-2">
                           <Button type="button" variant="outline" onClick={() => setIsContentDialogOpen(false)}>
-                            Cancel
-                          </Button>
+                            {legacyUi("Cancel")}</Button>
                           <Button 
                             type="submit" 
                             disabled={createContentMutation.isPending || updateContentMutation.isPending}
                             data-testid="button-save-content"
                           >
-                            {editingContent ? 'Update Content' : 'Create Content'}
+                            {editingContent ? legacyUi("Update Content") : legacyUi("Create Content")}
                           </Button>
                         </div>
                       </form>
@@ -1306,7 +1263,7 @@ export default function AdminContentCountries() {
               <div className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
                 <Input
-                  placeholder="Search content..."
+                  placeholder={legacyUi("Search content...")}
                   value={searchContent}
                   onChange={(e) => setSearchContent(e.target.value)}
                   className="max-w-sm"
@@ -1321,7 +1278,7 @@ export default function AdminContentCountries() {
                 onSuccess={() => refetchContents()}
               />
               {contentsLoading ? (
-                <div className="text-center py-4">Loading content...</div>
+                <div className="text-center py-4">{legacyUi("Loading content...")}</div>
               ) : (
                 <div className="space-y-2">
                   {filteredContents.map((content) => (
@@ -1331,8 +1288,8 @@ export default function AdminContentCountries() {
                         <div className="flex-1">
                           <div className="font-medium">{content.title}</div>
                           <div className="text-sm text-muted-foreground">
-                            Type: {content.type} • {getStatusBadge(content.status)}
-                            {content.countryName && ` • Country: ${content.countryName}`}
+                            {legacyUi("Type: ")}{content.type} • {getStatusBadge(content.status)}
+                            {content.countryName && legacyUi(" • Country: {value0}",{value0:content.countryName})}
                           </div>
                           {content.description && (
                             <div className="text-sm text-muted-foreground mt-1">{content.description}</div>
@@ -1345,7 +1302,7 @@ export default function AdminContentCountries() {
                           variant="outline"
                           onClick={() => setTranslatingContent(content)}
                           data-testid={`button-translate-content-${content.id}`}
-                          title="Çevirileri Düzenle"
+                          title={legacyUi("Çevirileri Düzenle")}
                         >
                           <Globe className="w-4 h-4" />
                         </Button>
@@ -1370,7 +1327,7 @@ export default function AdminContentCountries() {
                   ))}
                   {filteredContents.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      {searchContent ? 'No content found matching your search.' : 'No content added yet.'}
+                      {searchContent ? legacyUi("No content found matching your search.") : legacyUi("No content added yet.")}
                     </div>
                   )}
                 </div>

@@ -7,12 +7,15 @@ export interface LoginCredentials {
 }
 
 export interface SignupData {
+  promoCode?: string;
+  verificationCode?: string;
   name: string;
   email: string;
   password: string;
   agencyName: string;
   country: string;
   phone: string;
+  languagePreference?: string;
 }
 
 export interface Session {
@@ -51,6 +54,8 @@ export const login = async (credentials: LoginCredentials): Promise<Session | nu
 export interface SignupResult {
   pending: boolean;
   message?: string;
+  session?: Session;
+  error?: boolean;
 }
 
 export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
@@ -61,12 +66,15 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        promoCode: data.promoCode,
+        verificationCode: data.verificationCode,
         name: data.name,
         email: data.email,
         password: data.password,
         agencyName: data.agencyName,
         country: data.country,
         phone: data.phone,
+        languagePreference: data.languagePreference,
       }),
     });
 
@@ -76,9 +84,13 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
     }
 
     const result = await response.json();
-    // Closed system: signup never auto-logs the user in. Account is pending admin/staff approval.
     if (result.success) {
-      return { pending: true, message: result.message };
+      if (result.pending) return { pending: true, message: result.message };
+      if (result.user?.role === 'agent') {
+        const session: Session = { user: result.user, role: 'agent' };
+        storage.setSession(session);
+        return { pending: false, message: result.message, session };
+      }
     }
 
     throw new Error(result.message || 'Signup failed');
@@ -147,3 +159,4 @@ export const validateSession = async (): Promise<boolean> => {
   logout();
   return false;
 };
+

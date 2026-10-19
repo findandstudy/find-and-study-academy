@@ -34,7 +34,28 @@
     "continue": "Continuar",
     "start": "Comenzar",
     "viewAll": "Ver todo",
-    "profilePictureAlt": "Foto de perfil"
+    "profilePictureAlt": "Foto de perfil",
+    "draft": "Borrador",
+    "published": "Publicado",
+    "status": "Estado",
+    "title": "Título",
+    "description": "Descripción",
+    "document": "Documento",
+    "video": "Vídeo",
+    "image": "Imagen",
+    "files": "Archivos",
+    "allCountries": "Todos los países",
+    "allTypes": "Todos los tipos",
+    "newestFirst": "Más recientes primero",
+    "oldestFirst": "Más antiguos primero",
+    "searchPlaceholder": "Buscar...",
+    "open": "Abrir",
+    "download": "Descargar",
+    "subfolders": "Subcarpetas",
+    "category": "Categoría",
+    "country": "País",
+    "order": "Orden",
+    "name": "Nombre"
   },
   "toast": {
     "saved": "Configuración guardada",
@@ -508,6 +529,21 @@
       "partnerZone": "Zona de socios",
       "findyAssistant": "Asistente Findy",
       "findyAssistantDesc": "Widget de chat visible en la parte inferior derecha de todos los paneles. Cuando está deshabilitado, se oculta en ambos paneles."
+    },
+    "sidebarLinks": {
+      "validationTitle": "Campos faltantes",
+      "validationDesc": "Cada enlace necesita un nombre y un URL.",
+      "savedTitle": "Guardado",
+      "savedDesc": "Enlaces de la barra lateral actualizados.",
+      "title": "Enlaces de la barra lateral",
+      "description": "Administra los enlaces mostrados en la barra lateral del agente. Se abren en una pestaña nueva.",
+      "addLink": "Agregar enlace",
+      "empty": "Aún no hay enlaces. Haz clic en “Agregar enlace” para crear uno.",
+      "moveUp": "Mover arriba",
+      "moveDown": "Mover abajo",
+      "uploadIcon": "Subir ícono",
+      "namePlaceholder": "Nombre visible (por ejemplo, Portal del Agente)",
+      "enabled": "Visible para los agentes"
     }
   },
   "contentEditor": {
@@ -565,5 +601,31 @@
     "footerContactHead": "Contacto",
     "footerRights": "Todos los derechos reservados.",
     "footerLocated": "Plataforma de consultoría educativa con sede en Türkiye"
+  },
+  "registration": {
+    "title": "Crear una cuenta de agencia",
+    "subtitle": "Cree una cuenta para acceder a la formación y a la información sobre destinos.",
+    "fullName": "Nombre completo",
+    "fullNamePlaceholder": "Introduzca su nombre completo",
+    "agencyName": "Nombre de la agencia",
+    "agencyPlaceholder": "Introduzca el nombre de su agencia",
+    "country": "País",
+    "selectCountry": "Seleccione un país",
+    "mobilePhone": "Teléfono móvil",
+    "phoneCountryCode": "Prefijo telefónico del país",
+    "createPassword": "Cree una contraseña",
+    "passwordHint": "Utilice al menos 8 caracteres.",
+    "creating": "Creando la cuenta...",
+    "createAccount": "Crear cuenta",
+    "alreadyAccount": "¿Ya tiene una cuenta?",
+    "readyTitle": "Su cuenta está lista",
+    "readyMessage": "Ya puede acceder al centro de formación.",
+    "pendingTitle": "Solicitud recibida",
+    "pendingMessage": "Su cuenta está pendiente de aprobación.",
+    "failedTitle": "Error de registro",
+    "failedMessage": "Revise sus datos e inténtelo de nuevo.",
+    "invalidPhone": "Introduzca un número de teléfono móvil válido.",
+    "invalidDial": "Seleccione un prefijo telefónico válido.",
+    "duplicateEmail": "Este correo electrónico ya está registrado. Inicie sesión."
   }
 }

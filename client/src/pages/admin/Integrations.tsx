@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale, legacyMessage } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -236,16 +237,16 @@ export default function AdminIntegrations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: 'Success',
-        description: 'Integration created successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Integration created successfully."),
       });
       setIsCreateDialogOpen(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to create integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to create integration."),
         variant: 'destructive',
       });
     },
@@ -257,8 +258,8 @@ export default function AdminIntegrations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: 'Success',
-        description: 'Integration updated successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Integration updated successfully."),
       });
       setIsEditDialogOpen(false);
       setEditingIntegration(null);
@@ -266,8 +267,8 @@ export default function AdminIntegrations() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to update integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to update integration."),
         variant: 'destructive',
       });
     },
@@ -279,14 +280,14 @@ export default function AdminIntegrations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: 'Success',
-        description: 'Integration deleted successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Integration deleted successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to delete integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to delete integration."),
         variant: 'destructive',
       });
     },
@@ -298,15 +299,15 @@ export default function AdminIntegrations() {
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: response.testResult.success ? 'Success' : 'Test Failed',
+        title: response.testResult.success ? legacyUi("Success") : legacyUi("Test Failed"),
         description: response.testResult.message,
         variant: response.testResult.success ? 'default' : 'destructive',
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to test integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to test integration."),
         variant: 'destructive',
       });
     },
@@ -318,14 +319,14 @@ export default function AdminIntegrations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: 'Success',
-        description: 'Integration enabled successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Integration enabled successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to enable integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to enable integration."),
         variant: 'destructive',
       });
     },
@@ -337,14 +338,14 @@ export default function AdminIntegrations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integrations'] });
       toast({
-        title: 'Success',
-        description: 'Integration disabled successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Integration disabled successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to disable integration.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to disable integration."),
         variant: 'destructive',
       });
     },
@@ -412,17 +413,16 @@ export default function AdminIntegrations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">Integrations</h1>
+        <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">{legacyUi("Integrations")}</h1>
         <p className="text-muted-foreground mt-1">
-          Manage third-party integrations, webhook events, and API key access.
-        </p>
+          {legacyUi("Manage third-party integrations, webhook events, and API key access.")}</p>
       </div>
 
       <Tabs defaultValue="integrations">
-        <TabsList>
-          <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="event-log" data-testid="tab-event-log">Event Log</TabsTrigger>
-          <TabsTrigger value="api-keys" data-testid="tab-api-keys">API Keys</TabsTrigger>
+        <TabsList className="h-auto flex flex-wrap justify-start gap-1">
+          <TabsTrigger value="integrations" data-testid="tab-integrations">{legacyUi("Integrations")}</TabsTrigger>
+          <TabsTrigger value="event-log" data-testid="tab-event-log">{legacyUi("Event Log")}</TabsTrigger>
+          <TabsTrigger value="api-keys" data-testid="tab-api-keys">{legacyUi("API Keys")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="event-log" className="mt-4">
@@ -441,7 +441,7 @@ export default function AdminIntegrations() {
           <div className="flex items-center space-x-2">
             <Search className="w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search integrations..."
+              placeholder={legacyUi("Search integrations...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-64"
@@ -451,12 +451,12 @@ export default function AdminIntegrations() {
           
           <Select value={activeTypeFilter} onValueChange={setActiveTypeFilter}>
             <SelectTrigger className="w-48" data-testid="select-type-filter">
-              <SelectValue placeholder="Filter by type" />
+              <SelectValue placeholder={legacyUi("Filter by type")} />
             </SelectTrigger>
             <SelectContent>
               {availableTypes.map(type => (
                 <SelectItem key={type} value={type}>
-                  {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1)}
+                  {type === 'all' ? legacyUi("All Types") : type.charAt(0).toUpperCase() + type.slice(1)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -473,13 +473,12 @@ export default function AdminIntegrations() {
           <DialogTrigger asChild>
             <Button data-testid="button-create-integration">
               <Plus className="w-4 h-4 mr-2" />
-              Add Integration
-            </Button>
+              {legacyUi("Add Integration")}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {createWizardStep === 1 ? 'Choose Integration Type' : 'Configure Integration'}
+                {createWizardStep === 1 ? legacyUi("Choose Integration Type") : legacyUi("Configure Integration")}
               </DialogTitle>
               {/* Step indicator */}
               <div className="flex items-center gap-2 mt-3">
@@ -488,7 +487,7 @@ export default function AdminIntegrations() {
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${step === createWizardStep ? 'bg-primary text-primary-foreground' : step < createWizardStep ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'}`}>
                       {step < createWizardStep ? <Check className="w-3.5 h-3.5" /> : step}
                     </div>
-                    <span className="text-xs text-muted-foreground">{step === 1 ? 'Type' : 'Config'}</span>
+                    <span className="text-xs text-muted-foreground">{step === 1 ? legacyUi("Type") : legacyUi("Config")}</span>
                     {step < 2 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
                   </div>
                 ))}
@@ -498,15 +497,15 @@ export default function AdminIntegrations() {
             {/* STEP 1: Type Selection */}
             {createWizardStep === 1 && (
               <div className="space-y-4 py-2">
-                <p className="text-sm text-muted-foreground">Select the type of service you want to connect.</p>
+                <p className="text-sm text-muted-foreground">{legacyUi("Select the type of service you want to connect.")}</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {([
-                    { value: 'payment', label: 'Payment', Icon: CreditCard, desc: 'Stripe, PayPal, Iyzico' },
-                    { value: 'email', label: 'Email', Icon: Mail, desc: 'SendGrid, Mailgun, SMTP' },
-                    { value: 'storage', label: 'Storage', Icon: Cloud, desc: 'S3, GCS, Object Store' },
-                    { value: 'crm', label: 'CRM', Icon: Users, desc: 'HubSpot, Salesforce' },
-                    { value: 'analytics', label: 'Analytics', Icon: BarChart3, desc: 'GA4, Mixpanel, Segment' },
-                    { value: 'automation', label: 'Automation', Icon: Zap, desc: 'n8n, Zapier, Make' },
+                    { value: 'payment', label: legacyUi("Payment"), Icon: CreditCard, desc: legacyUi("Stripe, PayPal, Iyzico") },
+                    { value: 'email', label: legacyUi("Email"), Icon: Mail, desc: legacyUi("SendGrid, Mailgun, SMTP") },
+                    { value: 'storage', label: legacyUi("Storage"), Icon: Cloud, desc: legacyUi("S3, GCS, Object Store") },
+                    { value: 'crm', label: legacyUi("CRM"), Icon: Users, desc: legacyUi("HubSpot, Salesforce") },
+                    { value: 'analytics', label: legacyUi("Analytics"), Icon: BarChart3, desc: legacyUi("GA4, Mixpanel, Segment") },
+                    { value: 'automation', label: legacyUi("Automation"), Icon: Zap, desc: legacyUi("n8n, Zapier, Make") },
                   ] as const).map(typeOpt => {
                     const currentType = form.watch('type');
                     const isSelected = currentType === typeOpt.value;
@@ -532,7 +531,7 @@ export default function AdminIntegrations() {
                   })}
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>{legacyUi("Cancel")}</Button>
                   <Button
                     onClick={() => {
                       if (!form.watch('type')) { toast({ title: 'Please select a type', variant: 'destructive' }); return; }
@@ -540,7 +539,7 @@ export default function AdminIntegrations() {
                     }}
                     data-testid="wizard-next-step"
                   >
-                    Next <ChevronRight className="w-4 h-4 ml-1" />
+                    {legacyUi("Next ")}<ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
               </div>
@@ -647,7 +646,7 @@ export default function AdminIntegrations() {
 
                 {/* Generic API Configuration */}
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">API Configuration</h4>
+                  <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("API Configuration")}</h4>
                   
                   <div className="grid grid-cols-1 gap-4">
                     <FormField
@@ -712,7 +711,7 @@ export default function AdminIntegrations() {
 
                 {/* Email Configuration */}
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">Email Configuration</h4>
+                  <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("Email Configuration")}</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -789,7 +788,7 @@ export default function AdminIntegrations() {
 
                 {/* Google Sheets Configuration */}
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">Google Sheets Configuration</h4>
+                  <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("Google Sheets Configuration")}</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -824,7 +823,7 @@ export default function AdminIntegrations() {
 
                 {/* CRM Configuration */}
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">CRM Configuration</h4>
+                  <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("CRM Configuration")}</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -859,7 +858,7 @@ export default function AdminIntegrations() {
 
                 {/* Automation Configuration */}
                 <div className="space-y-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">Automation Configuration</h4>
+                  <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("Automation Configuration")}</h4>
                   
                   <FormField
                     control={form.control}
@@ -884,8 +883,7 @@ export default function AdminIntegrations() {
                     data-testid="button-wizard-back"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Back
-                  </Button>
+                    {legacyUi("Back")}</Button>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -893,14 +891,13 @@ export default function AdminIntegrations() {
                       onClick={() => setIsCreateDialogOpen(false)}
                       data-testid="button-cancel-create"
                     >
-                      Cancel
-                    </Button>
+                      {legacyUi("Cancel")}</Button>
                     <Button
                       type="submit"
                       disabled={createIntegrationMutation.isPending}
                       data-testid="button-submit-create"
                     >
-                      {createIntegrationMutation.isPending ? 'Creating...' : 'Create Integration'}
+                      {createIntegrationMutation.isPending ? legacyUi("Creating...") : legacyUi("Create Integration")}
                     </Button>
                   </div>
                 </div>
@@ -918,7 +915,7 @@ export default function AdminIntegrations() {
             <div className="flex items-center">
               <Plug className="h-4 w-4 text-muted-foreground" />
               <div className="ml-2">
-                <p className="text-sm font-medium leading-none">Total Integrations</p>
+                <p className="text-sm font-medium leading-none">{legacyUi("Total Integrations")}</p>
                 <p className="text-2xl font-bold">{integrations.length}</p>
               </div>
             </div>
@@ -930,7 +927,7 @@ export default function AdminIntegrations() {
             <div className="flex items-center">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <div className="ml-2">
-                <p className="text-sm font-medium leading-none">Enabled</p>
+                <p className="text-sm font-medium leading-none">{legacyUi("Enabled")}</p>
                 <p className="text-2xl font-bold">{integrations.filter(i => i.enabled).length}</p>
               </div>
             </div>
@@ -942,7 +939,7 @@ export default function AdminIntegrations() {
             <div className="flex items-center">
               <TestTube className="h-4 w-4 text-blue-600" />
               <div className="ml-2">
-                <p className="text-sm font-medium leading-none">Tested</p>
+                <p className="text-sm font-medium leading-none">{legacyUi("Tested")}</p>
                 <p className="text-2xl font-bold">{integrations.filter(i => i.lastTestStatus && i.lastTestStatus !== 'not_tested').length}</p>
               </div>
             </div>
@@ -954,7 +951,7 @@ export default function AdminIntegrations() {
             <div className="flex items-center">
               <Globe className="h-4 w-4 text-purple-600" />
               <div className="ml-2">
-                <p className="text-sm font-medium leading-none">Types</p>
+                <p className="text-sm font-medium leading-none">{legacyUi("Types")}</p>
                 <p className="text-2xl font-bold">{new Set(integrations.map(i => i.type)).size}</p>
               </div>
             </div>
@@ -967,7 +964,7 @@ export default function AdminIntegrations() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plug className="w-5 h-5" />
-            Integrations ({filteredIntegrations.length})
+            {legacyUi("Integrations (")}{filteredIntegrations.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -980,17 +977,16 @@ export default function AdminIntegrations() {
           ) : filteredIntegrations.length === 0 ? (
             <div className="text-center py-8">
               <Plug className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No Integrations Found</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{legacyUi("No Integrations Found")}</h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm || activeTypeFilter !== 'all' 
-                  ? 'No integrations match your search criteria.' 
-                  : 'Get started by adding your first integration.'}
+                  ? legacyUi("No integrations match your search criteria.") 
+                  : legacyUi("Get started by adding your first integration.")}
               </p>
               {!searchTerm && activeTypeFilter === 'all' && (
                 <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-first-integration">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add First Integration
-                </Button>
+                  {legacyUi("Add First Integration")}</Button>
               )}
             </div>
           ) : (
@@ -998,13 +994,13 @@ export default function AdminIntegrations() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Test</TableHead>
-                    <TableHead>Configuration</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{legacyUi("Name")}</TableHead>
+                    <TableHead>{legacyUi("Type")}</TableHead>
+                    <TableHead>{legacyUi("Status")}</TableHead>
+                    <TableHead>{legacyUi("Last Test")}</TableHead>
+                    <TableHead>{legacyUi("Configuration")}</TableHead>
+                    <TableHead>{legacyUi("Updated")}</TableHead>
+                    <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1036,7 +1032,7 @@ export default function AdminIntegrations() {
                             <PowerOff className="w-4 h-4 text-gray-500" />
                           )}
                           <span className={integration.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                            {integration.enabled ? 'Enabled' : 'Disabled'}
+                            {integration.enabled ? legacyUi("Enabled") : legacyUi("Disabled")}
                           </span>
                         </div>
                       </TableCell>
@@ -1045,13 +1041,13 @@ export default function AdminIntegrations() {
                           {getStatusIcon(integration.lastTestStatus)}
                           <div>
                             <div className="text-sm">
-                              {integration.lastTestStatus === 'success' ? 'Passed' : 
-                               integration.lastTestStatus === 'failed' ? 'Failed' :
-                               integration.lastTestStatus === 'pending' ? 'Testing' : 'Not Tested'}
+                              {integration.lastTestStatus === 'success' ? legacyUi("Passed") : 
+                               integration.lastTestStatus === 'failed' ? legacyUi("Failed") :
+                               integration.lastTestStatus === 'pending' ? legacyUi("Testing") : legacyUi("Not Tested")}
                             </div>
                             {integration.lastTestAt && (
                               <div className="text-xs text-muted-foreground">
-                                {new Date(integration.lastTestAt).toLocaleDateString()}
+                                {new Date(integration.lastTestAt).toLocaleDateString(legacyLocale())}
                               </div>
                             )}
                           </div>
@@ -1059,14 +1055,14 @@ export default function AdminIntegrations() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {integration.apiKey && '• API Key'}
-                          {integration.endpointUrl && '• Endpoint'}
-                          {integration.smtpHost && '• SMTP'}
-                          {integration.crmDomain && '• CRM'}
+                          {integration.apiKey && legacyUi("• API Key")}
+                          {integration.endpointUrl && legacyUi("• Endpoint")}
+                          {integration.smtpHost && legacyUi("• SMTP")}
+                          {integration.crmDomain && legacyUi("• CRM")}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(integration.updatedAt).toLocaleDateString()}
+                        {new Date(integration.updatedAt).toLocaleDateString(legacyLocale())}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -1110,20 +1106,18 @@ export default function AdminIntegrations() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Integration</AlertDialogTitle>
+                                <AlertDialogTitle>{legacyUi("Delete Integration")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{integration.displayName || integration.name}"? This action cannot be undone and may affect system functionality.
-                                </AlertDialogDescription>
+                                  {legacyUi("Are you sure you want to delete \"{value0}\"? This action cannot be undone and may affect system functionality.",{value0:integration.displayName || integration.name})}</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteIntegration(integration.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   data-testid={`button-confirm-delete-${integration.id}`}
                                 >
-                                  Delete
-                                </AlertDialogAction>
+                                  {legacyUi("Delete")}</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -1142,16 +1136,14 @@ export default function AdminIntegrations() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Integration</DialogTitle>
+            <DialogTitle>{legacyUi("Edit Integration")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditIntegration)} className="space-y-4">
               {/* Simplified edit form - similar to create but with note about sensitive data */}
               <div className="bg-muted/50 p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> For security reasons, sensitive fields (API keys, passwords, tokens) are not pre-filled. 
-                  Leave them empty to keep existing values, or enter new values to update them.
-                </p>
+                  <strong>{legacyUi("Note:")}</strong> {legacyUi(" For security reasons, sensitive fields (API keys, passwords, tokens) are not pre-filled. Leave them empty to keep existing values, or enter new values to update them.")}</p>
               </div>
 
               {/* Basic fields */}
@@ -1250,10 +1242,9 @@ export default function AdminIntegrations() {
 
               {/* Sensitive configuration note */}
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">Update Configuration</h4>
+                <h4 className="font-medium text-sm text-muted-foreground">{legacyUi("Update Configuration")}</h4>
                 <p className="text-sm text-muted-foreground">
-                  Enter new values for any fields you want to update. Empty fields will keep their existing values.
-                </p>
+                  {legacyUi("Enter new values for any fields you want to update. Empty fields will keep their existing values.")}</p>
                 
                 {/* Basic API fields */}
                 <div className="grid grid-cols-1 gap-4">
@@ -1294,14 +1285,13 @@ export default function AdminIntegrations() {
                   onClick={() => setIsEditDialogOpen(false)}
                   data-testid="button-cancel-edit"
                 >
-                  Cancel
-                </Button>
+                  {legacyUi("Cancel")}</Button>
                 <Button
                   type="submit"
                   disabled={updateIntegrationMutation.isPending}
                   data-testid="button-submit-edit"
                 >
-                  {updateIntegrationMutation.isPending ? 'Updating...' : 'Update Integration'}
+                  {updateIntegrationMutation.isPending ? legacyUi("Updating...") : legacyUi("Update Integration")}
                 </Button>
               </div>
             </form>

@@ -1,0 +1,7 @@
+{
+  "client/src/pages/admin/Operations.tsx": "3a3a562fcc91ec7dfafff2cb00c46db4974100a171cdbf560a68f12f684b7190",
+  "client/src/pages/admin/Campaigns.tsx": "88699175a68f4b11473c51ea9cfb366e0e13b33af3dad1d3b1dcd2e31dbbaf13",
+  "client/src/lib/campaign-i18n.ts": "c470f52329fc55901f8c053c7d2ff14c0d7e71be697cccce7ef58240bf11f05f",
+  "client/src/pages/Signup.tsx": "b46b2467521393969cb8642fa1685a3cf952057a93b6826e362acd42267336ce",
+  "client/src/pages/Login.tsx": "05cead8be939174ea25165224b8007fb17d7166179a3b6404b5e524ff062aae5"
+}

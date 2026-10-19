@@ -1,3 +1,4 @@
+import { legacyUi, legacyStatus, legacyLocale } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +51,7 @@ const statusBadge = (status: string) => {
   }[status] ?? null;
   return (
     <Badge variant={map[status] || 'secondary'} className="flex items-center gap-0.5">
-      {icon}{status}
+      {icon}{legacyStatus(status)}
     </Badge>
   );
 };
@@ -91,7 +92,7 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
         eventType: triggerEventType,
       }),
     onSuccess: (data: any) => {
-      toast({ title: data.success ? 'Webhook Sent' : 'Webhook Failed', description: data.success ? `HTTP ${data.event?.responseStatus}` : data.message, variant: data.success ? 'default' : 'destructive' });
+      toast({ title: data.success ? legacyUi("Webhook Sent") : legacyUi("Webhook Failed"), description: data.success ? legacyUi("HTTP {value0}",{value0:data.event?.responseStatus}) : data.message, variant: data.success ? 'default' : 'destructive' });
       setTriggerOpen(false);
       refetch();
     },
@@ -105,10 +106,10 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
         <div className="flex flex-wrap gap-3 items-center">
           <Select value={filterIntegration} onValueChange={setFilterIntegration}>
             <SelectTrigger className="w-[180px]" data-testid="select-filter-integration">
-              <SelectValue placeholder="All Integrations" />
+              <SelectValue placeholder={legacyUi("All Integrations")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Integrations</SelectItem>
+              <SelectItem value="all">{legacyUi("All Integrations")}</SelectItem>
               {integrations.map(i => (
                 <SelectItem key={i.id} value={i.id}>{i.displayName || i.name}</SelectItem>
               ))}
@@ -116,43 +117,41 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-[140px]" data-testid="select-filter-status">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder={legacyUi("All Statuses")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="all">{legacyUi("All Statuses")}</SelectItem>
+              <SelectItem value="success">{legacyUi("Success")}</SelectItem>
+              <SelectItem value="failed">{legacyUi("Failed")}</SelectItem>
+              <SelectItem value="pending">{legacyUi("Pending")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="default" onClick={() => refetch()} data-testid="button-refresh-events">
-            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-          </Button>
+            <RefreshCw className="w-4 h-4 mr-2" /> {legacyUi(" Refresh")}</Button>
           <Button onClick={() => setTriggerOpen(true)} data-testid="button-trigger-webhook">
-            <Zap className="w-4 h-4 mr-2" /> Trigger Webhook
-          </Button>
+            <Zap className="w-4 h-4 mr-2" /> {legacyUi(" Trigger Webhook")}</Button>
         </div>
       </div>
 
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading events...</div>
+            <div className="text-center py-8 text-muted-foreground">{legacyUi("Loading events...")}</div>
           ) : events.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No events found</div>
+            <div className="text-center py-8 text-muted-foreground">{legacyUi("No events found")}</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Event Type</TableHead>
-                    <TableHead>Integration</TableHead>
-                    <TableHead>HTTP</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Time</TableHead>
+                    <TableHead>{legacyUi("Status")}</TableHead>
+                    <TableHead>{legacyUi("Event Type")}</TableHead>
+                    <TableHead>{legacyUi("Integration")}</TableHead>
+                    <TableHead>{legacyUi("HTTP")}</TableHead>
+                    <TableHead>{legacyUi("Duration")}</TableHead>
+                    <TableHead>{legacyUi("Time")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -170,10 +169,10 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {event.durationMs ? `${event.durationMs}ms` : '-'}
+                        {event.durationMs ? legacyUi("{value0}ms",{value0:event.durationMs}) : '-'}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(event.createdAt).toLocaleString()}
+                        {new Date(event.createdAt).toLocaleString(legacyLocale())}
                       </TableCell>
                       <TableCell>
                         <Button size="icon" variant="ghost" onClick={() => setSelectedEvent(event)} data-testid={`button-event-detail-${event.id}`}>
@@ -193,36 +192,36 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Webhook Event Detail</DialogTitle>
+            <DialogTitle>{legacyUi("Webhook Event Detail")}</DialogTitle>
           </DialogHeader>
           {selectedEvent && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Status</span><div>{statusBadge(selectedEvent.status)}</div></div>
-                <div><span className="text-muted-foreground">Event Type</span><div className="font-mono">{selectedEvent.eventType}</div></div>
-                <div><span className="text-muted-foreground">Integration</span><div>{selectedEvent.integrationName || '-'}</div></div>
-                <div><span className="text-muted-foreground">HTTP Status</span><div>{selectedEvent.responseStatus || '-'}</div></div>
-                <div><span className="text-muted-foreground">Duration</span><div>{selectedEvent.durationMs ? `${selectedEvent.durationMs}ms` : '-'}</div></div>
-                <div><span className="text-muted-foreground">Retries</span><div>{selectedEvent.retryCount}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Status")}</span><div>{statusBadge(selectedEvent.status)}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Event Type")}</span><div className="font-mono">{selectedEvent.eventType}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Integration")}</span><div>{selectedEvent.integrationName || '-'}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("HTTP Status")}</span><div>{selectedEvent.responseStatus || '-'}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Duration")}</span><div>{selectedEvent.durationMs ? legacyUi("{value0}ms",{value0:selectedEvent.durationMs}) : '-'}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Retries")}</span><div>{selectedEvent.retryCount}</div></div>
               </div>
-              <div><span className="text-muted-foreground">Target URL</span><div className="font-mono text-xs break-all">{selectedEvent.targetUrl || '-'}</div></div>
+              <div><span className="text-muted-foreground">{legacyUi("Target URL")}</span><div className="font-mono text-xs break-all">{selectedEvent.targetUrl || '-'}</div></div>
               {selectedEvent.hmacHeader && (
-                <div><span className="text-muted-foreground">HMAC Signature</span><div className="font-mono text-xs break-all">{selectedEvent.hmacHeader}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("HMAC Signature")}</span><div className="font-mono text-xs break-all">{selectedEvent.hmacHeader}</div></div>
               )}
               {selectedEvent.requestPayload && (
                 <div>
-                  <span className="text-muted-foreground">Request Payload</span>
+                  <span className="text-muted-foreground">{legacyUi("Request Payload")}</span>
                   <pre className="mt-1 p-3 bg-muted rounded-md text-xs overflow-auto max-h-[120px]">{JSON.stringify(JSON.parse(selectedEvent.requestPayload), null, 2)}</pre>
                 </div>
               )}
               {selectedEvent.responseBody && (
                 <div>
-                  <span className="text-muted-foreground">Response Body</span>
+                  <span className="text-muted-foreground">{legacyUi("Response Body")}</span>
                   <pre className="mt-1 p-3 bg-muted rounded-md text-xs overflow-auto max-h-[120px]">{selectedEvent.responseBody}</pre>
                 </div>
               )}
               {selectedEvent.errorMessage && (
-                <div><span className="text-muted-foreground">Error</span><div className="text-destructive">{selectedEvent.errorMessage}</div></div>
+                <div><span className="text-muted-foreground">{legacyUi("Error")}</span><div className="text-destructive">{selectedEvent.errorMessage}</div></div>
               )}
             </div>
           )}
@@ -233,14 +232,14 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
       <Dialog open={triggerOpen} onOpenChange={setTriggerOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Trigger Webhook</DialogTitle>
+            <DialogTitle>{legacyUi("Trigger Webhook")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Integration</label>
+              <label className="text-sm font-medium">{legacyUi("Integration")}</label>
               <Select value={triggerIntegrationId} onValueChange={setTriggerIntegrationId}>
                 <SelectTrigger className="mt-1" data-testid="select-trigger-integration">
-                  <SelectValue placeholder="Select integration..." />
+                  <SelectValue placeholder={legacyUi("Select integration...")} />
                 </SelectTrigger>
                 <SelectContent>
                   {integrations.filter(i => (i as any).endpointUrl).map(i => (
@@ -250,7 +249,7 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">Event Type</label>
+              <label className="text-sm font-medium">{legacyUi("Event Type")}</label>
               <Select value={triggerEventType} onValueChange={setTriggerEventType}>
                 <SelectTrigger className="mt-1" data-testid="select-trigger-event-type">
                   <SelectValue />
@@ -261,13 +260,13 @@ export function IntegrationEventLog({ integrations }: { integrations: Integratio
               </Select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setTriggerOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setTriggerOpen(false)}>{legacyUi("Cancel")}</Button>
               <Button
                 onClick={() => triggerMutation.mutate()}
                 disabled={!triggerIntegrationId || triggerMutation.isPending}
                 data-testid="button-confirm-trigger"
               >
-                {triggerMutation.isPending ? 'Sending...' : 'Send Webhook'}
+                {triggerMutation.isPending ? legacyUi("Sending...") : legacyUi("Send Webhook")}
               </Button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 interface CountryFlagProps {
   code: string; // ISO 3166-1 alpha-2 country code (e.g. 'TR', 'US')
   size?: 'sm' | 'md' | 'lg';
@@ -16,7 +17,7 @@ export function CountryFlag({ code, size = 'md', className = '' }: CountryFlagPr
     <span
       className={`fi fi-${lowerCode} ${sizeClasses[size]} inline-block rounded-sm ${className}`}
       role="img"
-      aria-label={`${code} flag`}
+      aria-label={legacyUi("{value0} flag",{value0:code})}
     />
   );
 }

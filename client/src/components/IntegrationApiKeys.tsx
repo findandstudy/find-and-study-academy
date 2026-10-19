@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -73,18 +74,18 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
       queryClient.invalidateQueries({ queryKey: ['/api/admin/integration-api-keys'] });
     },
     onError: () => {
-      toast({ title: 'Failed to create API key', variant: 'destructive' });
+      toast({ title: legacyUi("Failed to create API key"), variant: 'destructive' });
     },
   });
 
   const revokeMutation = useMutation({
     mutationFn: (id: string) => apiRequest('DELETE', `/api/admin/integration-api-keys/${id}`),
     onSuccess: () => {
-      toast({ title: 'API key revoked' });
+      toast({ title: legacyUi("API key revoked") });
       refetch();
     },
     onError: () => {
-      toast({ title: 'Failed to revoke key', variant: 'destructive' });
+      toast({ title: legacyUi("Failed to revoke key"), variant: 'destructive' });
     },
   });
 
@@ -98,7 +99,7 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
 
   const handleCreate = () => {
     if (!newKeyName.trim()) {
-      toast({ title: 'Key name is required', variant: 'destructive' });
+      toast({ title: legacyUi("Key name is required"), variant: 'destructive' });
       return;
     }
     createMutation.mutate();
@@ -130,34 +131,33 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
             onClick={() => setShowRevoked(v => !v)}
             data-testid="button-toggle-revoked"
           >
-            {showRevoked ? 'Hide Revoked' : 'Show Revoked'}
+            {showRevoked ? legacyUi("Hide Revoked") : legacyUi("Show Revoked")}
           </Button>
         </div>
         <Button onClick={() => setCreateOpen(true)} data-testid="button-create-api-key">
-          <Plus className="w-4 h-4 mr-2" /> Create API Key
-        </Button>
+          <Plus className="w-4 h-4 mr-2" /> {legacyUi(" Create API Key")}</Button>
       </div>
 
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">{legacyUi("Loading...")}</div>
           ) : keys.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Key className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No API keys yet. Create one to enable external access.</p>
+              <p>{legacyUi("No API keys yet. Create one to enable external access.")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Key Prefix</TableHead>
-                    <TableHead>Scopes</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>{legacyUi("Name")}</TableHead>
+                    <TableHead>{legacyUi("Key Prefix")}</TableHead>
+                    <TableHead>{legacyUi("Scopes")}</TableHead>
+                    <TableHead>{legacyUi("Status")}</TableHead>
+                    <TableHead>{legacyUi("Last Used")}</TableHead>
+                    <TableHead>{legacyUi("Created")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -169,19 +169,19 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {key.scopes?.map(s => <Badge key={s} variant="outline" className="text-xs">{s}</Badge>)
-                          ?? <span className="text-muted-foreground text-xs">All scopes</span>}
+                          ?? <span className="text-muted-foreground text-xs">{legacyUi("All scopes")}</span>}
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={key.isActive ? 'default' : 'destructive'}>
-                          {key.isActive ? 'Active' : 'Revoked'}
+                          {key.isActive ? legacyUi("Active") : legacyUi("Revoked")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : 'Never'}
+                        {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString(legacyLocale()) : legacyUi("Never")}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(key.createdAt).toLocaleDateString()}
+                        {new Date(key.createdAt).toLocaleDateString(legacyLocale())}
                       </TableCell>
                       <TableCell>
                         {key.isActive && (
@@ -193,16 +193,14 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
+                                <AlertDialogTitle>{legacyUi("Revoke API Key")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This will permanently revoke "{key.name}". Any applications using this key will lose access.
-                                </AlertDialogDescription>
+                                  {legacyUi("This will permanently revoke \"")}{key.name}{legacyUi("\". Any applications using this key will lose access.")}</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => revokeMutation.mutate(key.id)}>
-                                  Revoke Key
-                                </AlertDialogAction>
+                                  {legacyUi("Revoke Key")}</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -221,42 +219,41 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
       <Dialog open={createOpen} onOpenChange={handleCloseCreate}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{generatedKey ? 'Save Your API Key' : 'Create API Key'}</DialogTitle>
+            <DialogTitle>{generatedKey ? legacyUi("Save Your API Key") : legacyUi("Create API Key")}</DialogTitle>
           </DialogHeader>
 
           {generatedKey ? (
             <div className="space-y-4">
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md text-sm text-amber-800 dark:text-amber-300">
-                This key will only be shown once. Copy and store it securely.
-              </div>
+                {legacyUi("This key will only be shown once. Copy and store it securely.")}</div>
               <div className="flex gap-2">
                 <Input value={generatedKey} readOnly className="font-mono text-xs" data-testid="input-generated-key" />
                 <Button size="default" variant="outline" onClick={copyKey} data-testid="button-copy-key">
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-              <Button className="w-full" onClick={handleCloseCreate} data-testid="button-done-key">Done</Button>
+              <Button className="w-full" onClick={handleCloseCreate} data-testid="button-done-key">{legacyUi("Done")}</Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Key Name</label>
+                <label className="text-sm font-medium">{legacyUi("Key Name")}</label>
                 <Input
                   className="mt-1"
-                  placeholder="e.g. Production Webhook, CRM Sync"
+                  placeholder={legacyUi("e.g. Production Webhook, CRM Sync")}
                   value={newKeyName}
                   onChange={e => setNewKeyName(e.target.value)}
                   data-testid="input-key-name"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Linked Integration <span className="text-muted-foreground text-xs">(optional)</span></label>
+                <label className="text-sm font-medium">{legacyUi("Linked Integration ")}<span className="text-muted-foreground text-xs">{legacyUi("(optional)")}</span></label>
                 <Select value={newKeyIntegration} onValueChange={setNewKeyIntegration}>
                   <SelectTrigger className="mt-1" data-testid="select-key-integration">
-                    <SelectValue placeholder="None" />
+                    <SelectValue placeholder={legacyUi("None")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">{legacyUi("None")}</SelectItem>
                     {integrations.map(i => (
                       <SelectItem key={i.id} value={i.id}>{i.displayName || i.name}</SelectItem>
                     ))}
@@ -264,7 +261,7 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Permission Scopes <span className="text-muted-foreground text-xs">(empty = all)</span></label>
+                <label className="text-sm font-medium">{legacyUi("Permission Scopes ")}<span className="text-muted-foreground text-xs">{legacyUi("(empty = all)")}</span></label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {SCOPES.map(scope => (
                     <label key={scope} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -280,9 +277,9 @@ export function IntegrationApiKeys({ integrations }: { integrations: Integration
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={handleCloseCreate}>Cancel</Button>
+                <Button variant="outline" onClick={handleCloseCreate}>{legacyUi("Cancel")}</Button>
                 <Button onClick={handleCreate} disabled={createMutation.isPending} data-testid="button-confirm-create-key">
-                  {createMutation.isPending ? 'Creating...' : 'Create Key'}
+                  {createMutation.isPending ? legacyUi("Creating...") : legacyUi("Create Key")}
                 </Button>
               </div>
             </div>

@@ -34,7 +34,28 @@
     "continue": "Lanjutkan",
     "start": "Mulai",
     "viewAll": "Lihat semua",
-    "profilePictureAlt": "Foto profil"
+    "profilePictureAlt": "Foto profil",
+    "draft": "Draf",
+    "published": "Diterbitkan",
+    "status": "Status",
+    "title": "Judul",
+    "description": "Deskripsi",
+    "document": "Dokumen",
+    "video": "Video",
+    "image": "Gambar",
+    "files": "Berkas",
+    "allCountries": "Semua negara",
+    "allTypes": "Semua jenis",
+    "newestFirst": "Terbaru dulu",
+    "oldestFirst": "Terlama dulu",
+    "searchPlaceholder": "Cari...",
+    "open": "Buka",
+    "download": "Unduh",
+    "subfolders": "Subfolder",
+    "category": "Kategori",
+    "country": "Negara",
+    "order": "Urutan",
+    "name": "Nama"
   },
   "toast": {
     "saved": "Pengaturan disimpan",
@@ -507,7 +528,22 @@
       "subscriptions": "Langganan",
       "partnerZone": "Zona Mitra",
       "findyAssistant": "Asisten Findy",
-      "findyAssistantDesc": "Widget chat yang terlihat di kanan bawah semua panel. Saat dinonaktifkan, disembunyikan di kedua panel."
+      "findyAssistantDesc": "Widget chat akan terlihat di kanan bawah semua panel. Jika dinonaktifkan, akan disembunyikan di panel admin dan agen."
+    },
+    "sidebarLinks": {
+      "validationTitle": "Field hilang",
+      "validationDesc": "Setiap tautan perlu nama dan URL.",
+      "savedTitle": "Tersimpan",
+      "savedDesc": "Tautan bilah sisi diperbarui.",
+      "title": "Tautan Bilah Sisi",
+      "description": "Kelola tautan yang ditampilkan di bilah sisi agen. Mereka terbuka di tab baru.",
+      "addLink": "Tambah tautan",
+      "empty": "Belum ada tautan. Klik “Tambah tautan” untuk membuatnya.",
+      "moveUp": "Pindah ke atas",
+      "moveDown": "Pindah ke bawah",
+      "uploadIcon": "Unggah ikon",
+      "namePlaceholder": "Nama tampilan (misalnya Portal Agen)",
+      "enabled": "Terlihat oleh agen"
     }
   },
   "contentEditor": {
@@ -565,5 +601,31 @@
     "footerContactHead": "Kontak",
     "footerRights": "Semua hak dilindungi.",
     "footerLocated": "Platform konsultasi pendidikan berbasis di Türkiye"
+  },
+  "registration": {
+    "title": "Buat akun agen",
+    "subtitle": "Buat akun untuk mengakses pelatihan dan informasi tujuan studi.",
+    "fullName": "Nama lengkap",
+    "fullNamePlaceholder": "Masukkan nama lengkap Anda",
+    "agencyName": "Nama agen",
+    "agencyPlaceholder": "Masukkan nama agen Anda",
+    "country": "Negara",
+    "selectCountry": "Pilih negara",
+    "mobilePhone": "Nomor ponsel",
+    "phoneCountryCode": "Kode telepon negara",
+    "createPassword": "Buat kata sandi",
+    "passwordHint": "Gunakan minimal 8 karakter.",
+    "creating": "Membuat akun...",
+    "createAccount": "Buat akun",
+    "alreadyAccount": "Sudah punya akun?",
+    "readyTitle": "Akun Anda siap",
+    "readyMessage": "Anda sekarang dapat mengakses pusat pelatihan.",
+    "pendingTitle": "Pendaftaran diterima",
+    "pendingMessage": "Akun Anda menunggu persetujuan.",
+    "failedTitle": "Pendaftaran gagal",
+    "failedMessage": "Periksa data Anda dan coba lagi.",
+    "invalidPhone": "Masukkan nomor ponsel yang valid.",
+    "invalidDial": "Pilih kode telepon negara yang valid.",
+    "duplicateEmail": "Email ini sudah terdaftar. Silakan masuk."
   }
 }

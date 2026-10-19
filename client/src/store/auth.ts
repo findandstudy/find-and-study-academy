@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { create } from 'zustand';
 import type { User, Role } from '../types';
 import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session, SignupResult } from '../lib/auth';
@@ -56,13 +57,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const result = await authSignup(data);
-      // Closed system: signup never logs the user in. Account is pending admin/staff approval.
+      if (result.session) {
+        syncLanguageFromUser(result.session.user);
+        set({ user: result.session.user, role: result.session.role, isLoading: false });
+        return result;
+      }
       set({ isLoading: false });
       return result;
     } catch (error) {
       console.error('Signup failed:', error);
       set({ isLoading: false });
-      return null;
+      return { pending: false, error: true, message: error instanceof Error ? legacyMessage(error.message) : legacyUi("Signup failed") };
     }
   },
 

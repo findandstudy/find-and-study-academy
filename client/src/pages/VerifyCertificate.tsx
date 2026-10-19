@@ -1,3 +1,5 @@
+import {LanguageSwitcher} from '@/components/LanguageSwitcher';
+import {usePublicUi} from '@/lib/public-ui';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -8,6 +10,7 @@ import { verifyCertificate, type CertificateVerificationResponse } from '@/lib/a
 import { CheckCircle, XCircle, Search, Award, Loader2 } from 'lucide-react';
 
 export default function VerifyCertificate() {
+  const {tl,locale}=usePublicUi();
   const [location] = useLocation();
   const [code, setCode] = useState('');
   const [verificationResult, setVerificationResult] = useState<'valid' | 'invalid' | null>(null);
@@ -60,15 +63,15 @@ export default function VerifyCertificate() {
 
   return (
     <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+      <div className="absolute top-3 right-3 z-10"><LanguageSwitcher variant="inline" /></div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-md bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-xl">F&S</span>
           </div>
-          <CardTitle>Certificate Verification</CardTitle>
+          <CardTitle>{tl("Certificate Verification")}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Enter a certificate code to verify its authenticity
-          </p>
+            {tl("Enter a certificate code to verify its authenticity")}</p>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -76,20 +79,19 @@ export default function VerifyCertificate() {
             <div className="space-y-4">
               <div className="flex gap-2">
                 <Input
-                  value={code}
+                  dir="ltr" value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="Enter certificate code (e.g., FAS-ABC123)"
+                  placeholder={tl("Enter certificate code (e.g., FAS-ABC123)")}
                   disabled={isLoading}
                   data-testid="input-certificate-code"
                 />
-                <Button onClick={handleVerify} disabled={isLoading || !code.trim()} data-testid="button-verify">
+                <Button aria-label={tl('Verify certificate')} onClick={handleVerify} disabled={isLoading || !code.trim()} data-testid="button-verify">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
               
               <p className="text-xs text-muted-foreground text-center">
-                Certificate codes are found on official Find And Study certificates
-              </p>
+                {tl("Certificate codes are found on official Find And Study certificates")}</p>
             </div>
           )}
 
@@ -100,28 +102,27 @@ export default function VerifyCertificate() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-green-700">Valid Certificate</h3>
-                <Badge className="mt-1 bg-green-100 text-green-700 hover:bg-green-200">Verified</Badge>
+                <h3 className="text-lg font-semibold text-green-700">{tl("Valid Certificate")}</h3>
+                <Badge className="mt-1 bg-green-100 text-green-700 hover:bg-green-200">{tl("Verified")}</Badge>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-4 text-left space-y-2">
+              <div className="bg-green-50 rounded-lg p-4 text-start space-y-2">
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-green-600" />
-                  <span className="font-medium text-green-800">Certificate Details</span>
+                  <span className="font-medium text-green-800">{tl("Certificate Details")}</span>
                 </div>
                 
                 <div className="space-y-1 text-sm">
-                  <p><strong>Recipient:</strong> {certificateData.user?.name}</p>
-                  <p><strong>Course:</strong> {certificateData.course?.title}</p>
-                  <p><strong>Score:</strong> {certificateData.scorePercent}%</p>
-                  <p><strong>Issued:</strong> {new Date(certificateData.issuedAt).toLocaleDateString()}</p>
-                  <p><strong>Code:</strong> {certificateData.code}</p>
+                  <p><strong>{tl("Recipient:")}</strong> {certificateData.user?.name}</p>
+                  <p><strong>{tl("Course:")}</strong> {certificateData.course?.title}</p>
+                  <p><strong>{tl("Score:")}</strong> {certificateData.scorePercent}%</p>
+                  <p><strong>{tl("Issued:")}</strong> {new Date(certificateData.issuedAt).toLocaleDateString(locale)}</p>
+                  <p><strong>{tl("Code:")}</strong> {certificateData.code}</p>
                 </div>
               </div>
 
               <Button onClick={handleReset} variant="outline" data-testid="button-verify-another">
-                Verify Another Certificate
-              </Button>
+                {tl("Verify Another Certificate")}</Button>
             </div>
           )}
 
@@ -132,25 +133,23 @@ export default function VerifyCertificate() {
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold text-red-700">Invalid Certificate</h3>
-                <Badge variant="destructive" className="mt-1">Not Found</Badge>
+                <h3 className="text-lg font-semibold text-red-700">{tl("Invalid Certificate")}</h3>
+                <Badge variant="destructive" className="mt-1">{tl("Not Found")}</Badge>
               </div>
 
               <div className="bg-red-50 rounded-lg p-4 text-left">
                 <p className="text-sm text-red-700">
-                  The certificate code <strong>{code}</strong> could not be verified. 
-                  This may mean:
+                  {tl('The certificate code {code} could not be verified. This may mean:',{code})}
                 </p>
-                <ul className="text-sm text-red-600 mt-2 ml-4 list-disc">
-                  <li>The code was entered incorrectly</li>
-                  <li>The certificate has been revoked</li>
-                  <li>The certificate does not exist</li>
+                <ul className="text-sm text-red-600 mt-2 ms-4 list-disc">
+                  <li>{tl("The code was entered incorrectly")}</li>
+                  <li>{tl("The certificate has been revoked")}</li>
+                  <li>{tl("The certificate does not exist")}</li>
                 </ul>
               </div>
 
               <Button onClick={handleReset} variant="outline" data-testid="button-try-again">
-                Try Again
-              </Button>
+                {tl("Try Again")}</Button>
             </div>
           )}
         </CardContent>

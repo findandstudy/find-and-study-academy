@@ -1,0 +1,609 @@
+diff --git a/server/routes.ts b/server/routes.ts
+index e7ab0bc..6b692a3 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -26,6 +26,8 @@ import sharp from "sharp";
+ import bcrypt from "bcryptjs";
+ import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
+ import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/languages";
++import { parseQuizQuestions } from "@shared/quiz-localization";
++import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translations";
+ 
+ // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
+ // at module load (not per request).
+@@ -580,24 +582,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Filter only active quizzes for agent access
+       const activeQuizzes = quizzes.filter(q => q.status === 'active');
+       
+-      // Parse questions JSON string to array for each quiz
+-      const parsedQuizzes = activeQuizzes.map(quiz => {
+-        let questions = [];
+-        if (quiz.questions) {
+-          try {
+-            questions = typeof quiz.questions === 'string' 
+-              ? JSON.parse(quiz.questions) 
+-              : quiz.questions;
+-          } catch (e) {
+-            console.error(`Failed to parse questions for quiz ${quiz.id}:`, e);
+-            questions = [];
+-          }
+-        }
+-        return {
+-          ...quiz,
+-          questions
+-        };
+-      });
++      const language = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
++      const parsedQuizzes = await localizeQuizzes(activeQuizzes, language);
+       
+       res.json({
+         success: true,
+@@ -4863,7 +4849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Parse questions JSON for each quiz
+       const quizzesWithParsedQuestions = quizzes.map(quiz => ({
+         ...quiz,
+-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
++        questions: parseQuizQuestions(quiz.questions)
+       }));
+       
+       res.json({
+@@ -4894,7 +4880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Convert questions array to JSON string for storage
+       const quizData = {
+         ...validation.data,
+-        questions: JSON.stringify(validation.data.questions || [])
++        questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
+       };
+ 
+       const quiz = await storage.createQuiz(quizData);
+@@ -4902,7 +4888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Parse questions back to object for response
+       const responseQuiz = {
+         ...quiz,
+-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
++        questions: parseQuizQuestions(quiz.questions)
+       };
+       
+       res.status(201).json({
+@@ -4961,7 +4947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       const updateData = {
+         ...validation.data,
+         ...(validation.data.questions && {
+-          questions: JSON.stringify(validation.data.questions)
++          questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
+         })
+       };
+ 
+@@ -4970,7 +4956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Parse questions back to object for response
+       const responseQuiz = {
+         ...quiz,
+-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
++        questions: parseQuizQuestions(quiz.questions)
+       };
+       
+       res.json({
+@@ -6812,6 +6798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+     }
+   });
+ 
++  registerQuizTranslationRoutes(app, requireAuth, requireAdmin);
++
+   const httpServer = createServer(app);
+ 
+   return httpServer;
+diff --git a/shared/schema.ts b/shared/schema.ts
+index 829c439..744dace 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -132,6 +132,20 @@ export const quizzes = pgTable("quizzes", {
+   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+ });
+ 
++// Text translations are independent of the source quiz and its grading keys.
++export const quizTranslations = pgTable("quiz_translations", {
++  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
++  quizId: varchar("quiz_id").notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
++  language: text("language").notNull(),
++  title: text("title").notNull(),
++  description: text("description"),
++  questions: text("questions").notNull(),
++  sourceHash: text("source_hash").notNull(),
++  status: text("status").notNull().default('draft'),
++  createdAt: timestamp("created_at").notNull().defaultNow(),
++  updatedAt: timestamp("updated_at").notNull().defaultNow(),
++}, table => ({ quizLanguageUnique: unique('quiz_translation_language_unique').on(table.quizId, table.language) }));
++
+ // Quiz attempts for progress tracking
+ export const attempts = pgTable("attempts", {
+   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+diff --git a/client/src/pages/agent/Courses.tsx b/client/src/pages/agent/Courses.tsx
+index 5d3d7cb..fa9e12b 100644
+--- a/client/src/pages/agent/Courses.tsx
++++ b/client/src/pages/agent/Courses.tsx
+@@ -55,7 +55,12 @@ export default function AgentCourses() {
+   });
+ 
+   const { data: quizzes = [] } = useQuery({
+-    queryKey: ['/api/public/quizzes'],
++    queryKey: ['/api/public/quizzes', currentLang],
++    queryFn: async () => {
++      const response = await fetch(`/api/public/quizzes?lang=${encodeURIComponent(currentLang)}`);
++      if (!response.ok) throw new Error('Could not load quizzes');
++      return response.json();
++    },
+     staleTime: 0, // Always fetch fresh data
+     refetchOnMount: true,
+     refetchOnWindowFocus: true,
+diff --git a/client/src/components/course/CourseView.tsx b/client/src/components/course/CourseView.tsx
+index 8fc5cbd..4e9c333 100644
+--- a/client/src/components/course/CourseView.tsx
++++ b/client/src/components/course/CourseView.tsx
+@@ -124,11 +124,15 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
+   });
+ 
+   useEffect(() => {
+-    // Auto-select first lesson if none selected
+-    if (!selectedLesson && course.sections[0]?.lessons[0]) {
+-      setSelectedLesson(course.sections[0].lessons[0]);
+-    }
+-  }, [course, selectedLesson]);
++    // Replace the selected object when translated lesson data arrives, keeping
++    // the lesson ID where possible instead of retaining the previous language.
++    const lessons = course.sections.flatMap(section => section.lessons);
++    setSelectedLesson(previous => lessons.find(lesson => lesson.id === previous?.id) ?? lessons[0] ?? null);
++  }, [course]);
++
++  useEffect(() => {
++    setActiveQuiz(previous => previous ? quizzes.find(quiz => quiz.id === previous.id) ?? null : null);
++  }, [quizzes]);
+ 
+   const handleLessonComplete = (lessonId: string) => {
+     if (!user) return;
+diff --git a/client/src/components/course/QuizModal.tsx b/client/src/components/course/QuizModal.tsx
+index b901b49..5817167 100644
+--- a/client/src/components/course/QuizModal.tsx
++++ b/client/src/components/course/QuizModal.tsx
+@@ -10,7 +10,7 @@ import { submitAttempt } from '@/lib/api';
+ import { queryClient } from '@/lib/queryClient';
+ import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+ import type { Quiz, Question, Attempt } from '../../types';
+-import type { FrontendQuestion } from '@shared/schema';
++import { parseQuizQuestions } from '@shared/quiz-localization';
+ 
+ interface QuizModalProps {
+   quiz: Quiz;
+@@ -19,24 +19,8 @@ interface QuizModalProps {
+ }
+ 
+ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProps) {
+-  // Normalize quiz.questions - parse if string, ensure array
+-  const quiz = {
+-    ...quizProp,
+-    questions: ((): FrontendQuestion[] => {
+-      if (!quizProp.questions) return [];
+-      if (Array.isArray(quizProp.questions)) return quizProp.questions as FrontendQuestion[];
+-      if (typeof quizProp.questions === 'string') {
+-        try {
+-          return JSON.parse(quizProp.questions) as FrontendQuestion[];
+-        } catch (e) {
+-          console.error('Failed to parse quiz questions:', e);
+-          return [];
+-        }
+-      }
+-      return [];
+-    })()
+-  };
+-  
++  const quiz = { ...quizProp, questions: parseQuizQuestions(quizProp.questions) };
++
+   const [currentQuestion, setCurrentQuestion] = useState(0);
+   const [answers, setAnswers] = useState<{ [questionId: string]: boolean | number }>({});
+   const [showResults, setShowResults] = useState(false);
+@@ -175,7 +159,11 @@ export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProp
+   };
+ 
+   const closeModal = () => {
+-    if (showResults) {
++    if (quiz.questions.length === 0) {
++    return <Card role="alert"><CardContent className="p-6 space-y-4"><p>This quiz has no questions available yet.</p><Button onClick={onClose}>Close</Button></CardContent></Card>;
++  }
++
++  if (showResults) {
+       const correct = Object.keys(answers).filter(qId => {
+         const question = quiz.questions.find(q => q.id === qId);
+         const userAnswer = answers[qId];
+diff --git a/client/src/pages/admin/Quizzes.tsx b/client/src/pages/admin/Quizzes.tsx
+index 65a8e97..84564f5 100644
+--- a/client/src/pages/admin/Quizzes.tsx
++++ b/client/src/pages/admin/Quizzes.tsx
+@@ -40,6 +40,9 @@ import {
+   type FrontendQuestion
+ } from '@shared/schema';
+ import { z } from 'zod';
++import { QuizTranslationEditor } from '@/components/QuizTranslationEditor';
++import { Globe } from 'lucide-react';
++import { parseQuizQuestions } from '@shared/quiz-localization';
+ 
+ // Use shared question schema from shared/schema.ts
+ 
+@@ -67,6 +70,7 @@ export default function AdminQuizzes() {
+   const [searchQuery, setSearchQuery] = useState('');
+   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
+   const [editingQuiz, setEditingQuiz] = useState<QuizDTO | null>(null);
++  const [translationQuiz, setTranslationQuiz] = useState<QuizDTO | null>(null);
+   const [filterType, setFilterType] = useState<'all' | 'final' | 'regular'>('all');
+   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'inactive'>('all');
+   const [sortBy, setSortBy] = useState<'title-asc' | 'title-desc' | 'questions-desc' | 'questions-asc' | 'pass-desc' | 'pass-asc'>('title-asc');
+@@ -87,7 +91,7 @@ export default function AdminQuizzes() {
+       // Backend already parses questions JSON - use directly as array
+       return data.quizzes.map((quiz) => ({
+         ...quiz,
+-        questions: Array.isArray(quiz.questions) ? quiz.questions : [],
++        questions: parseQuizQuestions(quiz.questions),
+       })) as QuizDTO[];
+     }
+   });
+@@ -919,6 +923,9 @@ export default function AdminQuizzes() {
+                     )}
+                   </div>
+                   <div className="flex gap-2 shrink-0">
++                    <Button size="icon" variant="outline" onClick={() => setTranslationQuiz(quiz)} aria-label={`Translate ${quiz.title}`} data-testid={`button-translate-quiz-${quiz.id}`}>
++                      <Globe className="w-4 h-4" />
++                    </Button>
+                     <Button
+                       size="icon"
+                       variant="outline"
+@@ -949,6 +956,7 @@ export default function AdminQuizzes() {
+           )}
+         </CardContent>
+       </Card>
++      {translationQuiz && <QuizTranslationEditor quiz={translationQuiz} onClose={() => setTranslationQuiz(null)} />}
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/shared/quiz-localization.ts b/shared/quiz-localization.ts
+new file mode 100644
+index 0000000..886b60f
+--- /dev/null
++++ b/shared/quiz-localization.ts
+@@ -0,0 +1,61 @@
++import { frontendQuestionSchema, type FrontendQuestion } from './schema';
++
++export type QuizQuestion = FrontendQuestion & { explanation?: string };
++export interface QuestionTranslation {
++  id: string;
++  text: string;
++  options?: string[];
++  explanation?: string;
++}
++
++// Older records contain JSON serialized twice. Decode without rewriting them.
++export function parseQuizQuestions(value: unknown): QuizQuestion[] {
++  if (value == null || value === '') return [];
++  for (let depth = 0; depth < 4 && typeof value === 'string'; depth++) {
++    value = JSON.parse(value);
++  }
++  if (!Array.isArray(value)) throw new Error('Quiz questions must be an array');
++  const ids = new Set<string>();
++  const reservedIds = new Set(value.map(item => item?.id));
++  return value.map((item, index) => {
++    const parsed = frontendQuestionSchema.parse(item);
++    // Four legacy quizzes reuse q2 for two different questions. Give only the
++    // duplicate a stable runtime ID so answers cannot overwrite one another.
++    // Leave persisted questions and every already unique ID untouched.
++    if (ids.has(parsed.id)) {
++      let candidate = `${parsed.id}__duplicate_${index + 1}`;
++      while (reservedIds.has(candidate) || ids.has(candidate)) candidate += '_';
++      parsed.id = candidate;
++    }
++    ids.add(parsed.id);
++    if (parsed.type === 'mcq' && (!Number.isInteger(parsed.answerIndex) || parsed.answerIndex >= parsed.options.length)) {
++      throw new Error('Invalid correct option index');
++    }
++    return { ...item, ...parsed };
++  });
++}
++
++// Only text can change. IDs, types, answer keys and question/option order stay
++// in the base quiz, so existing attempts and grading remain compatible.
++export function mergeQuestionTranslations(base: QuizQuestion[], translated: QuestionTranslation[]): QuizQuestion[] {
++  if (base.length !== translated.length) throw new Error('Question count must match the source');
++  return base.map((question, index) => {
++    const localized = translated[index];
++    if (!localized || localized.id !== question.id) throw new Error('Question IDs and order must match the source');
++    if (!localized.text?.trim()) throw new Error('Every question needs translated text');
++    if (question.explanation && !localized.explanation?.trim()) throw new Error('Every source explanation must be translated');
++    if (question.type === 'mcq') {
++      if (localized.options?.length !== question.options.length || localized.options.some(s => !s.trim())) {
++        throw new Error('Every answer option must be translated in its original position');
++      }
++    } else if (localized.options !== undefined) {
++      throw new Error('True/false questions cannot have options');
++    }
++    return {
++      ...question,
++      text: localized.text,
++      ...(question.type === 'mcq' ? { options: localized.options! } : {}),
++      ...(localized.explanation !== undefined ? { explanation: localized.explanation } : {}),
++    };
++  });
++}
+diff --git a/server/quiz-translations.ts b/server/quiz-translations.ts
+new file mode 100644
+index 0000000..46ca8ff
+--- /dev/null
++++ b/server/quiz-translations.ts
+@@ -0,0 +1,92 @@
++import { createHash } from 'node:crypto';
++import type { Express, RequestHandler } from 'express';
++import { and, eq } from 'drizzle-orm';
++import { z } from 'zod';
++import { db } from './db';
++import { storage } from './storage';
++import { quizTranslations, type Quiz } from '@shared/schema';
++import { isSupportedLanguage } from '@shared/languages';
++import { mergeQuestionTranslations, parseQuizQuestions } from '@shared/quiz-localization';
++
++export function quizSourceHash(quiz: Pick<Quiz, 'title' | 'description' | 'questions'>): string {
++  return createHash('sha256').update(JSON.stringify({
++    title: quiz.title, description: quiz.description ?? null, questions: parseQuizQuestions(quiz.questions),
++  })).digest('hex');
++}
++
++export async function localizeQuizzes(quizzes: Quiz[], language: string) {
++  const translations = language === 'en' ? [] : await db.select().from(quizTranslations)
++    .where(and(eq(quizTranslations.language, language), eq(quizTranslations.status, 'published')));
++  const byId = new Map(translations.map(item => [item.quizId, item]));
++  return quizzes.map(quiz => {
++    const base = { ...quiz, questions: parseQuizQuestions(quiz.questions) };
++    const translated = byId.get(quiz.id);
++    // A source edit makes the old translation stale. Serve the source until
++    // the translation is reviewed, rather than grading mismatched questions.
++    if (!translated || translated.sourceHash !== quizSourceHash(quiz)) return base;
++    try {
++      return { ...base, title: translated.title, description: translated.description,
++        questions: mergeQuestionTranslations(base.questions, JSON.parse(translated.questions)) };
++    } catch {
++      return base;
++    }
++  });
++}
++
++const translationSchema = z.object({
++  title: z.string().trim().min(1).max(1000),
++  description: z.string().max(20000).nullable().optional(),
++  status: z.enum(['draft', 'published']).default('draft'),
++  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
++  questions: z.array(z.object({
++    id: z.string(), text: z.string().trim().min(1),
++    options: z.array(z.string().trim().min(1)).optional(),
++    explanation: z.string().optional(),
++  }).strict()).min(1),
++}).strict();
++
++export function registerQuizTranslationRoutes(app: Express, requireAuth: RequestHandler, requireAdmin: RequestHandler) {
++  app.get('/api/admin/quizzes/:id/translations', requireAuth, requireAdmin, async (req, res) => {
++    try {
++      const quiz = await storage.getQuizById(req.params.id);
++      if (!quiz) return res.status(404).json({ success: false, message: 'Quiz not found' });
++      const rows = await db.select().from(quizTranslations).where(eq(quizTranslations.quizId, quiz.id));
++      const sourceHash = quizSourceHash(quiz);
++      res.json({ success: true, sourceHash, translations: rows.map(row => ({ ...row,
++        questions: JSON.parse(row.questions), stale: row.sourceHash !== sourceHash,
++      })) });
++    } catch {
++      res.status(500).json({ success: false, message: 'Could not load quiz translations' });
++    }
++  });
++
++  app.put('/api/admin/quizzes/:id/translations/:language', requireAuth, requireAdmin, async (req, res) => {
++    if (!isSupportedLanguage(req.params.language) || req.params.language === 'en') {
++      return res.status(400).json({ success: false, message: 'Choose a supported translation language' });
++    }
++    const parsed = translationSchema.safeParse(req.body);
++    if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid translation', errors: parsed.error.errors });
++    try {
++      // Keep the source locked while validating and saving, so a simultaneous
++      // source edit cannot leave a newly published translation out of date.
++      const saved = await db.transaction(async tx => {
++        const { quizzes: quizTable } = await import('@shared/schema');
++        const [quiz] = await tx.select().from(quizTable).where(eq(quizTable.id, req.params.id)).for('share');
++        if (!quiz) throw new Error('Quiz not found');
++        const sourceHash = quizSourceHash(quiz);
++        if (sourceHash !== parsed.data.sourceHash) throw new Error('The source quiz changed. Reload before saving.');
++        mergeQuestionTranslations(parseQuizQuestions(quiz.questions), parsed.data.questions);
++        const values = { quizId: quiz.id, language: req.params.language, ...parsed.data,
++          description: parsed.data.description ?? null, questions: JSON.stringify(parsed.data.questions), updatedAt: new Date() };
++        const [row] = await tx.insert(quizTranslations).values(values).onConflictDoUpdate({
++          target: [quizTranslations.quizId, quizTranslations.language], set: values,
++        }).returning();
++        return { ...row, questions: parsed.data.questions };
++      });
++      res.json({ success: true, translation: saved });
++    } catch (error) {
++      const message = error instanceof Error ? error.message : 'Could not save quiz translation';
++      res.status(message === 'Quiz not found' ? 404 : message.includes('source quiz changed') ? 409 : 400).json({ success: false, message });
++    }
++  });
++}
+diff --git a/client/src/components/QuizTranslationEditor.tsx b/client/src/components/QuizTranslationEditor.tsx
+new file mode 100644
+index 0000000..e734ff0
+--- /dev/null
++++ b/client/src/components/QuizTranslationEditor.tsx
+@@ -0,0 +1,107 @@
++import { useEffect, useState } from 'react';
++import { useMutation, useQuery } from '@tanstack/react-query';
++import { useTranslation } from 'react-i18next';
++import type { QuizDTO } from '@shared/schema';
++import { mergeQuestionTranslations, parseQuizQuestions, type QuestionTranslation } from '@shared/quiz-localization';
++import { normalizeLanguage, SUPPORTED_LANGUAGES, getLanguageMeta } from '@/i18n/languages';
++import { apiRequest, queryClient } from '@/lib/queryClient';
++import { useToast } from '@/hooks/use-toast';
++import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
++import { Button } from '@/components/ui/button';
++import { Label } from '@/components/ui/label';
++import { Input } from '@/components/ui/input';
++import { Textarea } from '@/components/ui/textarea';
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
++
++interface Translation {
++  language: string;
++  title: string;
++  description: string | null;
++  questions: QuestionTranslation[];
++  status: 'draft' | 'published';
++  stale: boolean;
++}
++interface TranslationResponse {
++  sourceHash: string;
++  translations: Translation[];
++}
++
++export function QuizTranslationEditor({ quiz, onClose }: { quiz: QuizDTO; onClose: () => void }) {
++  const { i18n, t } = useTranslation();
++  const { toast } = useToast();
++  const initial = normalizeLanguage(i18n.language);
++  const [language, setLanguage] = useState<string>(initial === 'en' ? 'tr' : initial);
++  const [form, setForm] = useState({ title: '', description: '', status: 'draft' as 'draft' | 'published', questions: [] as QuestionTranslation[] });
++  const base = parseQuizQuestions(quiz.questions);
++  const url = `/api/admin/quizzes/${encodeURIComponent(quiz.id)}/translations`;
++  const { data, isFetching, error } = useQuery<TranslationResponse>({
++    queryKey: [url], queryFn: async () => (await apiRequest('GET', url)).json(),
++  });
++  const existing = data?.translations.find(item => item.language === language);
++
++  useEffect(() => {
++    const saved = data?.translations.find(item => item.language === language);
++    const questions = parseQuizQuestions(quiz.questions).map(question => {
++      const translated = saved?.questions.find(item => item.id === question.id);
++      return {
++        id: question.id, text: translated?.text ?? '',
++        ...(question.type === 'mcq' ? { options: question.options.map((_, index) => translated?.options?.[index] ?? '') } : {}),
++        ...(question.explanation ? { explanation: translated?.explanation ?? '' } : {}),
++      };
++    });
++    setForm({ title: saved?.title ?? '', description: saved?.description ?? '', status: saved?.status ?? 'draft', questions });
++  }, [data, language, quiz]);
++
++  const save = useMutation({
++    mutationFn: async () => {
++      if (!data?.sourceHash || !form.title.trim()) throw new Error('A translated title is required');
++      mergeQuestionTranslations(base, form.questions);
++      return (await apiRequest('PUT', `${url}/${language}`, { ...form, sourceHash: data.sourceHash })).json();
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [url] });
++      queryClient.invalidateQueries({ queryKey: ['/api/public/quizzes'] });
++      toast({ title: t('toast.saved') });
++    },
++    onError: error => toast({ title: t('toast.failed'), description: error.message, variant: 'destructive' }),
++  });
++
++  const updateQuestion = (index: number, patch: Partial<QuestionTranslation>) => setForm(previous => ({
++    ...previous, questions: previous.questions.map((question, i) => i === index ? { ...question, ...patch } : question),
++  }));
++
++  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
++    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
++      <DialogHeader><DialogTitle>{t('contentEditor.title', { defaultValue: 'Quiz translations' })} — {quiz.title}</DialogTitle></DialogHeader>
++      <div className="flex flex-wrap gap-3">
++        <Select value={language} onValueChange={value => setLanguage(normalizeLanguage(value))}>
++          <SelectTrigger className="w-56" aria-label={t('language.select')}><SelectValue /></SelectTrigger>
++          <SelectContent>{SUPPORTED_LANGUAGES.filter(item => item.code !== 'en').map(item => <SelectItem key={item.code} value={item.code}>{item.nativeLabel}</SelectItem>)}</SelectContent>
++        </Select>
++        <Select value={form.status} onValueChange={value => setForm(previous => ({ ...previous, status: value as 'draft' | 'published' }))}>
++          <SelectTrigger className="w-40" aria-label={t('common.status')}><SelectValue /></SelectTrigger>
++          <SelectContent><SelectItem value="draft">{t('common.draft')}</SelectItem><SelectItem value="published">{t('common.published')}</SelectItem></SelectContent>
++        </Select>
++      </div>
++      {error && <p role="alert" className="text-destructive">{error.message}</p>}
++      {existing?.stale && <p role="alert" className="text-amber-700">The source quiz changed. Review every question before publishing this translation.</p>}
++      {isFetching ? <p>{t('common.loading')}</p> : <div className="space-y-5" dir={getLanguageMeta(language).dir}>
++        <div className="space-y-2"><Label htmlFor="quiz-translation-title">{t('common.title')}</Label><p className="text-sm text-muted-foreground" dir="auto">{quiz.title}</p><Input id="quiz-translation-title" value={form.title} onChange={event => setForm(previous => ({ ...previous, title: event.target.value }))} /></div>
++        <div className="space-y-2"><Label htmlFor="quiz-translation-description">{t('common.description')}</Label><p className="text-sm text-muted-foreground" dir="auto">{quiz.description}</p><Textarea id="quiz-translation-description" value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} /></div>
++        {base.map((question, index) => <fieldset key={question.id} className="space-y-3 rounded-lg border p-4">
++          <legend className="px-2 font-semibold">{index + 1}</legend>
++          <p dir="auto" className="text-sm text-muted-foreground">{question.text}</p>
++          <Textarea aria-label={`Question ${index + 1}`} value={form.questions[index]?.text ?? ''} onChange={event => updateQuestion(index, { text: event.target.value })} />
++          {question.type === 'mcq' && question.options.map((option, optionIndex) => <div key={optionIndex} className="space-y-1">
++            <p dir="auto" className="text-sm text-muted-foreground">{optionIndex + 1}. {option}</p>
++            <Input aria-label={`Question ${index + 1}, option ${optionIndex + 1}`} value={form.questions[index]?.options?.[optionIndex] ?? ''} onChange={event => {
++              const options = [...(form.questions[index]?.options ?? [])]; options[optionIndex] = event.target.value; updateQuestion(index, { options });
++            }} />
++          </div>)}
++          {question.explanation && <div className="space-y-1"><p dir="auto" className="text-sm text-muted-foreground">{question.explanation}</p><Textarea aria-label={`Question ${index + 1}, explanation`} value={form.questions[index]?.explanation ?? ''} onChange={event => updateQuestion(index, { explanation: event.target.value })} /></div>}
++        </fieldset>)}
++      </div>}
++      <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>{t('common.close')}</Button><Button disabled={isFetching || !!error || save.isPending || !data || !base.length} onClick={() => save.mutate()}>{t(save.isPending ? 'common.saving' : 'common.save')}</Button></div>
++    </DialogContent>
++  </Dialog>;
++}
+diff --git a/migrations/20261015_quiz_translations.sql b/migrations/20261015_quiz_translations.sql
+new file mode 100644
+index 0000000..1b0eefa
+--- /dev/null
++++ b/migrations/20261015_quiz_translations.sql
+@@ -0,0 +1,15 @@
++BEGIN;
++CREATE TABLE IF NOT EXISTS quiz_translations (
++  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
++  quiz_id varchar NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
++  language text NOT NULL,
++  title text NOT NULL,
++  description text,
++  questions text NOT NULL,
++  source_hash text NOT NULL,
++  status text NOT NULL DEFAULT 'draft',
++  created_at timestamp NOT NULL DEFAULT NOW(),
++  updated_at timestamp NOT NULL DEFAULT NOW(),
++  CONSTRAINT quiz_translation_language_unique UNIQUE (quiz_id, language)
++);
++COMMIT;
+diff --git a/shared/quiz-localization.test.ts b/shared/quiz-localization.test.ts
+new file mode 100644
+index 0000000..a1ee8cb
+--- /dev/null
++++ b/shared/quiz-localization.test.ts
+@@ -0,0 +1,38 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { mergeQuestionTranslations, parseQuizQuestions } from './quiz-localization';
++
++const questions = [
++  { id: 'first', type: 'boolean', text: 'Source statement', answer: true },
++  { id: 'second', type: 'mcq', text: 'Source question', options: ['First', 'Second'], answerIndex: 1, explanation: 'Reason' },
++];
++
++test('legacy nested JSON produces the same questions without changing answer keys', () => {
++  assert.deepEqual(parseQuizQuestions(JSON.stringify(JSON.stringify(questions))), questions);
++  assert.throws(() => parseQuizQuestions('{broken'));
++  assert.throws(() => parseQuizQuestions('{}'));
++  const duplicateInput = [...questions, questions[0]];
++  const repaired = parseQuizQuestions(duplicateInput);
++  assert.deepEqual(repaired.map(q => q.id), ['first', 'second', 'first__duplicate_3']);
++  assert.equal(duplicateInput[2].id, 'first');
++});
++
++test('translations preserve IDs, types, answer keys and source data', () => {
++  const base = parseQuizQuestions(questions);
++  const translated = mergeQuestionTranslations(base, [
++    { id: 'first', text: 'Çevrilen ifade' },
++    { id: 'second', text: 'Çevrilen soru', options: ['Birinci', 'İkinci'], explanation: 'Gerekçe' },
++  ]);
++  assert.equal(translated[0].id, 'first');
++  assert.equal(translated[0].type === 'boolean' && translated[0].answer, true);
++  assert.equal(translated[1].type === 'mcq' && translated[1].answerIndex, 1);
++  assert.deepEqual(base, questions);
++});
++
++test('incomplete, reordered or structurally incompatible translations cannot be published', () => {
++  const base = parseQuizQuestions(questions);
++  assert.throws(() => mergeQuestionTranslations(base, []));
++  assert.throws(() => mergeQuestionTranslations(base, [{ id: 'second', text: 'X' }, { id: 'first', text: 'Y' }]));
++  assert.throws(() => mergeQuestionTranslations(base, [{ id: 'first', text: 'X' }, { id: 'second', text: 'Y', options: ['A'], explanation: 'Z' }]));
++  assert.throws(() => mergeQuestionTranslations(base, [{ id: 'first', text: 'X' }, { id: 'second', text: 'Y', options: ['A', 'B'] }]));
++});

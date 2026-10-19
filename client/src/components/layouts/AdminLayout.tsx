@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +58,9 @@ const navigationGroups: NavGroup[] = [
     fallback: 'General',
     items: [
       { i18nKey: 'dashboard', fallback: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { i18nKey: 'campaigns', fallback: 'Invitation campaigns', href: '/admin/campaigns', icon: Users, adminOnly: true },
+      { i18nKey: 'operations', fallback: 'Operasyon Merkezi', href: '/admin/operations', icon: LayoutDashboard },
+      { i18nKey: 'translationControl', fallback: 'Translation control', href: '/admin/translation-control', icon: FileText, adminOnly: true },
       { i18nKey: 'profile', fallback: 'Profile', href: '/admin/profile', icon: User },
     ],
   },
@@ -182,13 +186,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <div className={`items-center ${sidebarCollapsed ? 'flex lg:hidden' : 'flex'}`}>
               <img
                 src={logoImage}
-                alt="Find & Study Logo"
+                alt={legacyUi("Find & Study Logo")}
                 className="h-9 w-auto object-contain"
               />
             </div>
             <img
               src={portalIcon}
-              alt="Find & Study"
+              alt={legacyUi("Find & Study")}
               className={`w-9 h-9 object-contain ${sidebarCollapsed ? 'hidden lg:block' : 'hidden'}`}
             />
             <Button
@@ -229,7 +233,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
               <div className="flex items-center gap-2.5 mb-2">
                 <Avatar className="w-9 h-9 shrink-0">
-                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
+                  <AvatarImage src={(user as any)?.profilePicture || ''} alt={legacyUi("Profile")} />
                   <AvatarFallback className="text-sm font-medium">
                     {user?.name.charAt(0)}
                   </AvatarFallback>
@@ -239,7 +243,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     {user?.name}
                   </p>
                   <Badge variant="default" className="text-[10px] py-0 px-1.5 h-4 mt-0.5">
-                    {role === 'admin' ? 'Admin' : 'Staff'}
+                    {role === 'admin' ? legacyUi("Admin") : legacyUi("Staff")}
                   </Badge>
                 </div>
               </div>
@@ -260,7 +264,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Avatar className="w-9 h-9">
-                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
+                    <AvatarImage src={(user as any)?.profilePicture || ''} alt={legacyUi("Profile")} />
                     <AvatarFallback className="text-sm font-medium">
                       {user?.name.charAt(0)}
                     </AvatarFallback>
@@ -305,8 +309,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="text-sm sm:text-lg font-semibold text-foreground truncate">
-              <span className="hidden sm:inline">Find And Study - </span>Admin Portal
-            </h1>
+              <span className="hidden sm:inline">{legacyUi("Find And Study - ")}</span>{legacyUi("Admin Portal")}</h1>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
@@ -319,3 +322,4 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
+

@@ -34,7 +34,28 @@
     "continue": "继续",
     "start": "开始",
     "viewAll": "查看全部",
-    "profilePictureAlt": "个人头像"
+    "profilePictureAlt": "个人头像",
+    "draft": "草稿",
+    "published": "已发布",
+    "status": "状态",
+    "title": "标题",
+    "description": "描述",
+    "document": "文档",
+    "video": "视频",
+    "image": "图像",
+    "files": "文件",
+    "allCountries": "所有国家",
+    "allTypes": "所有类型",
+    "newestFirst": "最新优先",
+    "oldestFirst": "最早优先",
+    "searchPlaceholder": "搜索...",
+    "open": "打开",
+    "download": "下载",
+    "subfolders": "子文件夹",
+    "category": "类别",
+    "country": "国家",
+    "order": "排序",
+    "name": "名称"
   },
   "toast": {
     "saved": "设置已保存",
@@ -508,6 +529,21 @@
       "partnerZone": "合作伙伴专区",
       "findyAssistant": "Findy助手",
       "findyAssistantDesc": "所有面板右下角可见的聊天小部件。禁用后在管理员和代理面板中均隐藏。"
+    },
+    "sidebarLinks": {
+      "validationTitle": "缺少字段",
+      "validationDesc": "每个链接都需要一个名称和一个 URL。",
+      "savedTitle": "已保存",
+      "savedDesc": "侧边栏链接已更新。",
+      "title": "侧边栏链接",
+      "description": "管理代理侧边栏中显示的链接。它们将在新标签页中打开。",
+      "addLink": "添加链接",
+      "empty": "尚无链接。点击“添加链接”创建一个。",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "uploadIcon": "上传图标",
+      "namePlaceholder": "显示名称（例如，代理门户）",
+      "enabled": "对代理可见"
     }
   },
   "contentEditor": {
@@ -565,5 +601,31 @@
     "footerContactHead": "联系",
     "footerRights": "版权所有。",
     "footerLocated": "总部位于土耳其的教育咨询平台"
+  },
+  "registration": {
+    "title": "创建代理机构账户",
+    "subtitle": "创建账户以访问培训和留学目的地信息。",
+    "fullName": "姓名",
+    "fullNamePlaceholder": "请输入您的姓名",
+    "agencyName": "代理机构名称",
+    "agencyPlaceholder": "请输入您的代理机构名称",
+    "country": "国家",
+    "selectCountry": "请选择国家",
+    "mobilePhone": "手机号码",
+    "phoneCountryCode": "国际电话区号",
+    "createPassword": "创建密码",
+    "passwordHint": "请至少使用8个字符。",
+    "creating": "正在创建账户...",
+    "createAccount": "创建账户",
+    "alreadyAccount": "已有账户？",
+    "readyTitle": "您的账户已就绪",
+    "readyMessage": "现在可以访问培训中心。",
+    "pendingTitle": "申请已收到",
+    "pendingMessage": "您的账户正在等待审核。",
+    "failedTitle": "注册失败",
+    "failedMessage": "请检查信息后重试。",
+    "invalidPhone": "请输入有效的手机号码。",
+    "invalidDial": "请选择有效的国际电话区号。",
+    "duplicateEmail": "该电子邮箱已注册，请登录。"
   }
 }

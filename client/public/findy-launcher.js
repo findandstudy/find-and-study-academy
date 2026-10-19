@@ -1,6 +1,10 @@
       (function() {
+ const ui=(source,params={})=>window.__academyLegacyUi?.text(source,params)||source.replace(/\{value\d+\}/g,k=>String(params[k.slice(1,-1)]??k));
+
         // Configuration - Using backend API proxy
         const API_ENDPOINT = '/api/chat';
+        const groundingFooter = document.querySelector('.findy-footer-text');
+        if (groundingFooter) groundingFooter.textContent = 'Find And Study';
 
         // Read authenticated user from the React app's session store so we can
         // send the x-user-id header (backend uses it to enable admin debug data).
@@ -26,6 +30,29 @@
         let isMinimized = localStorage.getItem('findy-minimized') === 'true';
         // Rolling conversation history sent to the backend (max 10 messages = 5 exchanges).
         let conversationHistory = [];
+        const usageElement = document.createElement('p');
+        usageElement.dataset.testid = 'findy-usage';
+        usageElement.style.cssText = 'margin:4px 12px;font-size:12px;line-height:1.4;color:inherit';
+        if (groundingFooter) groundingFooter.parentNode.insertBefore(usageElement, groundingFooter);
+        const newChatButton = document.createElement('button');
+        newChatButton.type = 'button'; newChatButton.textContent = '↺';
+        newChatButton.dataset.testid = 'findy-new-chat';
+        newChatButton.style.cssText = 'background:transparent;border:0;color:inherit;cursor:pointer;padding:8px;font-size:18px';
+        closeBtn.parentNode.insertBefore(newChatButton, closeBtn);
+        function renderUsage(result) {
+          if (result.usage && Number.isFinite(result.usage.used) && Number.isFinite(result.usage.limit)) {
+            usageElement.textContent = (result.labels?.usage || '') + ': ' + result.usage.used + ' / ' + result.usage.limit;
+            usageElement.title = result.usage.timezone || 'Europe/Istanbul';
+          }
+          if (result.labels?.newChat) {newChatButton.title=result.labels.newChat;newChatButton.setAttribute('aria-label',result.labels.newChat);}
+        }
+        async function refreshUsage() {
+          const identity = getSession()?.user?.id, epoch = chatEpoch;
+          if (!identity) {usageElement.textContent='';return;}
+          try {const response=await fetch('/api/findy/usage?lang='+encodeURIComponent(document.documentElement.lang||'en'),{credentials:'same-origin'});if(response.ok){const result=await response.json();if(epoch===chatEpoch&&identity===getSession()?.user?.id)renderUsage(result);}} catch {}
+        }
+        newChatButton.addEventListener('click',()=>{resetChatForUserChange(getSession()?.user?.id||'');refreshUsage();});
+
 
         // Snapshot the static welcome message so we can restore it whenever
         // the active user changes (login/logout/account switch). Without this,
@@ -63,7 +90,10 @@
 
         function resetChatForUserChange(newUserId) {
           messagesContainer.innerHTML = welcomeHTML;
+ window.dispatchEvent(new Event("academy-widget-reset"));
+          if (groundingFooter) groundingFooter.textContent = "Find And Study";
           conversationHistory = [];
+          usageElement.textContent = '';
           sessionId = generateSessionId();
           lastUserId = newUserId || '';
           try { localStorage.setItem('findy-last-user', lastUserId); } catch { /* ignore */ }
@@ -238,7 +268,7 @@
 
         function formatTime() {
           const now = new Date();
-          return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          return now.toLocaleTimeString(window.__academyLegacyUi?.locale()||'en', { hour: '2-digit', minute: '2-digit' });
         }
 
         // Build a collapsible debug panel (admin-only) beneath a bot reply.
@@ -258,7 +288,7 @@
           toggle.appendChild(arrow);
           const chunkCount = (debugData.chunks || []).length;
           toggle.appendChild(document.createTextNode(
-            '\u00A0Debug trace \u2014 ' + chunkCount + ' chunk' + (chunkCount !== 1 ? 's' : '') + ' matched'
+            ui("Debug trace — {value0} matched chunks",{value0:chunkCount})
           ));
           panel.appendChild(toggle);
 
@@ -288,7 +318,7 @@
               tag.textContent = t;
               tags.appendChild(tag);
             });
-            addSection('Normalized query tokens', tags);
+            addSection(ui("Normalized query tokens"), tags);
           }
 
           // Expanded / matched terms
@@ -301,7 +331,7 @@
               tag.textContent = t;
               tags.appendChild(tag);
             });
-            addSection('Expanded / matched terms', tags);
+            addSection(ui("Expanded / matched terms"), tags);
           }
 
           // Active filters
@@ -320,13 +350,13 @@
               tag.textContent = f;
               tags.appendChild(tag);
             });
-            addSection('Active filters', tags);
+            addSection(ui("Active filters"), tags);
           } else {
             const none = document.createElement('span');
             none.style.color = '#94a3b8';
             none.style.fontStyle = 'italic';
-            none.textContent = 'none';
-            addSection('Active filters', none);
+            none.textContent = ui("none");
+            addSection(ui("Active filters"), none);
           }
 
           // Top chunks
@@ -339,7 +369,7 @@
               meta.className = 'findy-debug-chunk-meta';
               const scoreEl = document.createElement('span');
               scoreEl.className = 'findy-debug-chunk-score';
-              scoreEl.textContent = '#' + (idx + 1) + '\u00A0score: ' + (typeof ch.score === 'number' ? ch.score.toFixed(3) : ch.score);
+              scoreEl.textContent = ui("#{value0} score: {value1}",{value0:idx+1,value1:typeof ch.score === "number" ? ch.score.toFixed(3) : ch.score});
               meta.appendChild(scoreEl);
               const idEl = document.createElement('span');
               idEl.className = 'findy-debug-chunk-id';
@@ -365,7 +395,7 @@
               chunkEl.appendChild(preview);
               container.appendChild(chunkEl);
             });
-            addSection('Top-' + debugData.chunks.length + ' scored chunks', container);
+            addSection(ui("Top {value0} scored chunks",{value0:debugData.chunks.length}), container);
           }
 
           panel.appendChild(body);
@@ -380,7 +410,7 @@
         }
 
         // Add message to chat
-        function addMessage(text, isUser = false, debugData = null) {
+        function addMessage(text, isUser = false, debugData = null, evidence = null) {
           const messageDiv = document.createElement('div');
           messageDiv.className = `findy-message ${isUser ? 'user' : 'bot'}`;
           
@@ -404,8 +434,9 @@
           const contentWrapper = document.createElement('div');
           const contentDiv = document.createElement('div');
           contentDiv.className = 'findy-message-content';
-          if (isUser) {
+          if (isUser || evidence) {
             contentDiv.textContent = text;
+            contentDiv.style.whiteSpace = 'pre-wrap';
           } else {
             // Bot replies often contain markdown (headings, bold, lists,
             // links). Render a small whitelist via renderMarkdown(). User
@@ -419,6 +450,21 @@
           
           contentWrapper.appendChild(contentDiv);
           contentWrapper.appendChild(timeDiv);
+          if (!isUser && evidence) {
+            if (groundingFooter) groundingFooter.textContent = 'Find And Study · ' + (evidence.labels?.source || 'Source');
+            for (const [index, source] of (evidence.sources || []).entries()) {
+              const details = document.createElement('details');
+              details.className = 'findy-source'; details.style.cssText = 'border-top:1px solid #ccd3df;margin-top:10px;padding-top:8px';
+              const summary = document.createElement('summary');
+              summary.textContent = '[' + (index + 1) + '] ' + (evidence.labels?.source || 'Source') + ': ' + source.sourceName + (source.location ? ' · ' + source.location : '');
+              details.appendChild(summary);
+              if (source.updatedAt) {const date = document.createElement('p'); date.textContent = (evidence.labels?.updated || 'Source updated') + ': ' + new Date(source.updatedAt).toLocaleString(); details.appendChild(date);}
+              const quote = document.createElement('p'); quote.textContent = source.excerpt; quote.style.whiteSpace = 'pre-wrap'; details.appendChild(quote);
+              if (typeof source.href === 'string' && /^\/api\/findy\/evidence\/(lesson|catalog|apply)\/[A-Za-z0-9-]+\?lang=[a-z]+$/.test(source.href)) {const link=document.createElement('a');link.href=source.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent=source.title;details.appendChild(link);}
+              contentWrapper.appendChild(details);
+            }
+          }
+
 
           // Append admin debug panel below bot replies when debug data is present.
           // Defense-in-depth: the server already gates `debug` to admin callers,
@@ -522,7 +568,8 @@
               body: JSON.stringify({
                 message: message,
                 sessionId: reqSessionId,
-                history: conversationHistory
+                history: conversationHistory,
+                language: document.documentElement.lang || getSession()?.user?.languagePreference || 'en'
               }),
               signal: controller.signal
             });
@@ -536,12 +583,13 @@
             if (response.ok) {
               const result = await response.json();
               if (isStale()) return;
+              renderUsage(result);
               // Backend returns { success: true, message: "...", data: {...} }
-              const botMessage = result.data?.message || result.data?.response || result.message || 'No response received';
+              const botMessage = result.data?.message || result.data?.response || result.message || ui("No response received");
               // The server already gates the debug object to admin callers only;
               // trust that as the source of truth rather than re-checking local role.
               const debugData = result.debug || null;
-              addMessage(botMessage, false, debugData);
+              addMessage(botMessage, false, debugData, result.mode === 'verified-source-excerpts' ? {sources:result.sources || [],labels:result.labels || {}} : null);
 
               // Update rolling history (keep last 10 = 5 exchanges).
               conversationHistory.push({ role: 'user', content: message });
@@ -551,6 +599,7 @@
               }
             } else {
               const errorData = await response.json().catch(() => ({}));
+              if (!isStale()) renderUsage(errorData);
               throw new Error(errorData.message || 'Request failed');
             }
           } catch (error) {
@@ -574,8 +623,8 @@
               || serverMsg.toLowerCase().includes('timeout');
             addMessage(
               isNetworkLevel
-                ? 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.'
-                : serverMsg,
+                ? ui("Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.")
+                : (window.__academyLegacyUi?.message(serverMsg)||serverMsg),
               false
             );
           } finally {
@@ -583,6 +632,8 @@
             if (activeAbort === controller) activeAbort = null;
           }
         }
+
+        window.addEventListener('academy-widget-reset',refreshUsage);
 
         // Auto resize textarea
         function autoResizeTextarea() {
@@ -602,6 +653,7 @@
             toggleMinimize();
           }
           toggleChat();
+          refreshUsage();
         });
         closeBtn.addEventListener('click', toggleChat);
         minimizeBtn.addEventListener('click', (e) => {

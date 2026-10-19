@@ -1,3 +1,4 @@
+import { legacyUi, legacyStatus } from "@/lib/legacy-ui";
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,9 @@ import {
   type FrontendQuestion
 } from '@shared/schema';
 import { z } from 'zod';
+import { QuizTranslationEditor } from '@/components/QuizTranslationEditor';
+import { Globe } from 'lucide-react';
+import { parseQuizQuestions } from '@shared/quiz-localization';
 
 // Use shared question schema from shared/schema.ts
 
@@ -54,7 +58,7 @@ const quizFormSchema = insertQuizSchema.extend({
     return true;
   },
   {
-    message: 'Country is required for Final Exams',
+    get message(){return legacyUi("Country is required for Final Exams");},
     path: ['countryId']
   }
 );
@@ -67,6 +71,7 @@ export default function AdminQuizzes() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizDTO | null>(null);
+  const [translationQuiz, setTranslationQuiz] = useState<QuizDTO | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'final' | 'regular'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'title-asc' | 'title-desc' | 'questions-desc' | 'questions-asc' | 'pass-desc' | 'pass-asc'>('title-asc');
@@ -87,7 +92,7 @@ export default function AdminQuizzes() {
       // Backend already parses questions JSON - use directly as array
       return data.quizzes.map((quiz) => ({
         ...quiz,
-        questions: Array.isArray(quiz.questions) ? quiz.questions : [],
+        questions: parseQuizQuestions(quiz.questions),
       })) as QuizDTO[];
     }
   });
@@ -141,13 +146,13 @@ export default function AdminQuizzes() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Quiz created successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Quiz created successfully") });
       setIsQuizDialogOpen(false);
       quizForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to create quiz', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to create quiz"), variant: 'destructive' });
     }
   });
 
@@ -165,14 +170,14 @@ export default function AdminQuizzes() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Quiz updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Quiz updated successfully") });
       setIsQuizDialogOpen(false);
       setEditingQuiz(null);
       quizForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to update quiz', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to update quiz"), variant: 'destructive' });
     }
   });
 
@@ -182,11 +187,11 @@ export default function AdminQuizzes() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Quiz deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Quiz deleted successfully") });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete quiz', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to delete quiz"), variant: 'destructive' });
     }
   });
 
@@ -195,12 +200,12 @@ export default function AdminQuizzes() {
       await Promise.all(ids.map(id => apiRequest('DELETE', `/api/admin/quizzes/${id}`)));
     },
     onSuccess: () => {
-      toast({ title: 'Deleted', description: `${selectedIds.size} quiz deleted` });
+      toast({ title: legacyUi("Deleted"), description: legacyUi("{value0} quiz deleted",{value0:selectedIds.size}) });
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Bulk delete failed', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Bulk delete failed"), variant: 'destructive' });
     }
   });
 
@@ -209,12 +214,12 @@ export default function AdminQuizzes() {
       await Promise.all(ids.map(id => apiRequest('PATCH', `/api/admin/quizzes/${id}`, { status })));
     },
     onSuccess: (_d, vars) => {
-      toast({ title: 'Updated', description: `${selectedIds.size} quiz set to ${vars.status}` });
+      toast({ title: legacyUi("Updated"), description: legacyUi("{value0} quiz set to {value1}",{value0:selectedIds.size,value1:legacyStatus(vars.status)}) });
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quizzes'] });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Bulk update failed', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Bulk update failed"), variant: 'destructive' });
     }
   });
 
@@ -331,7 +336,7 @@ export default function AdminQuizzes() {
   };
 
   const handleDeleteQuiz = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
+    if (window.confirm(legacyUi("Are you sure you want to delete this quiz? This action cannot be undone."))) {
       deleteQuizMutation.mutate(id);
     }
   };
@@ -339,13 +344,13 @@ export default function AdminQuizzes() {
   const addQuestion = (type: 'boolean' | 'mcq') => {
     const newQuestion: Question = type === 'boolean' 
       ? {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'boolean',
           text: '',
           answer: true
         }
       : {
-          id: `q${questionFields.length + 1}`,
+          id: `q-${crypto.randomUUID()}`,
           type: 'mcq',
           text: '',
           options: ['Option 1', 'Option 2'], // Pre-filled to avoid validation issues
@@ -364,7 +369,7 @@ export default function AdminQuizzes() {
     
     return (
       <Badge variant={variants[status] || 'secondary'}>
-        {status}
+        {legacyStatus(status)}
       </Badge>
     );
   };
@@ -380,10 +385,9 @@ export default function AdminQuizzes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Quiz Management</h1>
+        <h1 className="text-3xl font-bold text-foreground">{legacyUi("Quiz Management")}</h1>
         <p className="text-muted-foreground mt-1">
-          Create and manage quizzes for agent training and certification.
-        </p>
+          {legacyUi("Create and manage quizzes for agent training and certification.")}</p>
       </div>
 
       <Card>
@@ -391,19 +395,17 @@ export default function AdminQuizzes() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5" />
-              Quiz Library
-            </CardTitle>
+              {legacyUi("Quiz Library")}</CardTitle>
             <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => openQuizDialog()} data-testid="button-add-quiz">
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Quiz
-                </Button>
+                  {legacyUi("Create Quiz")}</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
+                    {editingQuiz ? legacyUi("Edit Quiz") : legacyUi("Create New Quiz")}
                   </DialogTitle>
                 </DialogHeader>
                 <Form {...quizForm}>
@@ -565,7 +567,7 @@ export default function AdminQuizzes() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold flex items-center gap-2">
                           <Brain className="w-5 h-5" />
-                          Questions ({questionFields.length})
+                          {legacyUi("Questions (")}{questionFields.length})
                         </h3>
                         <div className="flex flex-wrap gap-2">
                           <Button 
@@ -576,8 +578,7 @@ export default function AdminQuizzes() {
                             data-testid="button-add-boolean-question"
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
-                            Add True/False
-                          </Button>
+                            {legacyUi("Add True/False")}</Button>
                           <Button 
                             type="button" 
                             variant="outline" 
@@ -586,8 +587,7 @@ export default function AdminQuizzes() {
                             data-testid="button-add-mcq-question"
                           >
                             <HelpCircle className="w-4 h-4 mr-1" />
-                            Add Multiple Choice
-                          </Button>
+                            {legacyUi("Add Multiple Choice")}</Button>
                         </div>
                       </div>
 
@@ -596,9 +596,9 @@ export default function AdminQuizzes() {
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-2">
                               <GripVertical className="w-4 h-4 text-muted-foreground" />
-                              <span className="font-medium">Question {index + 1}</span>
+                              <span className="font-medium">{legacyUi("Question ")}{index + 1}</span>
                               {getQuestionTypeIcon(field.type)}
-                              <Badge variant="outline">{field.type === 'boolean' ? 'True/False' : 'Multiple Choice'}</Badge>
+                              <Badge variant="outline">{field.type === 'boolean' ? legacyUi("True/False") : legacyUi("Multiple Choice")}</Badge>
                             </div>
                             <Button
                               type="button"
@@ -653,7 +653,7 @@ export default function AdminQuizzes() {
                             />
                           ) : (
                             <div className="mt-4 space-y-3">
-                              <FormLabel>Answer Options</FormLabel>
+                              <FormLabel>{legacyUi("Answer Options")}</FormLabel>
                               {(() => {
                                 // Get current options from top-level watched questions (fixes hooks error)
                                 const watchedQ = watchedQuestions[index] as FrontendQuestion | undefined;
@@ -736,8 +736,7 @@ export default function AdminQuizzes() {
                                   data-testid={`button-add-option-${index}`}
                                 >
                                   <Plus className="w-4 h-4 mr-1" />
-                                  Add Option
-                                </Button>
+                                  {legacyUi("Add Option")}</Button>
                                 );
                               })()}
                             </div>
@@ -748,14 +747,13 @@ export default function AdminQuizzes() {
 
                     <div className="flex justify-end space-x-2">
                       <Button type="button" variant="outline" onClick={() => setIsQuizDialogOpen(false)}>
-                        Cancel
-                      </Button>
+                        {legacyUi("Cancel")}</Button>
                       <Button 
                         type="submit" 
                         disabled={createQuizMutation.isPending || updateQuizMutation.isPending || !quizForm.formState.isValid}
                         data-testid="button-save-quiz"
                       >
-                        {editingQuiz ? 'Update Quiz' : 'Create Quiz'}
+                        {editingQuiz ? legacyUi("Update Quiz") : legacyUi("Create Quiz")}
                       </Button>
                     </div>
                   </form>
@@ -768,7 +766,7 @@ export default function AdminQuizzes() {
             <div className="relative flex-1 min-w-48">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search quizzes..."
+                placeholder={legacyUi("Search quizzes...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -784,51 +782,51 @@ export default function AdminQuizzes() {
             <Select value={filterType} onValueChange={(v) => { setFilterType(v as any); setSelectedIds(new Set()); }}>
               <SelectTrigger className="w-40" data-testid="select-filter-type">
                 <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="Type" />
+                <SelectValue placeholder={legacyUi("Type")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="final">Final Exam</SelectItem>
-                <SelectItem value="regular">Regular Quiz</SelectItem>
+                <SelectItem value="all">{legacyUi("All Types")}</SelectItem>
+                <SelectItem value="final">{legacyUi("Final Exam")}</SelectItem>
+                <SelectItem value="regular">{legacyUi("Regular Quiz")}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v as any); setSelectedIds(new Set()); }}>
               <SelectTrigger className="w-36" data-testid="select-filter-status">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={legacyUi("Status")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="all">{legacyUi("All Statuses")}</SelectItem>
+                <SelectItem value="active">{legacyUi("Active")}</SelectItem>
+                <SelectItem value="draft">{legacyUi("Draft")}</SelectItem>
+                <SelectItem value="inactive">{legacyUi("Inactive")}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
               <SelectTrigger className="w-44" data-testid="select-sort-by">
                 <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={legacyUi("Sort by")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="title-asc">Title A→Z</SelectItem>
-                <SelectItem value="title-desc">Title Z→A</SelectItem>
-                <SelectItem value="questions-desc">Most Questions</SelectItem>
-                <SelectItem value="questions-asc">Fewest Questions</SelectItem>
-                <SelectItem value="pass-desc">Pass % High→Low</SelectItem>
-                <SelectItem value="pass-asc">Pass % Low→High</SelectItem>
+                <SelectItem value="title-asc">{legacyUi("Title A→Z")}</SelectItem>
+                <SelectItem value="title-desc">{legacyUi("Title Z→A")}</SelectItem>
+                <SelectItem value="questions-desc">{legacyUi("Most Questions")}</SelectItem>
+                <SelectItem value="questions-asc">{legacyUi("Fewest Questions")}</SelectItem>
+                <SelectItem value="pass-desc">{legacyUi("Pass % High→Low")}</SelectItem>
+                <SelectItem value="pass-asc">{legacyUi("Pass % Low→High")}</SelectItem>
               </SelectContent>
             </Select>
 
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {filteredQuizzes.length} of {quizzes.length}
+              {filteredQuizzes.length} {legacyUi(" of ")}{quizzes.length}
             </span>
           </div>
 
           {/* Bulk actions bar */}
           {someSelected && (
             <div className="flex flex-wrap items-center gap-2 mt-3 px-3 py-2 bg-muted/50 border rounded-md">
-              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <span className="text-sm font-medium">{selectedIds.size} {legacyUi(" selected")}</span>
               <Separator orientation="vertical" className="h-4" />
               <Button
                 size="sm"
@@ -838,8 +836,7 @@ export default function AdminQuizzes() {
                 data-testid="button-bulk-activate"
               >
                 <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                Set Active
-              </Button>
+                {legacyUi("Set Active")}</Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -847,8 +844,7 @@ export default function AdminQuizzes() {
                 disabled={bulkStatusMutation.isPending}
                 data-testid="button-bulk-draft"
               >
-                Set Draft
-              </Button>
+                {legacyUi("Set Draft")}</Button>
               <Button
                 size="sm"
                 variant="destructive"
@@ -861,18 +857,16 @@ export default function AdminQuizzes() {
                 data-testid="button-bulk-delete"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
-                Delete
-              </Button>
+                {legacyUi("Delete")}</Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto">
                 <X className="w-3.5 h-3.5 mr-1" />
-                Deselect All
-              </Button>
+                {legacyUi("Deselect All")}</Button>
             </div>
           )}
         </CardHeader>
         <CardContent>
           {quizzesLoading ? (
-            <div className="text-center py-4">Loading quizzes...</div>
+            <div className="text-center py-4">{legacyUi("Loading quizzes...")}</div>
           ) : (
             <div className="space-y-2">
               {/* Select-all header */}
@@ -883,7 +877,7 @@ export default function AdminQuizzes() {
                     onCheckedChange={toggleSelectAll}
                     data-testid="checkbox-select-all"
                   />
-                  <span className="text-xs text-muted-foreground">Select all ({filteredQuizzes.length})</span>
+                  <span className="text-xs text-muted-foreground">{legacyUi("Select all (")}{filteredQuizzes.length})</span>
                 </div>
               )}
 
@@ -904,14 +898,14 @@ export default function AdminQuizzes() {
                       <Brain className="w-5 h-5 text-blue-600" />
                     )}
                     <Badge variant={quiz.isFinal ? 'destructive' : 'secondary'}>
-                      {quiz.isFinal ? 'Final Exam' : 'Regular Quiz'}
+                      {quiz.isFinal ? legacyUi("Final Exam") : legacyUi("Regular Quiz")}
                     </Badge>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{quiz.title}</div>
                     <div className="text-sm text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-                      <span>{quiz.questions?.length || 0} questions</span>
-                      <span>Pass: {quiz.passPercent}%</span>
+                      <span>{quiz.questions?.length || 0} {legacyUi(" questions")}</span>
+                      <span>{legacyUi("Pass: ")}{quiz.passPercent}%</span>
                       {getStatusBadge(quiz.status)}
                     </div>
                     {quiz.description && (
@@ -919,6 +913,9 @@ export default function AdminQuizzes() {
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0">
+                    <Button size="icon" variant="outline" onClick={() => setTranslationQuiz(quiz)} aria-label={legacyUi("Translate {value0}",{value0:quiz.title})} data-testid={`button-translate-quiz-${quiz.id}`}>
+                      <Globe className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="outline"
@@ -941,14 +938,15 @@ export default function AdminQuizzes() {
               {filteredQuizzes.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   {searchQuery || filterType !== 'all' || filterStatus !== 'all'
-                    ? 'No quizzes match the current filters.'
-                    : 'No quizzes created yet.'}
+                    ? legacyUi("No quizzes match the current filters.")
+                    : legacyUi("No quizzes created yet.")}
                 </div>
               )}
             </div>
           )}
         </CardContent>
       </Card>
+      {translationQuiz && <QuizTranslationEditor quiz={translationQuiz} onClose={() => setTranslationQuiz(null)} />}
     </div>
   );
 }

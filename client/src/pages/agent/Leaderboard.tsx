@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -54,10 +55,10 @@ export default function AgentLeaderboard() {
 
   // Get badge for rank
   const getBadge = (rank: number) => {
-    if (rank === 1) return { icon: Trophy, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: '1st Place' };
-    if (rank === 2) return { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-400/10', label: '2nd Place' };
-    if (rank === 3) return { icon: Medal, color: 'text-orange-600', bg: 'bg-orange-600/10', label: '3rd Place' };
-    if (rank <= 10) return { icon: Star, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Top 10' };
+    if (rank === 1) return { icon: Trophy, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: legacyUi("1st Place") };
+    if (rank === 2) return { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-400/10', label: legacyUi("2nd Place") };
+    if (rank === 3) return { icon: Medal, color: 'text-orange-600', bg: 'bg-orange-600/10', label: legacyUi("3rd Place") };
+    if (rank <= 10) return { icon: Star, color: 'text-blue-500', bg: 'bg-blue-500/10', label: legacyUi("Top 10") };
     return null;
   };
 
@@ -68,11 +69,9 @@ export default function AgentLeaderboard() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Leaderboard
-          </h1>
+            {legacyUi("Leaderboard")}</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            See how you rank among other agents and compete for the top spot!
-          </p>
+            {legacyUi("See how you rank among other agents and compete for the top spot!")}</p>
         </div>
       </div>
 
@@ -84,7 +83,7 @@ export default function AgentLeaderboard() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <Avatar className="w-16 h-16 border-2 border-primary">
-                    <AvatarImage src={currentUserData.profilePicture || ''} alt="Your Profile" />
+                    <AvatarImage src={currentUserData.profilePicture || ''} alt={legacyUi("Your Profile")} />
                     <AvatarFallback className="text-lg font-medium bg-primary/10">
                       {currentUserData.name.charAt(0)}
                     </AvatarFallback>
@@ -100,24 +99,23 @@ export default function AgentLeaderboard() {
                   })()}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Your Ranking</h3>
+                  <h3 className="text-xl font-bold">{legacyUi("Your Ranking")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Rank #{currentUserRank} of {leaderboardData.length} agents
-                  </p>
+                    {legacyUi("Rank #")}{currentUserRank} {legacyUi(" of ")}{leaderboardData.length} {legacyUi(" agents")}</p>
                 </div>
               </div>
               <div className="flex gap-6">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary">{currentUserData.points}</p>
-                  <p className="text-xs text-muted-foreground">Points</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Points")}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold">{currentUserData.certificates}</p>
-                  <p className="text-xs text-muted-foreground">Certificates</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Certificates")}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold">{currentUserData.avgProgress}%</p>
-                  <p className="text-xs text-muted-foreground">Avg Progress</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Avg Progress")}</p>
                 </div>
               </div>
             </div>
@@ -130,8 +128,7 @@ export default function AgentLeaderboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="w-5 h-5" />
-            Top Performers
-          </CardTitle>
+            {legacyUi("Top Performers")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -179,31 +176,30 @@ export default function AgentLeaderboard() {
                           {agent.name}
                         </h3>
                         {agent.isCurrentUser && (
-                          <Badge variant="default" className="text-xs">You</Badge>
+                          <Badge variant="default" className="text-xs">{legacyUi("You")}</Badge>
                         )}
                         {badge && rank <= 10 && (
                           <Badge variant="secondary" className="text-xs">{badge.label}</Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {agent.completedCourses}/{agent.totalCourses} courses • {agent.certificates} certificates
-                      </p>
+                        {agent.completedCourses}/{agent.totalCourses} {legacyUi(" courses • ")}{agent.certificates} {legacyUi(" certificates")}</p>
                     </div>
 
                     {/* Stats */}
                     <div className="hidden md:flex gap-8">
                       <div className="text-center">
                         <p className="text-lg font-bold" data-testid={`text-points-${rank}`}>{agent.points}</p>
-                        <p className="text-xs text-muted-foreground">Points</p>
+                        <p className="text-xs text-muted-foreground">{legacyUi("Points")}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold">{agent.avgProgress}%</p>
-                        <p className="text-xs text-muted-foreground">Progress</p>
+                        <p className="text-xs text-muted-foreground">{legacyUi("Progress")}</p>
                       </div>
                       {agent.avgCertScore > 0 && (
                         <div className="text-center">
                           <p className="text-lg font-bold">{agent.avgCertScore}%</p>
-                          <p className="text-xs text-muted-foreground">Avg Score</p>
+                          <p className="text-xs text-muted-foreground">{legacyUi("Avg Score")}</p>
                         </div>
                       )}
                     </div>
@@ -215,8 +211,8 @@ export default function AgentLeaderboard() {
             {leaderboardData.length === 0 && (
               <div className="text-center py-12">
                 <Trophy className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No agents on the leaderboard yet</p>
-                <p className="text-sm text-muted-foreground">Complete courses to earn points and climb the rankings!</p>
+                <p className="text-muted-foreground">{legacyUi("No agents on the leaderboard yet")}</p>
+                <p className="text-sm text-muted-foreground">{legacyUi("Complete courses to earn points and climb the rankings!")}</p>
               </div>
             )}
           </div>
@@ -228,8 +224,7 @@ export default function AgentLeaderboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="w-5 h-5" />
-            How Points Work
-          </CardTitle>
+            {legacyUi("How Points Work")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -238,8 +233,8 @@ export default function AgentLeaderboard() {
                 <Award className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <p className="font-semibold">Course Completion</p>
-                <p className="text-sm text-muted-foreground">100 points per completed course</p>
+                <p className="font-semibold">{legacyUi("Course Completion")}</p>
+                <p className="text-sm text-muted-foreground">{legacyUi("100 points per completed course")}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
@@ -247,8 +242,8 @@ export default function AgentLeaderboard() {
                 <Medal className="w-5 h-5 text-yellow-500" />
               </div>
               <div>
-                <p className="font-semibold">Certificate Earned</p>
-                <p className="text-sm text-muted-foreground">50 points per certificate</p>
+                <p className="font-semibold">{legacyUi("Certificate Earned")}</p>
+                <p className="text-sm text-muted-foreground">{legacyUi("50 points per certificate")}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
@@ -256,8 +251,8 @@ export default function AgentLeaderboard() {
                 <TrendingUp className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="font-semibold">Score Bonus</p>
-                <p className="text-sm text-muted-foreground">Avg score × certificate count</p>
+                <p className="font-semibold">{legacyUi("Score Bonus")}</p>
+                <p className="text-sm text-muted-foreground">{legacyUi("Avg score × certificate count")}</p>
               </div>
             </div>
           </div>

@@ -1,3 +1,11 @@
+import {createTrainingIntegrity} from './training-integrity';
+import { registerPartnerBranding } from './partner-branding';
+import { registerGroundedFindy } from './findy-grounded';
+import { registerPartnership } from './partnership';
+import { registerProfileCompletion } from './profile-completion';
+import {registerTranslationControl} from './translation-control';
+import { registerCampaignAccess, claimAcademyDevice, enforceAcademyAccess } from './campaign-access';
+import { registerAdminOperations } from './admin-operations';
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, enrichWithTurkishKeywords, expandTurkishQueryTerms } from "./storage";
@@ -7,6 +15,7 @@ import {
   insertCountrySchema,
   insertContentSchema,
   insertQuizSchema,
+  frontendQuestionSchema,
   insertFindyKeywordMappingSchema,
   type Agency, 
   type InsertAgency,
@@ -25,35 +34,27 @@ import fs from "fs";
 import sharp from "sharp";
 import bcrypt from "bcryptjs";
 import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
+import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/languages";
+import { parseQuizQuestions } from "@shared/quiz-localization";
+import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translations";
+import { publicSignupSchema } from "@shared/signup-validation";
+import { db } from "./db";
+import { agencies as agencyTable, users as userTable } from "@shared/schema";
 
 // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
 // at module load (not per request).
 const VALID_COUNTRY_CODES = new Set(COUNTRY_DIAL_CODES.map((c) => c.code));
 import rateLimit from "express-rate-limit";
 
-// Server-side questions validation schema (matches frontend)
-const questionSchema = z.discriminatedUnion('type', [
-  z.object({
-    id: z.string(),
-    type: z.literal('boolean'),
-    text: z.string().min(1, 'Question text is required'),
-    answer: z.boolean()
-  }),
-  z.object({
-    id: z.string(),
-    type: z.literal('mcq'),
-    text: z.string().min(1, 'Question text is required'),
-    options: z.array(z.string().min(1, 'Option text required')).min(2, 'At least 2 options required').max(6, 'Maximum 6 options allowed'),
-    answerIndex: z.number().min(0)
-  })
-]);
+// Use one question validator for the editor and write API.
+const questionSchema = frontendQuestionSchema;
 
 // Quiz validation schema with questions validation
 const quizValidationSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;
@@ -78,7 +79,7 @@ const quizUpdateSchema = insertQuizSchema.extend({
   questions: z.string().refine((val) => {
     try {
       const parsed = JSON.parse(val);
-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
+      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
       return true;
     } catch {
       return false;
@@ -134,6 +135,10 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
         message: 'Hesabınız henüz onaylanmadı veya pasif durumda. Lütfen yöneticinizle iletişime geçin.'
       });
     }
+
+    let accessAllowed=false;
+    await enforceAcademyAccess(req,res,()=>{accessAllowed=true});
+    if(!accessAllowed)return;
 
     // Add VERIFIED user info to request (role comes from server, not client)
     (req as any).user = { 
@@ -478,6 +483,11 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerProfileCompletion(app, requireAuth);
+  registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit);
+  registerAdminOperations(app, requireAuth, requireAdmin);
+  registerTranslationControl(app, requireAuth, requireAdmin);
+  registerPartnership(app, requireAuth, requireAdmin);
   // PUBLIC API endpoints for agents (no authentication required for published content)
   
   // Get active countries with published content
@@ -518,9 +528,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get published content (optionally filtered by countryId)
-  app.get('/api/public/contents', async (req, res) => {
+  app.get('/api/public/contents', requireAuth, async (req, res) => {
     try {
-      const { countryId, lang } = req.query;
+      const { countryId } = req.query;
+      const lang = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
       const contents = await storage.getContents();
       const countries = await storage.getCountries();
       
@@ -535,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If a language is requested, fetch all translations for that language in one query
       // and overlay title/description/content fields when a published translation exists
       let translationMap: Map<string, any> = new Map();
-      if (lang && typeof lang === 'string' && lang !== 'en') {
+      if (lang && typeof lang === 'string') {
         const translations = await storage.getTranslationsByLanguage(lang);
         for (const t of translations) {
           if (t.status === 'published') {
@@ -571,31 +582,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all quizzes for agent access
-  app.get('/api/public/quizzes', async (req, res) => {
+  app.get('/api/public/quizzes', requireAuth, async (req, res) => {
     try {
       const quizzes = await storage.getQuizzes();
       
       // Filter only active quizzes for agent access
       const activeQuizzes = quizzes.filter(q => q.status === 'active');
       
-      // Parse questions JSON string to array for each quiz
-      const parsedQuizzes = activeQuizzes.map(quiz => {
-        let questions = [];
-        if (quiz.questions) {
-          try {
-            questions = typeof quiz.questions === 'string' 
-              ? JSON.parse(quiz.questions) 
-              : quiz.questions;
-          } catch (e) {
-            console.error(`Failed to parse questions for quiz ${quiz.id}:`, e);
-            questions = [];
-          }
-        }
-        return {
-          ...quiz,
-          questions
-        };
-      });
+      const language = normalizeLanguage(typeof req.query.lang === 'string' ? req.query.lang : undefined);
+      const parsedQuizzes = await localizeQuizzes(activeQuizzes, language);
       
       res.json({
         success: true,
@@ -664,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const users = await storage.getUsers();
-      const user = users.find(u => u.email === email);
+      const user = users.find(u => typeof email === 'string' && u.email.trim().toLowerCase() === email.trim().toLowerCase());
 
       if (!user) {
         return res.status(401).json({
@@ -704,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist the authenticated user id in the cookie-based session. From
       // this point on every request from this browser will be authenticated
       // via the httpOnly session cookie, not via any client-supplied header.
-      req.session.userId = user.id;
+      if (!await claimAcademyDevice(req, res, user.id)) return;
       // Force-save before responding so the Set-Cookie header is reliably
       // attached to this response (avoids race with res.json on some stores).
       await new Promise<void>((resolve, reject) => {
@@ -758,8 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const authenticatedUser = (req as any).user;
       const { languagePreference } = req.body || {};
 
-      const supported = ['en', 'ar', 'zh', 'fr', 'id', 'fa', 'ru', 'es', 'tr'];
-      if (typeof languagePreference !== 'string' || !supported.includes(languagePreference)) {
+      if (!isSupportedLanguage(languagePreference)) {
         return res.status(400).json({
           success: false,
           message: 'Unsupported language',
@@ -867,7 +861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.status !== 'active') return res.status(403).send('Hesabınız pasif durumda. Yöneticinizle iletişime geçin.');
 
-      req.session.userId = user.id;
+      if (!await claimAcademyDevice(req, res, user.id)) return;
       await new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
       const dest = (user.role === 'admin' || user.role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
       return res.redirect(302, dest);
@@ -879,36 +873,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/signup', authRateLimit, async (req, res) => {
     try {
-      const { name, email, password, agencyName, country, phone } = req.body;
-
-      if (!name || !email || !password || !agencyName || !country || !phone) {
-        return res.status(400).json({
-          success: false,
-          message: 'All fields are required'
-        });
+      const validation = publicSignupSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: validation.error.issues[0]?.message || 'Invalid registration data', errors: validation.error.issues.map(issue => ({ field: issue.path[0], message: issue.message })) });
       }
-
-      // Validate country against the real ISO 3166-1 alpha-2 set we ship in
-      // shared/country-dial-codes.ts (computed once at module load above).
-      if (typeof country !== 'string' || !VALID_COUNTRY_CODES.has(country)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid country code'
-        });
-      }
-
-      // Validate phone: E.164-ish — leading "+", 6–18 digits total
-      if (typeof phone !== 'string' || !/^\+\d{6,18}$/.test(phone.replace(/\s+/g, ''))) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid phone number'
-        });
-      }
-      const normalizedPhone = phone.replace(/\s+/g, '');
+      const { name, email, password, agencyName, country, phone: normalizedPhone, languagePreference } = validation.data;
 
       // Check if email already exists
       const users = await storage.getUsers();
-      const existingUser = users.find(u => u.email === email);
+      const existingUser = users.find(u => u.email.trim().toLowerCase() === email);
       if (existingUser) {
         return res.status(409).json({
           success: false,
@@ -916,22 +889,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const userId = `agent-${Date.now()}`;
-      const agencyId = `agency-${Date.now()}`;
+      const userId = `agent-${crypto.randomUUID()}`;
+      const agencyId = `agency-${crypto.randomUUID()}`;
 
       // Create agency
       const newAgency = {
         id: agencyId,
         name: agencyName,
-        status: 'active' as const,
+        status: 'pending' as const,
         primaryContactName: name,
-        primaryContactEmail: email
+        primaryContactEmail: email,
+        contactEmail: email,
+        country,
+        contactPhone: normalizedPhone
       };
 
       // Hash password before storing
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user — closed system: new agents start as INACTIVE and require admin/staff approval
+      // New public registrations require administrator approval before login.
       const newUser = {
         id: userId,
         username: email,
@@ -943,34 +919,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agencyId: agencyId,
         country: country,
         phone: normalizedPhone,
+        languagePreference,
         emailNotifications: true,
         courseCompletionNotif: true,
         certificateNotif: true,
         announcementNotif: true
       };
 
-      const createdAgency = await storage.createAgency(newAgency);
-      const createdUser = await storage.createUser(newUser);
+      const { createdAgency, createdUser } = await db.transaction(async tx => {
+        const [createdAgency] = await tx.insert(agencyTable).values(newAgency).returning();
+        const [createdUser] = await tx.insert(userTable).values(newUser).returning();
+        return { createdAgency, createdUser };
+      });
 
-      // Send welcome email to new agent (non-blocking)
-      if (createdUser.emailNotifications) {
-        (async () => {
-          try {
-            const { sendNotificationEmail } = await import('./emailService');
-            await sendNotificationEmail({
-              recipientEmail: createdUser.email,
-              recipientName: createdUser.name,
-              type: 'welcome',
-              data: {
-                agencyName: createdAgency.name
-              }
-            });
-          } catch (err) {
-            console.error('Welcome email error:', err);
-          }
-        })();
-      }
-      
       // Send notification to all admins about new registration (non-blocking)
       (async () => {
         try {
@@ -995,13 +956,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
 
-      // Closed system — do NOT return a session/user. The applicant must wait for admin/staff approval.
       res.status(201).json({
         success: true,
         pending: true,
-        message: 'Başvurunuz alındı. Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz.'
+        message: 'Your application has been received and is awaiting administrator approval.',
       });
     } catch (error) {
+      // A concurrent registration may pass the pre-check. The transaction
+      // rolls back the agency too, so retries never create orphan agencies.
+      const databaseCode = (error as any)?.code || (error as any)?.cause?.code;
+      if (databaseCode === '23505') return res.status(409).json({ success: false, message: 'Email already registered' });
       console.error('Signup error:', error);
       res.status(500).json({
         success: false,
@@ -1164,6 +1128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Quiz attempt submission endpoint (required for certificate validation)
+  const trainingIntegrity = createTrainingIntegrity(storage);
+  app.post('/api/attempts', requireAuth, trainingIntegrity.attempt);
+  app.post('/api/progress', requireAuth, trainingIntegrity.progress);
+  app.patch('/api/progress/:courseId', requireAuth, trainingIntegrity.progress);
   app.post('/api/attempts', requireAuth, async (req, res) => {
     try {
       const authenticatedUser = (req as any).user;
@@ -1369,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // SECURE Certificate issuance endpoint
-  app.post('/api/certificates', requireAuth, async (req, res) => {
+  app.post('/api/certificates', requireAuth, trainingIntegrity.certificate, async (req, res) => {
     try {
       // Extract authenticated user from middleware
       const authenticatedUser = (req as any).user;
@@ -4233,6 +4201,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return raw;
   };
 
+  // Agent counters must count only the same published records the detail API returns.
+  const countPublishedChildren = async (folderId: string) => {
+    const [items, folders] = await Promise.all([storage.getFolderContents(folderId), storage.getPartnerFolders(folderId)]);
+    return { contents: items.filter(c => c.status === 'published').length, subfolders: folders.filter(f => f.status === 'published').length };
+  };
+
   // Public: list published folders (for agents) — supports ?parentId=
   app.get('/api/partner-folders', requireAuth, async (req, res) => {
     try {
@@ -4241,7 +4215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const published = folders.filter(f => f.status === 'published');
       // Attach subfolder + content counts so the agent UI can show "X klasör · Y dosya"
       const foldersWithCounts = await Promise.all(published.map(async folder => {
-        const counts = await storage.countFolderChildren(folder.id);
+        const counts = await countPublishedChildren(folder.id);
         return { ...folder, subfolderCount: counts.subfolders, contentCount: counts.contents };
       }));
       res.json({ success: true, folders: foldersWithCounts });
@@ -4267,7 +4241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subfolders
           .filter(f => f.status === 'published')
           .map(async f => {
-            const counts = await storage.countFolderChildren(f.id);
+            const counts = await countPublishedChildren(f.id);
             return { ...f, subfolderCount: counts.subfolders, contentCount: counts.contents };
           })
       );
@@ -4862,7 +4836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions JSON for each quiz
       const quizzesWithParsedQuestions = quizzes.map(quiz => ({
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       }));
       
       res.json({
@@ -4893,7 +4867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert questions array to JSON string for storage
       const quizData = {
         ...validation.data,
-        questions: JSON.stringify(validation.data.questions || [])
+        questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
       };
 
       const quiz = await storage.createQuiz(quizData);
@@ -4901,7 +4875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions back to object for response
       const responseQuiz = {
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       };
       
       res.status(201).json({
@@ -4960,7 +4934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = {
         ...validation.data,
         ...(validation.data.questions && {
-          questions: JSON.stringify(validation.data.questions)
+          questions: JSON.stringify(parseQuizQuestions(validation.data.questions))
         })
       };
 
@@ -4969,7 +4943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse questions back to object for response
       const responseQuiz = {
         ...quiz,
-        questions: quiz.questions ? JSON.parse(quiz.questions) : []
+        questions: parseQuizQuestions(quiz.questions)
       };
       
       res.json({
@@ -5710,7 +5684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const validations = {
       content_type: ['lesson', 'video', 'image', 'document', 'quiz'],
       status: ['draft', 'published', 'archived'],
-      language: ['en', 'tr', 'ru', 'ar', 'az', 'fa'],
+      language: [...LANGUAGE_CODES, 'az'],
     };
     res.json({ success: true, headers, validations });
   });
@@ -6243,450 +6217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //   2. Otherwise, fall back to the legacy N8N webhook proxy.
   //   3. If neither is configured but RAG context is available, return the
   //      raw context as a degraded answer.
-  app.post('/api/chat', async (req, res) => {
-    // Declared outside the try so the outer catch can use it for admin-only
-    // verbose error messages without TS scoping errors.
-    let isAdmin = false;
-    try {
-      const { message, sessionId, history: rawHistory } = req.body;
-
-      // Validate & cap conversation history to last 10 turns (5 exchanges).
-      // Each item must be { role: 'user'|'assistant', content: string }.
-      const history: HistoryMessage[] = [];
-      if (Array.isArray(rawHistory)) {
-        for (const h of rawHistory) {
-          if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string') {
-            history.push({ role: h.role, content: h.content.slice(0, 2000) });
-          }
-        }
-        // Cap to most-recent 10 messages (5 user + 5 assistant turns).
-        if (history.length > 10) history.splice(0, history.length - 10);
-      }
-
-      // Optional admin lookup so we can show verbose provider errors only to
-      // admin users (regular agents see a friendly generic message). The
-      // chat endpoint is intentionally open to anonymous visitors, so the
-      // session cookie may be absent — that just means "non-admin".
-      const callerId = req.session?.userId;
-      if (callerId) {
-        try {
-          const caller = await storage.getUser(callerId);
-          isAdmin = caller?.role === 'admin';
-        } catch { /* ignore */ }
-      }
-
-      if (!message || typeof message !== 'string') {
-        return res.status(400).json({ success: false, message: 'Message is required' });
-      }
-
-      // ── Build RAG context from system data + uploaded knowledge base ─────────
-      // The chat must be strictly grounded: only data we inject here may be
-      // used by the model. We assemble three sections inside a single token
-      // budget so the prompt size stays predictable as the corpus grows.
-      //
-      // Token budget: each section gets a hard character cap so that even
-      // with very large uploaded files the total RAG payload stays around
-      // ~6-8 KB (~1.5-2K tokens). Sections, in priority order:
-      //   (a) DESTINATIONS — all active countries (always cheap, ~few hundred
-      //       chars).
-      //   (b) PLATFORM CONTENT — at most 4 published `contents` rows whose
-      //       title/body matches user-message tokens, body capped to 400
-      //       chars each.
-      //   (c) UPLOADED KNOWLEDGE — at most 12 top-scored chunks from
-      //       `knowledge_chunks`, optionally pre-filtered by university or
-      //       country if the question mentions one. Each chunk is already
-      //       compact (~250-400 chars) thanks to the new parser.
-      const RAG_TOTAL_CHAR_BUDGET = 8000;
-      let charsUsed = 0;
-      const sections: string[] = [];
-      const pushSection = (label: string, body: string) => {
-        const piece = label + '\n' + body;
-        if (charsUsed + piece.length > RAG_TOTAL_CHAR_BUDGET) {
-          // Truncate to fit, prefer leaving a clean line break.
-          const remaining = Math.max(0, RAG_TOTAL_CHAR_BUDGET - charsUsed - label.length - 10);
-          if (remaining < 200) return; // not enough room, skip
-          const trimmed = body.slice(0, remaining);
-          const cut = trimmed.lastIndexOf('\n');
-          sections.push(label + '\n' + (cut > 0 ? trimmed.slice(0, cut) : trimmed) + '\n…(truncated)');
-          charsUsed = RAG_TOTAL_CHAR_BUDGET;
-          return;
-        }
-        sections.push(piece);
-        charsUsed += piece.length;
-      };
-
-      // Turkish-aware normalize, used for both entity extraction and matching.
-      const normTr = (s: string) => (s || '').toLowerCase()
-        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/İ/gi, 'i')
-        .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
-        .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
-      const messageNorm = normTr(message);
-
-      // ── Pure-CPU intent detection (runs before any DB I/O) ───────────────────
-      // The university word matcher is intentionally broad so it catches both
-      // English (university / universities) and Turkish surface forms
-      // (üniversite → universite, üniversitesi → universitesi) plus the most
-      // common Turkish typos (univerite / univeriste). All of these begin with
-      // "univer" after the diacritic-stripping done by normTr. We then REQUIRE
-      // a list/question marker so neutral statements like "universite cok
-      // pahali" don't dump the whole catalogue.
-      const uniWordRe = /\buniver[a-z]*\b/;
-      const listMarkerRe = /(hangi|kac\s|kacar|liste|listele|nelerdir|nedir\b|var\s*mi\b|\bvar\b|mevcut|sahip|\bmu\b|\bmı\b|\ball\b|\blist\b|\bwhich\b|\bwhat\b|how\s*many|do\s*you\s*have|are\s*available|available\b|sundugunuz|sundugu|teklif)/;
-      const wantsUniversityListing =
-        uniWordRe.test(messageNorm) && listMarkerRe.test(messageNorm);
-
-      // Proximity intent detection — e.g. "İstanbul'a en yakın bilgisayar
-      // mühendisliği olan üniversite". When detected, extract the reference
-      // city so knowledge chunks can be pre-filtered by their City metadata
-      // field. The city list covers the most commonly mentioned Turkish
-      // cities in the study-abroad context; it is intentionally kept small to
-      // avoid false positives and is applied only when a proximity keyword
-      // is present.
-      let cityHint: string | undefined;
-      {
-        const proximityRe = /\ben\s+yakin\b|yakinin(da|daki|dan)\b|yakindaki\b|yakininda\b|yakinindaki\b|en\s+yakin/;
-        if (proximityRe.test(messageNorm)) {
-          const trCities: { norm: string; canonical: string }[] = [
-            { norm: 'istanbul', canonical: 'Istanbul' },
-            { norm: 'ankara', canonical: 'Ankara' },
-            { norm: 'izmir', canonical: 'Izmir' },
-            { norm: 'bursa', canonical: 'Bursa' },
-            { norm: 'antalya', canonical: 'Antalya' },
-            { norm: 'adana', canonical: 'Adana' },
-            { norm: 'konya', canonical: 'Konya' },
-            { norm: 'gaziantep', canonical: 'Gaziantep' },
-            { norm: 'mersin', canonical: 'Mersin' },
-            { norm: 'kayseri', canonical: 'Kayseri' },
-            { norm: 'eskisehir', canonical: 'Eskisehir' },
-            { norm: 'diyarbakir', canonical: 'Diyarbakir' },
-            { norm: 'samsun', canonical: 'Samsun' },
-            { norm: 'denizli', canonical: 'Denizli' },
-            { norm: 'trabzon', canonical: 'Trabzon' },
-            { norm: 'malatya', canonical: 'Malatya' },
-            { norm: 'erzurum', canonical: 'Erzurum' },
-            { norm: 'van', canonical: 'Van' },
-            { norm: 'bolu', canonical: 'Bolu' },
-          ];
-          for (const { norm, canonical } of trCities) {
-            if (messageNorm.includes(norm)) {
-              cityHint = canonical;
-              break;
-            }
-          }
-        }
-      }
-
-      // ── Parallel cached lookups ──────────────────────────────────────────────
-      // All three are independent and small; running them concurrently shaves
-      // ~2× off the chat critical path versus the previous sequential awaits.
-      // listKnowledgeUniversities() is *also* used as the cheap source for
-      // university entity extraction below — it returns the DISTINCT
-      // (country, university) pairs straight from a single SQL query and
-      // replaces what used to be a full ~80-row searchKnowledgeChunks scan
-      // (with ILIKE / TR_TO_EN expansion / rerank) on every single message.
-      const [allCountries, allContents, knowledgeUnis] = await Promise.all([
-        memoChat('countries', () => storage.getCountries())
-          .catch(err => { console.warn('Country lookup for RAG failed (non-fatal):', err); return [] as any[]; }),
-        memoChat('contents', () => storage.getContents())
-          .catch(err => { console.warn('Content lookup for RAG failed (non-fatal):', err); return [] as any[]; }),
-        memoChat('kbUniversities', () => storage.listKnowledgeUniversities())
-          .catch(err => { console.warn('KB university list failed (non-fatal):', err); return [] as { country: string; universities: string[] }[]; }),
-      ]);
-
-      // (a) Destinations — always include, also use them for entity extraction.
-      const activeCountries = (allCountries || []).filter((c: any) => c.status === 'active');
-      let countryHint: string | undefined;
-      if (activeCountries.length > 0) {
-        const lines = activeCountries.map((c: any) =>
-          `- ${c.name} (${c.code})${c.description ? ' — ' + c.description.slice(0, 80) : ''}`
-        );
-        pushSection('DESTINATIONS (countries available on Find And Study):', lines.join('\n'));
-        // Entity extraction: did the user mention any of these country names?
-        for (const c of activeCountries) {
-          if (c.name && messageNorm.includes(normTr(c.name))) { countryHint = c.name; break; }
-        }
-      }
-
-      // (b) Platform content — Turkish-aware scored keyword match against
-      // published lessons / documents. Uses the SAME query-expansion pipeline
-      // as storage.searchKnowledgeChunks (normalize → strip TR suffixes →
-      // expand TR→EN via shared dictionary + admin custom mappings) so that a
-      // Turkish query like "başvuruyu" or "yönetim" matches both the Excel
-      // knowledge base AND English course-content lessons consistently.
-      //
-      // Scoring per row = 3×title hits + 2×description hits + 1×body hits,
-      // then top 6 rows, body cap 700 chars (replaces the old take-first-4
-      // rows / 400-char body filter that ignored Turkish inflection and
-      // could miss the most relevant lesson when more than 4 rows matched).
-      {
-        let kwMappings: Awaited<ReturnType<typeof storage.getKeywordMappings>> = [];
-        try { kwMappings = await memoChat('kwMappings', () => storage.getKeywordMappings()); }
-        catch { /* non-fatal */ }
-        const expansion = expandTurkishQueryTerms(message, kwMappings);
-        const terms = expansion.terms;
-
-        const countHits = (hay: string, term: string): number => {
-          if (!hay || !term) return 0;
-          let count = 0;
-          let idx = 0;
-          while ((idx = hay.indexOf(term, idx)) !== -1) { count++; idx += term.length; }
-          return count;
-        };
-
-        const scored = (allContents || [])
-          .filter((c: any) => c.status === 'published')
-          .map((c: any) => {
-            const titleNorm = normTr(c.title || '');
-            const descNorm = normTr(c.description || '');
-            const bodyNorm = normTr((c.content || '').replace(/<[^>]+>/g, ' '));
-            let score = 0;
-            for (const term of terms) {
-              score += 3 * countHits(titleNorm, term);
-              score += 2 * countHits(descNorm, term);
-              score += 1 * countHits(bodyNorm, term);
-            }
-            return { c, score };
-          })
-          .filter(x => x.score > 0)
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 6);
-
-        if (scored.length > 0) {
-          const lines = scored.map(({ c }) => {
-            const body = (c.content || c.description || '')
-              .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 700);
-            return `- [${c.title}]${c.countryCode ? ' (' + c.countryCode + ')' : ''}: ${body}`;
-          });
-          pushSection('PLATFORM CONTENT (lessons / documents matching the question):', lines.join('\n'));
-        }
-      }
-
-      // Entity extraction for the knowledge base pre-filter: walk the cached
-      // DISTINCT (country, university) list and see whether the user mentioned
-      // any of them. Match requires ALL discriminating tokens of the
-      // university name to appear in the message (e.g. "anadolu" alone is
-      // enough; "bahcesehir istanbul" requires both) so short generic tokens
-      // like "university" don't trigger false positives.
-      let universityHint: string | undefined;
-      {
-        const seenUnis = new Set<string>();
-        for (const g of knowledgeUnis) for (const u of g.universities) seenUnis.add(u);
-        for (const u of Array.from(seenUnis)) {
-          const tokens = normTr(u).split(/\s+/).filter(t => t.length > 3);
-          if (tokens.length === 0) continue;
-          const distinctive = tokens.filter(t => !['university', 'college', 'institute', 'school'].includes(t));
-          if (distinctive.length > 0 && distinctive.every(t => messageNorm.includes(t))) {
-            universityHint = u;
-            break;
-          }
-        }
-      }
-
-      // (c0) Listing intent — when the user is asking a *general* "which
-      // universities do you have / list universities / hangi üniversiteler
-      // var" question (and didn't name a specific university), the per-row
-      // similarity search will only surface a handful of programs from a
-      // couple of universities and the model ends up answering with a
-      // partial list. Inject the FULL distinct (country, university) list
-      // (already fetched above) so the model can answer accurately.
-      if (wantsUniversityListing && !universityHint && knowledgeUnis.length > 0) {
-        const totalUnis = knowledgeUnis.reduce((s, g) => s + g.universities.length, 0);
-        const lines = knowledgeUnis.map(g =>
-          `${g.country} (${g.universities.length}): ${g.universities.join(', ')}`
-        );
-        pushSection(
-          `AVAILABLE UNIVERSITIES (complete list from the uploaded knowledge base — ${totalUnis} universities across ${knowledgeUnis.length} ${knowledgeUnis.length === 1 ? 'country' : 'countries'}):`,
-          lines.join('\n')
-        );
-      }
-
-      // (c) Uploaded knowledge — scored search, optionally pre-filtered by
-      // entity hints, capped to 12 chunks plus the global char budget. When
-      // the search returns zero rows, we still inject an explicit "no rows
-      // matched" marker so the model sees a clear signal and applies the
-      // grounding rule from the system prompt instead of inventing data.
-
-      // Compute query tokens for the debug trace (same normalisation used throughout).
-      const queryTokens = messageNorm.split(/[\s,.;:!?()]+/).filter((t: string) => t.length > 2);
-
-      let ragDebugChunks: Array<{ id: string; sourceId: string; preview: string; score: number; matchedTerms: string[] }> = [];
-      try {
-        const scoredChunks = await storage.searchKnowledgeChunks(message, 12, {
-          university: universityHint,
-          country: countryHint,
-          city: cityHint,
-        });
-        if (scoredChunks.length > 0) {
-          const label = universityHint || countryHint || cityHint
-            ? `UPLOADED KNOWLEDGE BASE (filtered to ${[universityHint, countryHint, cityHint ? 'near ' + cityHint : undefined].filter(Boolean).join(' / ')}):`
-            : 'UPLOADED KNOWLEDGE BASE (rows from admin-uploaded files such as the universities & programs spreadsheet):';
-          pushSection(label, scoredChunks.map(x => '- ' + x.chunk.content).join('\n'));
-          if (isAdmin) {
-            ragDebugChunks = scoredChunks.slice(0, 5).map(x => ({
-              id: x.chunk.id,
-              sourceId: x.chunk.sourceId,
-              preview: x.chunk.content.slice(0, 120),
-              score: x.score,
-              matchedTerms: x.matchedTerms,
-            }));
-          }
-        } else {
-          // Empty result — make this very visible to the model so it doesn't
-          // try to fill the gap with prior knowledge.
-          pushSection(
-            'UPLOADED KNOWLEDGE BASE:',
-            '[NO MATCHING ROWS FOUND IN THE UPLOADED KNOWLEDGE BASE FOR THIS QUERY. Per system prompt rule #3, if the user named a specific university or program, reply that it is not in the system. Do NOT invent data.]'
-          );
-        }
-      } catch (err) {
-        console.warn('RAG search failed (non-fatal):', err);
-      }
-
-      const ragContext = sections.length > 0
-        ? '\n\n---\n' + sections.join('\n\n') + '\n---\n'
-        : '';
-
-      // ── Load admin AI config ──────────────────────────────────────────────────
-      const cfgRows = await storage.getFindyConfigs();
-      const cfg: Record<string, string | null> = {};
-      for (const c of cfgRows) cfg[c.key] = c.value;
-
-      const provider = (cfg.ai_provider || '').toLowerCase().trim();
-      const apiKey = (cfg.ai_api_key || '').trim();
-      const model = (cfg.ai_model || '').trim();
-      const baseUrl = (cfg.ai_base_url || '').trim();
-      const temperature = parseFloat(cfg.ai_temperature || '0.3') || 0.3;
-      const maxTokens = parseInt(cfg.ai_max_tokens || '1200', 10) || 1200;
-      // Strict grounding prompt. The admin can still override via `system_prompt`
-      // in findy_config, but the default forbids the model from inventing
-      // university / program / fee information that isn't in the injected data.
-      const defaultSystemPrompt = [
-        'You are Findy, the official AI assistant for Find And Study, a study-abroad agent platform.',
-        '',
-        '⚑ LANGUAGE RULE (highest priority): Detect the language of the user\'s message and reply EXCLUSIVELY in that same language throughout the entire response. If the user writes in Turkish → reply in Turkish. If in Arabic → reply in Arabic. If in English → reply in English. If in Russian → reply in Russian. Never mix languages. Never switch to English unless the user writes in English.',
-        '',
-        'STRICT GROUNDING RULES — read carefully:',
-        '1. You may ONLY use the information provided in the DESTINATIONS, PLATFORM CONTENT, and UPLOADED KNOWLEDGE BASE sections below to answer questions about countries, universities, programs, courses, fees, intake dates, application requirements, or anything study-abroad specific. The knowledge base data may be in English even when the user writes in another language — that is fine, translate/present the data in the user\'s language.',
-        '2. NEVER use your own prior knowledge about universities, programs, tuition fees, languages of instruction, intake dates, or application requirements. If the answer is not in the provided data, reply in the user\'s language with the equivalent of: "Bu bilgi şu anda sistemde mevcut değil. Lütfen Find And Study ekibiyle iletişime geçin."',
-        '3. SPECIFIC UNIVERSITY / PROGRAM CHECK: If the user names a specific university or program, check whether that name appears in the UPLOADED KNOWLEDGE BASE or PLATFORM CONTENT. If it does NOT appear, reply in the user\'s language that it is not currently in the Find And Study system. Do NOT describe it from your own knowledge.',
-        '4. NEVER invent universities, programs, fees, or numbers. NEVER suggest visiting external university or government websites. NEVER recommend external portals other than findandstudy.com.',
-        '5. When you do answer, quote the specific values directly (e.g. exact tuition fee, exact program name, exact city, exact intake) from the provided data. Do not paraphrase numbers.',
-        '6. If the question is "what universities are available?" / "hangi üniversiteler var?" or similar, use the AVAILABLE UNIVERSITIES section when present (it contains the COMPLETE distinct list grouped by country) — list every name from it, do not truncate, do not omit any country. If that section is not present, fall back to the distinct university names visible in UPLOADED KNOWLEDGE BASE.',
-        '7. Be concise. No filler. No marketing language.',
-      ].join('\n');
-      const systemPrompt = (cfg.system_prompt || '').trim() || defaultSystemPrompt;
-
-      // ── 0. E2E test bypass — skip provider + n8n, force degraded RAG path
-      // so deterministic test seeds drive the response. Only honored in
-      // non-production environments and when the test header is present.
-      const isE2ETest =
-        process.env.NODE_ENV !== 'production' &&
-        req.get('x-playwright-test') === '1';
-
-      // ── 1. Direct provider call (preferred when configured) ──────────────────
-      if (!isE2ETest && apiKey && provider && model) {
-        try {
-          const botResponse = await callAiProvider({
-            provider, apiKey, model, baseUrl, temperature, maxTokens,
-            systemPrompt, userMessage: message, ragContext, history,
-          });
-          const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
-          const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
-          return res.json({
-            success: true,
-            message: botResponse,
-            data: { message: botResponse },
-            ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
-          });
-        } catch (providerErr: any) {
-          // Surface a concise reason so the admin can debug from the chat reply
-          // (the n8n fallback is intentionally NOT used here — if the admin
-          // configured a provider we want failures to be visible, not silently
-          // routed elsewhere).
-          console.error('AI provider call failed:', providerErr?.message || providerErr);
-          const verboseMsg = `AI provider error: ${providerErr?.message || 'unknown error'}`;
-          const genericMsg = 'AI service is temporarily unavailable. Please try again.';
-          return res.status(502).json({
-            success: false,
-            message: isAdmin ? verboseMsg : genericMsg,
-          });
-        }
-      }
-
-      // ── 2. Legacy n8n webhook fallback ───────────────────────────────────────
-      const webhookUrl = process.env.N8N_WEBHOOK_URL;
-      if (!isE2ETest && webhookUrl) {
-        try {
-          const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message,
-              context: ragContext,
-              sessionId: sessionId || crypto.randomUUID(),
-              timestamp: new Date().toISOString(),
-            }),
-            signal: AbortSignal.timeout(30000),
-          });
-
-          if (!response.ok) throw new Error(`Webhook returned ${response.status}`);
-
-          const contentType = response.headers.get('content-type');
-          let botResponse: string;
-          if (contentType?.includes('application/json')) {
-            const data = await response.json();
-            botResponse = data.message || data.response || data.output || JSON.stringify(data);
-          } else {
-            botResponse = await response.text();
-          }
-
-          const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
-          const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
-          return res.json({
-            success: true,
-            message: botResponse,
-            data: { message: botResponse },
-            ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
-          });
-        } catch (webhookErr: any) {
-          // Webhook failed AND no provider was configured — explain why for admins.
-          console.error('n8n webhook fallback failed:', webhookErr?.message || webhookErr);
-          const reason = !apiKey
-            ? 'No AI provider API key is configured (Findy AI > Provider & Model). The legacy n8n webhook also failed.'
-            : 'AI provider call did not run (provider/model missing) and the legacy n8n webhook also failed.';
-          const verboseMsg = `${reason} Webhook error: ${webhookErr?.message || 'unknown'}`;
-          const genericMsg = 'AI service is temporarily unavailable. Please try again.';
-          return res.status(502).json({
-            success: false,
-            message: isAdmin ? verboseMsg : genericMsg,
-          });
-        }
-      }
-
-      // ── 3. Degraded mode — only RAG context, no LLM ──────────────────────────
-      if (ragContext) {
-        const expandedTerms = Array.from(new Set(ragDebugChunks.flatMap(c => c.matchedTerms)));
-        const activeFilters = { university: universityHint ?? null, country: countryHint ?? null, city: cityHint ?? null };
-        return res.json({
-          success: true,
-          message: 'I found relevant information in the knowledge base. Please configure an AI provider to get intelligent responses.',
-          data: { message: ragContext, hasContext: true },
-          ...(isAdmin ? { debug: { queryTokens, expandedTerms, activeFilters, chunks: ragDebugChunks } } : {}),
-        });
-      }
-      // No provider configured AND no webhook — be explicit for admins.
-      const noConfigMsg = isAdmin
-        ? 'Chat is not configured: no AI provider API key (Findy AI > Provider & Model) and no N8N_WEBHOOK_URL secret.'
-        : 'AI service is temporarily unavailable. Please try again.';
-      return res.status(500).json({ success: false, message: noConfigMsg });
-    } catch (error: any) {
-      console.error('Chat API error:', error?.message || error);
-      const msg = isAdmin
-        ? `Chat handler error: ${error?.message || 'unknown'}`
-        : 'AI service is temporarily unavailable. Please try again.';
-      res.status(500).json({ success: false, message: msg });
-    }
-  });
+  registerGroundedFindy(app, requireAuth);
+  registerPartnerBranding(app, requireAuth, requireAdmin);
 
   // ── Content File Upload Route ────────────────────────────────────────────────
   // POST /api/uploads/content — upload image or document for course content
@@ -6801,15 +6333,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public: GET /api/public/contents/:id/translation?lang=tr — serve translated content to agents
-  app.get('/api/public/contents/:id/translation', async (req, res) => {
+  app.get('/api/public/contents/:id/translation', requireAuth, async (req, res) => {
     try {
       const lang = (req.query.lang as string) || 'en';
+      const source = await storage.getContentById(req.params.id);
+      if (!source || source.status !== 'published') return res.status(404).json({ success: false, message: 'Content not found' });
       const translation = await storage.getContentTranslation(req.params.id, lang);
-      res.json({ success: true, data: translation || null });
+      res.json({ success: true, data: translation?.status === 'published' ? translation : null });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Failed to fetch translation' });
     }
   });
+
+  registerQuizTranslationRoutes(app, requireAuth, requireAdmin);
 
   const httpServer = createServer(app);
 

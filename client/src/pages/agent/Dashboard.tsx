@@ -1,3 +1,5 @@
+import { AgentStartGuide } from '@/components/AgentStartGuide';
+import { legacyDate } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/auth';
-import { useDataStore } from '@/store/data';
+import { useCourseDirectory } from '@/lib/use-course-directory';
 import { BookOpen, Award, Users, TrendingUp, Bell, Calendar, Flame, Clock, CheckCircle2 } from 'lucide-react';
 import { Link } from 'wouter';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
@@ -19,7 +21,7 @@ import type { Announcement } from '@/types';
 export default function AgentDashboard() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { courses } = useDataStore(); // Only get courses from localStorage (static data)
+  const { directory } = useCourseDirectory();
   
   // Fetch progress from backend API
   const { data: progressData } = useQuery<{ success: boolean; progresses: any[] }>({
@@ -49,14 +51,11 @@ export default function AgentDashboard() {
   const certificates = certificatesData?.certificates || [];
   const announcements = announcementsData?.announcements || [];
   
-  // Track certificates for re-render (debugging)
-  useEffect(() => {
-    console.log('[DASHBOARD] Certificates from backend:', certificates.length, certificates);
-  }, [certificates]);
-
   // Calculate user progress (no filter needed - backend already filters by user)
   const userProgress = progresses;
   const userCertificates = certificates;
+  const courseFor = (id:string) => directory.get(id) || certificates.find(c=>c.courseId===id)?.course || {id,title:t('agent.certificates.courseTitleFallback')};
+  const courses = progresses.map(p=>courseFor(p.courseId));
   
   // Backend already filters announcements (published, targeted, not expired)
   const activeAnnouncements = announcements;
@@ -76,7 +75,7 @@ export default function AgentDashboard() {
     {
       key: 'courses-in-progress',
       title: t('agent.dashboard.stats.coursesInProgress'),
-      value: enrolledCourses,
+      value: inProgressCourses,
       icon: BookOpen,
       change: t('agent.dashboard.stats.coursesInProgressChange', { completed: completedCourses, active: inProgressCourses }),
       color: 'text-blue-500',
@@ -149,6 +148,8 @@ export default function AgentDashboard() {
           {t('agent.dashboard.subtitle')}
         </p>
       </div>
+
+      <AgentStartGuide />
 
       {/* Announcements */}
       {activeAnnouncements.length > 0 && (
@@ -321,7 +322,7 @@ export default function AgentDashboard() {
                       <p className="font-medium text-sm">{t('agent.dashboard.certificateEarned')}</p>
                       <p className="text-sm text-muted-foreground">{course?.title}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {dayjs(cert.issuedAt).format('MMM D, YYYY • h:mm A')}
+                        {legacyDate(cert.issuedAt,'MMM D, YYYY • h:mm A')}
                       </p>
                     </div>
                   </div>

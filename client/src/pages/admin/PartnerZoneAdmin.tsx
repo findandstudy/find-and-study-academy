@@ -1,3 +1,5 @@
+import { legacyUi, legacyMessage, legacyDate } from "@/lib/legacy-ui";
+import BrandTemplateManager from '@/components/BrandTemplateManager';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -163,7 +165,7 @@ function PartnerToolbar(props: ToolbarProps) {
         </SelectTrigger>
         <SelectContent className="max-h-72">
           <SelectItem value="all">{t('admin.partnerZone.allCountries')}</SelectItem>
-          {props.countries.map((c) => (
+          {props.countries.filter(c => typeof c.code === 'string' && c.code.trim()).map((c) => (
             <SelectItem key={c.code} value={c.code}>
               {c.name}
             </SelectItem>
@@ -190,8 +192,8 @@ function PartnerToolbar(props: ToolbarProps) {
         <SelectContent>
           <SelectItem value="newest">{t('admin.partnerZone.newestFirst')}</SelectItem>
           <SelectItem value="oldest">{t('admin.partnerZone.oldestFirst')}</SelectItem>
-          <SelectItem value="az">A → Z</SelectItem>
-          <SelectItem value="za">Z → A</SelectItem>
+          <SelectItem value="az">{legacyUi("A → Z")}</SelectItem>
+          <SelectItem value="za">{legacyUi("Z → A")}</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -226,7 +228,7 @@ function sortContents(list: FolderContent[], sort: SortKey): FolderContent[] {
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-export default function PartnerZoneAdmin() {
+function PartnerZoneAdminContent() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { toast } = useToast();
@@ -543,7 +545,7 @@ export default function PartnerZoneAdmin() {
       setDeleteFolder(null);
     },
     onError: (err: Error) => {
-      toast({ title: t('admin.partnerZone.folderDeleteFailed'), description: err.message, variant: 'destructive' });
+      toast({ title: t('admin.partnerZone.folderDeleteFailed'), description: legacyMessage(err.message), variant: 'destructive' });
     },
   });
 
@@ -580,7 +582,7 @@ export default function PartnerZoneAdmin() {
     onError: (err) => {
       toast({
         title: t('common.error'),
-        description: err instanceof Error ? err.message : t('common.error'),
+        description: err instanceof Error ? legacyMessage(err.message) : t('common.error'),
         variant: 'destructive',
       });
     },
@@ -609,14 +611,14 @@ export default function PartnerZoneAdmin() {
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       const url = data?.url || data?.fileUrl || data?.path;
-      if (!url) throw new Error('No URL returned');
+      if (!url) throw new Error(legacyUi("No URL returned"));
       contentForm.setValue('fileUrl', url);
       const sizeKb = file.size / 1024;
       contentForm.setValue('fileSize', sizeKb < 1024
         ? `${sizeKb.toFixed(0)} KB`
         : `${(sizeKb / 1024).toFixed(1)} MB`);
     } catch (err) {
-      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.error'), variant: 'destructive' });
+      toast({ title: t('common.error'), description: err instanceof Error ? legacyMessage(err.message) : t('common.error'), variant: 'destructive' });
     } finally {
       setFileUploading(false);
     }
@@ -715,7 +717,7 @@ export default function PartnerZoneAdmin() {
       });
     },
     onError: (err: Error) => {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: legacyMessage(err.message), variant: 'destructive' });
     },
   });
 
@@ -747,7 +749,7 @@ export default function PartnerZoneAdmin() {
       });
     },
     onError: (err: Error) => {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: legacyMessage(err.message), variant: 'destructive' });
     },
   });
 
@@ -777,7 +779,7 @@ export default function PartnerZoneAdmin() {
       toast({ title: t('admin.partnerZone.folderMoved') });
     },
     onError: (err: Error) => {
-      toast({ title: t('admin.partnerZone.folderMoveFailed'), description: err.message, variant: 'destructive' });
+      toast({ title: t('admin.partnerZone.folderMoveFailed'), description: legacyMessage(err.message), variant: 'destructive' });
     },
   });
 
@@ -807,7 +809,7 @@ export default function PartnerZoneAdmin() {
       });
     },
     onError: (err: Error) => {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: legacyMessage(err.message), variant: 'destructive' });
     },
   });
 
@@ -1186,7 +1188,7 @@ export default function PartnerZoneAdmin() {
   if (folderId) {
     return (
       <div className="space-y-6">
-        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Breadcrumb">
+        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label={legacyUi("Breadcrumb")}>
           <div
             className={`rounded-md ${dropTargetId === 'breadcrumb-root' ? 'ring-2 ring-primary' : ''}`}
             {...dropTargetProps({ kind: 'root' }, 'breadcrumb-root')}
@@ -1199,8 +1201,7 @@ export default function PartnerZoneAdmin() {
               data-testid="breadcrumb-root"
             >
               <Home className="w-4 h-4 mr-1.5" />
-              Partner Zone
-            </Button>
+              {legacyUi("Partner Zone")}</Button>
           </div>
           {breadcrumb.map((b, idx) => {
             const isLast = idx === breadcrumb.length - 1;
@@ -1538,7 +1539,7 @@ export default function PartnerZoneAdmin() {
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm text-muted-foreground">
-                                  {dayjs(item.updatedAt).format('DD.MM.YYYY')}
+                                  {legacyDate(item.updatedAt,'DD.MM.YYYY')}
                                 </span>
                               </TableCell>
                               <TableCell>
@@ -1890,7 +1891,7 @@ function FolderDialog({
                 onClick={() => coverInputRef.current?.click()}
               >
                 {coverPreview ? (
-                  <img src={coverPreview} alt="cover" className="w-full h-full object-cover" />
+                  <img src={coverPreview} alt={legacyUi("cover")} className="w-full h-full object-cover" />
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground py-8">
                     <ImageIcon className="w-10 h-10 opacity-40" />
@@ -1959,7 +1960,7 @@ function FolderDialog({
                     </FormControl>
                     <SelectContent className="max-h-60">
                       <SelectItem value="__none__">{t('admin.partnerZone.noCountry')}</SelectItem>
-                      {countries.map((c) => (
+                      {countries.filter(c => typeof c.code === 'string' && c.code.trim()).map((c) => (
                         <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -2242,10 +2243,10 @@ function BulkUploadDialog({
           headers: { 'x-user-id': user?.id ?? '', 'x-user-role': user?.role ?? '' },
           body: fd,
         });
-        if (!up.ok) throw new Error(`upload ${up.status}`);
+        if (!up.ok) throw new Error(legacyUi("upload {value0}",{value0:up.status}));
         const data = await up.json();
         const url = data?.url || data?.fileUrl || data?.path;
-        if (!url) throw new Error('no url');
+        if (!url) throw new Error(legacyUi("no url"));
         const title = snapshot[i].file.name.replace(/\.[^.]+$/, '');
         const payload: Record<string, unknown> = {
           title,
@@ -2261,12 +2262,12 @@ function BulkUploadDialog({
         if (mediaType === 'video') payload.videoUrl = url;
         if (mediaType === 'image') payload.imageUrl = url;
         const cr = await apiRequest('POST', '/api/admin/partner-contents', payload);
-        if (!cr.ok) throw new Error('save failed');
+        if (!cr.ok) throw new Error(legacyUi("save failed"));
         ok++;
         setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'done' } : p)));
       } catch (err) {
         fail++;
-        setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'error', error: err instanceof Error ? err.message : 'error' } : p)));
+        setItems((prev) => prev.map((p, idx) => (idx === i ? { ...p, state: 'error', error: err instanceof Error ? legacyMessage(err.message) : legacyUi("error") } : p)));
       }
     }
     setRunning(false);
@@ -2391,3 +2392,5 @@ function BulkUploadDialog({
     </Dialog>
   );
 }
+
+export default function PartnerZoneAdmin(){return <><BrandTemplateManager/><PartnerZoneAdminContent/></>}

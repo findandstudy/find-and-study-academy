@@ -1,0 +1,9 @@
+[Unit]
+Description=Encrypted Academy backup with isolated restore verification
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /var/lib/academy-maintenance/scheduled-backup.py
+Nice=15
+IOSchedulingClass=idle
+UMask=0077

@@ -1,3 +1,4 @@
+import { legacyRich, legacyUi, legacyStatus, legacyLocale, legacyDate } from "@/lib/legacy-ui";
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
@@ -57,14 +58,14 @@ interface FindyMessage {
 }
 
 const AI_PROVIDERS = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic (Claude)' },
-  { value: 'azure_openai', label: 'Azure OpenAI' },
-  { value: 'google_gemini', label: 'Google Gemini' },
-  { value: 'mistral', label: 'Mistral AI' },
-  { value: 'openrouter', label: 'OpenRouter' },
-  { value: 'custom', label: 'Custom Endpoint' },
-  { value: 'n8n', label: 'n8n Webhook (current)' },
+  { value: 'openai', get label(){return legacyUi("OpenAI");} },
+  { value: 'anthropic', get label(){return legacyUi("Anthropic (Claude)");} },
+  { value: 'azure_openai', get label(){return legacyUi("Azure OpenAI");} },
+  { value: 'google_gemini', get label(){return legacyUi("Google Gemini");} },
+  { value: 'mistral', get label(){return legacyUi("Mistral AI");} },
+  { value: 'openrouter', get label(){return legacyUi("OpenRouter");} },
+  { value: 'custom', get label(){return legacyUi("Custom Endpoint");} },
+  { value: 'n8n', get label(){return legacyUi("n8n Webhook (current)");} },
 ];
 
 // Comprehensive model catalogue per provider. Lists are intentionally broad and
@@ -229,10 +230,10 @@ export default function AdminFindyAI() {
       apiRequest('POST', '/api/admin/findy/config/bulk', { configs }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/findy/config'] });
-      toast({ title: 'Saved', description: 'Findy AI settings updated.' });
+      toast({ title: legacyUi("Saved"), description: legacyUi("Findy AI settings updated.") });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to save settings.', variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to save settings."), variant: 'destructive' });
     },
   });
 
@@ -241,45 +242,33 @@ export default function AdminFindyAI() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Bot className="w-7 h-7 text-primary" />
-          Findy AI
-        </h1>
+          {legacyUi("Findy AI")}</h1>
         <p className="text-muted-foreground mt-1">
-          Manage your AI assistant — provider, persona, knowledge base, conversations and analytics.
-        </p>
+          {legacyUi("Manage your AI assistant — provider, persona, knowledge base, conversations and analytics.")}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex flex-wrap gap-1 h-auto">
           <TabsTrigger value="overview" data-testid="tab-findy-overview">
-            <BarChart2 className="w-4 h-4 mr-1" /> Overview
-          </TabsTrigger>
+            <BarChart2 className="w-4 h-4 mr-1" /> {legacyUi(" Overview")}</TabsTrigger>
           <TabsTrigger value="provider" data-testid="tab-findy-provider">
-            <Zap className="w-4 h-4 mr-1" /> Provider & Model
-          </TabsTrigger>
+            <Zap className="w-4 h-4 mr-1" /> {legacyUi(" Provider & Model")}</TabsTrigger>
           <TabsTrigger value="persona" data-testid="tab-findy-persona">
-            <Bot className="w-4 h-4 mr-1" /> Persona & Prompt
-          </TabsTrigger>
+            <Bot className="w-4 h-4 mr-1" /> {legacyUi(" Persona & Prompt")}</TabsTrigger>
           <TabsTrigger value="sources" data-testid="tab-findy-sources">
-            <BookOpen className="w-4 h-4 mr-1" /> Sources
-          </TabsTrigger>
+            <BookOpen className="w-4 h-4 mr-1" /> {legacyUi(" Sources")}</TabsTrigger>
           <TabsTrigger value="search-terms" data-testid="tab-findy-search-terms">
-            <Search className="w-4 h-4 mr-1" /> Search Terms
-          </TabsTrigger>
+            <Search className="w-4 h-4 mr-1" /> {legacyUi(" Search Terms")}</TabsTrigger>
           <TabsTrigger value="conversations" data-testid="tab-findy-conversations">
-            <MessageSquare className="w-4 h-4 mr-1" /> Conversations
-          </TabsTrigger>
+            <MessageSquare className="w-4 h-4 mr-1" /> {legacyUi(" Conversations")}</TabsTrigger>
           <TabsTrigger value="analytics" data-testid="tab-findy-analytics">
-            <TrendingUp className="w-4 h-4 mr-1" /> Analytics
-          </TabsTrigger>
+            <TrendingUp className="w-4 h-4 mr-1" /> {legacyUi(" Analytics")}</TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-findy-settings">
-            <Settings className="w-4 h-4 mr-1" /> Settings
-          </TabsTrigger>
+            <Settings className="w-4 h-4 mr-1" /> {legacyUi(" Settings")}</TabsTrigger>
           <TabsTrigger value="channels" data-testid="tab-findy-channels">
-            <Code2 className="w-4 h-4 mr-1" /> Channels & Embed
-          </TabsTrigger>
+            <Code2 className="w-4 h-4 mr-1" /> {legacyUi(" Channels & Embed")}</TabsTrigger>
           <TabsTrigger value="api-webhooks" data-testid="tab-findy-api">
-            <Webhook className="w-4 h-4 mr-1" /> API & Webhooks
-          </TabsTrigger>
+            <Webhook className="w-4 h-4 mr-1" /> {legacyUi(" API & Webhooks")}</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -289,7 +278,7 @@ export default function AdminFindyAI() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Conversations</p>
+                    <p className="text-sm text-muted-foreground">{legacyUi("Total Conversations")}</p>
                     <p className="text-2xl font-bold" data-testid="text-total-conversations">{analytics.totalConversations ?? 0}</p>
                   </div>
                   <MessageSquare className="w-8 h-8 text-muted-foreground" />
@@ -300,7 +289,7 @@ export default function AdminFindyAI() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Messages</p>
+                    <p className="text-sm text-muted-foreground">{legacyUi("Total Messages")}</p>
                     <p className="text-2xl font-bold">{analytics.totalMessages ?? 0}</p>
                   </div>
                   <Bot className="w-8 h-8 text-muted-foreground" />
@@ -311,8 +300,8 @@ export default function AdminFindyAI() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Tokens</p>
-                    <p className="text-2xl font-bold">{(analytics.totalTokens ?? 0).toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">{legacyUi("Total Tokens")}</p>
+                    <p className="text-2xl font-bold">{(analytics.totalTokens ?? 0).toLocaleString(legacyLocale())}</p>
                   </div>
                   <Zap className="w-8 h-8 text-muted-foreground" />
                 </div>
@@ -322,7 +311,7 @@ export default function AdminFindyAI() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Fallback Rate</p>
+                    <p className="text-sm text-muted-foreground">{legacyUi("Fallback Rate")}</p>
                     <p className="text-2xl font-bold">
                       {analytics.fallbackRate != null ? `${(analytics.fallbackRate * 100).toFixed(1)}%` : '0%'}
                     </p>
@@ -335,42 +324,42 @@ export default function AdminFindyAI() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Current Configuration</CardTitle>
-              <CardDescription>Active provider and persona settings.</CardDescription>
+              <CardTitle>{legacyUi("Current Configuration")}</CardTitle>
+              <CardDescription>{legacyUi("Active provider and persona settings.")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {configLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground">{legacyUi("Loading...")}</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Provider</span>
-                    <Badge variant="outline">{config.ai_provider || 'n8n (default)'}</Badge>
+                    <span className="text-muted-foreground">{legacyUi("Provider")}</span>
+                    <Badge variant="outline">{config.ai_provider || legacyUi("n8n (default)")}</Badge>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Model</span>
+                    <span className="text-muted-foreground">{legacyUi("Model")}</span>
                     <span>{config.ai_model || '—'}</span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Persona Name</span>
-                    <span>{config.persona_name || 'Findy'}</span>
+                    <span className="text-muted-foreground">{legacyUi("Persona Name")}</span>
+                    <span>{config.persona_name || legacyUi("Findy")}</span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Strict Mode</span>
+                    <span className="text-muted-foreground">{legacyUi("Strict Mode")}</span>
                     <Badge variant={config.strict_mode === 'true' ? 'default' : 'secondary'}>
-                      {config.strict_mode === 'true' ? 'Enabled' : 'Disabled'}
+                      {config.strict_mode === 'true' ? legacyUi("Enabled") : legacyUi("Disabled")}
                     </Badge>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">API Key Status</span>
+                    <span className="text-muted-foreground">{legacyUi("API Key Status")}</span>
                     <Badge variant={config.ai_api_key_configured === 'true' ? 'default' : 'secondary'}>
-                      {config.ai_api_key_configured === 'true' ? 'Configured' : 'Not configured'}
+                      {config.ai_api_key_configured === 'true' ? legacyUi("Configured") : legacyUi("Not configured")}
                     </Badge>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Widget Enabled</span>
+                    <span className="text-muted-foreground">{legacyUi("Widget Enabled")}</span>
                     <Badge variant={config.widget_enabled !== 'false' ? 'default' : 'secondary'}>
-                      {config.widget_enabled !== 'false' ? 'Yes' : 'No'}
+                      {config.widget_enabled !== 'false' ? legacyUi("Yes") : legacyUi("No")}
                     </Badge>
                   </div>
                 </div>
@@ -488,13 +477,13 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>AI Provider</CardTitle>
-          <CardDescription>Select the AI provider and model. API keys are stored securely and never displayed.</CardDescription>
+          <CardTitle>{legacyUi("AI Provider")}</CardTitle>
+          <CardDescription>{legacyUi("Select the AI provider and model. API keys are stored securely and never displayed.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Provider</Label>
+              <Label>{legacyUi("Provider")}</Label>
               <Select
                 value={provider}
                 onValueChange={(v) => {
@@ -506,7 +495,7 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
                 }}
               >
                 <SelectTrigger data-testid="select-ai-provider">
-                  <SelectValue placeholder="Select provider..." />
+                  <SelectValue placeholder={legacyUi("Select provider...")} />
                 </SelectTrigger>
                 <SelectContent>
                   {AI_PROVIDERS.map(p => (
@@ -516,7 +505,7 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Model</Label>
+              <Label>{legacyUi("Model")}</Label>
               {models.length > 0 ? (
                 <>
                   <Select
@@ -532,39 +521,38 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
                     }}
                   >
                     <SelectTrigger data-testid="select-ai-model">
-                      <SelectValue placeholder="Select model..." />
+                      <SelectValue placeholder={legacyUi("Select model...")} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                       <SelectItem value={CUSTOM_MODEL_OPTION} data-testid="option-model-custom">
-                        Custom… (type model name)
-                      </SelectItem>
+                        {legacyUi("Custom… (type model name)")}</SelectItem>
                     </SelectContent>
                   </Select>
                   {customMode && (
                     <Input
                       value={model}
                       onChange={e => setModel(e.target.value)}
-                      placeholder="e.g. my-fine-tuned-model"
+                      placeholder={legacyUi("e.g. my-fine-tuned-model")}
                       data-testid="input-ai-model-custom"
                       autoFocus
                     />
                   )}
                 </>
               ) : (
-                <Input value={model} onChange={e => setModel(e.target.value)} placeholder="e.g. gpt-4o" data-testid="input-ai-model" />
+                <Input value={model} onChange={e => setModel(e.target.value)} placeholder={legacyUi("e.g. gpt-4o")} data-testid="input-ai-model" />
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>API Key</Label>
+            <Label>{legacyUi("API Key")}</Label>
             <div className="flex gap-2">
               <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
-                placeholder={config.ai_api_key_configured === 'true' ? '••••••••••••••• (configured)' : 'Enter API key...'}
+                placeholder={config.ai_api_key_configured === 'true' ? legacyUi("••••••••••••••• (configured)") : legacyUi("Enter API key...")}
                 data-testid="input-ai-api-key"
               />
               <Button size="icon" variant="ghost" onClick={() => setShowKey(!showKey)}>
@@ -573,14 +561,14 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
             </div>
             <p className="text-xs text-muted-foreground">
               {config.ai_api_key_configured === 'true'
-                ? 'API key is configured. Enter a new key to rotate it.'
-                : 'API key is not configured. Enter key and save.'}
+                ? legacyUi("API key is configured. Enter a new key to rotate it.")
+                : legacyUi("API key is not configured. Enter key and save.")}
             </p>
           </div>
 
           {(provider === 'azure_openai' || provider === 'custom' || provider === 'openrouter') && (
             <div className="space-y-2">
-              <Label>Base URL</Label>
+              <Label>{legacyUi("Base URL")}</Label>
               <Input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" data-testid="input-ai-base-url" />
             </div>
           )}
@@ -589,12 +577,12 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
 
       <Card>
         <CardHeader>
-          <CardTitle>Model Parameters</CardTitle>
+          <CardTitle>{legacyUi("Model Parameters")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <div className="flex justify-between">
-              <Label>Temperature: {temperature.toFixed(2)}</Label>
+              <Label>{legacyUi("Temperature: ")}{temperature.toFixed(2)}</Label>
             </div>
             <Slider
               min={0} max={2} step={0.05}
@@ -602,11 +590,11 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
               onValueChange={([v]) => setTemperature(v)}
               data-testid="slider-temperature"
             />
-            <p className="text-xs text-muted-foreground">Higher = more creative. Lower = more deterministic.</p>
+            <p className="text-xs text-muted-foreground">{legacyUi("Higher = more creative. Lower = more deterministic.")}</p>
           </div>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <Label>Max Output Tokens: {maxTokens}</Label>
+              <Label>{legacyUi("Max Output Tokens: ")}{maxTokens}</Label>
             </div>
             <Slider
               min={100} max={4000} step={100}
@@ -621,7 +609,7 @@ function ProviderTab({ config, onSave, saving }: { config: FindyConfig; onSave: 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} data-testid="button-save-provider">
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Provider Settings'}
+          {saving ? legacyUi("Saving...") : legacyUi("Save Provider Settings")}
         </Button>
       </div>
     </div>
@@ -670,26 +658,26 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Persona</CardTitle>
-          <CardDescription>Define how Findy presents itself to users.</CardDescription>
+          <CardTitle>{legacyUi("Persona")}</CardTitle>
+          <CardDescription>{legacyUi("Define how Findy presents itself to users.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Persona Name</Label>
-              <Input value={personaName} onChange={e => setPersonaName(e.target.value)} placeholder="Findy" data-testid="input-persona-name" />
+              <Label>{legacyUi("Persona Name")}</Label>
+              <Input value={personaName} onChange={e => setPersonaName(e.target.value)} placeholder={legacyUi("Findy")} data-testid="input-persona-name" />
             </div>
             <div className="space-y-2">
-              <Label>Max User Message Length</Label>
+              <Label>{legacyUi("Max User Message Length")}</Label>
               <Input type="number" value={maxMessageLength} onChange={e => setMaxMessageLength(parseInt(e.target.value) || 2000)} data-testid="input-max-message-length" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Welcome Message</Label>
+            <Label>{legacyUi("Welcome Message")}</Label>
             <Textarea value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} rows={2} data-testid="input-welcome-message" />
           </div>
           <div className="space-y-2">
-            <Label>Input Placeholder</Label>
+            <Label>{legacyUi("Input Placeholder")}</Label>
             <Input value={inputPlaceholder} onChange={e => setInputPlaceholder(e.target.value)} data-testid="input-placeholder-text" />
           </div>
         </CardContent>
@@ -697,12 +685,12 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
 
       <Card>
         <CardHeader>
-          <CardTitle>System Prompt</CardTitle>
+          <CardTitle>{legacyUi("System Prompt")}</CardTitle>
           <CardDescription>
-            The system instruction sent to the AI with every request. Supports variables:{' '}
-            <code className="text-xs bg-muted px-1 rounded">{'{{user.name}}'}</code>{' '}
-            <code className="text-xs bg-muted px-1 rounded">{'{{today}}'}</code>{' '}
-            <code className="text-xs bg-muted px-1 rounded">{'{{country_default}}'}</code>
+            {legacyUi("The system instruction sent to the AI with every request. Supports variables:")}{' '}
+            <code className="text-xs bg-muted px-1 rounded">{legacyUi("{{user.name}}")}</code>{' '}
+            <code className="text-xs bg-muted px-1 rounded">{legacyUi("{{today}}")}</code>{' '}
+            <code className="text-xs bg-muted px-1 rounded">{legacyUi("{{country_default}}")}</code>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -710,7 +698,7 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
             value={systemPrompt}
             onChange={e => setSystemPrompt(e.target.value)}
             rows={8}
-            placeholder="You are Findy, an AI assistant for Find And Study Academy..."
+            placeholder={legacyUi("You are Findy, an AI assistant for Find And Study Academy...")}
             data-testid="textarea-system-prompt"
           />
         </CardContent>
@@ -718,16 +706,15 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
 
       <Card>
         <CardHeader>
-          <CardTitle>Guardrails</CardTitle>
-          <CardDescription>Control what Findy can and cannot discuss.</CardDescription>
+          <CardTitle>{legacyUi("Guardrails")}</CardTitle>
+          <CardDescription>{legacyUi("Control what Findy can and cannot discuss.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-base">Strict Mode</Label>
+              <Label className="text-base">{legacyUi("Strict Mode")}</Label>
               <p className="text-sm text-muted-foreground">
-                When enabled, Findy can ONLY answer from knowledge base sources. If no relevant source is found, it returns the fallback message — never uses general AI knowledge.
-              </p>
+                {legacyUi("When enabled, Findy can ONLY answer from knowledge base sources. If no relevant source is found, it returns the fallback message — never uses general AI knowledge.")}</p>
             </div>
             <Switch
               checked={strictMode}
@@ -738,20 +725,20 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
           {strictMode && (
             <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200 flex gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>Strict mode is active. Ensure your knowledge base has enough content to answer common questions.</span>
+              <span>{legacyUi("Strict mode is active. Ensure your knowledge base has enough content to answer common questions.")}</span>
             </div>
           )}
           <div className="space-y-2">
-            <Label>Fallback Message (shown when no KB match)</Label>
+            <Label>{legacyUi("Fallback Message (shown when no KB match)")}</Label>
             <Textarea value={fallbackMessage} onChange={e => setFallbackMessage(e.target.value)} rows={2} data-testid="input-fallback-message" />
           </div>
           <div className="space-y-2">
-            <Label>Refusal Message (for banned topics)</Label>
+            <Label>{legacyUi("Refusal Message (for banned topics)")}</Label>
             <Textarea value={refusalMessage} onChange={e => setRefusalMessage(e.target.value)} rows={2} data-testid="input-refusal-message" />
           </div>
           <div className="space-y-2">
-            <Label>Banned Topics (comma-separated)</Label>
-            <Input value={bannedTopics} onChange={e => setBannedTopics(e.target.value)} placeholder="politics, competitor names, ..." data-testid="input-banned-topics" />
+            <Label>{legacyUi("Banned Topics (comma-separated)")}</Label>
+            <Input value={bannedTopics} onChange={e => setBannedTopics(e.target.value)} placeholder={legacyUi("politics, competitor names, ...")} data-testid="input-banned-topics" />
           </div>
         </CardContent>
       </Card>
@@ -759,7 +746,7 @@ function PersonaTab({ config, onSave, saving }: { config: FindyConfig; onSave: (
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} data-testid="button-save-persona">
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Persona Settings'}
+          {saving ? legacyUi("Saving...") : legacyUi("Save Persona Settings")}
         </Button>
       </div>
     </div>
@@ -785,35 +772,35 @@ function ConversationsTab({ conversations, isLoading }: { conversations: FindyCo
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Conversation Log</CardTitle>
-          <CardDescription>All Findy AI conversations sorted by most recent.</CardDescription>
+          <CardTitle>{legacyUi("Conversation Log")}</CardTitle>
+          <CardDescription>{legacyUi("All Findy AI conversations sorted by most recent.")}</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading conversations...</div>
+            <div className="text-center py-8 text-muted-foreground">{legacyUi("Loading conversations...")}</div>
           ) : conversations.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No conversations yet. Users need to chat with Findy first.</p>
+              <p>{legacyUi("No conversations yet. Users need to chat with Findy first.")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Started At</TableHead>
-                    <TableHead>Channel</TableHead>
-                    <TableHead>Messages</TableHead>
-                    <TableHead>Tokens</TableHead>
-                    <TableHead>Fallbacks</TableHead>
-                    <TableHead>Feedback</TableHead>
+                    <TableHead>{legacyUi("Started At")}</TableHead>
+                    <TableHead>{legacyUi("Channel")}</TableHead>
+                    <TableHead>{legacyUi("Messages")}</TableHead>
+                    <TableHead>{legacyUi("Tokens")}</TableHead>
+                    <TableHead>{legacyUi("Fallbacks")}</TableHead>
+                    <TableHead>{legacyUi("Feedback")}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {conversations.map(conv => (
                     <TableRow key={conv.id} data-testid={`row-conversation-${conv.id}`}>
-                      <TableCell className="text-sm">{dayjs(conv.startedAt).format('MMM D, HH:mm')}</TableCell>
+                      <TableCell className="text-sm">{legacyDate(conv.startedAt,'MMM D, HH:mm')}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{conv.channel}</Badge>
                       </TableCell>
@@ -854,18 +841,18 @@ function ConversationsTab({ conversations, isLoading }: { conversations: FindyCo
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Conversation Transcript</DialogTitle>
+            <DialogTitle>{legacyUi("Conversation Transcript")}</DialogTitle>
           </DialogHeader>
           {convDetail ? (
             <div className="space-y-3">
               <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>Session: {convDetail.conversation.sessionId.slice(0, 8)}...</span>
-                <span>Channel: {convDetail.conversation.channel}</span>
-                <span>Started: {dayjs(convDetail.conversation.startedAt).format('MMM D, HH:mm')}</span>
+                <span>{legacyUi("Session: ")}{convDetail.conversation.sessionId.slice(0, 8)}...</span>
+                <span>{legacyUi("Channel: ")}{convDetail.conversation.channel}</span>
+                <span>{legacyUi("Started: ")}{legacyDate(convDetail.conversation.startedAt,'MMM D, HH:mm')}</span>
               </div>
               <div className="space-y-2">
                 {convDetail.messages.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No messages recorded.</p>
+                  <p className="text-muted-foreground text-sm">{legacyUi("No messages recorded.")}</p>
                 ) : (
                   convDetail.messages.map(msg => (
                     <div
@@ -875,9 +862,9 @@ function ConversationsTab({ conversations, isLoading }: { conversations: FindyCo
                         : 'bg-primary/10 mr-8'}`}
                     >
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium capitalize">{msg.role}</span>
-                        {msg.isFallback && <Badge variant="destructive" className="text-xs">Fallback</Badge>}
-                        {msg.latencyMs && <span className="text-xs text-muted-foreground">{msg.latencyMs}ms</span>}
+                        <span className="font-medium capitalize">{legacyStatus(msg.role)}</span>
+                        {msg.isFallback && <Badge variant="destructive" className="text-xs">{legacyUi("Fallback")}</Badge>}
+                        {msg.latencyMs && <span className="text-xs text-muted-foreground">{msg.latencyMs}{legacyUi("ms")}</span>}
                       </div>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     </div>
@@ -886,7 +873,7 @@ function ConversationsTab({ conversations, isLoading }: { conversations: FindyCo
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-muted-foreground">Loading...</div>
+            <div className="py-8 text-center text-muted-foreground">{legacyUi("Loading...")}</div>
           )}
         </DialogContent>
       </Dialog>
@@ -906,19 +893,19 @@ function AnalyticsTab({ analytics, conversations }: { analytics: any; conversati
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">Total Conversations</p>
+            <p className="text-sm text-muted-foreground">{legacyUi("Total Conversations")}</p>
             <p className="text-3xl font-bold">{analytics.totalConversations ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">Total Messages</p>
+            <p className="text-sm text-muted-foreground">{legacyUi("Total Messages")}</p>
             <p className="text-3xl font-bold">{analytics.totalMessages ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">Avg Messages/Conv</p>
+            <p className="text-sm text-muted-foreground">{legacyUi("Avg Messages/Conv")}</p>
             <p className="text-3xl font-bold">
               {analytics.totalConversations > 0
                 ? (analytics.totalMessages / analytics.totalConversations).toFixed(1)
@@ -929,10 +916,10 @@ function AnalyticsTab({ analytics, conversations }: { analytics: any; conversati
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Channel Distribution</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{legacyUi("Channel Distribution")}</CardTitle></CardHeader>
         <CardContent>
           {Object.keys(channelCounts).length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4 text-center">No data yet.</p>
+            <p className="text-muted-foreground text-sm py-4 text-center">{legacyUi("No data yet.")}</p>
           ) : (
             <div className="space-y-3">
               {Object.entries(channelCounts).map(([ch, cnt]) => (
@@ -985,29 +972,29 @@ function FindySettingsTab({ config, onSave, saving }: { config: FindyConfig; onS
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Widget Settings</CardTitle>
-          <CardDescription>Control the appearance and behavior of the Findy chat widget.</CardDescription>
+          <CardTitle>{legacyUi("Widget Settings")}</CardTitle>
+          <CardDescription>{legacyUi("Control the appearance and behavior of the Findy chat widget.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-base">Widget Enabled</Label>
+            <Label className="text-base">{legacyUi("Widget Enabled")}</Label>
             <Switch checked={widgetEnabled} onCheckedChange={setWidgetEnabled} data-testid="switch-widget-enabled" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Position</Label>
+              <Label>{legacyUi("Position")}</Label>
               <Select value={widgetPosition} onValueChange={setWidgetPosition}>
                 <SelectTrigger data-testid="select-widget-position">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                  <SelectItem value="bottom-right">{legacyUi("Bottom Right")}</SelectItem>
+                  <SelectItem value="bottom-left">{legacyUi("Bottom Left")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Primary Color</Label>
+              <Label>{legacyUi("Primary Color")}</Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
@@ -1025,12 +1012,12 @@ function FindySettingsTab({ config, onSave, saving }: { config: FindyConfig; onS
 
       <Card>
         <CardHeader>
-          <CardTitle>Rate Limits & Retention</CardTitle>
+          <CardTitle>{legacyUi("Rate Limits & Retention")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Rate Limit (requests/min per IP)</Label>
+              <Label>{legacyUi("Rate Limit (requests/min per IP)")}</Label>
               <Input
                 type="number"
                 value={rateLimitPerIp}
@@ -1039,7 +1026,7 @@ function FindySettingsTab({ config, onSave, saving }: { config: FindyConfig; onS
               />
             </div>
             <div className="space-y-2">
-              <Label>Log Retention (days)</Label>
+              <Label>{legacyUi("Log Retention (days)")}</Label>
               <Input
                 type="number"
                 value={logRetentionDays}
@@ -1053,36 +1040,34 @@ function FindySettingsTab({ config, onSave, saving }: { config: FindyConfig; onS
 
       <Card>
         <CardHeader>
-          <CardTitle>Environment Variables Status</CardTitle>
-          <CardDescription>Check if required environment variables are configured.</CardDescription>
+          <CardTitle>{legacyUi("Environment Variables Status")}</CardTitle>
+          <CardDescription>{legacyUi("Check if required environment variables are configured.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             {[
-              { key: 'N8N_WEBHOOK_URL', label: 'n8n Webhook URL' },
-              { key: 'OPENAI_API_KEY', label: 'OpenAI API Key' },
-              { key: 'ANTHROPIC_API_KEY', label: 'Anthropic API Key' },
-              { key: 'DATABASE_URL', label: 'Database URL' },
+              { key: 'N8N_WEBHOOK_URL', label: legacyUi("n8n Webhook URL") },
+              { key: 'OPENAI_API_KEY', label: legacyUi("OpenAI API Key") },
+              { key: 'ANTHROPIC_API_KEY', label: legacyUi("Anthropic API Key") },
+              { key: 'DATABASE_URL', label: legacyUi("Database URL") },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between py-2 border-b last:border-b-0">
                 <span className="font-mono text-xs">{key}</span>
                 <span className="text-muted-foreground">{label}</span>
                 <Badge variant="secondary" className="text-xs">
-                  Set via Replit Secrets
-                </Badge>
+                  {legacyUi("Set via Replit Secrets")}</Badge>
               </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            To configure these values, use the Replit Secrets panel (lock icon in the sidebar) and restart the server.
-          </p>
+            {legacyUi("To configure these values, use the Replit Secrets panel (lock icon in the sidebar) and restart the server.")}</p>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} data-testid="button-save-findy-settings">
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Settings'}
+          {saving ? legacyUi("Saving...") : legacyUi("Save Settings")}
         </Button>
       </div>
     </div>
@@ -1121,16 +1106,16 @@ function ChannelsEmbedTab({ config, onSave, saving }: { config: FindyConfig; onS
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      toast({ title: `${label} kopyalandı` });
+      toast({ title: legacyUi("{value0} kopyalandı",{value0:label}) });
     });
   };
 
   const handleSave = () => {
     onSave([
-      { key: 'findy_widget_color', value: primaryColor, label: 'Widget Primary Color', isSecret: false },
-      { key: 'findy_widget_position', value: position, label: 'Widget Position', isSecret: false },
-      { key: 'findy_widget_greeting', value: greeting, label: 'Widget Greeting Message', isSecret: false },
-      { key: 'findy_allowed_domains', value: allowedDomains, label: 'Allowed Embed Domains', isSecret: false },
+      { key: 'findy_widget_color', value: primaryColor, label: legacyUi("Widget Primary Color"), isSecret: false },
+      { key: 'findy_widget_position', value: position, label: legacyUi("Widget Position"), isSecret: false },
+      { key: 'findy_widget_greeting', value: greeting, label: legacyUi("Widget Greeting Message"), isSecret: false },
+      { key: 'findy_allowed_domains', value: allowedDomains, label: legacyUi("Allowed Embed Domains"), isSecret: false },
     ]);
   };
 
@@ -1140,14 +1125,13 @@ function ChannelsEmbedTab({ config, onSave, saving }: { config: FindyConfig; onS
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Globe className="w-5 h-5 text-primary" />
-            Widget Configuration
-          </CardTitle>
-          <CardDescription>Customize the Findy chat widget that appears on your pages.</CardDescription>
+            {legacyUi("Widget Configuration")}</CardTitle>
+          <CardDescription>{legacyUi("Customize the Findy chat widget that appears on your pages.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Primary Color</Label>
+              <Label>{legacyUi("Primary Color")}</Label>
               <div className="flex gap-2 items-center">
                 <input
                   type="color"
@@ -1159,37 +1143,37 @@ function ChannelsEmbedTab({ config, onSave, saving }: { config: FindyConfig; onS
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Widget Position</Label>
+              <Label>{legacyUi("Widget Position")}</Label>
               <Select value={position} onValueChange={setPosition}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                  <SelectItem value="top-right">Top Right</SelectItem>
-                  <SelectItem value="top-left">Top Left</SelectItem>
+                  <SelectItem value="bottom-right">{legacyUi("Bottom Right")}</SelectItem>
+                  <SelectItem value="bottom-left">{legacyUi("Bottom Left")}</SelectItem>
+                  <SelectItem value="top-right">{legacyUi("Top Right")}</SelectItem>
+                  <SelectItem value="top-left">{legacyUi("Top Left")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Greeting Message</Label>
+            <Label>{legacyUi("Greeting Message")}</Label>
             <Textarea
               value={greeting}
               onChange={e => setGreeting(e.target.value)}
               rows={2}
-              placeholder="Merhaba! Size nasıl yardımcı olabilirim?"
+              placeholder={legacyUi("Merhaba! Size nasıl yardımcı olabilirim?")}
             />
           </div>
           <div className="space-y-2">
-            <Label>Allowed Domains (comma-separated)</Label>
+            <Label>{legacyUi("Allowed Domains (comma-separated)")}</Label>
             <Input
               value={allowedDomains}
               onChange={e => setAllowedDomains(e.target.value)}
-              placeholder="findandstudy.com, partner.findandstudy.com"
+              placeholder={legacyUi("findandstudy.com, partner.findandstudy.com")}
             />
-            <p className="text-xs text-muted-foreground">Leave empty to allow all domains.</p>
+            <p className="text-xs text-muted-foreground">{legacyUi("Leave empty to allow all domains.")}</p>
           </div>
         </CardContent>
       </Card>
@@ -1198,25 +1182,22 @@ function ChannelsEmbedTab({ config, onSave, saving }: { config: FindyConfig; onS
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Code2 className="w-5 h-5 text-primary" />
-            Embed Codes
-          </CardTitle>
+            {legacyUi("Embed Codes")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Script Embed (Floating Widget)</Label>
+              <Label>{legacyUi("Script Embed (Floating Widget)")}</Label>
               <Button variant="ghost" size="sm" onClick={() => copyToClipboard(embedCode, 'Script kodu')}>
-                <Copy className="w-4 h-4 mr-1" /> Kopyala
-              </Button>
+                <Copy className="w-4 h-4 mr-1" /> {legacyUi(" Kopyala")}</Button>
             </div>
             <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto whitespace-pre-wrap">{embedCode}</pre>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>iFrame Embed (Inline)</Label>
+              <Label>{legacyUi("iFrame Embed (Inline)")}</Label>
               <Button variant="ghost" size="sm" onClick={() => copyToClipboard(iframeCode, 'iFrame kodu')}>
-                <Copy className="w-4 h-4 mr-1" /> Kopyala
-              </Button>
+                <Copy className="w-4 h-4 mr-1" /> {legacyUi(" Kopyala")}</Button>
             </div>
             <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto whitespace-pre-wrap">{iframeCode}</pre>
           </div>
@@ -1226,7 +1207,7 @@ function ChannelsEmbedTab({ config, onSave, saving }: { config: FindyConfig; onS
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save Channel Settings'}
+          {saving ? legacyUi("Saving...") : legacyUi("Save Channel Settings")}
         </Button>
       </div>
     </div>
@@ -1246,24 +1227,24 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      toast({ title: `${label} kopyalandı` });
+      toast({ title: legacyUi("{value0} kopyalandı",{value0:label}) });
     });
   };
 
   const handleSave = () => {
     onSave([
-      { key: 'findy_webhook_url', value: webhookUrl, label: 'Findy Webhook URL', isSecret: false },
-      { key: 'findy_webhook_secret', value: webhookSecret, label: 'Findy Webhook Secret', isSecret: true },
-      { key: 'findy_notify_new_conv', value: notifyOnNew ? 'true' : 'false', label: 'Notify on New Conversation', isSecret: false },
-      { key: 'findy_notify_fallback', value: notifyOnFallback ? 'true' : 'false', label: 'Notify on Fallback', isSecret: false },
+      { key: 'findy_webhook_url', value: webhookUrl, label: legacyUi("Findy Webhook URL"), isSecret: false },
+      { key: 'findy_webhook_secret', value: webhookSecret, label: legacyUi("Findy Webhook Secret"), isSecret: true },
+      { key: 'findy_notify_new_conv', value: notifyOnNew ? 'true' : 'false', label: legacyUi("Notify on New Conversation"), isSecret: false },
+      { key: 'findy_notify_fallback', value: notifyOnFallback ? 'true' : 'false', label: legacyUi("Notify on Fallback"), isSecret: false },
     ]);
   };
 
   const apiEndpoints = [
-    { method: 'POST', path: '/api/chat', description: 'Send a message to Findy AI' },
-    { method: 'GET', path: '/api/findy/conversations', description: 'List chat conversations' },
-    { method: 'GET', path: '/api/findy/conversations/:id/messages', description: 'Get messages for a conversation' },
-    { method: 'GET', path: '/api/public/contents/:id/translation', description: 'Fetch translated content' },
+    { method: 'POST', path: '/api/chat', description: legacyUi("Send a message to Findy AI") },
+    { method: 'GET', path: '/api/findy/conversations', description: legacyUi("List chat conversations") },
+    { method: 'GET', path: '/api/findy/conversations/:id/messages', description: legacyUi("Get messages for a conversation") },
+    { method: 'GET', path: '/api/public/contents/:id/translation', description: legacyUi("Fetch translated content") },
   ];
 
   return (
@@ -1272,15 +1253,13 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Webhook className="w-5 h-5 text-primary" />
-            Outgoing Webhooks
-          </CardTitle>
+            {legacyUi("Outgoing Webhooks")}</CardTitle>
           <CardDescription>
-            Findy will POST events to your endpoint with HMAC-SHA256 signature (X-Findy-Signature header).
-          </CardDescription>
+            {legacyUi("Findy will POST events to your endpoint with HMAC-SHA256 signature (X-Findy-Signature header).")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Webhook URL</Label>
+            <Label>{legacyUi("Webhook URL")}</Label>
             <Input
               value={webhookUrl}
               onChange={e => setWebhookUrl(e.target.value)}
@@ -1288,13 +1267,13 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
             />
           </div>
           <div className="space-y-2">
-            <Label>Webhook Secret</Label>
+            <Label>{legacyUi("Webhook Secret")}</Label>
             <div className="flex gap-2">
               <Input
                 type={showSecret ? 'text' : 'password'}
                 value={webhookSecret}
                 onChange={e => setWebhookSecret(e.target.value)}
-                placeholder="your-secret-key"
+                placeholder={legacyUi("your-secret-key")}
               />
               <Button variant="outline" size="icon" onClick={() => setShowSecret(s => !s)}>
                 {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -1303,11 +1282,11 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
           </div>
 
           <div className="space-y-2 pt-2 border-t">
-            <p className="text-sm font-medium">Trigger Events</p>
+            <p className="text-sm font-medium">{legacyUi("Trigger Events")}</p>
             <div className="space-y-2">
               {[
-                { key: 'notifyOnNew', label: 'New Conversation Started', value: notifyOnNew, onChange: setNotifyOnNew },
-                { key: 'notifyOnFallback', label: 'Fallback / Low Confidence Response', value: notifyOnFallback, onChange: setNotifyOnFallback },
+                { key: 'notifyOnNew', label: legacyUi("New Conversation Started"), value: notifyOnNew, onChange: setNotifyOnNew },
+                { key: 'notifyOnFallback', label: legacyUi("Fallback / Low Confidence Response"), value: notifyOnFallback, onChange: setNotifyOnFallback },
               ].map(item => (
                 <div key={item.key} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
                   <span className="text-sm">{item.label}</span>
@@ -1323,10 +1302,9 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Key className="w-5 h-5 text-primary" />
-            REST API Reference
-          </CardTitle>
+            {legacyUi("REST API Reference")}</CardTitle>
           <CardDescription>
-            Base URL: <code className="text-xs bg-muted px-1 rounded">{origin}</code>
+            {legacyUi("Base URL: ")}<code className="text-xs bg-muted px-1 rounded">{origin}</code>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1352,15 +1330,14 @@ function ApiWebhooksTab({ config, onSave, saving }: { config: FindyConfig; onSav
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Authentication: Include <code className="bg-muted px-1 rounded">x-user-id</code> header with the user's ID for authenticated endpoints.
-          </p>
+            {legacyRich("For authenticated endpoints, include the {value0} header with the user's ID.",{value0:<code className="bg-muted px-1 rounded">x-user-id</code>})}</p>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
           <Save className="w-4 h-4 mr-2" />
-          {saving ? 'Saving...' : 'Save API & Webhook Settings'}
+          {saving ? legacyUi("Saving...") : legacyUi("Save API & Webhook Settings")}
         </Button>
       </div>
     </div>
@@ -1391,22 +1368,22 @@ function CustomSearchTermsTab() {
     mutationFn: async (body: { turkishPhrase: string; englishEquivalents: string }) =>
       apiRequest('POST', '/api/admin/findy/keyword-mappings', body) as Promise<any>,
     onSuccess: () => {
-      toast({ title: 'Mapping added', description: 'The custom search term is now active.' });
+      toast({ title: legacyUi("Mapping added"), description: legacyUi("The custom search term is now active.") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/keyword-mappings'] });
       setPhrase('');
       setEquivalents('');
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) =>
       apiRequest('DELETE', `/api/admin/findy/keyword-mappings/${id}`) as Promise<any>,
     onSuccess: () => {
-      toast({ title: 'Mapping removed' });
+      toast({ title: legacyUi("Mapping removed") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/keyword-mappings'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   const handleAdd = () => {
@@ -1422,19 +1399,17 @@ function CustomSearchTermsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Plus className="w-4 h-4" />
-            Add Custom Search Term
-          </CardTitle>
+            {legacyUi("Add Custom Search Term")}</CardTitle>
           <CardDescription>
-            Map a Turkish word or phrase to one or more English equivalents. Changes take effect immediately on the next search — no redeployment needed.
-          </CardDescription>
+            {legacyUi("Map a Turkish word or phrase to one or more English equivalents. Changes take effect immediately on the next search — no redeployment needed.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="tr-phrase">Turkish phrase</Label>
+              <Label htmlFor="tr-phrase">{legacyUi("Turkish phrase")}</Label>
               <Input
                 id="tr-phrase"
-                placeholder="e.g. spor bilimleri"
+                placeholder={legacyUi("e.g. spor bilimleri")}
                 value={phrase}
                 onChange={e => setPhrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
@@ -1442,10 +1417,10 @@ function CustomSearchTermsTab() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="en-equivalents">English equivalents (comma-separated)</Label>
+              <Label htmlFor="en-equivalents">{legacyUi("English equivalents (comma-separated)")}</Label>
               <Input
                 id="en-equivalents"
-                placeholder="e.g. sports science, kinesiology"
+                placeholder={legacyUi("e.g. sports science, kinesiology")}
                 value={equivalents}
                 onChange={e => setEquivalents(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
@@ -1460,8 +1435,7 @@ function CustomSearchTermsTab() {
               data-testid="button-add-keyword-mapping"
             >
               {addMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-              Add mapping
-            </Button>
+              {legacyUi("Add mapping")}</Button>
           </div>
         </CardContent>
       </Card>
@@ -1470,29 +1444,25 @@ function CustomSearchTermsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Search className="w-4 h-4" />
-            Custom Mappings
-          </CardTitle>
+            {legacyUi("Custom Mappings")}</CardTitle>
           <CardDescription>
-            These custom entries are merged with the built-in Turkish dictionary at query time. Built-in entries with the same key are overridden.
-          </CardDescription>
+            {legacyUi("These custom entries are merged with the built-in Turkish dictionary at query time. Built-in entries with the same key are overridden.")}</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-              <RefreshCw className="w-4 h-4 animate-spin" /> Loading mappings…
-            </div>
+              <RefreshCw className="w-4 h-4 animate-spin" /> {legacyUi(" Loading mappings…")}</div>
           ) : mappings.length === 0 ? (
             <div className="rounded-md border p-6 text-center text-sm text-muted-foreground bg-muted/20">
-              No custom mappings yet. Add one above to extend the Turkish search dictionary.
-            </div>
+              {legacyUi("No custom mappings yet. Add one above to extend the Turkish search dictionary.")}</div>
           ) : (
             <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Turkish phrase</TableHead>
-                  <TableHead>English equivalents</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{legacyUi("Turkish phrase")}</TableHead>
+                  <TableHead>{legacyUi("English equivalents")}</TableHead>
+                  <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1585,10 +1555,10 @@ function SourcesTab() {
         setDebugResult({ query: testQuery, chunks: json.debug.chunks });
       } else {
         setDebugResult({ query: testQuery, chunks: [] });
-        toast({ title: 'No debug data', description: json.success ? 'No chunks were retrieved for this query.' : (json.message || 'Request failed'), variant: json.success ? 'default' : 'destructive' });
+        toast({ title: legacyUi("No debug data"), description: json.success ? legacyUi("No chunks were retrieved for this query.") : (json.message || legacyUi("Request failed")), variant: json.success ? 'default' : 'destructive' });
       }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' });
     } finally {
       setTestLoading(false);
     }
@@ -1616,45 +1586,45 @@ function SourcesTab() {
       return json;
     },
     onSuccess: () => {
-      toast({ title: 'Uploaded', description: 'Source is being processed...' });
+      toast({ title: legacyUi("Uploaded"), description: legacyUi("Source is being processed...") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
       setSelectedFile(null);
       setUploadName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    onError: (e: any) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Upload failed"), description: e.message, variant: 'destructive' }),
   });
 
   const urlMutation = useMutation({
     mutationFn: async (data: { url: string; name: string }) =>
       apiRequest('POST', '/api/admin/findy/sources/url', data) as Promise<any>,
     onSuccess: () => {
-      toast({ title: 'URL added', description: 'Source is being processed...' });
+      toast({ title: legacyUi("URL added"), description: legacyUi("Source is being processed...") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
       setIsUrlDialogOpen(false);
       setUrlForm({ url: '', name: '' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) =>
       apiRequest('DELETE', `/api/admin/findy/sources/${id}`) as Promise<any>,
     onSuccess: () => {
-      toast({ title: 'Deleted' });
+      toast({ title: legacyUi("Deleted") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   const reprocessMutation = useMutation({
     mutationFn: async (id: string) =>
       apiRequest('POST', `/api/admin/findy/sources/${id}/reprocess`) as Promise<any>,
     onSuccess: () => {
-      toast({ title: 'Reprocessing started' });
+      toast({ title: legacyUi("Reprocessing started") });
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   // Bulk reprocess state machine:
@@ -1676,7 +1646,7 @@ function SourcesTab() {
       setBulkPhase('started');
       qc.invalidateQueries({ queryKey: ['/api/admin/findy/sources'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: legacyUi("Error"), description: e.message, variant: 'destructive' }),
   });
 
   const processingCount = sources.filter(s => s.status === 'processing').length;
@@ -1694,12 +1664,12 @@ function SourcesTab() {
       const successCount = bulkTotal - errorCount;
       if (errorCount > 0) {
         toast({
-          title: 'Reprocessing finished with errors',
-          description: `${successCount} of ${bulkTotal} sources reprocessed successfully. ${errorCount} failed — check the error badges below.`,
+          title: legacyUi("Reprocessing finished with errors"),
+          description: legacyUi("{value0} of {value1} sources reprocessed successfully. {value2} failed — check the error badges below.",{value0:successCount,value1:bulkTotal,value2:errorCount}),
           variant: 'destructive',
         });
       } else {
-        toast({ title: 'Reprocessing complete', description: `All ${bulkTotal} sources have been reprocessed.` });
+        toast({ title: legacyUi("Reprocessing complete"), description: legacyUi("All {value0} sources have been reprocessed.",{value0:bulkTotal}) });
       }
       setBulkPhase('idle');
       setBulkTotal(0);
@@ -1730,9 +1700,9 @@ function SourcesTab() {
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === 'active') return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
-    if (status === 'processing') return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Processing</Badge>;
-    return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Error</Badge>;
+    if (status === 'active') return <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"><CheckCircle className="w-3 h-3 mr-1" />{legacyUi("Active")}</Badge>;
+    if (status === 'processing') return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />{legacyUi("Processing")}</Badge>;
+    return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />{legacyUi("Error")}</Badge>;
   };
 
   return (
@@ -1740,20 +1710,19 @@ function SourcesTab() {
       {/* Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5" />Knowledge Sources</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5" />{legacyUi("Knowledge Sources")}</CardTitle>
           <CardDescription>
-            Upload files or add URLs as knowledge sources. Findy AI will search these sources to answer agent questions accurately with minimal token usage.
-          </CardDescription>
+            {legacyUi("Upload files or add URLs as knowledge sources. Findy AI will search these sources to answer agent questions accurately with minimal token usage.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* How it works */}
           <div className="rounded-md border p-4 bg-muted/30 space-y-2">
-            <p className="text-sm font-medium">How it works (Token-efficient RAG)</p>
+            <p className="text-sm font-medium">{legacyUi("How it works (Token-efficient RAG)")}</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Each file is parsed and split into searchable chunks stored in the database</li>
-              <li>When an agent asks a question, only the <strong>top 15 most relevant</strong> chunks are sent to the AI</li>
-              <li>Excel rows each become individual searchable chunks — ideal for university/program data</li>
-              <li>You can update a source by deleting it and re-uploading the new version</li>
+              <li>{legacyUi("Each file is parsed and split into searchable chunks stored in the database")}</li>
+              <li>{legacyRich("When an agent asks a question, only the {value0} most relevant knowledge chunks are sent to the AI.",{value0:<strong>15</strong>})}</li>
+              <li>{legacyUi("Excel rows each become individual searchable chunks — ideal for university/program data")}</li>
+              <li>{legacyUi("You can update a source by deleting it and re-uploading the new version")}</li>
             </ul>
           </div>
 
@@ -1761,8 +1730,8 @@ function SourcesTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* File upload */}
             <div className="border rounded-md p-4 space-y-3">
-              <p className="text-sm font-medium flex items-center gap-2"><Upload className="w-4 h-4" />Upload File</p>
-              <p className="text-xs text-muted-foreground">Supports Excel (.xlsx, .xls, .csv), PDF, and Word (.docx, .doc)</p>
+              <p className="text-sm font-medium flex items-center gap-2"><Upload className="w-4 h-4" />{legacyUi("Upload File")}</p>
+              <p className="text-xs text-muted-foreground">{legacyUi("Supports Excel (.xlsx, .xls, .csv), PDF, and Word (.docx, .doc)")}</p>
               <div
                 className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover-elevate"
                 onClick={() => fileInputRef.current?.click()}
@@ -1771,12 +1740,12 @@ function SourcesTab() {
                   <div className="space-y-1">
                     <FileSpreadsheet className="w-6 h-6 mx-auto text-primary" />
                     <p className="text-sm font-medium">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} {legacyUi(" MB")}</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Click to choose file</p>
+                    <p className="text-sm text-muted-foreground">{legacyUi("Click to choose file")}</p>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx" className="hidden" onChange={handleFileChange} data-testid="input-knowledge-file" />
@@ -1784,14 +1753,14 @@ function SourcesTab() {
               {selectedFile && (
                 <div className="space-y-2">
                   <Input
-                    placeholder="Source display name"
+                    placeholder={legacyUi("Source display name")}
                     value={uploadName}
                     onChange={e => setUploadName(e.target.value)}
                     data-testid="input-knowledge-name"
                   />
                   <div className="flex gap-2">
                     <Button className="flex-1" onClick={handleUploadSubmit} disabled={uploadMutation.isPending} data-testid="button-upload-knowledge">
-                      {uploadMutation.isPending ? 'Uploading...' : 'Upload & Process'}
+                      {uploadMutation.isPending ? legacyUi("Uploading...") : legacyUi("Upload & Process")}
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => { setSelectedFile(null); setUploadName(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}>
                       <X className="w-4 h-4" />
@@ -1803,8 +1772,8 @@ function SourcesTab() {
 
             {/* URL source */}
             <div className="border rounded-md p-4 space-y-3">
-              <p className="text-sm font-medium flex items-center gap-2"><Globe className="w-4 h-4" />Add URL Source</p>
-              <p className="text-xs text-muted-foreground">Add a web page URL — Findy will fetch and index its content</p>
+              <p className="text-sm font-medium flex items-center gap-2"><Globe className="w-4 h-4" />{legacyUi("Add URL Source")}</p>
+              <p className="text-xs text-muted-foreground">{legacyUi("Add a web page URL — Findy will fetch and index its content")}</p>
               <div className="space-y-2">
                 <Input
                   placeholder="https://example.com/page"
@@ -1813,7 +1782,7 @@ function SourcesTab() {
                   data-testid="input-knowledge-url"
                 />
                 <Input
-                  placeholder="Source name (optional)"
+                  placeholder={legacyUi("Source name (optional)")}
                   value={urlForm.name}
                   onChange={e => setUrlForm(f => ({ ...f, name: e.target.value }))}
                 />
@@ -1825,7 +1794,7 @@ function SourcesTab() {
                   data-testid="button-add-url-knowledge"
                 >
                   <Link className="w-4 h-4 mr-2" />
-                  {urlMutation.isPending ? 'Adding...' : 'Add URL Source'}
+                  {urlMutation.isPending ? legacyUi("Adding...") : legacyUi("Add URL Source")}
                 </Button>
               </div>
             </div>
@@ -1838,13 +1807,13 @@ function SourcesTab() {
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
-            Uploaded Sources ({sources.length})
+            {legacyUi("Uploaded Sources (")}{sources.length})
           </CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
             {(isBulkRunning || reprocessAllMutation.isPending) && bulkTotal > 0 && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>{Math.max(0, bulkDone ?? 0)} / {bulkTotal} sources done</span>
+                <span>{Math.max(0, bulkDone ?? 0)} / {bulkTotal} {legacyUi(" sources done")}</span>
               </div>
             )}
             {sources.length > 0 && (
@@ -1853,37 +1822,35 @@ function SourcesTab() {
                 variant="outline"
                 onClick={() => reprocessAllMutation.mutate()}
                 disabled={reprocessAllMutation.isPending || isBulkRunning || sources.some(s => s.status === 'processing')}
-                title="Reprocess all sources with the latest parser"
+                title={legacyUi("Reprocess all sources with the latest parser")}
               >
                 <RotateCcw className="w-3 h-3 mr-1" />
-                Reprocess All Sources
-              </Button>
+                {legacyUi("Reprocess All Sources")}</Button>
             )}
             <Button size="sm" variant="ghost" onClick={() => refetch()}>
-              <RotateCcw className="w-3 h-3 mr-1" />Refresh
-            </Button>
+              <RotateCcw className="w-3 h-3 mr-1" />{legacyUi("Refresh")}</Button>
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-sm text-muted-foreground text-center py-8">Loading sources...</div>
+            <div className="text-sm text-muted-foreground text-center py-8">{legacyUi("Loading sources...")}</div>
           ) : sources.length === 0 ? (
             <div className="text-center py-8 space-y-2">
               <Database className="w-10 h-10 mx-auto text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No knowledge sources yet</p>
-              <p className="text-xs text-muted-foreground">Upload an Excel file with university programs, PDFs, or add a URL</p>
+              <p className="text-sm text-muted-foreground">{legacyUi("No knowledge sources yet")}</p>
+              <p className="text-xs text-muted-foreground">{legacyUi("Upload an Excel file with university programs, PDFs, or add a URL")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Records</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Added</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{legacyUi("Source")}</TableHead>
+                  <TableHead>{legacyUi("Type")}</TableHead>
+                  <TableHead>{legacyUi("Records")}</TableHead>
+                  <TableHead>{legacyUi("Status")}</TableHead>
+                  <TableHead>{legacyUi("Added")}</TableHead>
+                  <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1906,23 +1873,23 @@ function SourcesTab() {
                     <TableCell className="text-sm">
                       {src.status === 'active' ? (
                         <div>
-                          <span className="font-medium">{(src.rowCount || 0).toLocaleString()}</span>
-                          <span className="text-muted-foreground"> rows</span>
+                          <span className="font-medium">{(src.rowCount || 0).toLocaleString(legacyLocale())}</span>
+                          <span className="text-muted-foreground"> {legacyUi(" rows")}</span>
                           <br />
-                          <span className="text-xs text-muted-foreground">{(src.chunkCount || 0).toLocaleString()} chunks</span>
+                          <span className="text-xs text-muted-foreground">{(src.chunkCount || 0).toLocaleString(legacyLocale())} {legacyUi(" chunks")}</span>
                         </div>
                       ) : '—'}
                     </TableCell>
                     <TableCell>{getStatusBadge(src.status)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{dayjs(src.createdAt).format('MMM D, YYYY')}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{legacyDate(src.createdAt,'MMM D, YYYY')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {(src.status === 'error' || src.status === 'active') && (
-                          <Button size="icon" variant="ghost" onClick={() => reprocessMutation.mutate(src.id)} disabled={reprocessMutation.isPending} title="Reprocess">
+                          <Button size="icon" variant="ghost" onClick={() => reprocessMutation.mutate(src.id)} disabled={reprocessMutation.isPending} title={legacyUi("Reprocess")}>
                             <RotateCcw className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(src.id)} disabled={deleteMutation.isPending} className="text-destructive" title="Delete">
+                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(src.id)} disabled={deleteMutation.isPending} className="text-destructive" title={legacyUi("Delete")}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -1941,16 +1908,14 @@ function SourcesTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Search className="w-4 h-4" />
-            Last Search Debug
-          </CardTitle>
+            {legacyUi("Last Search Debug")}</CardTitle>
           <CardDescription>
-            Send a test query to see which knowledge chunks are retrieved and their match scores. Only visible to admins.
-          </CardDescription>
+            {legacyUi("Send a test query to see which knowledge chunks are retrieved and their match scores. Only visible to admins.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Type a test query (e.g. computer engineering Latvia fees)..."
+              placeholder={legacyUi("Type a test query (e.g. computer engineering Latvia fees)...")}
               value={testQuery}
               onChange={e => setTestQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleDebugSearch()}
@@ -1964,9 +1929,9 @@ function SourcesTab() {
           {debugResult && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
-                Query: <span className="text-foreground font-semibold">"{debugResult.query}"</span>
+                {legacyUi("Query: ")}<span className="text-foreground font-semibold">"{debugResult.query}"</span>
                 {' — '}
-                <span>{debugResult.chunks.length === 0 ? 'No chunks retrieved' : `${debugResult.chunks.length} chunk${debugResult.chunks.length !== 1 ? 's' : ''} retrieved`}</span>
+                <span>{debugResult.chunks.length === 0 ? legacyUi("No chunks retrieved") : legacyUi("Chunks retrieved: {value0}",{value0:debugResult.chunks.length})}</span>
               </p>
               {debugResult.chunks.length > 0 ? (
                 <div className="space-y-2">
@@ -1975,7 +1940,7 @@ function SourcesTab() {
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground font-mono">#{i + 1} · {chunk.id.slice(0, 8)}…</span>
                         <Badge variant="outline" className="text-xs font-mono">
-                          score: {chunk.score.toFixed(2)}
+                          {legacyUi("score: ")}{chunk.score.toFixed(2)}
                         </Badge>
                       </div>
                       <p className="text-sm text-foreground leading-snug">
@@ -1995,8 +1960,7 @@ function SourcesTab() {
                 </div>
               ) : (
                 <div className="rounded-md border p-4 text-center text-sm text-muted-foreground bg-muted/20">
-                  No knowledge chunks matched this query. Try different keywords or check that sources are uploaded and active.
-                </div>
+                  {legacyUi("No knowledge chunks matched this query. Try different keywords or check that sources are uploaded and active.")}</div>
               )}
             </div>
           )}

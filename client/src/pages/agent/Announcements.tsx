@@ -1,3 +1,4 @@
+import { legacyDate } from "@/lib/legacy-ui";
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +87,7 @@ export default function AgentAnnouncements() {
                         {a.content}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {dayjs(dateStr).format('DD MMM YYYY HH:mm')}
+                        {legacyDate(dateStr,'DD MMM YYYY HH:mm')}
                       </p>
                     </div>
                   </div>

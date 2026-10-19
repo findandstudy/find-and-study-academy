@@ -1,393 +1,91 @@
-import { useEffect } from 'react';
-import { Link, useLocation } from 'wouter';
-import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  BookOpen,
-  Award,
-  Trophy,
-  Package,
-  ArrowRight,
-  Mail,
-  Phone,
-  Globe,
-  GraduationCap,
-  CheckCircle2,
-} from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { I18N_STORAGE_KEY } from '@/i18n';
+import {usePublicUi} from '@/lib/public-ui';
+import {useEffect,useState} from 'react';
+import {Link} from 'wouter';
+import {useTranslation} from 'react-i18next';
+import {Button} from '@/components/ui/button';
+import {BookOpen,CheckCircle2,ArrowRight,ArrowUpRight,MessageSquareText,Palette,Handshake,GraduationCap,Globe,Mail,ShieldCheck} from 'lucide-react';
+import {LanguageSwitcher} from '@/components/LanguageSwitcher';
+import {useAuthStore} from '@/store/auth';
+import {I18N_STORAGE_KEY} from '@/i18n';
+import {SUPPORTED_LANGUAGES} from '@/i18n/languages';
+import {useCampaignPreview,useTrainingCoverage} from '@/hooks/use-homepage-data';
+import {destinationLabel,formatCampaignDeadline,isInvitationCode,normalizeInvitationCode} from '@/lib/homepage-data';
+import publicUiCatalog from '@/lib/public-ui-catalog.json';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
-const BRAND_NAVY = '#143591';
-const BRAND_RED = '#ED1C24';
-// Slightly darker red used for surfaces that carry white text — needed to meet
-// WCAG AA contrast (4.5:1) which the lighter brand red just misses.
-const BRAND_RED_DEEP = '#C8161D';
+export default function Home(){
+ const {tl,locale}=usePublicUi();const {i18n}=useTranslation();const {user,role}=useAuthStore();
+ const [withLogo,setWithLogo]=useState(true),[promo,setPromo]=useState(()=>new URLSearchParams(window.location.search).get('promo')||''),[promoError,setPromoError]=useState(false);
+ const coverage=useTrainingCoverage(),preview=useCampaignPreview(promo);
+ const normalizedPromo=normalizeInvitationCode(promo),offer=preview.status==='confirmed'?preview.campaign:null;
+ const languages=String(SUPPORTED_LANGUAGES.length),coverageSummary=tl('home.coverageSummary',{destinations:String(coverage.destinations.length),languages});
+ const countryLabel=(country:{code:string;name:string})=>{const key=`home.destination.${country.code}`;const hasTranslation=(publicUiCatalog as Record<string,Record<string,string>>)[locale]?.[key];return destinationLabel(country,locale,hasTranslation?tl(key):undefined)};
+ const dir=['ar','fa','ur'].includes(locale)?'rtl':'ltr';const portal=role==='admin'||role==='staff'?'/admin/dashboard':'/agent/dashboard';
+ useEffect(()=>{try{if(!localStorage.getItem(I18N_STORAGE_KEY)&&i18n.resolvedLanguage!=='en')i18n.changeLanguage('en')}catch{}},[i18n]);
+ const features=[BookOpen,MessageSquareText,Palette,Handshake];
+ const signup=isInvitationCode(normalizedPromo)?'/signup?promo='+encodeURIComponent(normalizedPromo):'/signup';
+ function continueWithCode(e:React.FormEvent){e.preventDefault();const valid=isInvitationCode(normalizedPromo);setPromoError(!valid);if(valid)window.location.assign(signup)}
+ const panel='rounded-2xl border border-slate-200 bg-white';
+ return <div dir={dir} className="min-h-screen bg-white text-slate-700">
+  <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+   <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+    <Link href="/" aria-label="Find And Study Academy"><img src={logoImage} alt="Find And Study" className="h-10 w-36 object-contain sm:w-44"/></Link>
+    <LanguageSwitcher variant="inline"/>
+    <nav className="flex w-full flex-wrap items-center gap-2 sm:w-auto" aria-label={tl('home.footerLinksHead')}>
+     <Link href={user?portal:'/login'} className="flex-1 sm:flex-none"><Button variant="ghost" className="h-auto min-h-10 w-full whitespace-normal">{user?tl('home.ctaLoginPortal'):tl('home.navLogin')}</Button></Link>
+     <Link href={signup} className="flex-1 sm:flex-none"><Button className="h-auto min-h-10 w-full whitespace-normal bg-[#143591] hover:bg-[#102b76]">{tl('home.navSignup')}</Button></Link>
+    </nav>
+   </div>
+  </header>
 
-export default function Home() {
-  const { t, i18n } = useTranslation();
-  const [, setLocation] = useLocation();
-  const { user, role } = useAuthStore();
-
-  // The public landing page defaults to English unless the visitor has already
-  // picked a language (persisted in localStorage). Their choice always wins.
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(I18N_STORAGE_KEY) && i18n.resolvedLanguage !== 'en') {
-        i18n.changeLanguage('en');
-      }
-    } catch {
-      /* localStorage unavailable — ignore */
-    }
-  }, [i18n]);
-
-  // Logged-in users go straight to their dashboard.
-  useEffect(() => {
-    if (user && role) {
-      const path = role === 'admin' || role === 'staff' ? '/admin/dashboard' : '/agent/dashboard';
-      setLocation(path);
-    }
-  }, [user, role, setLocation]);
-
-  const features = [
-    { icon: BookOpen, title: t('home.f1Title'), description: t('home.f1Desc') },
-    { icon: Award, title: t('home.f2Title'), description: t('home.f2Desc') },
-    { icon: Package, title: t('home.f3Title'), description: t('home.f3Desc') },
-    { icon: Trophy, title: t('home.f4Title'), description: t('home.f4Desc') },
-  ];
-  const heroBullets = [
-    t('home.heroBullet1'),
-    t('home.heroBullet2'),
-    t('home.heroBullet3'),
-  ];
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Sticky top nav */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-16">
-          <Link
-            href="/"
-            className="flex items-center gap-2 hover-elevate rounded-md px-2 py-1"
-            data-testid="link-home-logo"
-          >
-            <img src={logoImage} alt="Find And Study" className="h-9 w-auto object-contain" />
-          </Link>
-          <nav className="flex items-center gap-2">
-            <LanguageSwitcher variant="inline" />
-            <Link href="/login">
-              <Button variant="ghost" size="sm" data-testid="link-nav-login">
-                {t('home.navLogin')}
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button size="sm" data-testid="link-nav-signup">
-                {t('home.navSignup')}
-              </Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        <div
-          className="pointer-events-none absolute -top-32 -right-32 w-[28rem] h-[28rem] rounded-full opacity-[0.08] blur-3xl"
-          style={{ background: BRAND_NAVY }}
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -bottom-40 -left-32 w-[26rem] h-[26rem] rounded-full opacity-[0.06] blur-3xl"
-          style={{ background: BRAND_RED }}
-          aria-hidden="true"
-        />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 lg:py-28">
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            <div className="lg:col-span-7">
-              <Badge
-                variant="outline"
-                className="mb-5 bg-white border-slate-200 text-slate-700"
-                data-testid="badge-hero-tag"
-              >
-                <GraduationCap className="w-3 h-3 mr-1" style={{ color: BRAND_RED }} />
-                {t('home.heroBadge')}
-              </Badge>
-              <h1
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] mb-4 tracking-tight"
-                style={{ color: BRAND_NAVY }}
-                data-testid="text-hero-title"
-              >
-                Find And Study
-                <span
-                  className="block text-2xl sm:text-3xl lg:text-4xl font-semibold mt-3 text-slate-700"
-                  data-testid="text-hero-subtitle"
-                >
-                  {t('home.heroSubtitle')}
-                </span>
-              </h1>
-              <p
-                className="text-base sm:text-lg text-slate-600 mb-7 max-w-2xl leading-relaxed"
-                data-testid="text-hero-description"
-              >
-                {t('home.heroDescription')}
-              </p>
-
-              <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2 mb-8 max-w-2xl">
-                {heroBullets.map((b, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center gap-2 text-sm text-slate-700"
-                    data-testid={`text-hero-bullet-${i}`}
-                  >
-                    <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: BRAND_NAVY }} />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex flex-wrap gap-3">
-                <Link href="/signup">
-                  <Button size="lg" data-testid="button-cta-signup">
-                    {t('home.ctaStart')}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button size="lg" variant="outline" data-testid="button-cta-login">
-                    {t('home.ctaLoginPortal')}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Hero side card */}
-            <div className="hidden lg:block lg:col-span-5">
-              <div className="relative">
-                <div
-                  className="absolute -inset-4 rounded-2xl opacity-20 blur-2xl"
-                  style={{ background: `linear-gradient(135deg, ${BRAND_NAVY}, ${BRAND_RED})` }}
-                  aria-hidden="true"
-                />
-                <Card className="relative overflow-hidden border-slate-200 shadow-sm">
-                  <div className="h-2 w-full" style={{ background: BRAND_NAVY }} />
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div
-                        className="w-12 h-12 rounded-md flex items-center justify-center text-white"
-                        style={{ background: BRAND_NAVY }}
-                      >
-                        <GraduationCap className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                          Find And Study Academy
-                        </p>
-                        <p className="text-lg font-bold" style={{ color: BRAND_NAVY }}>
-                          {t('home.cardTitle')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <FeatureRow icon={BookOpen} label={t('home.cardRow1')} />
-                      <FeatureRow icon={Award} label={t('home.cardRow2')} />
-                      <FeatureRow icon={Package} label={t('home.cardRow3')} />
-                      <FeatureRow icon={Trophy} label={t('home.cardRow4')} />
-                    </div>
-                    <div
-                      className="mt-6 rounded-md p-3 text-sm font-semibold text-white text-center"
-                      style={{ background: BRAND_RED_DEEP }}
-                    >
-                      {t('home.cardCta')}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-16 sm:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2
-              className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
-              style={{ color: BRAND_NAVY }}
-            >
-              {t('home.featuresTitle')}
-            </h2>
-            <p className="text-slate-600">{t('home.featuresSubtitle')}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map((f, i) => (
-              <Card
-                key={i}
-                className="hover-elevate border-slate-200"
-                data-testid={`card-feature-${i}`}
-              >
-                <CardContent className="p-6">
-                  <div
-                    className="w-11 h-11 rounded-md flex items-center justify-center mb-4 text-white"
-                    style={{ background: BRAND_NAVY }}
-                  >
-                    <f.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-semibold mb-1" style={{ color: BRAND_NAVY }}>
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{f.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="py-16 sm:py-20 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <h2
-            className="text-2xl sm:text-3xl font-bold mb-3 tracking-tight"
-            style={{ color: BRAND_NAVY }}
-          >
-            {t('home.ctaBottomTitle')}
-          </h2>
-          <p className="text-slate-600 mb-7 max-w-2xl mx-auto leading-relaxed">
-            {t('home.ctaBottomDesc')}
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link href="/signup">
-              <Button size="lg" data-testid="button-cta-signup-bottom">
-                {t('home.ctaBottomSignup')}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" data-testid="button-cta-login-bottom">
-                {t('home.ctaBottomLogin')}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 text-sm">
-            <div className="md:col-span-5">
-              <img
-                src={logoImage}
-                alt="Find And Study"
-                className="h-10 w-auto object-contain mb-4"
-              />
-              <p className="text-slate-600 leading-relaxed max-w-sm">{t('home.footerTagline')}</p>
-            </div>
-
-            <div className="md:col-span-3">
-              <h4
-                className="font-semibold mb-4 text-xs uppercase tracking-wider"
-                style={{ color: BRAND_NAVY }}
-              >
-                {t('home.footerLinksHead')}
-              </h4>
-              <ul className="space-y-1 text-slate-600">
-                <li>
-                  <Link
-                    href="/login"
-                    className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-login"
-                  >
-                    {t('home.footerLoginLink')}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/signup"
-                    className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-signup"
-                  >
-                    {t('home.footerSignupLink')}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/verify"
-                    className="inline-block rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-verify"
-                  >
-                    {t('home.footerVerifyLink')}
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div className="md:col-span-4">
-              <h4
-                className="font-semibold mb-4 text-xs uppercase tracking-wider"
-                style={{ color: BRAND_NAVY }}
-              >
-                {t('home.footerContactHead')}
-              </h4>
-              <ul className="space-y-1 text-slate-600">
-                <li>
-                  <a
-                    href="mailto:info@findandstudy.com"
-                    className="flex items-center gap-2.5 rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-email"
-                  >
-                    <Mail className="w-4 h-4 shrink-0 text-slate-400" />
-                    <span>info@findandstudy.com</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="tel:+905416898515"
-                    className="flex items-center gap-2.5 rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-phone"
-                  >
-                    <Phone className="w-4 h-4 shrink-0 text-slate-400" />
-                    <span>+90 541 689 85 15</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://findandstudy.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2.5 rounded-md px-2 -mx-2 py-1 hover-elevate"
-                    data-testid="link-footer-website"
-                  >
-                    <Globe className="w-4 h-4 shrink-0 text-slate-400" />
-                    <span>findandstudy.com</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} Find And Study Academy. {t('home.footerRights')}</span>
-            <span className="text-slate-400">{t('home.footerLocated')}</span>
-          </div>
-        </div>
-      </footer>
+  <main>
+   <section className="relative overflow-hidden border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div aria-hidden="true" className="pointer-events-none absolute -end-28 top-10 h-96 w-96 rounded-full bg-red-100/40 blur-3xl"/>
+    <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-12 lg:gap-14">
+     <div className="min-w-0 lg:col-span-7">
+      <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-[#143591]"><GraduationCap className="h-4 w-4 shrink-0"/>{tl('home.heroBadge')}</p>
+      <p className="mb-3 text-xs font-bold uppercase tracking-[.16em] text-[#c8161d]">Find And Study Academy</p>
+      <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight text-[#143591] sm:text-4xl lg:text-5xl">{tl('home.heroTitle')}<span className="mt-3 block text-slate-800">{tl('home.heroSubtitle')}</span></h1>
+      <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-[#143591] sm:text-lg">{tl('home.heroHook')}</p>
+      <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">{tl('home.heroDescription')}</p>
+      {coverage.status==='ready'&&<p className="mt-4 flex items-center gap-2 text-sm font-semibold text-[#143591]"><Globe className="h-4 w-4 shrink-0"/>{coverageSummary}</p>}
+      <ul className="my-7 flex flex-wrap gap-x-5 gap-y-3 text-sm">{[1,2,3].map(n=><li key={n} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#143591]"/>{tl(`home.heroBullet${n}`)}</li>)}</ul>
+      <div className="flex flex-wrap gap-3"><Link href={signup}><Button size="lg" className="h-auto min-h-12 whitespace-normal bg-[#143591] hover:bg-[#102b76]">{tl('home.ctaStart')}<ArrowRight className="ms-2 h-4 w-4 shrink-0 rtl:rotate-180"/></Button></Link><a href="#how-it-works" className="inline-flex items-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-[#143591] hover:bg-slate-50">{tl('home.journeyTitle')}</a></div>
+      <p className="mt-4 flex max-w-xl items-start gap-2 text-xs leading-5 text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0"/>{tl('home.approvalNote')}</p>
+     </div>
+     <aside className="min-w-0 overflow-hidden rounded-3xl bg-[#0e2257] text-white shadow-xl shadow-blue-900/10 lg:col-span-5">
+      <div className="h-2 bg-[#ed1c24]"/><div className="p-7 sm:p-8"><p className="mb-6 text-xs font-bold uppercase tracking-wider text-blue-200">Find And Study Academy</p><h2 className="mb-7 text-2xl font-semibold leading-snug">{tl('home.cardTitle')}</h2><ol className="space-y-5">{[1,2,3,4].map(n=><li key={n} className="flex items-start gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-blue-300/40 text-xs text-blue-100">{n}</span><span className="pt-0.5 text-sm leading-6 text-blue-50">{tl(`home.cardRow${n}`)}</span></li>)}</ol><Link href={signup} className="mt-8 flex items-center justify-between gap-3 rounded-xl bg-[#c8161d] px-4 py-4 text-sm font-semibold text-white hover:bg-[#ad1319]">{tl('home.cardCta')}<ArrowRight className="h-4 w-4 shrink-0 rtl:rotate-180"/></Link></div>
+     </aside>
     </div>
-  );
-}
+   </section>
 
-function FeatureRow({ icon: Icon, label }: { icon: typeof BookOpen; label: string }) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center text-slate-700">
-        <Icon className="w-4 h-4" />
-      </div>
-      <span className="text-slate-700 font-medium">{label}</span>
-    </div>
-  );
+   <section aria-labelledby="home-coverage-title" className="border-b border-slate-200 bg-white"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+    <div className="flex flex-wrap items-start justify-between gap-4"><div className="max-w-2xl"><h2 id="home-coverage-title" className="text-2xl font-bold text-[#143591]">{tl('home.coverageTitle')}</h2><p className="mt-3 text-sm leading-7 text-slate-600">{tl('home.coverageDescription')}</p></div>{coverage.status==='ready'&&<p className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-[#143591]">{coverageSummary}</p>}</div>
+    <div className="mt-6 grid gap-7 lg:grid-cols-5"><div className="min-w-0 lg:col-span-3" aria-busy={coverage.status==='loading'}>{coverage.status==='ready'?<ul className="flex flex-wrap gap-2" aria-labelledby="home-coverage-title">{coverage.destinations.map(country=><li key={country.code} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{countryLabel(country)}</li>)}</ul>:coverage.status==='unavailable'?<p role="status" className="text-sm leading-7 text-slate-600">{tl('home.coverageUnavailable')}</p>:<div aria-hidden="true" className="flex flex-wrap gap-2">{[1,2,3,4,5,6].map(n=><span key={n} className="h-9 w-28 animate-pulse rounded-lg bg-slate-100"/>)}</div>}<p className="mt-4 text-xs leading-6 text-slate-500">{tl('home.coverageScope')}</p></div><div className="min-w-0 border-slate-200 lg:col-span-2 lg:border-s lg:ps-7"><h3 className="text-sm font-semibold text-[#143591]">{tl('home.coverageLanguages',{languages})}</h3><ul className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs leading-6 text-slate-600">{SUPPORTED_LANGUAGES.map(language=><li key={language.code} lang={language.code} dir="auto">{language.nativeLabel}</li>)}</ul></div></div>
+   </div></section>
+
+   <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20" id="features">
+    <div className="mb-8 max-w-2xl"><h2 className="text-2xl font-bold text-[#143591] sm:text-3xl">{tl('home.featuresTitle')}</h2><p className="mt-3 leading-7 text-slate-600">{tl('home.featuresSubtitle')}</p></div>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{features.map((Icon,i)=><article key={i} className={panel+' min-w-0 p-6'}><Icon className="mb-5 h-7 w-7 text-[#143591]"/><h3 className="mb-3 text-lg font-semibold text-slate-800">{tl(`home.f${i+1}Title`)}</h3><p className="text-sm leading-7 text-slate-600">{tl(`home.f${i+1}Desc`)}</p></article>)}</div>
+   </section>
+
+   <section className="border-y border-slate-200 bg-slate-50"><div className="mx-auto max-w-7xl px-4 py-14 sm:px-6"><h2 className="text-2xl font-bold text-[#143591]">{tl('home.audienceTitle')}</h2><p className="mt-3 leading-7">{tl('home.audienceIntro')}</p><div className="mt-7 grid gap-6 md:grid-cols-3">{[1,2,3].map(n=><article key={n} className="border-s-2 border-[#ed1c24] ps-5"><h3 className="font-semibold text-slate-800">{tl(`home.audience${n}Title`)}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{tl(`home.audience${n}Desc`)}</p></article>)}</div></div></section>
+
+   <section id="how-it-works" className="mx-auto max-w-7xl scroll-mt-40 px-4 py-14 sm:px-6 sm:py-20"><h2 className="text-2xl font-bold text-[#143591] sm:text-3xl">{tl('home.journeyTitle')}</h2><p className="mt-3 leading-7">{tl('home.journeyIntro')}</p><ol className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">{[1,2,3,4].map(n=><li key={n} className="min-w-0"><span className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#143591] font-semibold text-white">{n}</span><h3 className="font-semibold text-slate-800">{tl(`home.step${n}Title`)}</h3><p className="mt-3 text-sm leading-7 text-slate-600">{tl(`home.step${n}Desc`)}</p></li>)}</ol><p className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm leading-7 text-[#143591]">{tl('home.partnerNote')}</p></section>
+
+   <section className="border-y border-slate-200 bg-slate-50"><div className="mx-auto grid max-w-7xl items-center gap-9 px-4 py-14 sm:px-6 lg:grid-cols-2"><div className="min-w-0"><Palette className="mb-4 h-7 w-7 text-[#c8161d]"/><h2 className="text-2xl font-bold text-[#143591] sm:text-3xl">{tl('home.materialTitle')}</h2><p className="mt-4 leading-8 text-slate-600">{tl('home.materialDesc')}</p><div className="mt-5 flex flex-wrap gap-2" role="group" aria-label={tl('home.materialTitle')}>{[true,false].map(v=><Button key={String(v)} type="button" aria-pressed={withLogo===v} variant={withLogo===v?'default':'outline'} onClick={()=>setWithLogo(v)} className="h-auto min-h-10 whitespace-normal">{tl(v?'home.showLogo':'home.hideLogo')}</Button>)}</div><Link href={signup} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#143591] underline underline-offset-4">{tl('home.materialAction')}<ArrowUpRight className="h-4 w-4 shrink-0"/></Link></div>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6"><div className="flex items-end justify-center gap-3 sm:gap-5">{['Post','Story'].map((kind,i)=><figure key={kind} className={i?'w-[34%]':'w-[56%]'}><div className={'relative flex flex-col justify-end overflow-hidden rounded-xl bg-gradient-to-br from-[#143591] via-[#0e2257] to-[#344e92] p-3 text-white '+(i?'aspect-[9/16]':'aspect-square')}>
+     <div aria-hidden="true" className="absolute -end-8 top-[30%] h-32 w-20 rotate-[25deg] bg-[#ed1c24] opacity-90"/>{withLogo&&<span className="absolute start-3 top-3 max-w-[calc(100%-24px)] rounded-md bg-white px-2 py-1 text-[10px] font-semibold leading-4 text-[#143591]">{tl('home.logoPlaceholder')}</span>}<div className="relative"><p className="mb-2 text-[8px] font-bold uppercase tracking-wider text-blue-100">{tl('home.sampleEyebrow')}</p><p className={'font-semibold leading-snug '+(i?'text-xs':'text-base sm:text-xl')}>{tl('home.sampleHeadline')}</p><p className="mt-2 text-[9px] text-blue-100">{tl('home.sampleCaption')}</p></div>
+    </div><figcaption className="mt-3 text-center text-xs text-slate-600">{tl(`home.sample${kind}`)}</figcaption></figure>)}</div><p className="mt-5 text-center text-xs leading-5 text-slate-500">{tl('home.materialDemo')}</p></div>
+   </div></section>
+
+   <section id="invitation" className="mx-auto max-w-7xl scroll-mt-40 px-4 py-14 sm:px-6 sm:py-20"><div className="grid gap-7 rounded-2xl border border-blue-100 bg-blue-50 p-6 sm:p-9 lg:grid-cols-2"><div className="min-w-0" aria-live="polite" aria-atomic="true">{offer?<><h2 className="text-2xl font-bold text-[#143591]">{tl('home.campaignOfferTitle',{days:String(offer.accessDays)})}</h2><p className="mt-3 leading-7 text-slate-600">{tl('home.campaignOfferStart',{days:String(offer.accessDays)})}</p><p className="mt-2 text-sm font-semibold leading-7 text-[#143591]">{tl('home.campaignOfferDeadline',{deadline:formatCampaignDeadline(offer.expiresAt,locale)})}<span className="block text-xs font-normal text-slate-600">{tl('home.campaignOfferTimezone')}</span></p><p className="mt-3 text-sm leading-7 text-slate-600">{tl('home.campaignOfferConditions',{devices:String(offer.deviceLimit)})}</p></>:<><h2 className="text-2xl font-bold text-[#143591]">{tl('home.campaignTitle')}</h2><p className="mt-3 leading-7 text-slate-600">{tl('home.campaignDesc')}</p></>}</div><form noValidate onSubmit={continueWithCode} className="min-w-0"><label htmlFor="home-promo" className="mb-2 block text-sm font-semibold text-slate-800">{tl('home.campaignLabel')}</label><div className="flex flex-col gap-3 sm:flex-row"><input id="home-promo" name="promo" dir="ltr" autoComplete="off" spellCheck={false} required minLength={6} maxLength={64} pattern="[A-Za-z0-9-]+" value={promo} aria-invalid={promoError} aria-describedby="home-promo-help home-promo-status" onChange={e=>{setPromo(e.target.value);setPromoError(false)}} placeholder={tl('home.campaignPlaceholder')} className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 py-3 text-base uppercase text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#143591]"/><Button type="submit" className="h-auto min-h-12 whitespace-normal">{tl('home.campaignAction')}</Button></div>{promoError&&<p role="alert" className="mt-2 text-sm text-red-700">{tl('home.campaignInvalid')}</p>}<p id="home-promo-status" role="status" className="mt-2 text-xs leading-6 text-slate-600">{preview.status==='checking'?tl('home.campaignOfferChecking'):preview.status==='unavailable'?tl('home.campaignOfferUnavailable'):null}</p><p id="home-promo-help" className="mt-3 text-xs leading-6 text-slate-600">{tl('home.campaignTerms')}</p></form></div></section>
+
+   <section id="access-conditions" className="scroll-mt-40 border-y border-slate-200 bg-slate-50"><div className="mx-auto max-w-4xl px-4 py-14 sm:px-6"><h2 className="mb-8 text-2xl font-bold text-[#143591] sm:text-3xl">{tl('home.faqTitle')}</h2><div className="divide-y divide-slate-200">{[1,2,3,4,5,6,7,8].map(n=><details key={n} className="group py-5"><summary className="cursor-pointer pe-2 font-semibold leading-7 text-slate-800 marker:text-[#143591] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#143591]">{tl(`home.faq${n}Q`)}</summary><p className="mt-3 text-sm leading-7 text-slate-600">{tl(`home.faq${n}A`)}</p>{n===8&&<a href="https://apply.findandstudy.com/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#143591] underline">{tl('home.applyLink')}<ArrowUpRight className="h-4 w-4"/></a>}</details>)}</div></div></section>
+
+   <section className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6"><h2 className="text-2xl font-bold text-[#143591] sm:text-3xl">{tl('home.ctaBottomTitle')}</h2><p className="mx-auto mt-4 max-w-2xl leading-8 text-slate-600">{tl('home.ctaBottomDesc')}</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href={signup}><Button size="lg" className="h-auto min-h-12 whitespace-normal bg-[#143591]">{tl('home.ctaBottomSignup')}</Button></Link><Link href={user?portal:'/login'}><Button size="lg" variant="outline" className="h-auto min-h-12 whitespace-normal">{tl('home.ctaBottomLogin')}</Button></Link></div></section>
+  </main>
+
+  <footer className="border-t border-slate-200 bg-slate-50"><div className="mx-auto max-w-7xl px-4 py-10 sm:px-6"><div className="grid gap-8 md:grid-cols-3"><div><img src={logoImage} alt="Find And Study" className="mb-4 h-10 w-auto max-w-full"/><p className="max-w-sm text-sm leading-7 text-slate-600">{tl('home.footerTagline')}</p></div><div><h2 className="mb-4 font-semibold text-[#143591]">{tl('home.footerLinksHead')}</h2><ul className="space-y-3 text-sm"><li><Link href={signup} className="hover:underline">{tl('home.footerSignupLink')}</Link></li><li><Link href="/verify" className="hover:underline">{tl('home.footerVerifyLink')}</Link></li><li><a href="https://www.findandstudy.com/privacy-policy/" target="_blank" rel="noreferrer" className="hover:underline">{tl('home.footerPrivacy')}</a></li><li><a href="#access-conditions" className="hover:underline">{tl('home.footerTerms')}</a></li></ul></div><div><h2 className="mb-4 font-semibold text-[#143591]">{tl('home.footerContactHead')}</h2><ul className="space-y-4 text-sm"><li><a href="mailto:info@findandstudy.com" className="inline-flex items-center gap-2 break-all hover:underline"><Mail className="h-4 w-4 shrink-0"/>info@findandstudy.com</a></li><li><a href="mailto:info@findandstudy.com" className="underline underline-offset-4">{tl('home.footerSupport')}</a></li><li><a href="https://findandstudy.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:underline"><Globe className="h-4 w-4 shrink-0"/>findandstudy.com</a></li></ul></div></div><div className="mt-8 flex flex-col justify-between gap-3 border-t border-slate-200 pt-6 text-xs leading-6 text-slate-500 sm:flex-row"><p>© {new Date().getFullYear()} Find And Study Academy. {tl('home.footerRights')}</p><p>{tl('home.footerLocated')}</p></div></div></footer>
+ </div>;
 }

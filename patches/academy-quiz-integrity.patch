@@ -1,0 +1,139 @@
+diff --git a/server/routes.ts b/server/routes.ts
+index 85202cb..e65ca7d 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -7,6 +7,7 @@ import {
+   insertCountrySchema,
+   insertContentSchema,
+   insertQuizSchema,
++  frontendQuestionSchema,
+   insertFindyKeywordMappingSchema,
+   type Agency, 
+   type InsertAgency,
+@@ -37,29 +38,15 @@ import { agencies as agencyTable, users as userTable } from "@shared/schema";
+ const VALID_COUNTRY_CODES = new Set(COUNTRY_DIAL_CODES.map((c) => c.code));
+ import rateLimit from "express-rate-limit";
+ 
+-// Server-side questions validation schema (matches frontend)
+-const questionSchema = z.discriminatedUnion('type', [
+-  z.object({
+-    id: z.string(),
+-    type: z.literal('boolean'),
+-    text: z.string().min(1, 'Question text is required'),
+-    answer: z.boolean()
+-  }),
+-  z.object({
+-    id: z.string(),
+-    type: z.literal('mcq'),
+-    text: z.string().min(1, 'Question text is required'),
+-    options: z.array(z.string().min(1, 'Option text required')).min(2, 'At least 2 options required').max(6, 'Maximum 6 options allowed'),
+-    answerIndex: z.number().min(0)
+-  })
+-]);
++// Use one question validator for the editor and write API.
++const questionSchema = frontendQuestionSchema;
+ 
+ // Quiz validation schema with questions validation
+ const quizValidationSchema = insertQuizSchema.extend({
+   questions: z.string().refine((val) => {
+     try {
+       const parsed = JSON.parse(val);
+-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
++      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
+       return true;
+     } catch {
+       return false;
+@@ -84,7 +71,7 @@ const quizUpdateSchema = insertQuizSchema.extend({
+   questions: z.string().refine((val) => {
+     try {
+       const parsed = JSON.parse(val);
+-      z.array(questionSchema).min(1, 'At least 1 question required').parse(parsed);
++      z.array(questionSchema).min(1, 'At least 1 question required').refine(questions => new Set(questions.map(question => question.id)).size === questions.length, 'Question IDs must be unique').parse(parsed);
+       return true;
+     } catch {
+       return false;
+diff --git a/shared/schema.ts b/shared/schema.ts
+index 744dace..7c31e6d 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -645,9 +645,13 @@ export const frontendQuestionSchema = z.discriminatedUnion('type', [
+     type: z.literal('mcq'),
+     text: z.string().min(1, 'Question text is required'),
+     options: z.array(z.string().min(1, 'Option text required')).min(2).max(6),
+-    answerIndex: z.number().min(0)
++    answerIndex: z.number().int().min(0)
+   })
+-]);
++]).superRefine((question, context) => {
++  if (question.type === 'mcq' && question.answerIndex >= question.options.length) {
++    context.addIssue({ code: z.ZodIssueCode.custom, path: ['answerIndex'], message: 'Choose an existing answer option' });
++  }
++});
+ 
+ export type FrontendQuestion = z.infer<typeof frontendQuestionSchema>;
+ 
+diff --git a/client/src/pages/admin/Quizzes.tsx b/client/src/pages/admin/Quizzes.tsx
+index 84564f5..eb57d1d 100644
+--- a/client/src/pages/admin/Quizzes.tsx
++++ b/client/src/pages/admin/Quizzes.tsx
+@@ -343,13 +343,13 @@ export default function AdminQuizzes() {
+   const addQuestion = (type: 'boolean' | 'mcq') => {
+     const newQuestion: Question = type === 'boolean' 
+       ? {
+-          id: `q${questionFields.length + 1}`,
++          id: `q-${crypto.randomUUID()}`,
+           type: 'boolean',
+           text: '',
+           answer: true
+         }
+       : {
+-          id: `q${questionFields.length + 1}`,
++          id: `q-${crypto.randomUUID()}`,
+           type: 'mcq',
+           text: '',
+           options: ['Option 1', 'Option 2'], // Pre-filled to avoid validation issues
+diff --git a/shared/quiz-localization.test.ts b/shared/quiz-localization.test.ts
+index a1ee8cb..738faf8 100644
+--- a/shared/quiz-localization.test.ts
++++ b/shared/quiz-localization.test.ts
+@@ -11,6 +11,8 @@ test('legacy nested JSON produces the same questions without changing answer key
+   assert.deepEqual(parseQuizQuestions(JSON.stringify(JSON.stringify(questions))), questions);
+   assert.throws(() => parseQuizQuestions('{broken'));
+   assert.throws(() => parseQuizQuestions('{}'));
++  assert.throws(() => parseQuizQuestions([{ ...questions[1], answerIndex: 2 }]));
++  assert.throws(() => parseQuizQuestions([{ ...questions[1], answerIndex: 0.5 }]));
+   const duplicateInput = [...questions, questions[0]];
+   const repaired = parseQuizQuestions(duplicateInput);
+   assert.deepEqual(repaired.map(q => q.id), ['first', 'second', 'first__duplicate_3']);
+diff --git a/server/registration.test.ts b/server/registration.test.ts
+index 4ec4905..1c43678 100644
+--- a/server/registration.test.ts
++++ b/server/registration.test.ts
+@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
+ // No real database or mail account is used. Exercise the actual HTTP routes,
+ // session middleware and password hashing with isolated transactional storage.
+ test('self-registration creates an active agent session, denies admin access and rolls back failures', async () => {
+-  process.env.DATABASE_URL ||= 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
++  process.env.DATABASE_URL = 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
+   const { registerRoutes } = await import('./routes');
+   const { storage } = await import('./storage');
+   const { db, pool } = await import('./db');
+@@ -61,6 +61,18 @@ test('self-registration creates an active agent session, denies admin access and
+     assert.equal(me.status, 200);
+     assert.equal((await me.json()).user.id, result.user.id);
+     assert.equal((await fetch(base + '/api/admin/quizzes', { headers: { cookie } })).status, 403);
++    // In-memory test role only: invalid grading keys/duplicate IDs must be
++    // rejected before the quiz write API ever touches persistence.
++    users[0].role = 'admin';
++    const invalidQuiz = { id: 'qa-invalid-quiz', title: 'QA Quiz', courseId: 'course-1', isFinal: false };
++    for (const questions of [
++      [{ id: 'q1', type: 'mcq', text: 'Pick one', options: ['A', 'B'], answerIndex: 2 }],
++      [{ id: 'q1', type: 'boolean', text: 'First', answer: true }, { id: 'q1', type: 'boolean', text: 'Second', answer: false }],
++    ]) {
++      const invalid = await fetch(base + '/api/admin/quizzes', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ ...invalidQuiz, questions: JSON.stringify(questions) }) });
++      assert.equal(invalid.status, 400);
++    }
++    users[0].role = 'agent';
+     assert.equal((await fetch(base + '/api/me')).status, 401);
+     assert.equal((await signup({ ...input, email: 'QA@EXAMPLE.INVALID' })).status, 409);
+     assert.equal(agencies.length, 1);

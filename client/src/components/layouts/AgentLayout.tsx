@@ -1,3 +1,6 @@
+import { partnershipCopy } from '@/lib/partnership-copy';
+import { normalizeLanguage } from '@/i18n/languages';
+import { legacyUi } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -71,6 +74,7 @@ const navigationGroups: NavGroup[] = [
     i18nKey: 'agency',
     fallback: 'Agency',
     items: [
+      { i18nKey: 'partnership', fallback: 'Partnership application', href: '/agent/partnership', icon: Building },
       { id: 'agency', i18nKey: 'myAgency', fallback: 'My Agency', href: '/agent/agency', icon: Building },
       { id: 'profile', i18nKey: 'profile', fallback: 'Profile', href: '/agent/profile', icon: User },
     ],
@@ -93,11 +97,11 @@ const navigationGroups: NavGroup[] = [
 ];
 
 export function AgentLayout({ children }: AgentLayoutProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tNavGroup = (key: string, fallback: string) =>
     t(`nav.groups.${key}`, { defaultValue: fallback });
   const tNavItem = (key: string, fallback: string) =>
-    t(`nav.items.${key}`, { defaultValue: fallback });
+    key==='partnership' ? partnershipCopy(normalizeLanguage(i18n.resolvedLanguage||i18n.language)).text(0) : t(`nav.items.${key}`, { defaultValue: fallback });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('agent-sidebar-collapsed') === 'true';
@@ -201,7 +205,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         {item.customIcon ? (
           <img
             src={item.customIcon}
-            alt={`${label} icon`}
+            alt={legacyUi("{value0} icon",{value0:label})}
             className={`h-5 w-5 object-contain ${sidebarCollapsed ? 'lg:mr-0 mr-3' : 'mr-3'}`}
           />
         ) : item.icon ? (
@@ -267,13 +271,13 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               {/* Mobile / desktop expanded: logo */}
               <img
                 src={logoImage}
-                alt="Find & Study Logo"
+                alt={legacyUi("Find & Study Logo")}
                 className={`h-10 w-auto object-contain hover-elevate cursor-pointer ${sidebarCollapsed ? 'lg:hidden' : ''}`}
               />
               {/* Desktop collapsed: small icon */}
               <img
                 src={portalIcon}
-                alt="Find & Study"
+                alt={legacyUi("Find & Study")}
                 className={`w-9 h-9 rounded object-contain hover-elevate cursor-pointer hidden ${sidebarCollapsed ? 'lg:block' : ''}`}
               />
             </Link>
@@ -315,7 +319,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
             <div className={sidebarCollapsed ? 'lg:hidden' : ''}>
               <div className="flex items-center gap-2.5 mb-2">
                 <Avatar className="w-9 h-9 shrink-0">
-                  <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
+                  <AvatarImage src={(user as any)?.profilePicture || ''} alt={legacyUi("Profile")} />
                   <AvatarFallback className="text-sm font-medium">
                     {user?.name.charAt(0)}
                   </AvatarFallback>
@@ -325,7 +329,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
                     {user?.name}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Agent</Badge>
+                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">{legacyUi("Agent")}</Badge>
                     {userAgency && (
                       <span className="text-[11px] text-muted-foreground truncate">{userAgency.name}</span>
                     )}
@@ -349,7 +353,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Avatar className="w-9 h-9">
-                    <AvatarImage src={(user as any)?.profilePicture || ''} alt="Profile" />
+                    <AvatarImage src={(user as any)?.profilePicture || ''} alt={legacyUi("Profile")} />
                     <AvatarFallback className="text-sm font-medium">
                       {user?.name.charAt(0)}
                     </AvatarFallback>
@@ -400,8 +404,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="text-lg font-semibold text-foreground">
-              Find And Study Academy
-            </h1>
+              {legacyUi("Find And Study Academy")}</h1>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />

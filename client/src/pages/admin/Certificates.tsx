@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -107,8 +108,8 @@ export default function AdminCertificates() {
       if (!certificate.user) {
         console.error('[ADMIN CERT] Missing user data');
         toast({
-          title: 'Download Failed',
-          description: 'User data is incomplete.',
+          title: legacyUi("Download Failed"),
+          description: legacyUi("User data is incomplete."),
           variant: 'destructive'
         });
         return;
@@ -159,7 +160,7 @@ export default function AdminCertificates() {
         console.log('[ADMIN CERT] Using placeholder course data');
         courseData = {
           id: courseId || 'course-1',
-          title: 'Find And Study Agent Training',
+          title: legacyUi("Find And Study Agent Training"),
           slug: 'agent-training'
         };
       }
@@ -195,14 +196,14 @@ export default function AdminCertificates() {
       );
 
       toast({
-        title: 'Certificate Downloaded',
-        description: `Certificate ${certificate.code} downloaded successfully.`
+        title: legacyUi("Certificate Downloaded"),
+        description: legacyUi("Certificate {value0} downloaded successfully.",{value0:certificate.code})
       });
     } catch (error) {
       console.error('Certificate download error:', error);
       toast({
-        title: 'Download Failed',
-        description: 'Failed to download certificate.',
+        title: legacyUi("Download Failed"),
+        description: legacyUi("Failed to download certificate."),
         variant: 'destructive'
       });
     }
@@ -212,8 +213,8 @@ export default function AdminCertificates() {
     try {
       if (!certificate.user) {
         toast({
-          title: 'Download Failed',
-          description: 'User data is incomplete.',
+          title: legacyUi("Download Failed"),
+          description: legacyUi("User data is incomplete."),
           variant: 'destructive'
         });
         return;
@@ -230,14 +231,14 @@ export default function AdminCertificates() {
       );
 
       toast({
-        title: 'Badge Downloaded',
-        description: `Agent badge for ${certificate.user.name} downloaded successfully.`
+        title: legacyUi("Badge Downloaded"),
+        description: legacyUi("Agent badge for {value0} downloaded successfully.",{value0:certificate.user.name})
       });
     } catch (error) {
       console.error('Badge download error:', error);
       toast({
-        title: 'Download Failed',
-        description: 'Failed to download badge.',
+        title: legacyUi("Download Failed"),
+        description: legacyUi("Failed to download badge."),
         variant: 'destructive'
       });
     }
@@ -247,8 +248,8 @@ export default function AdminCertificates() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Certificate Management</h1>
-          <p className="text-muted-foreground mt-1">Loading certificates...</p>
+          <h1 className="text-3xl font-bold text-foreground">{legacyUi("Certificate Management")}</h1>
+          <p className="text-muted-foreground mt-1">{legacyUi("Loading certificates...")}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -263,10 +264,9 @@ export default function AdminCertificates() {
     <div className="space-y-6" data-testid="admin-certificates-page">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Certificate Management</h1>
+        <h1 className="text-3xl font-bold text-foreground">{legacyUi("Certificate Management")}</h1>
         <p className="text-muted-foreground mt-1">
-          Manage and monitor all issued certificates across the platform.
-        </p>
+          {legacyUi("Manage and monitor all issued certificates across the platform.")}</p>
       </div>
 
       {/* Statistics Cards */}
@@ -275,7 +275,7 @@ export default function AdminCertificates() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Certificates</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Total Certificates")}</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <Award className="w-8 h-8 text-blue-600" />
@@ -287,7 +287,7 @@ export default function AdminCertificates() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">This Month</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("This Month")}</p>
                 <p className="text-2xl font-bold">{stats.thisMonth}</p>
               </div>
               <Calendar className="w-8 h-8 text-green-600" />
@@ -299,7 +299,7 @@ export default function AdminCertificates() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Average Score</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Average Score")}</p>
                 <p className="text-2xl font-bold">{stats.averageScore}%</p>
               </div>
               <TrendingUp className="w-8 h-8 text-orange-600" />
@@ -311,7 +311,7 @@ export default function AdminCertificates() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Certified Users</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Certified Users")}</p>
                 <p className="text-2xl font-bold">{stats.uniqueUsers}</p>
               </div>
               <Users className="w-8 h-8 text-purple-600" />
@@ -325,15 +325,14 @@ export default function AdminCertificates() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Certificate Registry
-          </CardTitle>
+            {legacyUi("Certificate Registry")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search by certificate code, user name, email, or course..."
+                placeholder={legacyUi("Search by certificate code, user name, email, or course...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -343,10 +342,10 @@ export default function AdminCertificates() {
             <Select value={filterCourse} onValueChange={setFilterCourse}>
               <SelectTrigger className="w-full sm:w-64" data-testid="select-filter-course">
                 <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by course" />
+                <SelectValue placeholder={legacyUi("Filter by course")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Courses</SelectItem>
+                <SelectItem value="all">{legacyUi("All Courses")}</SelectItem>
                 {uniqueCourses.map((course) => (
                   <SelectItem key={course.id} value={course.id}>
                     {course.title}
@@ -360,11 +359,11 @@ export default function AdminCertificates() {
           {filteredCertificates.length === 0 ? (
             <div className="text-center py-12">
               <Award className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No certificates found</h3>
+              <h3 className="text-lg font-semibold mb-2">{legacyUi("No certificates found")}</h3>
               <p className="text-muted-foreground">
                 {searchQuery || filterCourse !== 'all' 
-                  ? 'Try adjusting your search or filter criteria.' 
-                  : 'No certificates have been issued yet.'}
+                  ? legacyUi("Try adjusting your search or filter criteria.") 
+                  : legacyUi("No certificates have been issued yet.")}
               </p>
             </div>
           ) : (
@@ -372,9 +371,9 @@ export default function AdminCertificates() {
               {filteredCertificates.map((certificate) => (
                 <Card key={certificate.id} className="hover-elevate" data-testid={`certificate-card-${certificate.id}`}>
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="min-w-0 flex-1 break-words">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                           <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4 text-green-600" />
                             <span className="font-mono text-sm font-semibold text-foreground">
@@ -382,29 +381,28 @@ export default function AdminCertificates() {
                             </span>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {certificate.scorePercent}% Score
-                          </Badge>
+                            {certificate.scorePercent}{legacyUi("% Score")}</Badge>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div>
-                            <p className="text-muted-foreground">Student</p>
-                            <p className="font-medium">{certificate.user?.name || 'Unknown User'}</p>
-                            <p className="text-xs text-muted-foreground">{certificate.user?.email}</p>
+                            <p className="text-muted-foreground">{legacyUi("Student")}</p>
+                            <p className="font-medium">{certificate.user?.name || legacyUi("Unknown User")}</p>
+                            <p className="text-xs text-muted-foreground break-all">{certificate.user?.email}</p>
                           </div>
                           
                           <div>
-                            <p className="text-muted-foreground">Course</p>
+                            <p className="text-muted-foreground">{legacyUi("Course")}</p>
                             <p className="font-medium flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              {certificate.course?.title || 'Unknown Course'}
+                              {certificate.course?.title || legacyUi("Unknown Course")}
                             </p>
                           </div>
                           
                           <div>
-                            <p className="text-muted-foreground">Issued</p>
+                            <p className="text-muted-foreground">{legacyUi("Issued")}</p>
                             <p className="font-medium">
-                              {new Date(certificate.issuedAt).toLocaleDateString()}
+                              {new Date(certificate.issuedAt).toLocaleDateString(legacyLocale())}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(certificate.issuedAt).toLocaleTimeString()}
@@ -413,15 +411,14 @@ export default function AdminCertificates() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex flex-wrap items-center gap-2 sm:ml-4 shrink-0">
                         <Button
                           size="sm"
                           onClick={() => downloadCertificate(certificate)}
                           data-testid={`button-download-pdf-${certificate.id}`}
                         >
                           <Download className="w-4 h-4 mr-1" />
-                          PDF
-                        </Button>
+                          {legacyUi("PDF")}</Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -429,8 +426,7 @@ export default function AdminCertificates() {
                           data-testid={`button-download-badge-list-${certificate.id}`}
                         >
                           <Award className="w-4 h-4 mr-1" />
-                          Badge
-                        </Button>
+                          {legacyUi("Badge")}</Button>
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button 
@@ -440,15 +436,13 @@ export default function AdminCertificates() {
                               data-testid={`button-view-certificate-${certificate.id}`}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
+                              {legacyUi("View")}</Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-md">
                             <DialogHeader>
-                              <DialogTitle>Certificate Details</DialogTitle>
+                              <DialogTitle>{legacyUi("Certificate Details")}</DialogTitle>
                               <DialogDescription>
-                                View and download certificate information
-                              </DialogDescription>
+                                {legacyUi("View and download certificate information")}</DialogDescription>
                             </DialogHeader>
                             {selectedCertificate && (
                               <div className="space-y-4">
@@ -457,33 +451,33 @@ export default function AdminCertificates() {
                                     <Award className="w-8 h-8 text-blue-600" />
                                   </div>
                                   <h3 className="text-lg font-semibold">{selectedCertificate.course?.title}</h3>
-                                  <p className="text-sm text-muted-foreground">Certificate of Completion</p>
+                                  <p className="text-sm text-muted-foreground">{legacyUi("Certificate of Completion")}</p>
                                 </div>
                                 
                                 <Separator />
                                 
                                 <div className="space-y-3">
                                   <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Certificate Code</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{legacyUi("Certificate Code")}</p>
                                     <p className="font-mono text-sm">{selectedCertificate.code}</p>
                                   </div>
                                   
                                   <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Student</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{legacyUi("Student")}</p>
                                     <p>{selectedCertificate.user?.name}</p>
                                     <p className="text-xs text-muted-foreground">{selectedCertificate.user?.email}</p>
                                   </div>
                                   
                                   <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Final Score</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{legacyUi("Final Score")}</p>
                                     <p className="text-lg font-semibold text-green-600">
                                       {selectedCertificate.scorePercent}%
                                     </p>
                                   </div>
                                   
                                   <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Issue Date</p>
-                                    <p>{new Date(selectedCertificate.issuedAt).toLocaleString()}</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{legacyUi("Issue Date")}</p>
+                                    <p>{new Date(selectedCertificate.issuedAt).toLocaleString(legacyLocale())}</p>
                                   </div>
                                 </div>
                                 
@@ -494,8 +488,7 @@ export default function AdminCertificates() {
                                     data-testid="button-download-certificate"
                                   >
                                     <Download className="w-4 h-4 mr-2" />
-                                    PDF
-                                  </Button>
+                                    {legacyUi("PDF")}</Button>
                                   <Button 
                                     onClick={() => downloadBadge(selectedCertificate)}
                                     variant="outline"
@@ -503,8 +496,7 @@ export default function AdminCertificates() {
                                     data-testid={`button-download-badge-${selectedCertificate.id}`}
                                   >
                                     <Award className="w-4 h-4 mr-2" />
-                                    Badge
-                                  </Button>
+                                    {legacyUi("Badge")}</Button>
                                 </div>
                               </div>
                             )}

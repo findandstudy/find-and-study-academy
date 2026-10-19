@@ -1,3 +1,4 @@
+import { legacyCountry, legacyUi, legacyStatus, legacyLocale, legacyMessage } from "@/lib/legacy-ui";
 import { useState, useEffect, useMemo } from 'react';
 import { WORLD_COUNTRIES } from '@/lib/world-countries';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -106,7 +107,7 @@ export default function AdminAgencies() {
       'Annual Students': a.annualStudents ?? '',
       'Status': a.status,
       'Description': a.description || '',
-      'Created At': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '',
+      'Created At': a.createdAt ? new Date(a.createdAt).toLocaleDateString(legacyLocale()) : '',
       'Agent Count': a.agentCount,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -118,7 +119,7 @@ export default function AdminAgencies() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Agencies');
     XLSX.writeFile(wb, `agencies_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast({ title: 'Dışa Aktarıldı', description: `${agencyList.length} acente Excel dosyasına aktarıldı.` });
+    toast({ title: legacyUi("Dışa Aktarıldı"), description: legacyUi("{value0} acente Excel dosyasına aktarıldı.",{value0:agencyList.length}) });
   };
 
   // ── Parse Excel/CSV for bulk import ─────────────────────────────────────────
@@ -133,7 +134,7 @@ export default function AdminAgencies() {
         const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
         setImportRows(rows);
       } catch {
-        toast({ title: 'Dosya Hatası', description: 'Dosya okunamadı. Excel veya CSV seçin.', variant: 'destructive' });
+        toast({ title: legacyUi("Dosya Hatası"), description: legacyUi("Dosya okunamadı. Excel veya CSV seçin."), variant: 'destructive' });
       } finally {
         setImportParsing(false);
       }
@@ -149,15 +150,15 @@ export default function AdminAgencies() {
       const res = await apiRequest('POST', '/api/admin/agencies/bulk-import', { agencies: importRows });
       const data = await res.json();
       if (data.success) {
-        toast({ title: 'İçe Aktarma Tamamlandı', description: data.message });
+        toast({ title: legacyUi("İçe Aktarma Tamamlandı"), description: data.message });
         queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
         setBulkImportOpen(false);
         setImportRows([]);
       } else {
-        toast({ title: 'Hata', description: data.message, variant: 'destructive' });
+        toast({ title: legacyUi("Hata"), description: legacyMessage(data.message), variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Hata', description: 'İçe aktarma başarısız.', variant: 'destructive' });
+      toast({ title: legacyUi("Hata"), description: legacyUi("İçe aktarma başarısız."), variant: 'destructive' });
     } finally {
       setImportLoading(false);
     }
@@ -197,6 +198,7 @@ export default function AdminAgencies() {
       return { json, memberSuccess, memberFailed, memberTotal: memberIds.length };
     },
     onSuccess: async ({ memberSuccess, memberFailed, memberTotal }) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
       if (memberTotal > 0) {
@@ -204,11 +206,11 @@ export default function AdminAgencies() {
       }
       const desc =
         memberTotal === 0
-          ? 'Acente başarıyla oluşturuldu.'
+          ? legacyUi("Acente başarıyla oluşturuldu.")
           : memberFailed === 0
-            ? `Acente oluşturuldu ve ${memberSuccess} üye atandı.`
-            : `Acente oluşturuldu. ${memberSuccess} üye atandı, ${memberFailed} atama başarısız.`;
-      toast({ title: 'Başarılı', description: desc });
+            ? legacyUi("Acente oluşturuldu ve {value0} üye atandı.",{value0:memberSuccess})
+            : legacyUi("Acente oluşturuldu. {value0} üye atandı, {value1} atama başarısız.",{value0:memberSuccess,value1:memberFailed});
+      toast({ title: legacyUi("Başarılı"), description: desc });
       setDialogOpen(false);
       setEditingAgency(null);
       form.reset();
@@ -217,7 +219,7 @@ export default function AdminAgencies() {
       setCreateMemberRoleFilter('all');
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create agency", variant: "destructive" });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to create agency"), variant: "destructive" });
     }
   });
 
@@ -227,15 +229,16 @@ export default function AdminAgencies() {
       return response.json();
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
-      toast({ title: "Success", description: "Agency updated successfully" });
+      toast({ title: legacyUi("Success"), description: legacyUi("Agency updated successfully") });
       setDialogOpen(false);
       setEditingAgency(null);
       form.reset();
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update agency", variant: "destructive" });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to update agency"), variant: "destructive" });
     }
   });
 
@@ -245,14 +248,15 @@ export default function AdminAgencies() {
       return response.json();
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
-      toast({ title: "Success", description: "Agency deleted successfully" });
+      toast({ title: legacyUi("Success"), description: legacyUi("Agency deleted successfully") });
       setDeleteDialogOpen(false);
       setAgencyToDelete(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete agency", variant: "destructive" });
+      toast({ title: legacyUi("Error"), description: legacyUi("Failed to delete agency"), variant: "destructive" });
     }
   });
 
@@ -262,15 +266,16 @@ export default function AdminAgencies() {
       return apiRequest('POST', '/api/admin/agencies/bulk-status', data);
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
-      toast({ title: 'Success', description: 'Agency statuses updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Agency statuses updated successfully") });
       setSelectedAgencies(new Set());
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update agency statuses',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to update agency statuses"),
         variant: 'destructive' 
       });
     },
@@ -293,16 +298,17 @@ export default function AdminAgencies() {
     },
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       toast({
-        title: variables.agencyId ? 'Üye eklendi' : 'Üye kaldırıldı',
-        description: variables.agencyId ? 'Kullanıcı acenteye atandı.' : 'Kullanıcı acenteden çıkarıldı.',
+        title: variables.agencyId ? legacyUi("Üye eklendi") : legacyUi("Üye kaldırıldı"),
+        description: variables.agencyId ? legacyUi("Kullanıcı acenteye atandı.") : legacyUi("Kullanıcı acenteden çıkarıldı."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Hata',
-        description: error?.message || 'Üye atama işlemi başarısız oldu.',
+        title: legacyUi("Hata"),
+        description: legacyMessage(error?.message) || legacyUi("Üye atama işlemi başarısız oldu."),
         variant: 'destructive',
       });
     },
@@ -314,16 +320,17 @@ export default function AdminAgencies() {
       return apiRequest('POST', '/api/admin/agencies/bulk-delete', { agencyIds });
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/agencies'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/agencies'] });
-      toast({ title: 'Success', description: 'Agencies deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Agencies deleted successfully") });
       setSelectedAgencies(new Set());
       setShowBulkDeleteConfirm(false);
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to delete agencies',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to delete agencies"),
         variant: 'destructive' 
       });
     },
@@ -401,9 +408,9 @@ export default function AdminAgencies() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: string; label: string; icon: React.ReactNode }> = {
-      active: { variant: 'default', label: 'Active', icon: <CheckCircle2 className="w-3 h-3 mr-1" /> },
-      inactive: { variant: 'secondary', label: 'Inactive', icon: <XCircle className="w-3 h-3 mr-1" /> },
-      pending: { variant: 'outline', label: 'Pending', icon: null }
+      active: { variant: 'default', label: legacyUi("Active"), icon: <CheckCircle2 className="w-3 h-3 mr-1" /> },
+      inactive: { variant: 'secondary', label: legacyUi("Inactive"), icon: <XCircle className="w-3 h-3 mr-1" /> },
+      pending: { variant: 'outline', label: legacyUi("Pending"), icon: null }
     };
     return variants[status] || { variant: 'outline', label: status, icon: null };
   };
@@ -415,10 +422,9 @@ export default function AdminAgencies() {
       {/* Header */}
       <div className="flex flex-wrap justify-between items-start gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Agency Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{legacyUi("Agency Management")}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage partner agencies and their agent assignments.
-          </p>
+            {legacyUi("Manage partner agencies and their agent assignments.")}</p>
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
@@ -430,27 +436,25 @@ export default function AdminAgencies() {
             data-testid="button-export-agencies"
           >
             <Download className="w-4 h-4 mr-2" />
-            Dışa Aktar
-          </Button>
+            {legacyUi("Dışa Aktar")}</Button>
 
           {/* Bulk Import Button & Dialog */}
           <Dialog open={bulkImportOpen} onOpenChange={(open) => { setBulkImportOpen(open); if (!open) setImportRows([]); }}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-bulk-import-agencies">
                 <Upload className="w-4 h-4 mr-2" />
-                Toplu İçe Aktar
-              </Button>
+                {legacyUi("Toplu İçe Aktar")}</Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Toplu Acente İçe Aktarma</DialogTitle>
+                <DialogTitle>{legacyUi("Toplu Acente İçe Aktarma")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 {/* Format hint */}
                 <div className="bg-muted/50 rounded-md p-3 text-sm space-y-1">
-                  <p className="font-medium">Excel/CSV Formatı</p>
-                  <p className="text-muted-foreground">Sütunlar: <span className="font-mono text-xs">Agency Name, Country, City, Contact Email, Contact Phone, Website, Primary Contact, Status</span></p>
-                  <p className="text-muted-foreground text-xs">Status değerleri: active, inactive, pending (boş ise "pending" olarak eklenir)</p>
+                  <p className="font-medium">{legacyUi("Excel/CSV Formatı")}</p>
+                  <p className="text-muted-foreground">{legacyUi("Sütunlar: ")}<span className="font-mono text-xs">{legacyUi("Agency Name, Country, City, Contact Email, Contact Phone, Website, Primary Contact, Status")}</span></p>
+                  <p className="text-muted-foreground text-xs">{legacyUi("Status değerleri: active, inactive, pending (boş ise \"pending\" olarak eklenir)")}</p>
                 </div>
 
                 {/* Template download */}
@@ -466,8 +470,7 @@ export default function AdminAgencies() {
                   }}
                 >
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Şablon İndir
-                </Button>
+                  {legacyUi("Şablon İndir")}</Button>
 
                 {/* File picker */}
                 {importRows.length === 0 ? (
@@ -478,8 +481,8 @@ export default function AdminAgencies() {
                       <FileSpreadsheet className="w-8 h-8 text-muted-foreground" />
                     )}
                     <div className="text-center">
-                      <p className="font-medium">{importParsing ? 'Okunuyor...' : 'Excel veya CSV dosyası seçin'}</p>
-                      <p className="text-xs text-muted-foreground mt-1">.xlsx, .xls, .csv</p>
+                      <p className="font-medium">{importParsing ? legacyUi("Okunuyor...") : legacyUi("Excel veya CSV dosyası seçin")}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{legacyUi(".xlsx, .xls, .csv")}</p>
                     </div>
                     <input
                       type="file"
@@ -492,8 +495,8 @@ export default function AdminAgencies() {
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{importRows.length} satır bulundu</span>
-                      <Button variant="ghost" size="sm" onClick={() => setImportRows([])}>Temizle</Button>
+                      <span className="text-sm font-medium">{importRows.length} {legacyUi(" satır bulundu")}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setImportRows([])}>{legacyUi("Temizle")}</Button>
                     </div>
                     {/* Preview table */}
                     <div className="border rounded-md overflow-auto max-h-64">
@@ -521,12 +524,12 @@ export default function AdminAgencies() {
                       </Table>
                     </div>
                     {importRows.length > 10 && (
-                      <p className="text-xs text-muted-foreground text-center">+ {importRows.length - 10} daha...</p>
+                      <p className="text-xs text-muted-foreground text-center">+ {importRows.length - 10} {legacyUi(" daha...")}</p>
                     )}
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={() => setImportRows([])}>İptal</Button>
+                      <Button variant="outline" onClick={() => setImportRows([])}>{legacyUi("İptal")}</Button>
                       <Button onClick={handleBulkImport} disabled={importLoading}>
-                        {importLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />İçe Aktarılıyor...</> : <><Upload className="w-4 h-4 mr-2" />{importRows.length} Acente Ekle</>}
+                        {importLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{legacyUi("İçe Aktarılıyor...")}</> : <><Upload className="w-4 h-4 mr-2" />{importRows.length} {legacyUi(" Acente Ekle")}</>}
                       </Button>
                     </div>
                   </div>
@@ -547,13 +550,12 @@ export default function AdminAgencies() {
           <DialogTrigger asChild>
             <Button data-testid="button-add-agency">
               <Plus className="w-4 h-4 mr-2" />
-              Add Agency
-            </Button>
+              {legacyUi("Add Agency")}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                {editingAgency ? 'Edit Agency' : 'Add New Agency'}
+                {editingAgency ? legacyUi("Edit Agency") : legacyUi("Add New Agency")}
               </DialogTitle>
             </DialogHeader>
             
@@ -624,8 +626,8 @@ export default function AdminAgencies() {
                               </SelectItem>
                             )}
                             {sortedCountries.map((c) => (
-                              <SelectItem key={c.code} value={c.name} data-testid={`option-country-${c.code}`}>
-                                {c.name}
+                              <SelectItem key={c.code} value={legacyCountry(c.code,c.name)} data-testid={`option-country-${c.code}`}>
+                                {legacyCountry(c.code,c.name)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -721,19 +723,16 @@ export default function AdminAgencies() {
                     <div className="rounded-md border p-3 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium">
                         <Users className="w-4 h-4" />
-                        Acente Üyeleri
-                        <Badge variant="secondary" className="ml-1" data-testid="badge-pending-member-count">
-                          {pendingMemberIds.size} seçildi
-                        </Badge>
+                        {legacyUi("Acente Üyeleri")}<Badge variant="secondary" className="ml-1" data-testid="badge-pending-member-count">
+                          {pendingMemberIds.size} {legacyUi(" seçildi")}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Acente oluşturulduktan sonra seçili kullanıcılar bu acenteye atanır.
-                      </p>
+                        {legacyUi("Acente oluşturulduktan sonra seçili kullanıcılar bu acenteye atanır.")}</p>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                           <Input
-                            placeholder="İsim, e-posta veya kullanıcı adı ile ara..."
+                            placeholder={legacyUi("İsim, e-posta veya kullanıcı adı ile ara...")}
                             value={createMemberSearch}
                             onChange={(e) => setCreateMemberSearch(e.target.value)}
                             className="pl-9"
@@ -742,13 +741,13 @@ export default function AdminAgencies() {
                         </div>
                         <Select value={createMemberRoleFilter} onValueChange={setCreateMemberRoleFilter}>
                           <SelectTrigger className="w-full sm:w-40" data-testid="select-create-member-role">
-                            <SelectValue placeholder="Rol" />
+                            <SelectValue placeholder={legacyUi("Rol")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Tüm roller</SelectItem>
-                            <SelectItem value="agent">Agent</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="all">{legacyUi("Tüm roller")}</SelectItem>
+                            <SelectItem value="agent">{legacyUi("Agent")}</SelectItem>
+                            <SelectItem value="staff">{legacyUi("Staff")}</SelectItem>
+                            <SelectItem value="admin">{legacyUi("Admin")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -756,8 +755,7 @@ export default function AdminAgencies() {
                       <ScrollArea className="h-48 rounded-md border">
                         {candidates.length === 0 ? (
                           <div className="p-4 text-sm text-muted-foreground text-center">
-                            Aramanızla eşleşen kullanıcı bulunamadı.
-                          </div>
+                            {legacyUi("Aramanızla eşleşen kullanıcı bulunamadı.")}</div>
                         ) : (
                           <div className="p-1">
                             {candidates.map(u => {
@@ -776,7 +774,7 @@ export default function AdminAgencies() {
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="font-medium truncate">{u.name || u.username}</span>
-                                      <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                      <Badge variant="outline" className="capitalize">{legacyStatus(u.role)}</Badge>
                                       {u.agency && (
                                         <Badge variant="secondary" className="truncate max-w-[160px]">
                                           {u.agency.name}
@@ -809,15 +807,14 @@ export default function AdminAgencies() {
                     }}
                     data-testid="button-cancel"
                   >
-                    Cancel
-                  </Button>
+                    {legacyUi("Cancel")}</Button>
                   <Button 
                     type="submit" 
                     disabled={createAgencyMutation.isPending || updateAgencyMutation.isPending}
                     data-testid="button-save-agency"
                   >
-                    {(createAgencyMutation.isPending || updateAgencyMutation.isPending) ? 'Saving...' : 
-                     editingAgency ? 'Update Agency' : 'Create Agency'}
+                    {(createAgencyMutation.isPending || updateAgencyMutation.isPending) ? legacyUi("Saving...") : 
+                     editingAgency ? legacyUi("Update Agency") : legacyUi("Create Agency")}
                   </Button>
                 </div>
               </form>
@@ -832,7 +829,7 @@ export default function AdminAgencies() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search agencies by name or city..."
+            placeholder={legacyUi("Search agencies by name or city...")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -842,13 +839,13 @@ export default function AdminAgencies() {
         
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-48" data-testid="select-status-filter">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder={legacyUi("Filter by status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="all">{legacyUi("All Statuses")}</SelectItem>
+            <SelectItem value="active">{legacyUi("Active")}</SelectItem>
+            <SelectItem value="inactive">{legacyUi("Inactive")}</SelectItem>
+            <SelectItem value="pending">{legacyUi("Pending")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -885,8 +882,7 @@ export default function AdminAgencies() {
                   data-testid="checkbox-select-all-toolbar"
                 />
                 <span className="font-medium" data-testid="text-selected-count">
-                  {selectedCount} {selectedCount === 1 ? 'agency' : 'agencies'} selected
-                </span>
+                  {selectedCount} {selectedCount === 1 ? legacyUi("agency") : legacyUi("agencies")} {legacyUi(" selected")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -897,8 +893,7 @@ export default function AdminAgencies() {
                   data-testid="button-bulk-active"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Set Active
-                </Button>
+                  {legacyUi("Set Active")}</Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -907,8 +902,7 @@ export default function AdminAgencies() {
                   data-testid="button-bulk-inactive"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
-                  Set Inactive
-                </Button>
+                  {legacyUi("Set Inactive")}</Button>
                 <Button
                   size="sm"
                   variant="destructive"
@@ -917,8 +911,7 @@ export default function AdminAgencies() {
                   data-testid="button-bulk-delete"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
-                </Button>
+                  {legacyUi("Delete Selected")}</Button>
               </div>
             </div>
           </CardContent>
@@ -961,18 +954,18 @@ export default function AdminAgencies() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="font-medium">Email:</span>
+                      <span className="font-medium">{legacyUi("Email:")}</span>
                       <br />
                       <span className="text-muted-foreground">{agency.contactEmail}</span>
                     </div>
                     <div>
-                      <span className="font-medium">Phone:</span>
+                      <span className="font-medium">{legacyUi("Phone:")}</span>
                       <br />
                       <span className="text-muted-foreground">{agency.contactPhone}</span>
                     </div>
                     {agency.description && (
                       <div>
-                        <span className="font-medium">Description:</span>
+                        <span className="font-medium">{legacyUi("Description:")}</span>
                         <br />
                         <span className="text-muted-foreground text-xs">{agency.description}</span>
                       </div>
@@ -983,11 +976,11 @@ export default function AdminAgencies() {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
-                        <span>{agency.agentCount} agents</span>
+                        <span>{agency.agentCount} {legacyUi(" agents")}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        <span>Since {new Date(agency.createdAt).toLocaleDateString()}</span>
+                        <span>{legacyUi("Since ")}{new Date(agency.createdAt).toLocaleDateString(legacyLocale())}</span>
                       </div>
                     </div>
                     
@@ -1040,13 +1033,13 @@ export default function AdminAgencies() {
                       data-testid="checkbox-select-all"
                     />
                   </TableHead>
-                  <TableHead>Agency</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Agents</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Since</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{legacyUi("Agency")}</TableHead>
+                  <TableHead>{legacyUi("Location")}</TableHead>
+                  <TableHead>{legacyUi("Contact")}</TableHead>
+                  <TableHead>{legacyUi("Agents")}</TableHead>
+                  <TableHead>{legacyUi("Status")}</TableHead>
+                  <TableHead>{legacyUi("Since")}</TableHead>
+                  <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1102,7 +1095,7 @@ export default function AdminAgencies() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          <span>{new Date(agency.createdAt).toLocaleDateString()}</span>
+                          <span>{new Date(agency.createdAt).toLocaleDateString(legacyLocale())}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -1147,20 +1140,18 @@ export default function AdminAgencies() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Agency</AlertDialogTitle>
+            <AlertDialogTitle>{legacyUi("Delete Agency")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{agencyToDelete?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
+              {legacyUi("Are you sure you want to delete \"{value0}\"? This action cannot be undone.",{value0:agencyToDelete?.name})}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => agencyToDelete && deleteAgencyMutation.mutate(agencyToDelete.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
-              Delete
-            </AlertDialogAction>
+              {legacyUi("Delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1169,19 +1160,18 @@ export default function AdminAgencies() {
       <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Multiple Agencies</AlertDialogTitle>
+            <AlertDialogTitle>{legacyUi("Delete Multiple Agencies")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedCount} {selectedCount === 1 ? 'agency' : 'agencies'}? This action cannot be undone.
-            </AlertDialogDescription>
+              {legacyUi("Are you sure you want to delete {value0} agencies? This action cannot be undone.",{value0:selectedCount})}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-bulk-delete"
             >
-              Delete {selectedCount} {selectedCount === 1 ? 'Agency' : 'Agencies'}
+              {legacyUi("Delete ")}{selectedCount} {selectedCount === 1 ? legacyUi("Agency") : legacyUi("Agencies")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1193,13 +1183,13 @@ export default function AdminAgencies() {
             <Building className="w-12 h-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
               {searchTerm || statusFilter !== 'all' 
-                ? 'No agencies found matching your filters.' 
-                : 'No agencies registered yet.'}
+                ? legacyUi("No agencies found matching your filters.") 
+                : legacyUi("No agencies registered yet.")}
             </p>
             <p className="text-sm text-muted-foreground text-center mt-1">
               {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your search or filters.'
-                : 'Add your first partner agency to get started.'}
+                ? legacyUi("Try adjusting your search or filters.")
+                : legacyUi("Add your first partner agency to get started.")}
             </p>
           </CardContent>
         </Card>
@@ -1211,8 +1201,7 @@ export default function AdminAgencies() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building className="w-5 h-5 text-primary" />
-              Acente Detayları
-            </DialogTitle>
+              {legacyUi("Acente Detayları")}</DialogTitle>
           </DialogHeader>
           
           {viewAgency && (
@@ -1238,8 +1227,7 @@ export default function AdminAgencies() {
                       {getStatusBadge(viewAgency.status).label}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                      {viewAgency.agentCount} acente
-                    </span>
+                      {viewAgency.agentCount} {legacyUi(" acente")}</span>
                   </div>
                 </div>
               </div>
@@ -1248,34 +1236,33 @@ export default function AdminAgencies() {
               <div>
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
                   <Building className="w-4 h-4" />
-                  Temel Bilgiler
-                </h4>
+                  {legacyUi("Temel Bilgiler")}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Acente Adı:</span>
+                    <span className="text-muted-foreground">{legacyUi("Acente Adı:")}</span>
                     <p className="font-medium">{viewAgency.name}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Durum:</span>
-                    <p className="font-medium capitalize">{viewAgency.status}</p>
+                    <span className="text-muted-foreground">{legacyUi("Durum:")}</span>
+                    <p className="font-medium capitalize">{legacyStatus(viewAgency.status)}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Ülke:</span>
+                    <span className="text-muted-foreground">{legacyUi("Ülke:")}</span>
                     <p className="font-medium">{viewAgency.country || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Şehir:</span>
+                    <span className="text-muted-foreground">{legacyUi("Şehir:")}</span>
                     <p className="font-medium">{viewAgency.city || '-'}</p>
                   </div>
                   {viewAgency.address && (
                     <div className="col-span-2">
-                      <span className="text-muted-foreground">Adres:</span>
+                      <span className="text-muted-foreground">{legacyUi("Adres:")}</span>
                       <p className="font-medium">{viewAgency.address}</p>
                     </div>
                   )}
                   {viewAgency.description && (
                     <div className="col-span-2">
-                      <span className="text-muted-foreground">Açıklama:</span>
+                      <span className="text-muted-foreground">{legacyUi("Açıklama:")}</span>
                       <p className="font-medium">{viewAgency.description}</p>
                     </div>
                   )}
@@ -1286,20 +1273,19 @@ export default function AdminAgencies() {
               <div>
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  İletişim Bilgileri
-                </h4>
+                  {legacyUi("İletişim Bilgileri")}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <span className="text-muted-foreground">E-posta:</span>
+                      <span className="text-muted-foreground">{legacyUi("E-posta:")}</span>
                       <p className="font-medium">{viewAgency.contactEmail || viewAgency.primaryContactEmail || '-'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <span className="text-muted-foreground">Telefon:</span>
+                      <span className="text-muted-foreground">{legacyUi("Telefon:")}</span>
                       <p className="font-medium">{viewAgency.contactPhone || viewAgency.phone || '-'}</p>
                     </div>
                   </div>
@@ -1307,7 +1293,7 @@ export default function AdminAgencies() {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground" />
                       <div>
-                        <span className="text-muted-foreground">Yetkili Kişi:</span>
+                        <span className="text-muted-foreground">{legacyUi("Yetkili Kişi:")}</span>
                         <p className="font-medium">{viewAgency.primaryContactName}</p>
                       </div>
                     </div>
@@ -1316,7 +1302,7 @@ export default function AdminAgencies() {
                     <div className="flex items-center gap-2">
                       <Globe className="w-4 h-4 text-muted-foreground" />
                       <div>
-                        <span className="text-muted-foreground">Web Sitesi:</span>
+                        <span className="text-muted-foreground">{legacyUi("Web Sitesi:")}</span>
                         <p className="font-medium">
                           <a href={viewAgency.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                             {viewAgency.website}
@@ -1333,18 +1319,17 @@ export default function AdminAgencies() {
                 <div>
                   <h4 className="font-semibold mb-3 flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    İşletme Bilgileri
-                  </h4>
+                    {legacyUi("İşletme Bilgileri")}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     {viewAgency.staffSize && (
                       <div>
-                        <span className="text-muted-foreground">Personel Sayısı:</span>
+                        <span className="text-muted-foreground">{legacyUi("Personel Sayısı:")}</span>
                         <p className="font-medium">{viewAgency.staffSize}</p>
                       </div>
                     )}
                     {viewAgency.annualStudents && (
                       <div>
-                        <span className="text-muted-foreground">Yıllık Öğrenci:</span>
+                        <span className="text-muted-foreground">{legacyUi("Yıllık Öğrenci:")}</span>
                         <p className="font-medium">{viewAgency.annualStudents}</p>
                       </div>
                     )}
@@ -1357,23 +1342,20 @@ export default function AdminAgencies() {
                 <div>
                   <h4 className="font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    Harita Linkleri
-                  </h4>
+                    {legacyUi("Harita Linkleri")}</h4>
                   <div className="flex gap-2 flex-wrap">
                     {viewAgency.googleMapUrl && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={viewAgency.googleMapUrl} target="_blank" rel="noopener noreferrer">
                           <MapPin className="w-4 h-4 mr-2" />
-                          Google Haritalar
-                        </a>
+                          {legacyUi("Google Haritalar")}</a>
                       </Button>
                     )}
                     {viewAgency.yandexMapUrl && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={viewAgency.yandexMapUrl} target="_blank" rel="noopener noreferrer">
                           <MapPin className="w-4 h-4 mr-2" />
-                          Yandex Haritalar
-                        </a>
+                          {legacyUi("Yandex Haritalar")}</a>
                       </Button>
                     )}
                   </div>
@@ -1384,7 +1366,7 @@ export default function AdminAgencies() {
               <div className="pt-4 border-t">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Kayıt Tarihi: {new Date(viewAgency.createdAt).toLocaleDateString('tr-TR', { 
+                  <span>{legacyUi("Kayıt Tarihi: ")}{new Date(viewAgency.createdAt).toLocaleDateString('tr-TR', { 
                     day: 'numeric', 
                     month: 'long', 
                     year: 'numeric' 
@@ -1411,8 +1393,7 @@ export default function AdminAgencies() {
                   <div>
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      Acente Üyeleri
-                      <Badge variant="secondary" className="ml-1" data-testid="badge-member-count">
+                      {legacyUi("Acente Üyeleri")}<Badge variant="secondary" className="ml-1" data-testid="badge-member-count">
                         {assignedMembers.length}
                       </Badge>
                     </h4>
@@ -1429,9 +1410,9 @@ export default function AdminAgencies() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium truncate">{u.name || u.username}</span>
-                                <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                <Badge variant="outline" className="capitalize">{legacyStatus(u.role)}</Badge>
                                 {u.status && u.status !== 'active' && (
-                                  <Badge variant="secondary" className="capitalize">{u.status}</Badge>
+                                  <Badge variant="secondary" className="capitalize">{legacyStatus(u.status)}</Badge>
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground truncate">{u.email}</p>
@@ -1444,28 +1425,25 @@ export default function AdminAgencies() {
                               data-testid={`button-remove-member-${u.id}`}
                             >
                               <XIcon className="w-4 h-4 mr-1" />
-                              Kaldır
-                            </Button>
+                              {legacyUi("Kaldır")}</Button>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground mb-4">
-                        Bu acenteye henüz üye atanmamış.
-                      </p>
+                        {legacyUi("Bu acenteye henüz üye atanmamış.")}</p>
                     )}
 
                     {/* Add members */}
                     <div className="rounded-md border p-3 space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium">
                         <UserPlus className="w-4 h-4" />
-                        Üye Ekle
-                      </div>
+                        {legacyUi("Üye Ekle")}</div>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                           <Input
-                            placeholder="İsim, e-posta veya kullanıcı adı ile ara..."
+                            placeholder={legacyUi("İsim, e-posta veya kullanıcı adı ile ara...")}
                             value={memberSearch}
                             onChange={(e) => setMemberSearch(e.target.value)}
                             className="pl-9"
@@ -1474,13 +1452,13 @@ export default function AdminAgencies() {
                         </div>
                         <Select value={memberRoleFilter} onValueChange={setMemberRoleFilter}>
                           <SelectTrigger className="w-full sm:w-40" data-testid="select-member-role">
-                            <SelectValue placeholder="Rol" />
+                            <SelectValue placeholder={legacyUi("Rol")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">Tüm roller</SelectItem>
-                            <SelectItem value="agent">Agent</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="all">{legacyUi("Tüm roller")}</SelectItem>
+                            <SelectItem value="agent">{legacyUi("Agent")}</SelectItem>
+                            <SelectItem value="staff">{legacyUi("Staff")}</SelectItem>
+                            <SelectItem value="admin">{legacyUi("Admin")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1489,8 +1467,8 @@ export default function AdminAgencies() {
                         {candidates.length === 0 ? (
                           <div className="p-4 text-sm text-muted-foreground text-center">
                             {search || memberRoleFilter !== 'all'
-                              ? 'Aramanızla eşleşen kullanıcı bulunamadı.'
-                              : 'Atanabilecek başka kullanıcı yok.'}
+                              ? legacyUi("Aramanızla eşleşen kullanıcı bulunamadı.")
+                              : legacyUi("Atanabilecek başka kullanıcı yok.")}
                           </div>
                         ) : (
                           <div className="p-1">
@@ -1503,7 +1481,7 @@ export default function AdminAgencies() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium truncate">{u.name || u.username}</span>
-                                    <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                                    <Badge variant="outline" className="capitalize">{legacyStatus(u.role)}</Badge>
                                     {u.agency && (
                                       <Badge variant="secondary" className="truncate max-w-[160px]">
                                         {u.agency.name}
@@ -1519,8 +1497,7 @@ export default function AdminAgencies() {
                                   data-testid={`button-add-member-${u.id}`}
                                 >
                                   <Plus className="w-4 h-4 mr-1" />
-                                  Ekle
-                                </Button>
+                                  {legacyUi("Ekle")}</Button>
                               </div>
                             ))}
                           </div>
@@ -1538,15 +1515,13 @@ export default function AdminAgencies() {
                   handleEditAgency(viewAgency);
                 }}>
                   <Edit2 className="w-4 h-4 mr-2" />
-                  Düzenle
-                </Button>
+                  {legacyUi("Düzenle")}</Button>
                 <Button variant="destructive" onClick={() => {
                   setViewDialogOpen(false);
                   handleDeleteAgency(viewAgency);
                 }}>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Sil
-                </Button>
+                  {legacyUi("Sil")}</Button>
               </div>
             </div>
           )}
@@ -1555,3 +1530,4 @@ export default function AdminAgencies() {
     </div>
   );
 }
+

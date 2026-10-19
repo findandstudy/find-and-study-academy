@@ -1,3 +1,9 @@
+import { AgentPartnership } from '@/components/Partnership';
+import { ProfileCompletionGate } from '@/components/ProfileCompletionGate';
+import {useTranslation} from 'react-i18next';
+import { legacyUi } from "@/lib/legacy-ui";
+import AdminTranslationControl from './pages/admin/TranslationControl';
+import AdminCampaigns from './pages/admin/Campaigns';
 import { useEffect, useState } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -30,6 +36,7 @@ import AgentLeaderboard from './pages/agent/Leaderboard';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminOperations from './pages/admin/Operations';
 import AdminProfile from './pages/admin/Profile';
 import AdminContentCountries from './pages/admin/ContentCountries';
 import AdminQuizzes from './pages/admin/Quizzes';
@@ -152,7 +159,7 @@ function FindyLauncherGate() {
 function AuthLoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Loading session" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label={legacyUi("Loading session")} />
     </div>
   );
 }
@@ -181,7 +188,7 @@ function ProtectedRoute({
     }
   }
   
-  return <>{children}</>;
+  return role === 'agent' ? <ProfileCompletionGate>{children}</ProfileCompletionGate> : <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -232,6 +239,12 @@ function Router() {
       </Route>
 
       {/* Admin + Staff Routes */}
+      <Route path="/admin/campaigns"><ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminCampaigns /></AdminLayout></ProtectedRoute></Route>
+      <Route path="/admin/translation-control"><ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminTranslationControl /></AdminLayout></ProtectedRoute></Route>
+      <Route path="/admin/operations">
+        <ProtectedRoute requiredRole={["admin"]}><AdminLayout><AdminOperations /></AdminLayout></ProtectedRoute>
+      </Route>
+
       <Route path="/admin/dashboard">
         <ProtectedRoute requiredRole={["admin", "staff"]}>
           <AdminLayout>
@@ -370,6 +383,7 @@ function Router() {
       </Route>
 
       {/* Agent Routes */}
+      <Route path="/agent/partnership"><ProtectedRoute requiredRole="agent"><AgentLayout><AgentPartnership /></AgentLayout></ProtectedRoute></Route>
       <Route path="/agent/dashboard">
         <ProtectedRoute requiredRole="agent">
           <AgentLayout>
@@ -472,6 +486,7 @@ function Router() {
 }
 
 export default function App() {
+  useTranslation();
   const { initialize: initializeAuth } = useAuthStore();
   const { initialize: initializeData } = useDataStore();
 
@@ -494,3 +509,4 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+

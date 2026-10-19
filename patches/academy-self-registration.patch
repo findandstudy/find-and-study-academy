@@ -1,0 +1,1565 @@
+diff --git a/server/routes.ts b/server/routes.ts
+index 6b692a3..85202cb 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -28,6 +28,9 @@ import { COUNTRY_DIAL_CODES } from "@shared/country-dial-codes";
+ import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/languages";
+ import { parseQuizQuestions } from "@shared/quiz-localization";
+ import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translations";
++import { publicSignupSchema } from "@shared/signup-validation";
++import { db } from "./db";
++import { agencies as agencyTable, users as userTable } from "@shared/schema";
+ 
+ // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
+ // at module load (not per request).
+@@ -652,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       }
+ 
+       const users = await storage.getUsers();
+-      const user = users.find(u => u.email === email);
++      const user = users.find(u => typeof email === 'string' && u.email.trim().toLowerCase() === email.trim().toLowerCase());
+ 
+       if (!user) {
+         return res.status(401).json({
+@@ -866,36 +869,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
+ 
+   app.post('/api/signup', authRateLimit, async (req, res) => {
+     try {
+-      const { name, email, password, agencyName, country, phone } = req.body;
+-
+-      if (!name || !email || !password || !agencyName || !country || !phone) {
+-        return res.status(400).json({
+-          success: false,
+-          message: 'All fields are required'
+-        });
+-      }
+-
+-      // Validate country against the real ISO 3166-1 alpha-2 set we ship in
+-      // shared/country-dial-codes.ts (computed once at module load above).
+-      if (typeof country !== 'string' || !VALID_COUNTRY_CODES.has(country)) {
+-        return res.status(400).json({
+-          success: false,
+-          message: 'Invalid country code'
+-        });
+-      }
+-
+-      // Validate phone: E.164-ish — leading "+", 6–18 digits total
+-      if (typeof phone !== 'string' || !/^\+\d{6,18}$/.test(phone.replace(/\s+/g, ''))) {
+-        return res.status(400).json({
+-          success: false,
+-          message: 'Invalid phone number'
+-        });
++      const validation = publicSignupSchema.safeParse(req.body);
++      if (!validation.success) {
++        return res.status(400).json({ success: false, message: validation.error.issues[0]?.message || 'Invalid registration data', errors: validation.error.issues.map(issue => ({ field: issue.path[0], message: issue.message })) });
+       }
+-      const normalizedPhone = phone.replace(/\s+/g, '');
++      const { name, email, password, agencyName, country, phone: normalizedPhone, languagePreference } = validation.data;
+ 
+       // Check if email already exists
+       const users = await storage.getUsers();
+-      const existingUser = users.find(u => u.email === email);
++      const existingUser = users.find(u => u.email.trim().toLowerCase() === email);
+       if (existingUser) {
+         return res.status(409).json({
+           success: false,
+@@ -903,8 +885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         });
+       }
+ 
+-      const userId = `agent-${Date.now()}`;
+-      const agencyId = `agency-${Date.now()}`;
++      const userId = `agent-${crypto.randomUUID()}`;
++      const agencyId = `agency-${crypto.randomUUID()}`;
+ 
+       // Create agency
+       const newAgency = {
+@@ -918,7 +900,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
+       // Hash password before storing
+       const hashedPassword = await bcrypt.hash(password, 10);
+ 
+-      // Create user — closed system: new agents start as INACTIVE and require admin/staff approval
++      // Self-registration opens the training hub immediately. Existing inactive
++      // accounts remain blocked; this applies only to newly registered agents.
+       const newUser = {
+         id: userId,
+         username: email,
+@@ -926,18 +909,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         name: name,
+         email: email,
+         role: 'agent' as const,
+-        status: 'inactive' as const,
++        status: 'active' as const,
+         agencyId: agencyId,
+         country: country,
+         phone: normalizedPhone,
++        languagePreference,
+         emailNotifications: true,
+         courseCompletionNotif: true,
+         certificateNotif: true,
+         announcementNotif: true
+       };
+ 
+-      const createdAgency = await storage.createAgency(newAgency);
+-      const createdUser = await storage.createUser(newUser);
++      const { createdAgency, createdUser } = await db.transaction(async tx => {
++        const [createdAgency] = await tx.insert(agencyTable).values(newAgency).returning();
++        const [createdUser] = await tx.insert(userTable).values(newUser).returning();
++        return { createdAgency, createdUser };
++      });
++
++      req.session.userId = createdUser.id;
++      await new Promise<void>((resolve, reject) => req.session.save(error => error ? reject(error) : resolve()));
+ 
+       // Send welcome email to new agent (non-blocking)
+       if (createdUser.emailNotifications) {
+@@ -982,13 +972,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
+         }
+       })();
+ 
+-      // Closed system — do NOT return a session/user. The applicant must wait for admin/staff approval.
+       res.status(201).json({
+         success: true,
+-        pending: true,
+-        message: 'Başvurunuz alındı. Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz.'
++        pending: false,
++        message: 'Your account is ready. Welcome to Find And Study Academy.',
++        user: {
++          id: createdUser.id, name: createdUser.name, email: createdUser.email,
++          role: createdUser.role, agencyId: createdUser.agencyId,
++          languagePreference: createdUser.languagePreference || 'en',
++        },
+       });
+     } catch (error) {
++      // A concurrent registration may pass the pre-check. The transaction
++      // rolls back the agency too, so retries never create orphan agencies.
++      const databaseCode = (error as any)?.code || (error as any)?.cause?.code;
++      if (databaseCode === '23505') return res.status(409).json({ success: false, message: 'Email already registered' });
+       console.error('Signup error:', error);
+       res.status(500).json({
+         success: false,
+diff --git a/server/smtp-email.ts b/server/smtp-email.ts
+index d3fe150..4571b38 100644
+--- a/server/smtp-email.ts
++++ b/server/smtp-email.ts
+@@ -192,6 +192,7 @@ export function generateCourseCompletionEmail(name: string, courseName: string):
+ 
+ export function generateAdminNewRegistrationEmail(agentName: string, agentEmail: string, agencyName: string): { subject: string; html: string } {
+   const appUrl = process.env.APP_URL || 'http://localhost:5000';
++  const escapeText = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
+   
+   return {
+     subject: `Yeni Acente Kaydı: ${agencyName}`,
+@@ -218,11 +219,11 @@ export function generateAdminNewRegistrationEmail(agentName: string, agentEmail:
+           <div class="content">
+             <p>Yeni bir acente sisteme kaydoldu:</p>
+             <div class="info-box">
+-              <p><strong>Acente Adı:</strong> ${agencyName}</p>
+-              <p><strong>Yetkili Kişi:</strong> ${agentName}</p>
+-              <p><strong>E-posta:</strong> ${agentEmail}</p>
++              <p><strong>Acente Adı:</strong> ${escapeText(agencyName)}</p>
++              <p><strong>Yetkili Kişi:</strong> ${escapeText(agentName)}</p>
++              <p><strong>E-posta:</strong> ${escapeText(agentEmail)}</p>
+             </div>
+-            <p>Acente yönetim panelinden detayları görüntüleyebilir ve onaylayabilirsiniz:</p>
++            <p>Yeni hesap eğitim merkezine erişim için aktif olarak oluşturuldu. Acente yönetim panelinden detayları görüntüleyebilirsiniz:</p>
+             <a href="${appUrl}/admin/agencies" class="button">Acenteleri Yönet</a>
+           </div>
+           <div class="footer">
+diff --git a/shared/signup-validation.ts b/shared/signup-validation.ts
+new file mode 100644
+index 0000000..ac4bee8
+--- /dev/null
++++ b/shared/signup-validation.ts
+@@ -0,0 +1,17 @@
++import { z } from 'zod';
++import { COUNTRY_DIAL_CODES } from './country-dial-codes';
++import { isSupportedLanguage } from './languages';
++
++const countries = new Set(COUNTRY_DIAL_CODES.map(country => country.code));
++
++export const publicSignupSchema = z.object({
++  name: z.string().trim().min(2, 'Name is required').max(120),
++  email: z.string().trim().toLowerCase().email('Enter a valid email address').max(254),
++  password: z.string().min(8, 'Use at least 8 characters for your password').max(72)
++    .refine(password => new TextEncoder().encode(password).length <= 72, 'Password must be at most 72 UTF-8 bytes'),
++  agencyName: z.string().trim().min(2, 'Agency name is required').max(180),
++  country: z.string().trim().toUpperCase().refine(country => countries.has(country), 'Invalid country code'),
++  phone: z.string().transform(phone => phone.replace(/\s+/g, ''))
++    .refine(phone => /^\+[1-9]\d{5,17}$/.test(phone), 'Invalid phone number'),
++  languagePreference: z.string().refine(isSupportedLanguage, 'Unsupported language').default('en'),
++}).strict();
+diff --git a/shared/signup-validation.test.ts b/shared/signup-validation.test.ts
+new file mode 100644
+index 0000000..ed8548f
+--- /dev/null
++++ b/shared/signup-validation.test.ts
+@@ -0,0 +1,21 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { publicSignupSchema } from './signup-validation';
++
++const valid = { name: 'Test Agent', email: '  TEST@example.com ', password: 'valid-test-password', agencyName: 'Test Agency', country: 'tr', phone: '+90 555 000 0000', languagePreference: 'ur' };
++
++test('signup normalizes email, names, country and phone while preserving chosen language', () => {
++  const value = publicSignupSchema.parse(valid);
++  assert.equal(value.email, 'test@example.com');
++  assert.equal(value.country, 'TR');
++  assert.equal(value.phone, '+905550000000');
++  assert.equal(value.languagePreference, 'ur');
++  assert.equal(value.password, valid.password);
++});
++
++test('signup rejects malformed contact data, weak passwords and privilege fields', () => {
++  for (const patch of [{ name: ' ' }, { email: 'invalid' }, { password: '123' }, { agencyName: '' }, { country: 'XX' }, { phone: '+0000000' }, { languagePreference: 'xx' }, { role: 'admin' }]) {
++    assert.equal(publicSignupSchema.safeParse({ ...valid, ...patch }).success, false, JSON.stringify(patch));
++  }
++  assert.equal(publicSignupSchema.safeParse({ ...valid, password: '密'.repeat(30) }).success, false);
++});
+diff --git a/server/registration.test.ts b/server/registration.test.ts
+new file mode 100644
+index 0000000..4ec4905
+--- /dev/null
++++ b/server/registration.test.ts
+@@ -0,0 +1,80 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import express from 'express';
++import session from 'express-session';
++import bcrypt from 'bcryptjs';
++
++// No real database or mail account is used. Exercise the actual HTTP routes,
++// session middleware and password hashing with isolated transactional storage.
++test('self-registration creates an active agent session, denies admin access and rolls back failures', async () => {
++  process.env.DATABASE_URL ||= 'postgresql://isolated:isolated@127.0.0.1:1/isolated';
++  const { registerRoutes } = await import('./routes');
++  const { storage } = await import('./storage');
++  const { db, pool } = await import('./db');
++  const { users: userTable, agencies: agencyTable } = await import('@shared/schema');
++  const savedMethods = { getUsers: storage.getUsers, getUser: storage.getUser, transaction: db.transaction };
++  let users: any[] = [], agencies: any[] = [], failUserInsert = false;
++  storage.getUsers = async () => users;
++  storage.getUser = async id => users.find(user => user.id === id);
++  (db as any).transaction = async (callback: any) => {
++    const stagedUsers: any[] = [], stagedAgencies: any[] = [];
++    const result = await callback({ insert: (table: unknown) => ({ values: (value: any) => ({ returning: async () => {
++      if (table === userTable) {
++        if (failUserInsert) throw new Error('Simulated insert failure');
++        // Disable notifications only in the test adapter, preventing email.
++        const row = { ...value, emailNotifications: false };
++        stagedUsers.push(row); return [row];
++      }
++      assert.equal(table, agencyTable); stagedAgencies.push(value); return [value];
++    } }) }) });
++    users.push(...stagedUsers); agencies.push(...stagedAgencies);
++    return result;
++  };
++  const app = express();
++  app.use(express.json());
++  app.use(session({ secret: 'isolated-registration-test-secret', resave: false, saveUninitialized: false }));
++  const server = await registerRoutes(app);
++  try {
++    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
++    const address = server.address();
++    assert(address && typeof address !== 'string');
++    const base = `http://127.0.0.1:${address.port}`;
++    const input = { name: 'QA Agent', email: '  QA@example.invalid ', password: 'isolated-test-password', agencyName: 'QA Agency', country: 'tr', phone: '+90 555 000 0000', languagePreference: 'uk' };
++    const signup = (body: unknown) => fetch(base + '/api/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
++    assert.equal((await signup({ ...input, role: 'admin' })).status, 400);
++    assert.equal(users.length, 0);
++    const response = await signup(input);
++    assert.equal(response.status, 201);
++    const result = await response.json();
++    assert.equal(result.pending, false);
++    assert.equal(result.user.role, 'agent');
++    assert.equal(result.user.languagePreference, 'uk');
++    assert.equal(result.user.password, undefined);
++    assert.equal(users[0].status, 'active');
++    assert.equal(users[0].email, 'qa@example.invalid');
++    assert.equal(users[0].agencyId, agencies[0].id);
++    assert.notEqual(users[0].password, input.password);
++    assert(await bcrypt.compare(input.password, users[0].password));
++    const cookie = response.headers.get('set-cookie')?.split(';')[0];
++    assert(cookie);
++    const me = await fetch(base + '/api/me', { headers: { cookie } });
++    assert.equal(me.status, 200);
++    assert.equal((await me.json()).user.id, result.user.id);
++    assert.equal((await fetch(base + '/api/admin/quizzes', { headers: { cookie } })).status, 403);
++    assert.equal((await fetch(base + '/api/me')).status, 401);
++    assert.equal((await signup({ ...input, email: 'QA@EXAMPLE.INVALID' })).status, 409);
++    assert.equal(agencies.length, 1);
++    users[0].status = 'inactive';
++    assert.equal((await fetch(base + '/api/me', { headers: { cookie } })).status, 403);
++    failUserInsert = true;
++    assert.equal((await signup({ ...input, email: 'second@example.invalid' })).status, 500);
++    assert.equal(agencies.length, 1, 'failed user insert must not leave an agency');
++    assert.equal(users.length, 1);
++  } finally {
++    await new Promise<void>(resolve => server.close(() => resolve()));
++    storage.getUsers = savedMethods.getUsers;
++    storage.getUser = savedMethods.getUser;
++    (db as any).transaction = savedMethods.transaction;
++    await pool.end();
++  }
++});
+diff --git a/client/src/pages/Signup.tsx b/client/src/pages/Signup.tsx
+index 3d804a9..0f7dda8 100644
+--- a/client/src/pages/Signup.tsx
++++ b/client/src/pages/Signup.tsx
+@@ -1,4 +1,6 @@
+ import { useMemo, useState } from 'react';
++import { useTranslation } from 'react-i18next';
++import { normalizeLanguage } from '@/i18n/languages';
+ import { Link, useLocation } from 'wouter';
+ import { Button } from '@/components/ui/button';
+ import { Input } from '@/components/ui/input';
+@@ -21,6 +23,8 @@ const DEFAULT_COUNTRY = 'TR';
+ 
+ export default function Signup() {
+   const [, setLocation] = useLocation();
++  const { t, i18n } = useTranslation();
++  const language = normalizeLanguage(i18n.language);
+   const [formData, setFormData] = useState({
+     name: '',
+     email: '',
+@@ -34,24 +38,18 @@ export default function Signup() {
+   const { initialize: initializeData } = useDataStore();
+   const { toast } = useToast();
+ 
+-  // Sorted list of all world countries (Turkish names) for the Country dropdown.
+-  const sortedCountries = useMemo(
+-    () => [...WORLD_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'tr')),
+-    [],
+-  );
++  const sortedCountries = useMemo(() => {
++    const display = new Intl.DisplayNames([language, 'en'], { type: 'region' });
++    return WORLD_COUNTRIES.map(country => ({ ...country, name: display.of(country.code) || country.name }))
++      .sort((a, b) => a.name.localeCompare(b.name, language));
++  }, [language]);
+ 
+-  // For the dial-code selector we want every country that has a dial code, sorted by Turkish name.
+   const dialOptions = useMemo(() => {
+-    const nameByCode = new Map(WORLD_COUNTRIES.map((c) => [c.code, c.name]));
+-    return COUNTRY_DIAL_CODES
+-      .filter((c) => nameByCode.has(c.code))
+-      .map((c) => ({
+-        code: c.code,
+-        dial: c.dial,
+-        name: nameByCode.get(c.code) ?? c.code,
+-      }))
+-      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+-  }, []);
++    const names = new Map(sortedCountries.map(country => [country.code, country.name]));
++    return COUNTRY_DIAL_CODES.filter(country => names.has(country.code))
++      .map(country => ({ code: country.code, dial: country.dial, name: names.get(country.code)! }))
++      .sort((a, b) => a.name.localeCompare(b.name, language));
++  }, [sortedCountries, language]);
+ 
+   const selectedDial = getDialCode(formData.phoneCountry) ?? '';
+ 
+@@ -78,21 +76,25 @@ export default function Signup() {
+     }
+     if (!localDigits || localDigits.length < 4) {
+       toast({
+-        title: 'Geçersiz Telefon Numarası',
+-        description: 'Lütfen geçerli bir cep telefonu numarası girin.',
++        title: t('registration.failedTitle'),
++        description: t('registration.invalidPhone'),
+         variant: 'destructive',
+       });
+       return;
+     }
+     if (!selectedDial) {
+       toast({
+-        title: 'Geçersiz Ülke Kodu',
+-        description: 'Lütfen geçerli bir telefon ülke kodu seçin.',
++        title: t('registration.failedTitle'),
++        description: t('registration.invalidDial'),
+         variant: 'destructive',
+       });
+       return;
+     }
+     const fullPhone = `+${selectedDial}${localDigits}`;
++    if (!/^\+[1-9]\d{5,17}$/.test(fullPhone)) {
++      toast({ title: t('registration.failedTitle'), description: t('registration.invalidPhone'), variant: 'destructive' });
++      return;
++    }
+ 
+     const result = await signup({
+       name: formData.name,
+@@ -101,24 +103,19 @@ export default function Signup() {
+       agencyName: formData.agencyName,
+       country: formData.country,
+       phone: fullPhone,
++      languagePreference: language,
+     });
+-    if (result?.pending) {
+-      // Closed system: account is created but pending admin/staff approval — do NOT auto-login.
+-      // Refresh data store so admins viewing the page see the new agency on next load.
++    if (result?.session) {
+       initializeData();
+-
+-      toast({
+-        title: 'Başvurunuz Alındı',
+-        description:
+-          result.message ||
+-          'Hesabınız yöneticilerimiz tarafından onaylandıktan sonra giriş yapabileceksiniz. Onay e-postası adresinize gönderilecektir.',
+-        duration: 8000,
+-      });
++      toast({ title: t('registration.readyTitle'), description: t('registration.readyMessage') });
++      setLocation('/agent/dashboard');
++    } else if (result?.pending) {
++      toast({ title: t('registration.pendingTitle'), description: t('registration.pendingMessage'), duration: 8000 });
+       setLocation('/login');
+     } else {
+       toast({
+-        title: 'Kayıt Başarısız',
+-        description: 'Hesap oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.',
++        title: t('registration.failedTitle'),
++        description: result?.message === 'Email already registered' ? t('registration.duplicateEmail') : t('registration.failedMessage'),
+         variant: 'destructive',
+       });
+     }
+@@ -130,74 +127,84 @@ export default function Signup() {
+ 
+   return (
+     <AuthCard
+-      title="Create Agent Account"
+-      description="Join Find And Study as a certified agent"
++      title={t('registration.title')}
++      description={t('registration.subtitle')}
+     >
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div className="space-y-2">
+-          <Label htmlFor="name">Full Name</Label>
++          <Label htmlFor="name">{t('registration.fullName')}</Label>
+           <Input
+             id="name"
+             type="text"
+             value={formData.name}
+             onChange={(e) => updateField('name', e.target.value)}
+-            placeholder="Your full name"
++            placeholder={t('registration.fullNamePlaceholder')}
+             required
+             autoComplete="name"
++            minLength={2}
++            maxLength={120}
+             data-testid="input-name"
+           />
+         </div>
+ 
+         <div className="space-y-2">
+-          <Label htmlFor="email">Email</Label>
++          <Label htmlFor="email">{t('auth.email')}</Label>
+           <Input
+             id="email"
+             type="email"
++            dir="ltr"
+             value={formData.email}
+             onChange={(e) => updateField('email', e.target.value)}
+-            placeholder="Your email address"
++            placeholder={t('auth.emailPlaceholder')}
+             required
+             autoComplete="email"
++            maxLength={254}
+             data-testid="input-email"
+           />
+         </div>
+ 
+         <div className="space-y-2">
+-          <Label htmlFor="password">Password</Label>
++          <Label htmlFor="password">{t('auth.password')}</Label>
+           <Input
+             id="password"
+             type="password"
+             value={formData.password}
+             onChange={(e) => updateField('password', e.target.value)}
+-            placeholder="Create a password"
++            placeholder={t('registration.createPassword')}
+             required
+             autoComplete="new-password"
++            minLength={8}
++            maxLength={72}
++            aria-describedby="password-hint"
+             data-testid="input-password"
+           />
++          <p id="password-hint" className="text-xs text-muted-foreground">{t('registration.passwordHint')}</p>
+         </div>
+ 
+         <div className="space-y-2">
+-          <Label htmlFor="agencyName">Agency Name</Label>
++          <Label htmlFor="agencyName">{t('registration.agencyName')}</Label>
+           <Input
+             id="agencyName"
+             type="text"
+             value={formData.agencyName}
+             onChange={(e) => updateField('agencyName', e.target.value)}
+-            placeholder="Your education agency name"
++            placeholder={t('registration.agencyPlaceholder')}
+             required
+             autoComplete="organization"
++            minLength={2}
++            maxLength={180}
+             data-testid="input-agency"
+           />
+         </div>
+ 
+         <div className="space-y-2">
+-          <Label htmlFor="country">Country</Label>
++          <Label htmlFor="country">{t('registration.country')}</Label>
+           <Select
+             value={formData.country}
+             onValueChange={handleCountryChange}
+           >
+             <SelectTrigger id="country" data-testid="select-country">
+-              <SelectValue placeholder="Ülke seçin" />
++              <SelectValue placeholder={t('registration.selectCountry')} />
+             </SelectTrigger>
+             <SelectContent className="max-h-72">
+               {sortedCountries.map((c) => (
+@@ -210,7 +217,7 @@ export default function Signup() {
+         </div>
+ 
+         <div className="space-y-2">
+-          <Label htmlFor="phoneNumber">Mobile Phone</Label>
++          <Label htmlFor="phoneNumber">{t('registration.mobilePhone')}</Label>
+           <div className="flex gap-2">
+             <Select
+               value={formData.phoneCountry}
+@@ -218,7 +225,8 @@ export default function Signup() {
+             >
+               <SelectTrigger
+                 className="w-[110px] shrink-0"
+-                aria-label="Telefon ülke kodu"
++                dir="ltr"
++                aria-label={t('registration.phoneCountryCode')}
+                 data-testid="select-phone-country"
+               >
+                 <SelectValue>
+@@ -243,6 +251,7 @@ export default function Signup() {
+             <Input
+               id="phoneNumber"
+               type="tel"
++              dir="ltr"
+               inputMode="tel"
+               value={formData.phoneNumber}
+               onChange={(e) => updateField('phoneNumber', e.target.value)}
+@@ -261,16 +270,16 @@ export default function Signup() {
+           disabled={isLoading}
+           data-testid="button-submit"
+         >
+-          {isLoading ? 'Creating Account...' : 'Create Account'}
++          {t(isLoading ? 'registration.creating' : 'registration.createAccount')}
+         </Button>
+       </form>
+ 
+       <div className="mt-6 text-center">
+         <p className="text-sm text-muted-foreground">
+-          Already have an account?{' '}
++          {t('registration.alreadyAccount')}{' '}
+           <Link href="/login">
+             <span className="text-primary hover:underline cursor-pointer">
+-              Sign In
++              {t('auth.signIn')}
+             </span>
+           </Link>
+         </p>
+diff --git a/client/src/lib/auth.ts b/client/src/lib/auth.ts
+index 1fa47ba..927e744 100644
+--- a/client/src/lib/auth.ts
++++ b/client/src/lib/auth.ts
+@@ -13,6 +13,7 @@ export interface SignupData {
+   agencyName: string;
+   country: string;
+   phone: string;
++  languagePreference?: string;
+ }
+ 
+ export interface Session {
+@@ -51,6 +52,8 @@ export const login = async (credentials: LoginCredentials): Promise<Session | nu
+ export interface SignupResult {
+   pending: boolean;
+   message?: string;
++  session?: Session;
++  error?: boolean;
+ }
+ 
+ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
+@@ -67,6 +70,7 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
+         agencyName: data.agencyName,
+         country: data.country,
+         phone: data.phone,
++        languagePreference: data.languagePreference,
+       }),
+     });
+ 
+@@ -76,9 +80,13 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
+     }
+ 
+     const result = await response.json();
+-    // Closed system: signup never auto-logs the user in. Account is pending admin/staff approval.
+     if (result.success) {
+-      return { pending: true, message: result.message };
++      if (result.pending) return { pending: true, message: result.message };
++      if (result.user?.role === 'agent') {
++        const session: Session = { user: result.user, role: 'agent' };
++        storage.setSession(session);
++        return { pending: false, message: result.message, session };
++      }
+     }
+ 
+     throw new Error(result.message || 'Signup failed');
+diff --git a/client/src/store/auth.ts b/client/src/store/auth.ts
+index 12fbf85..9018d97 100644
+--- a/client/src/store/auth.ts
++++ b/client/src/store/auth.ts
+@@ -56,13 +56,17 @@ export const useAuthStore = create<AuthState>((set) => ({
+     set({ isLoading: true });
+     try {
+       const result = await authSignup(data);
+-      // Closed system: signup never logs the user in. Account is pending admin/staff approval.
++      if (result.session) {
++        syncLanguageFromUser(result.session.user);
++        set({ user: result.session.user, role: result.session.role, isLoading: false });
++        return result;
++      }
+       set({ isLoading: false });
+       return result;
+     } catch (error) {
+       console.error('Signup failed:', error);
+       set({ isLoading: false });
+-      return null;
++      return { pending: false, error: true, message: error instanceof Error ? error.message : 'Signup failed' };
+     }
+   },
+ 
+diff --git a/client/src/i18n/index.ts b/client/src/i18n/index.ts
+index 79473b7..2d4220a 100644
+--- a/client/src/i18n/index.ts
++++ b/client/src/i18n/index.ts
+@@ -13,6 +13,20 @@ import fa from './locales/fa/common.json';
+ import ru from './locales/ru/common.json';
+ import es from './locales/es/common.json';
+ import tr from './locales/tr/common.json';
++import hi from './locales/hi/common.json';
++import ur from './locales/ur/common.json';
++import tk from './locales/tk/common.json';
++import ky from './locales/ky/common.json';
++import kk from './locales/kk/common.json';
++import uz from './locales/uz/common.json';
++import tg from './locales/tg/common.json';
++import bn from './locales/bn/common.json';
++import pt from './locales/pt/common.json';
++import ne from './locales/ne/common.json';
++import vi from './locales/vi/common.json';
++import ko from './locales/ko/common.json';
++import uk from './locales/uk/common.json';
++import it from './locales/it/common.json';
+ 
+ export const I18N_STORAGE_KEY = 'fas_language';
+ 
+@@ -26,6 +40,20 @@ const resources = {
+   ru: { common: ru },
+   es: { common: es },
+   tr: { common: tr },
++  hi: { common: hi },
++  ur: { common: ur },
++  tk: { common: tk },
++  ky: { common: ky },
++  kk: { common: kk },
++  uz: { common: uz },
++  tg: { common: tg },
++  bn: { common: bn },
++  pt: { common: pt },
++  ne: { common: ne },
++  vi: { common: vi },
++  ko: { common: ko },
++  uk: { common: uk },
++  it: { common: it },
+ };
+ 
+ i18n
+diff --git a/client/src/i18n/locales/ur/common.json b/client/src/i18n/locales/ur/common.json
+new file mode 100644
+index 0000000..824616e
+--- /dev/null
++++ b/client/src/i18n/locales/ur/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "ایجنسی اکاؤنٹ بنائیں",
++    "subtitle": "تربیت اور تعلیمی مقامات کی معلومات تک رسائی کے لیے اکاؤنٹ بنائیں۔",
++    "fullName": "پورا نام",
++    "fullNamePlaceholder": "اپنا پورا نام درج کریں",
++    "agencyName": "ایجنسی کا نام",
++    "agencyPlaceholder": "اپنی ایجنسی کا نام درج کریں",
++    "country": "ملک",
++    "selectCountry": "ملک منتخب کریں",
++    "mobilePhone": "موبائل نمبر",
++    "phoneCountryCode": "ملک کا فون کوڈ",
++    "createPassword": "پاس ورڈ بنائیں",
++    "passwordHint": "کم از کم 8 حروف استعمال کریں۔",
++    "creating": "اکاؤنٹ بنایا جا رہا ہے...",
++    "createAccount": "اکاؤنٹ بنائیں",
++    "alreadyAccount": "پہلے سے اکاؤنٹ ہے؟",
++    "readyTitle": "آپ کا اکاؤنٹ تیار ہے",
++    "readyMessage": "اب آپ تربیتی مرکز تک رسائی حاصل کر سکتے ہیں۔",
++    "pendingTitle": "درخواست موصول ہوگئی",
++    "pendingMessage": "آپ کا اکاؤنٹ منظوری کا منتظر ہے۔",
++    "failedTitle": "رجسٹریشن ناکام ہوگئی",
++    "failedMessage": "اپنی معلومات چیک کریں اور دوبارہ کوشش کریں۔",
++    "invalidPhone": "درست موبائل نمبر درج کریں۔",
++    "invalidDial": "ملک کا درست فون کوڈ منتخب کریں۔",
++    "duplicateEmail": "یہ ای میل پہلے سے رجسٹرڈ ہے۔ براہ کرم سائن ان کریں۔"
++  },
++  "auth": {
++    "email": "ای میل",
++    "emailPlaceholder": "اپنا ای میل درج کریں",
++    "password": "پاس ورڈ",
++    "signIn": "سائن ان کریں"
++  }
++}
+diff --git a/client/src/i18n/locales/uz/common.json b/client/src/i18n/locales/uz/common.json
+new file mode 100644
+index 0000000..2b56bb4
+--- /dev/null
++++ b/client/src/i18n/locales/uz/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Agentlik hisobini yaratish",
++    "subtitle": "O‘quv materiallari va ta’lim yo‘nalishlari haqidagi ma’lumotlarga kirish uchun hisob yarating.",
++    "fullName": "To‘liq ism-familiya",
++    "fullNamePlaceholder": "To‘liq ism-familiyangizni kiriting",
++    "agencyName": "Agentlik nomi",
++    "agencyPlaceholder": "Agentligingiz nomini kiriting",
++    "country": "Mamlakat",
++    "selectCountry": "Mamlakatni tanlang",
++    "mobilePhone": "Mobil telefon",
++    "phoneCountryCode": "Mamlakat telefon kodi",
++    "createPassword": "Parol yarating",
++    "passwordHint": "Kamida 8 ta belgidan foydalaning.",
++    "creating": "Hisob yaratilmoqda...",
++    "createAccount": "Hisob yaratish",
++    "alreadyAccount": "Hisobingiz bormi?",
++    "readyTitle": "Hisobingiz tayyor",
++    "readyMessage": "Endi o‘quv markaziga kirishingiz mumkin.",
++    "pendingTitle": "Ariza qabul qilindi",
++    "pendingMessage": "Hisobingiz tasdiqlanishni kutmoqda.",
++    "failedTitle": "Ro‘yxatdan o‘tish amalga oshmadi",
++    "failedMessage": "Ma’lumotlaringizni tekshirib, qayta urinib ko‘ring.",
++    "invalidPhone": "To‘g‘ri mobil telefon raqamini kiriting.",
++    "invalidDial": "Mamlakatning to‘g‘ri telefon kodini tanlang.",
++    "duplicateEmail": "Bu elektron pochta allaqachon ro‘yxatdan o‘tgan. Hisobingizga kiring."
++  },
++  "auth": {
++    "email": "Elektron pochta",
++    "emailPlaceholder": "Elektron pochtangizni kiriting",
++    "password": "Parol",
++    "signIn": "Kirish"
++  }
++}
+diff --git a/client/src/i18n/locales/vi/common.json b/client/src/i18n/locales/vi/common.json
+new file mode 100644
+index 0000000..d10b03a
+--- /dev/null
++++ b/client/src/i18n/locales/vi/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Tạo tài khoản đại lý",
++    "subtitle": "Tạo tài khoản để truy cập đào tạo và thông tin điểm đến du học.",
++    "fullName": "Họ và tên",
++    "fullNamePlaceholder": "Nhập họ và tên của bạn",
++    "agencyName": "Tên đại lý",
++    "agencyPlaceholder": "Nhập tên đại lý của bạn",
++    "country": "Quốc gia",
++    "selectCountry": "Chọn quốc gia",
++    "mobilePhone": "Điện thoại di động",
++    "phoneCountryCode": "Mã điện thoại quốc gia",
++    "createPassword": "Tạo mật khẩu",
++    "passwordHint": "Sử dụng ít nhất 8 ký tự.",
++    "creating": "Đang tạo tài khoản...",
++    "createAccount": "Tạo tài khoản",
++    "alreadyAccount": "Bạn đã có tài khoản?",
++    "readyTitle": "Tài khoản của bạn đã sẵn sàng",
++    "readyMessage": "Bây giờ bạn có thể truy cập trung tâm đào tạo.",
++    "pendingTitle": "Đã nhận đơn đăng ký",
++    "pendingMessage": "Tài khoản của bạn đang chờ phê duyệt.",
++    "failedTitle": "Đăng ký không thành công",
++    "failedMessage": "Kiểm tra thông tin và thử lại.",
++    "invalidPhone": "Nhập số điện thoại di động hợp lệ.",
++    "invalidDial": "Chọn mã điện thoại quốc gia hợp lệ.",
++    "duplicateEmail": "Email này đã được đăng ký. Vui lòng đăng nhập."
++  },
++  "auth": {
++    "email": "Email",
++    "emailPlaceholder": "Nhập email của bạn",
++    "password": "Mật khẩu",
++    "signIn": "Đăng nhập"
++  }
++}
+diff --git a/client/src/i18n/locales/kk/common.json b/client/src/i18n/locales/kk/common.json
+new file mode 100644
+index 0000000..0c330f3
+--- /dev/null
++++ b/client/src/i18n/locales/kk/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Агенттік аккаунтын жасау",
++    "subtitle": "Оқытуға және оқу елдері туралы ақпаратқа қол жеткізу үшін аккаунт жасаңыз.",
++    "fullName": "Толық аты-жөні",
++    "fullNamePlaceholder": "Толық аты-жөніңізді енгізіңіз",
++    "agencyName": "Агенттік атауы",
++    "agencyPlaceholder": "Агенттігіңіздің атауын енгізіңіз",
++    "country": "Ел",
++    "selectCountry": "Елді таңдаңыз",
++    "mobilePhone": "Ұялы телефон",
++    "phoneCountryCode": "Елдің телефон коды",
++    "createPassword": "Құпиясөз жасаңыз",
++    "passwordHint": "Кемінде 8 таңба қолданыңыз.",
++    "creating": "Аккаунт жасалуда...",
++    "createAccount": "Аккаунт жасау",
++    "alreadyAccount": "Аккаунтыңыз бар ма?",
++    "readyTitle": "Аккаунтыңыз дайын",
++    "readyMessage": "Енді оқу орталығына кіре аласыз.",
++    "pendingTitle": "Өтінім қабылданды",
++    "pendingMessage": "Аккаунтыңыз мақұлдауды күтуде.",
++    "failedTitle": "Тіркелу сәтсіз аяқталды",
++    "failedMessage": "Деректеріңізді тексеріп, қайталап көріңіз.",
++    "invalidPhone": "Жарамды ұялы телефон нөмірін енгізіңіз.",
++    "invalidDial": "Елдің жарамды телефон кодын таңдаңыз.",
++    "duplicateEmail": "Бұл электрондық пошта тіркелген. Аккаунтыңызға кіріңіз."
++  },
++  "auth": {
++    "email": "Электрондық пошта",
++    "emailPlaceholder": "Электрондық поштаңызды енгізіңіз",
++    "password": "Құпиясөз",
++    "signIn": "Кіру"
++  }
++}
+diff --git a/client/src/i18n/locales/ky/common.json b/client/src/i18n/locales/ky/common.json
+new file mode 100644
+index 0000000..8ff52e3
+--- /dev/null
++++ b/client/src/i18n/locales/ky/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Агенттик аккаунтун түзүү",
++    "subtitle": "Окутууга жана окуу өлкөлөрү тууралуу маалыматка жетүү үчүн аккаунт түзүңүз.",
++    "fullName": "Толук аты-жөнү",
++    "fullNamePlaceholder": "Толук аты-жөнүңүздү жазыңыз",
++    "agencyName": "Агенттиктин аталышы",
++    "agencyPlaceholder": "Агенттигиңиздин аталышын жазыңыз",
++    "country": "Өлкө",
++    "selectCountry": "Өлкөнү тандаңыз",
++    "mobilePhone": "Мобилдик телефон",
++    "phoneCountryCode": "Өлкөнүн телефон коду",
++    "createPassword": "Сырсөз түзүңүз",
++    "passwordHint": "Кеминде 8 белги колдонуңуз.",
++    "creating": "Аккаунт түзүлүүдө...",
++    "createAccount": "Аккаунт түзүү",
++    "alreadyAccount": "Аккаунтуңуз барбы?",
++    "readyTitle": "Аккаунтуңуз даяр",
++    "readyMessage": "Эми окуу борборуна кире аласыз.",
++    "pendingTitle": "Арыз кабыл алынды",
++    "pendingMessage": "Аккаунтуңуз ырастоону күтүүдө.",
++    "failedTitle": "Каттоо ишке ашкан жок",
++    "failedMessage": "Маалыматтарыңызды текшерип, кайра аракет кылыңыз.",
++    "invalidPhone": "Туура мобилдик телефон номерин жазыңыз.",
++    "invalidDial": "Өлкөнүн туура телефон кодун тандаңыз.",
++    "duplicateEmail": "Бул электрондук дарек мурунтан катталган. Аккаунтуңузга кириңиз."
++  },
++  "auth": {
++    "email": "Электрондук почта",
++    "emailPlaceholder": "Электрондук дарегиңизди жазыңыз",
++    "password": "Сырсөз",
++    "signIn": "Кирүү"
++  }
++}
+diff --git a/client/src/i18n/locales/it/common.json b/client/src/i18n/locales/it/common.json
+new file mode 100644
+index 0000000..c1e69a6
+--- /dev/null
++++ b/client/src/i18n/locales/it/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Crea un account agenzia",
++    "subtitle": "Crea un account per accedere alla formazione e alle informazioni sulle destinazioni.",
++    "fullName": "Nome completo",
++    "fullNamePlaceholder": "Inserisci il tuo nome completo",
++    "agencyName": "Nome dell’agenzia",
++    "agencyPlaceholder": "Inserisci il nome della tua agenzia",
++    "country": "Paese",
++    "selectCountry": "Seleziona un Paese",
++    "mobilePhone": "Telefono cellulare",
++    "phoneCountryCode": "Prefisso telefonico del Paese",
++    "createPassword": "Crea una password",
++    "passwordHint": "Usa almeno 8 caratteri.",
++    "creating": "Creazione dell’account...",
++    "createAccount": "Crea account",
++    "alreadyAccount": "Hai già un account?",
++    "readyTitle": "Il tuo account è pronto",
++    "readyMessage": "Ora puoi accedere al centro di formazione.",
++    "pendingTitle": "Richiesta ricevuta",
++    "pendingMessage": "Il tuo account è in attesa di approvazione.",
++    "failedTitle": "Registrazione non riuscita",
++    "failedMessage": "Controlla i tuoi dati e riprova.",
++    "invalidPhone": "Inserisci un numero di cellulare valido.",
++    "invalidDial": "Seleziona un prefisso telefonico valido.",
++    "duplicateEmail": "Questo indirizzo e-mail è già registrato. Accedi al tuo account."
++  },
++  "auth": {
++    "email": "E-mail",
++    "emailPlaceholder": "Inserisci la tua e-mail",
++    "password": "Password",
++    "signIn": "Accedi"
++  }
++}
+diff --git a/client/src/i18n/locales/ru/common.json b/client/src/i18n/locales/ru/common.json
+index b4915ec..70c6e89 100644
+--- a/client/src/i18n/locales/ru/common.json
++++ b/client/src/i18n/locales/ru/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "Контакты",
+     "footerRights": "Все права защищены.",
+     "footerLocated": "Платформа образовательного консалтинга из Турции"
++  },
++  "registration": {
++    "title": "Создать аккаунт агентства",
++    "subtitle": "Создайте аккаунт для доступа к обучению и информации о странах.",
++    "fullName": "Полное имя",
++    "fullNamePlaceholder": "Введите полное имя",
++    "agencyName": "Название агентства",
++    "agencyPlaceholder": "Введите название агентства",
++    "country": "Страна",
++    "selectCountry": "Выберите страну",
++    "mobilePhone": "Мобильный телефон",
++    "phoneCountryCode": "Телефонный код страны",
++    "createPassword": "Создайте пароль",
++    "passwordHint": "Используйте не менее 8 символов.",
++    "creating": "Создание аккаунта...",
++    "createAccount": "Создать аккаунт",
++    "alreadyAccount": "Уже есть аккаунт?",
++    "readyTitle": "Ваш аккаунт готов",
++    "readyMessage": "Теперь вам доступен учебный центр.",
++    "pendingTitle": "Заявка получена",
++    "pendingMessage": "Ваш аккаунт ожидает одобрения.",
++    "failedTitle": "Не удалось зарегистрироваться",
++    "failedMessage": "Проверьте данные и повторите попытку.",
++    "invalidPhone": "Введите действительный номер мобильного телефона.",
++    "invalidDial": "Выберите действительный телефонный код страны.",
++    "duplicateEmail": "Этот адрес электронной почты уже зарегистрирован. Войдите в аккаунт."
+   }
+ }
+diff --git a/client/src/i18n/locales/tk/common.json b/client/src/i18n/locales/tk/common.json
+new file mode 100644
+index 0000000..7f52a1e
+--- /dev/null
++++ b/client/src/i18n/locales/tk/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Agentlik hasabyny dörediň",
++    "subtitle": "Okuwlara we okuw ýurtlary baradaky maglumatlara girmek üçin hasap dörediň.",
++    "fullName": "Doly ady",
++    "fullNamePlaceholder": "Doly adyňyzy giriziň",
++    "agencyName": "Agentligiň ady",
++    "agencyPlaceholder": "Agentligiňiziň adyny giriziň",
++    "country": "Ýurt",
++    "selectCountry": "Ýurdy saýlaň",
++    "mobilePhone": "Jübi telefony",
++    "phoneCountryCode": "Ýurdyň telefon kody",
++    "createPassword": "Açar sözi dörediň",
++    "passwordHint": "Azyndan 8 nyşan ulanyň.",
++    "creating": "Hasap döredilýär...",
++    "createAccount": "Hasap döret",
++    "alreadyAccount": "Hasabyňyz barmy?",
++    "readyTitle": "Hasabyňyz taýýar",
++    "readyMessage": "Indi okuw merkezine girip bilersiňiz.",
++    "pendingTitle": "Arza alyndy",
++    "pendingMessage": "Hasabyňyz tassyklamaga garaşýar.",
++    "failedTitle": "Hasaba alyş başa barmady",
++    "failedMessage": "Maglumatlaryňyzy barlap, gaýtadan synanyşyň.",
++    "invalidPhone": "Dogry jübi telefon belgisini giriziň.",
++    "invalidDial": "Ýurdyň dogry telefon koduny saýlaň.",
++    "duplicateEmail": "Bu e-poçta eýýäm hasaba alnan. Hasabyňyza giriň."
++  },
++  "auth": {
++    "email": "E-poçta",
++    "emailPlaceholder": "E-poçtaňyzy giriziň",
++    "password": "Açar söz",
++    "signIn": "Giriş"
++  }
++}
+diff --git a/client/src/i18n/locales/pt/common.json b/client/src/i18n/locales/pt/common.json
+new file mode 100644
+index 0000000..9a5dc30
+--- /dev/null
++++ b/client/src/i18n/locales/pt/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Criar conta de agência",
++    "subtitle": "Crie uma conta para aceder à formação e às informações sobre destinos.",
++    "fullName": "Nome completo",
++    "fullNamePlaceholder": "Introduza o seu nome completo",
++    "agencyName": "Nome da agência",
++    "agencyPlaceholder": "Introduza o nome da sua agência",
++    "country": "País",
++    "selectCountry": "Selecione um país",
++    "mobilePhone": "Telemóvel",
++    "phoneCountryCode": "Indicativo telefónico do país",
++    "createPassword": "Crie uma palavra-passe",
++    "passwordHint": "Utilize pelo menos 8 caracteres.",
++    "creating": "A criar conta...",
++    "createAccount": "Criar conta",
++    "alreadyAccount": "Já tem uma conta?",
++    "readyTitle": "A sua conta está pronta",
++    "readyMessage": "Já pode aceder ao centro de formação.",
++    "pendingTitle": "Candidatura recebida",
++    "pendingMessage": "A sua conta aguarda aprovação.",
++    "failedTitle": "Falha no registo",
++    "failedMessage": "Verifique os seus dados e tente novamente.",
++    "invalidPhone": "Introduza um número de telemóvel válido.",
++    "invalidDial": "Selecione um indicativo telefónico válido.",
++    "duplicateEmail": "Este e-mail já está registado. Inicie sessão."
++  },
++  "auth": {
++    "email": "E-mail",
++    "emailPlaceholder": "Introduza o seu e-mail",
++    "password": "Palavra-passe",
++    "signIn": "Iniciar sessão"
++  }
++}
+diff --git a/client/src/i18n/locales/zh/common.json b/client/src/i18n/locales/zh/common.json
+index 666bea2..82591db 100644
+--- a/client/src/i18n/locales/zh/common.json
++++ b/client/src/i18n/locales/zh/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "联系",
+     "footerRights": "版权所有。",
+     "footerLocated": "总部位于土耳其的教育咨询平台"
++  },
++  "registration": {
++    "title": "创建代理机构账户",
++    "subtitle": "创建账户以访问培训和留学目的地信息。",
++    "fullName": "姓名",
++    "fullNamePlaceholder": "请输入您的姓名",
++    "agencyName": "代理机构名称",
++    "agencyPlaceholder": "请输入您的代理机构名称",
++    "country": "国家",
++    "selectCountry": "请选择国家",
++    "mobilePhone": "手机号码",
++    "phoneCountryCode": "国际电话区号",
++    "createPassword": "创建密码",
++    "passwordHint": "请至少使用8个字符。",
++    "creating": "正在创建账户...",
++    "createAccount": "创建账户",
++    "alreadyAccount": "已有账户？",
++    "readyTitle": "您的账户已就绪",
++    "readyMessage": "现在可以访问培训中心。",
++    "pendingTitle": "申请已收到",
++    "pendingMessage": "您的账户正在等待审核。",
++    "failedTitle": "注册失败",
++    "failedMessage": "请检查信息后重试。",
++    "invalidPhone": "请输入有效的手机号码。",
++    "invalidDial": "请选择有效的国际电话区号。",
++    "duplicateEmail": "该电子邮箱已注册，请登录。"
+   }
+ }
+diff --git a/client/src/i18n/locales/uk/common.json b/client/src/i18n/locales/uk/common.json
+new file mode 100644
+index 0000000..7512c7e
+--- /dev/null
++++ b/client/src/i18n/locales/uk/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Створити обліковий запис агентства",
++    "subtitle": "Створіть обліковий запис для доступу до навчання та інформації про країни.",
++    "fullName": "Повне ім’я",
++    "fullNamePlaceholder": "Введіть повне ім’я",
++    "agencyName": "Назва агентства",
++    "agencyPlaceholder": "Введіть назву агентства",
++    "country": "Країна",
++    "selectCountry": "Виберіть країну",
++    "mobilePhone": "Мобільний телефон",
++    "phoneCountryCode": "Телефонний код країни",
++    "createPassword": "Створіть пароль",
++    "passwordHint": "Використовуйте щонайменше 8 символів.",
++    "creating": "Створення облікового запису...",
++    "createAccount": "Створити обліковий запис",
++    "alreadyAccount": "Уже маєте обліковий запис?",
++    "readyTitle": "Ваш обліковий запис готовий",
++    "readyMessage": "Тепер ви можете користуватися навчальним центром.",
++    "pendingTitle": "Заявку отримано",
++    "pendingMessage": "Ваш обліковий запис очікує схвалення.",
++    "failedTitle": "Не вдалося зареєструватися",
++    "failedMessage": "Перевірте дані та спробуйте ще раз.",
++    "invalidPhone": "Введіть дійсний номер мобільного телефону.",
++    "invalidDial": "Виберіть дійсний телефонний код країни.",
++    "duplicateEmail": "Цю електронну адресу вже зареєстровано. Увійдіть в обліковий запис."
++  },
++  "auth": {
++    "email": "Електронна пошта",
++    "emailPlaceholder": "Введіть електронну адресу",
++    "password": "Пароль",
++    "signIn": "Увійти"
++  }
++}
+diff --git a/client/src/i18n/locales/ar/common.json b/client/src/i18n/locales/ar/common.json
+index bdee946..c099e78 100644
+--- a/client/src/i18n/locales/ar/common.json
++++ b/client/src/i18n/locales/ar/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "التواصل",
+     "footerRights": "جميع الحقوق محفوظة.",
+     "footerLocated": "منصة استشارات تعليمية مقرها تركيا"
++  },
++  "registration": {
++    "title": "إنشاء حساب وكالة",
++    "subtitle": "أنشئ حسابًا للوصول إلى التدريب ومعلومات وجهات الدراسة.",
++    "fullName": "الاسم الكامل",
++    "fullNamePlaceholder": "أدخل اسمك الكامل",
++    "agencyName": "اسم الوكالة",
++    "agencyPlaceholder": "أدخل اسم وكالتك",
++    "country": "الدولة",
++    "selectCountry": "اختر دولة",
++    "mobilePhone": "الهاتف المحمول",
++    "phoneCountryCode": "رمز الاتصال الدولي",
++    "createPassword": "أنشئ كلمة مرور",
++    "passwordHint": "استخدم 8 أحرف على الأقل.",
++    "creating": "جارٍ إنشاء الحساب...",
++    "createAccount": "إنشاء حساب",
++    "alreadyAccount": "لديك حساب بالفعل؟",
++    "readyTitle": "حسابك جاهز",
++    "readyMessage": "يمكنك الآن الوصول إلى مركز التدريب.",
++    "pendingTitle": "تم استلام الطلب",
++    "pendingMessage": "حسابك بانتظار الموافقة.",
++    "failedTitle": "تعذّر التسجيل",
++    "failedMessage": "تحقق من بياناتك وحاول مجددًا.",
++    "invalidPhone": "أدخل رقم هاتف محمول صالحًا.",
++    "invalidDial": "اختر رمز اتصال دوليًا صالحًا.",
++    "duplicateEmail": "هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول."
+   }
+ }
+diff --git a/client/src/i18n/locales/bn/common.json b/client/src/i18n/locales/bn/common.json
+new file mode 100644
+index 0000000..d02c8e6
+--- /dev/null
++++ b/client/src/i18n/locales/bn/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "এজেন্সি অ্যাকাউন্ট তৈরি করুন",
++    "subtitle": "প্রশিক্ষণ ও শিক্ষাগন্তব্যের তথ্য পেতে অ্যাকাউন্ট তৈরি করুন।",
++    "fullName": "পুরো নাম",
++    "fullNamePlaceholder": "আপনার পুরো নাম লিখুন",
++    "agencyName": "এজেন্সির নাম",
++    "agencyPlaceholder": "আপনার এজেন্সির নাম লিখুন",
++    "country": "দেশ",
++    "selectCountry": "দেশ নির্বাচন করুন",
++    "mobilePhone": "মোবাইল নম্বর",
++    "phoneCountryCode": "দেশের ফোন কোড",
++    "createPassword": "পাসওয়ার্ড তৈরি করুন",
++    "passwordHint": "কমপক্ষে ৮টি অক্ষর ব্যবহার করুন।",
++    "creating": "অ্যাকাউন্ট তৈরি হচ্ছে...",
++    "createAccount": "অ্যাকাউন্ট তৈরি করুন",
++    "alreadyAccount": "ইতিমধ্যে অ্যাকাউন্ট আছে?",
++    "readyTitle": "আপনার অ্যাকাউন্ট প্রস্তুত",
++    "readyMessage": "এখন আপনি প্রশিক্ষণ কেন্দ্রে প্রবেশ করতে পারবেন।",
++    "pendingTitle": "আবেদন পাওয়া গেছে",
++    "pendingMessage": "আপনার অ্যাকাউন্ট অনুমোদনের অপেক্ষায় আছে।",
++    "failedTitle": "নিবন্ধন ব্যর্থ হয়েছে",
++    "failedMessage": "আপনার তথ্য যাচাই করে আবার চেষ্টা করুন।",
++    "invalidPhone": "সঠিক মোবাইল নম্বর লিখুন।",
++    "invalidDial": "দেশের সঠিক ফোন কোড নির্বাচন করুন।",
++    "duplicateEmail": "এই ইমেইল ইতিমধ্যে নিবন্ধিত। সাইন ইন করুন।"
++  },
++  "auth": {
++    "email": "ইমেইল",
++    "emailPlaceholder": "আপনার ইমেইল লিখুন",
++    "password": "পাসওয়ার্ড",
++    "signIn": "সাইন ইন"
++  }
++}
+diff --git a/client/src/i18n/locales/ne/common.json b/client/src/i18n/locales/ne/common.json
+new file mode 100644
+index 0000000..d9f3522
+--- /dev/null
++++ b/client/src/i18n/locales/ne/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "एजेन्सी खाता बनाउनुहोस्",
++    "subtitle": "तालिम र अध्ययन गन्तव्यको जानकारी पाउन खाता बनाउनुहोस्।",
++    "fullName": "पूरा नाम",
++    "fullNamePlaceholder": "आफ्नो पूरा नाम लेख्नुहोस्",
++    "agencyName": "एजेन्सीको नाम",
++    "agencyPlaceholder": "आफ्नो एजेन्सीको नाम लेख्नुहोस्",
++    "country": "देश",
++    "selectCountry": "देश छान्नुहोस्",
++    "mobilePhone": "मोबाइल नम्बर",
++    "phoneCountryCode": "देशको फोन कोड",
++    "createPassword": "पासवर्ड बनाउनुहोस्",
++    "passwordHint": "कम्तीमा ८ अक्षर प्रयोग गर्नुहोस्।",
++    "creating": "खाता बनाइँदै छ...",
++    "createAccount": "खाता बनाउनुहोस्",
++    "alreadyAccount": "पहिल्यै खाता छ?",
++    "readyTitle": "तपाईंको खाता तयार छ",
++    "readyMessage": "अब तपाईं तालिम केन्द्रमा प्रवेश गर्न सक्नुहुन्छ।",
++    "pendingTitle": "आवेदन प्राप्त भयो",
++    "pendingMessage": "तपाईंको खाता स्वीकृतिको प्रतीक्षामा छ।",
++    "failedTitle": "दर्ता असफल भयो",
++    "failedMessage": "आफ्नो विवरण जाँचेर फेरि प्रयास गर्नुहोस्।",
++    "invalidPhone": "मान्य मोबाइल नम्बर लेख्नुहोस्।",
++    "invalidDial": "देशको मान्य फोन कोड छान्नुहोस्।",
++    "duplicateEmail": "यो इमेल पहिल्यै दर्ता गरिएको छ। साइन इन गर्नुहोस्।"
++  },
++  "auth": {
++    "email": "इमेल",
++    "emailPlaceholder": "आफ्नो इमेल लेख्नुहोस्",
++    "password": "पासवर्ड",
++    "signIn": "साइन इन गर्नुहोस्"
++  }
++}
+diff --git a/client/src/i18n/locales/hi/common.json b/client/src/i18n/locales/hi/common.json
+new file mode 100644
+index 0000000..2030e04
+--- /dev/null
++++ b/client/src/i18n/locales/hi/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "एजेंसी खाता बनाएँ",
++    "subtitle": "प्रशिक्षण और अध्ययन गंतव्यों की जानकारी पाने के लिए खाता बनाएँ।",
++    "fullName": "पूरा नाम",
++    "fullNamePlaceholder": "अपना पूरा नाम दर्ज करें",
++    "agencyName": "एजेंसी का नाम",
++    "agencyPlaceholder": "अपनी एजेंसी का नाम दर्ज करें",
++    "country": "देश",
++    "selectCountry": "देश चुनें",
++    "mobilePhone": "मोबाइल नंबर",
++    "phoneCountryCode": "देश का फोन कोड",
++    "createPassword": "पासवर्ड बनाएँ",
++    "passwordHint": "कम से कम 8 अक्षर इस्तेमाल करें।",
++    "creating": "खाता बनाया जा रहा है...",
++    "createAccount": "खाता बनाएँ",
++    "alreadyAccount": "पहले से खाता है?",
++    "readyTitle": "आपका खाता तैयार है",
++    "readyMessage": "अब आप प्रशिक्षण केंद्र का उपयोग कर सकते हैं।",
++    "pendingTitle": "आवेदन प्राप्त हुआ",
++    "pendingMessage": "आपका खाता स्वीकृति की प्रतीक्षा में है।",
++    "failedTitle": "पंजीकरण विफल",
++    "failedMessage": "अपनी जानकारी जाँचकर दोबारा प्रयास करें।",
++    "invalidPhone": "वैध मोबाइल नंबर दर्ज करें।",
++    "invalidDial": "देश का वैध फोन कोड चुनें।",
++    "duplicateEmail": "यह ईमेल पहले से पंजीकृत है। कृपया साइन इन करें।"
++  },
++  "auth": {
++    "email": "ईमेल",
++    "emailPlaceholder": "अपना ईमेल दर्ज करें",
++    "password": "पासवर्ड",
++    "signIn": "साइन इन करें"
++  }
++}
+diff --git a/client/src/i18n/locales/ko/common.json b/client/src/i18n/locales/ko/common.json
+new file mode 100644
+index 0000000..8477446
+--- /dev/null
++++ b/client/src/i18n/locales/ko/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "에이전시 계정 만들기",
++    "subtitle": "교육 및 유학 국가 정보에 접근하려면 계정을 만드세요.",
++    "fullName": "성명",
++    "fullNamePlaceholder": "성명을 입력하세요",
++    "agencyName": "에이전시 이름",
++    "agencyPlaceholder": "에이전시 이름을 입력하세요",
++    "country": "국가",
++    "selectCountry": "국가를 선택하세요",
++    "mobilePhone": "휴대전화",
++    "phoneCountryCode": "국가 전화번호 코드",
++    "createPassword": "비밀번호 만들기",
++    "passwordHint": "8자 이상을 사용하세요.",
++    "creating": "계정 생성 중...",
++    "createAccount": "계정 만들기",
++    "alreadyAccount": "이미 계정이 있나요?",
++    "readyTitle": "계정이 준비되었습니다",
++    "readyMessage": "이제 교육 허브를 이용할 수 있습니다.",
++    "pendingTitle": "신청이 접수되었습니다",
++    "pendingMessage": "계정이 승인 대기 중입니다.",
++    "failedTitle": "가입 실패",
++    "failedMessage": "입력 정보를 확인하고 다시 시도하세요.",
++    "invalidPhone": "유효한 휴대전화 번호를 입력하세요.",
++    "invalidDial": "유효한 국가 전화번호 코드를 선택하세요.",
++    "duplicateEmail": "이미 등록된 이메일입니다. 로그인하세요."
++  },
++  "auth": {
++    "email": "이메일",
++    "emailPlaceholder": "이메일을 입력하세요",
++    "password": "비밀번호",
++    "signIn": "로그인"
++  }
++}
+diff --git a/client/src/i18n/locales/id/common.json b/client/src/i18n/locales/id/common.json
+index c73ebe1..ff29544 100644
+--- a/client/src/i18n/locales/id/common.json
++++ b/client/src/i18n/locales/id/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "Kontak",
+     "footerRights": "Semua hak dilindungi.",
+     "footerLocated": "Platform konsultasi pendidikan berbasis di Türkiye"
++  },
++  "registration": {
++    "title": "Buat akun agen",
++    "subtitle": "Buat akun untuk mengakses pelatihan dan informasi tujuan studi.",
++    "fullName": "Nama lengkap",
++    "fullNamePlaceholder": "Masukkan nama lengkap Anda",
++    "agencyName": "Nama agen",
++    "agencyPlaceholder": "Masukkan nama agen Anda",
++    "country": "Negara",
++    "selectCountry": "Pilih negara",
++    "mobilePhone": "Nomor ponsel",
++    "phoneCountryCode": "Kode telepon negara",
++    "createPassword": "Buat kata sandi",
++    "passwordHint": "Gunakan minimal 8 karakter.",
++    "creating": "Membuat akun...",
++    "createAccount": "Buat akun",
++    "alreadyAccount": "Sudah punya akun?",
++    "readyTitle": "Akun Anda siap",
++    "readyMessage": "Anda sekarang dapat mengakses pusat pelatihan.",
++    "pendingTitle": "Pendaftaran diterima",
++    "pendingMessage": "Akun Anda menunggu persetujuan.",
++    "failedTitle": "Pendaftaran gagal",
++    "failedMessage": "Periksa data Anda dan coba lagi.",
++    "invalidPhone": "Masukkan nomor ponsel yang valid.",
++    "invalidDial": "Pilih kode telepon negara yang valid.",
++    "duplicateEmail": "Email ini sudah terdaftar. Silakan masuk."
+   }
+ }
+diff --git a/client/src/i18n/locales/fr/common.json b/client/src/i18n/locales/fr/common.json
+index e2d04f3..1bdbbc9 100644
+--- a/client/src/i18n/locales/fr/common.json
++++ b/client/src/i18n/locales/fr/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "Contact",
+     "footerRights": "Tous droits réservés.",
+     "footerLocated": "Plateforme de conseil éducatif basée en Türkiye"
++  },
++  "registration": {
++    "title": "Créer un compte d’agence",
++    "subtitle": "Créez un compte pour accéder aux formations et aux informations sur les destinations.",
++    "fullName": "Nom complet",
++    "fullNamePlaceholder": "Saisissez votre nom complet",
++    "agencyName": "Nom de l’agence",
++    "agencyPlaceholder": "Saisissez le nom de votre agence",
++    "country": "Pays",
++    "selectCountry": "Sélectionnez un pays",
++    "mobilePhone": "Téléphone mobile",
++    "phoneCountryCode": "Indicatif téléphonique du pays",
++    "createPassword": "Créez un mot de passe",
++    "passwordHint": "Utilisez au moins 8 caractères.",
++    "creating": "Création du compte...",
++    "createAccount": "Créer un compte",
++    "alreadyAccount": "Vous avez déjà un compte ?",
++    "readyTitle": "Votre compte est prêt",
++    "readyMessage": "Vous pouvez maintenant accéder au centre de formation.",
++    "pendingTitle": "Demande reçue",
++    "pendingMessage": "Votre compte est en attente d’approbation.",
++    "failedTitle": "Échec de l’inscription",
++    "failedMessage": "Vérifiez vos informations et réessayez.",
++    "invalidPhone": "Saisissez un numéro de téléphone mobile valide.",
++    "invalidDial": "Sélectionnez un indicatif téléphonique valide.",
++    "duplicateEmail": "Cette adresse e-mail est déjà enregistrée. Connectez-vous."
+   }
+ }
+diff --git a/client/src/i18n/locales/es/common.json b/client/src/i18n/locales/es/common.json
+index ecc61c3..96d1322 100644
+--- a/client/src/i18n/locales/es/common.json
++++ b/client/src/i18n/locales/es/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "Contacto",
+     "footerRights": "Todos los derechos reservados.",
+     "footerLocated": "Plataforma de consultoría educativa con sede en Türkiye"
++  },
++  "registration": {
++    "title": "Crear una cuenta de agencia",
++    "subtitle": "Cree una cuenta para acceder a la formación y a la información sobre destinos.",
++    "fullName": "Nombre completo",
++    "fullNamePlaceholder": "Introduzca su nombre completo",
++    "agencyName": "Nombre de la agencia",
++    "agencyPlaceholder": "Introduzca el nombre de su agencia",
++    "country": "País",
++    "selectCountry": "Seleccione un país",
++    "mobilePhone": "Teléfono móvil",
++    "phoneCountryCode": "Prefijo telefónico del país",
++    "createPassword": "Cree una contraseña",
++    "passwordHint": "Utilice al menos 8 caracteres.",
++    "creating": "Creando la cuenta...",
++    "createAccount": "Crear cuenta",
++    "alreadyAccount": "¿Ya tiene una cuenta?",
++    "readyTitle": "Su cuenta está lista",
++    "readyMessage": "Ya puede acceder al centro de formación.",
++    "pendingTitle": "Solicitud recibida",
++    "pendingMessage": "Su cuenta está pendiente de aprobación.",
++    "failedTitle": "Error de registro",
++    "failedMessage": "Revise sus datos e inténtelo de nuevo.",
++    "invalidPhone": "Introduzca un número de teléfono móvil válido.",
++    "invalidDial": "Seleccione un prefijo telefónico válido.",
++    "duplicateEmail": "Este correo electrónico ya está registrado. Inicie sesión."
+   }
+ }
+diff --git a/client/src/i18n/locales/en/common.json b/client/src/i18n/locales/en/common.json
+index 72f965f..3dc3526 100644
+--- a/client/src/i18n/locales/en/common.json
++++ b/client/src/i18n/locales/en/common.json
+@@ -586,5 +586,31 @@
+     "footerContactHead": "Contact",
+     "footerRights": "All rights reserved.",
+     "footerLocated": "Türkiye-based education consultancy platform"
++  },
++  "registration": {
++    "title": "Create agent account",
++    "subtitle": "Create an account to access training and destination information.",
++    "fullName": "Full name",
++    "fullNamePlaceholder": "Enter your full name",
++    "agencyName": "Agency name",
++    "agencyPlaceholder": "Enter your agency name",
++    "country": "Country",
++    "selectCountry": "Select a country",
++    "mobilePhone": "Mobile phone",
++    "phoneCountryCode": "Phone country code",
++    "createPassword": "Create a password",
++    "passwordHint": "Use at least 8 characters.",
++    "creating": "Creating account...",
++    "createAccount": "Create account",
++    "alreadyAccount": "Already have an account?",
++    "readyTitle": "Your account is ready",
++    "readyMessage": "You can now access the training hub.",
++    "pendingTitle": "Application received",
++    "pendingMessage": "Your account is awaiting approval.",
++    "failedTitle": "Registration failed",
++    "failedMessage": "Check your details and try again.",
++    "invalidPhone": "Enter a valid mobile phone number.",
++    "invalidDial": "Select a valid phone country code.",
++    "duplicateEmail": "This email is already registered. Sign in instead."
+   }
+ }
+diff --git a/client/src/i18n/locales/fa/common.json b/client/src/i18n/locales/fa/common.json
+index a17bd7e..939014d 100644
+--- a/client/src/i18n/locales/fa/common.json
++++ b/client/src/i18n/locales/fa/common.json
+@@ -565,5 +565,31 @@
+     "footerContactHead": "تماس",
+     "footerRights": "تمام حقوق محفوظ است.",
+     "footerLocated": "پلتفرم مشاورهٔ تحصیلی مستقر در ترکیه"
++  },
++  "registration": {
++    "title": "ایجاد حساب آژانس",
++    "subtitle": "برای دسترسی به آموزش‌ها و اطلاعات مقاصد تحصیلی حساب بسازید.",
++    "fullName": "نام و نام خانوادگی",
++    "fullNamePlaceholder": "نام و نام خانوادگی خود را وارد کنید",
++    "agencyName": "نام آژانس",
++    "agencyPlaceholder": "نام آژانس خود را وارد کنید",
++    "country": "کشور",
++    "selectCountry": "کشوری را انتخاب کنید",
++    "mobilePhone": "تلفن همراه",
++    "phoneCountryCode": "پیش‌شماره تلفن کشور",
++    "createPassword": "رمز عبور بسازید",
++    "passwordHint": "حداقل از ۸ نویسه استفاده کنید.",
++    "creating": "در حال ایجاد حساب...",
++    "createAccount": "ایجاد حساب",
++    "alreadyAccount": "قبلاً حساب ساخته‌اید؟",
++    "readyTitle": "حساب شما آماده است",
++    "readyMessage": "اکنون می‌توانید به مرکز آموزش دسترسی داشته باشید.",
++    "pendingTitle": "درخواست دریافت شد",
++    "pendingMessage": "حساب شما در انتظار تأیید است.",
++    "failedTitle": "ثبت‌نام ناموفق بود",
++    "failedMessage": "اطلاعات خود را بررسی کرده و دوباره تلاش کنید.",
++    "invalidPhone": "شماره تلفن همراه معتبر وارد کنید.",
++    "invalidDial": "پیش‌شماره تلفن معتبر انتخاب کنید.",
++    "duplicateEmail": "این ایمیل قبلاً ثبت شده است. وارد حساب شوید."
+   }
+ }
+diff --git a/client/src/i18n/locales/tr/common.json b/client/src/i18n/locales/tr/common.json
+index d3ccd1b..1a20991 100644
+--- a/client/src/i18n/locales/tr/common.json
++++ b/client/src/i18n/locales/tr/common.json
+@@ -586,5 +586,31 @@
+     "footerContactHead": "İletişim",
+     "footerRights": "Tüm hakları saklıdır.",
+     "footerLocated": "Türkiye merkezli eğitim danışmanlığı platformu"
++  },
++  "registration": {
++    "title": "Acente hesabı oluştur",
++    "subtitle": "Eğitimlere ve destinasyon bilgilerine erişmek için hesap oluşturun.",
++    "fullName": "Ad soyad",
++    "fullNamePlaceholder": "Adınızı ve soyadınızı girin",
++    "agencyName": "Acente adı",
++    "agencyPlaceholder": "Acentenizin adını girin",
++    "country": "Ülke",
++    "selectCountry": "Ülke seçin",
++    "mobilePhone": "Cep telefonu",
++    "phoneCountryCode": "Telefon ülke kodu",
++    "createPassword": "Şifre oluşturun",
++    "passwordHint": "En az 8 karakter kullanın.",
++    "creating": "Hesap oluşturuluyor...",
++    "createAccount": "Hesap oluştur",
++    "alreadyAccount": "Zaten hesabınız var mı?",
++    "readyTitle": "Hesabınız hazır",
++    "readyMessage": "Eğitim merkezine artık erişebilirsiniz.",
++    "pendingTitle": "Başvurunuz alındı",
++    "pendingMessage": "Hesabınız onay bekliyor.",
++    "failedTitle": "Kayıt başarısız",
++    "failedMessage": "Bilgilerinizi kontrol edip tekrar deneyin.",
++    "invalidPhone": "Geçerli bir cep telefonu numarası girin.",
++    "invalidDial": "Geçerli bir telefon ülke kodu seçin.",
++    "duplicateEmail": "Bu e-posta zaten kayıtlı. Giriş yapabilirsiniz."
+   }
+ }
+diff --git a/client/src/i18n/locales/tg/common.json b/client/src/i18n/locales/tg/common.json
+new file mode 100644
+index 0000000..72e41e1
+--- /dev/null
++++ b/client/src/i18n/locales/tg/common.json
+@@ -0,0 +1,34 @@
++{
++  "registration": {
++    "title": "Сохтани ҳисоби агентӣ",
++    "subtitle": "Барои дастрасӣ ба омӯзиш ва маълумоти кишварҳои таҳсил ҳисоб созед.",
++    "fullName": "Ному насаб",
++    "fullNamePlaceholder": "Ному насаби пурраи худро ворид кунед",
++    "agencyName": "Номи агентӣ",
++    "agencyPlaceholder": "Номи агентии худро ворид кунед",
++    "country": "Кишвар",
++    "selectCountry": "Кишварро интихоб кунед",
++    "mobilePhone": "Телефони мобилӣ",
++    "phoneCountryCode": "Рамзи телефонии кишвар",
++    "createPassword": "Гузарвожа созед",
++    "passwordHint": "Ҳадди ақал 8 аломат истифода баред.",
++    "creating": "Ҳисоб сохта мешавад...",
++    "createAccount": "Сохтани ҳисоб",
++    "alreadyAccount": "Аллакай ҳисоб доред?",
++    "readyTitle": "Ҳисоби шумо омода аст",
++    "readyMessage": "Акнун метавонед ба маркази омӯзиш ворид шавед.",
++    "pendingTitle": "Дархост қабул шуд",
++    "pendingMessage": "Ҳисоби шумо мунтазири тасдиқ аст.",
++    "failedTitle": "Бақайдгирӣ ноком шуд",
++    "failedMessage": "Маълумоти худро санҷида, аз нав кӯшиш кунед.",
++    "invalidPhone": "Рақами дурусти телефони мобилиро ворид кунед.",
++    "invalidDial": "Рамзи дурусти телефонии кишварро интихоб кунед.",
++    "duplicateEmail": "Ин почтаи электронӣ аллакай сабт шудааст. Ба ҳисоб ворид шавед."
++  },
++  "auth": {
++    "email": "Почтаи электронӣ",
++    "emailPlaceholder": "Почтаи электронии худро ворид кунед",
++    "password": "Гузарвожа",
++    "signIn": "Ворид шудан"
++  }
++}

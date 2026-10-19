@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import type { PaymentProvider, Order } from '../types';
 
 export interface PaymentResult {
@@ -22,7 +23,7 @@ export const processPayment = async (
   if (provider === 'none') {
     return {
       success: false,
-      error: 'Payments are not enabled yet'
+      error: legacyUi("Payments are not enabled yet")
     };
   }
 

@@ -545,6 +545,21 @@
       "partnerZone": "Partner Zone",
       "findyAssistant": "Findy Assistant",
       "findyAssistantDesc": "Chat widget visible at the bottom right of all panels. When disabled, hidden in both admin and agent panels."
+    },
+    "sidebarLinks": {
+      "validationTitle": "Missing fields",
+      "validationDesc": "Every link needs a name and a URL.",
+      "savedTitle": "Saved",
+      "savedDesc": "Sidebar links updated.",
+      "title": "Sidebar Links",
+      "description": "Manage the links shown in the agent sidebar. They open in a new tab.",
+      "addLink": "Add link",
+      "empty": "No links yet. Click “Add link” to create one.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "uploadIcon": "Upload icon",
+      "namePlaceholder": "Display name (e.g. Agent Portal)",
+      "enabled": "Visible to agents"
     }
   },
   "home": {
@@ -586,5 +601,31 @@
     "footerContactHead": "Contact",
     "footerRights": "All rights reserved.",
     "footerLocated": "Türkiye-based education consultancy platform"
+  },
+  "registration": {
+    "title": "Create agent account",
+    "subtitle": "Create an account to access training and destination information.",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Enter your full name",
+    "agencyName": "Agency name",
+    "agencyPlaceholder": "Enter your agency name",
+    "country": "Country",
+    "selectCountry": "Select a country",
+    "mobilePhone": "Mobile phone",
+    "phoneCountryCode": "Phone country code",
+    "createPassword": "Create a password",
+    "passwordHint": "Use at least 8 characters.",
+    "creating": "Creating account...",
+    "createAccount": "Create account",
+    "alreadyAccount": "Already have an account?",
+    "readyTitle": "Your account is ready",
+    "readyMessage": "You can now access the training hub.",
+    "pendingTitle": "Application received",
+    "pendingMessage": "Your account is awaiting approval.",
+    "failedTitle": "Registration failed",
+    "failedMessage": "Check your details and try again.",
+    "invalidPhone": "Enter a valid mobile phone number.",
+    "invalidDial": "Select a valid phone country code.",
+    "duplicateEmail": "This email is already registered. Sign in instead."
   }
 }
