@@ -25,3 +25,11 @@ Existing backups are preserved. New backup creation pauses at seven snapshots or
 ## Setup hardening
 
 The setup helper now requires an explicitly entered 16–128 character administrator password and stops before provisioning when it is absent or invalid. It no longer supplies a fixed default or prints the password. This source-only change does not rotate or change any existing account credentials.
+
+## Homepage launch update
+
+The public homepage now follows learning → consulting resources → partnership application in all 23 languages. It includes Findy scope/limits, certificate conditions, an illustrative logo/no-logo material preview, invitation-code handoff, audience guidance, an eight-question FAQ, the published brand privacy-policy link and support/access-condition links. Campaign duration is not hardcoded; visitors use the conditions in their invitation. Account registration does not grant partner status or Apply permissions.
+
+The former unsupported country count and instant-training wording were removed. Logged-in users can inspect the public homepage and use its portal link without ending their session. Registration, administrator approvals and application permissions are unchanged.
+
+Validation: TypeScript and production build passed, including the translation gate; 99 homepage strings are present in each of 23 dictionaries. Browser checks cover all 23 languages at phone width, RTL direction, logo toggling, FAQ expansion and promo-code handoff without creating accounts or sending mail.
