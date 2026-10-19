@@ -34,7 +34,28 @@
     "continue": "继续",
     "start": "开始",
     "viewAll": "查看全部",
-    "profilePictureAlt": "个人头像"
+    "profilePictureAlt": "个人头像",
+    "draft": "草稿",
+    "published": "已发布",
+    "status": "状态",
+    "title": "标题",
+    "description": "描述",
+    "document": "文档",
+    "video": "视频",
+    "image": "图像",
+    "files": "文件",
+    "allCountries": "所有国家",
+    "allTypes": "所有类型",
+    "newestFirst": "最新优先",
+    "oldestFirst": "最早优先",
+    "searchPlaceholder": "搜索...",
+    "open": "打开",
+    "download": "下载",
+    "subfolders": "子文件夹",
+    "category": "类别",
+    "country": "国家",
+    "order": "排序",
+    "name": "名称"
   },
   "toast": {
     "saved": "设置已保存",
@@ -508,6 +529,21 @@
       "partnerZone": "合作伙伴专区",
       "findyAssistant": "Findy助手",
       "findyAssistantDesc": "所有面板右下角可见的聊天小部件。禁用后在管理员和代理面板中均隐藏。"
+    },
+    "sidebarLinks": {
+      "validationTitle": "缺少字段",
+      "validationDesc": "每个链接都需要一个名称和一个 URL。",
+      "savedTitle": "已保存",
+      "savedDesc": "侧边栏链接已更新。",
+      "title": "侧边栏链接",
+      "description": "管理代理侧边栏中显示的链接。它们将在新标签页中打开。",
+      "addLink": "添加链接",
+      "empty": "尚无链接。点击“添加链接”创建一个。",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "uploadIcon": "上传图标",
+      "namePlaceholder": "显示名称（例如，代理门户）",
+      "enabled": "对代理可见"
     }
   },
   "contentEditor": {

@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 "use client"
 
 import * as React from "react"
@@ -49,7 +50,7 @@ const useFormField = () => {
   const fieldState = getFieldState(fieldContext.name, formState)
 
   if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
+    throw new Error(legacyUi("useFormField should be used within <FormField>"))
   }
 
   const { id } = itemContext
@@ -160,7 +161,7 @@ const FormMessage = React.forwardRef<
       className={cn("text-sm font-medium text-destructive", className)}
       {...props}
     >
-      {body}
+      {typeof body === 'string' ? legacyMessage(body) : body}
     </p>
   )
 })

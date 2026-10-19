@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -162,7 +163,7 @@ export default function MenuManagement() {
           description: t('admin.menuMgmt.settingsSavedDesc'),
         });
       } else {
-        throw new Error('Failed to save settings');
+        throw new Error(legacyUi("Failed to save settings"));
       }
     } catch (error) {
       console.error('Error saving menu settings:', error);
@@ -365,7 +366,7 @@ export default function MenuManagement() {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <Button onClick={handleSave} disabled={saving || loading} data-testid="button-save-menu">
           <Save className="w-4 h-4 mr-2" />
           {saving ? t('admin.menuMgmt.saving') : t('admin.menuMgmt.saveChanges')}

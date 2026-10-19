@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -57,7 +58,7 @@ function sanitizeTranslationContent(html: string): string {
     ADD_ATTR: ['class', 'style', 'role', 'aria-label'],
   });
   if (/<style\b/i.test(html) && !/<style\b/i.test(sanitized)) {
-    throw new Error('The HTML layout could not be preserved. The translation was not saved.');
+    throw new Error(legacyUi("The HTML layout could not be preserved. The translation was not saved."));
   }
   return sanitized;
 }
@@ -91,27 +92,27 @@ function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   return (
     <div className="border rounded-md overflow-hidden">
       <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1.5">
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title={legacyUi("Bold")}>
           <Bold className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title={legacyUi("Italic")}>
           <Italic className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="Heading">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title={legacyUi("Heading")}>
           <Heading2 className="w-4 h-4" />
         </ToolbarButton>
         <div className="w-px h-5 bg-border mx-1" />
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet list">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title={legacyUi("Bullet list")}>
           <List className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Ordered list">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title={legacyUi("Ordered list")}>
           <ListOrdered className="w-4 h-4" />
         </ToolbarButton>
         <div className="w-px h-5 bg-border mx-1" />
-        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="Undo">
+        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title={legacyUi("Undo")}>
           <Undo className="w-4 h-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="Redo">
+        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title={legacyUi("Redo")}>
           <Redo className="w-4 h-4" />
         </ToolbarButton>
       </div>
@@ -207,7 +208,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
       toast({ title: t("contentEditor.saved"), description: `${langLabel} ${t("contentEditor.savedDesc")}` });
     },
     onError: (err: Error) => {
-      toast({ title: t("common.error"), description: err.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: legacyMessage(err.message), variant: "destructive" });
     },
   });
 
@@ -228,7 +229,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
       }
     },
     onError: (err: Error) => {
-      toast({ title: t("common.error"), description: err.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: legacyMessage(err.message), variant: "destructive" });
     },
   });
 
@@ -339,16 +340,16 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <Label className="text-xs text-muted-foreground">{t("contentEditor.contentLabel")}</Label>
                   {structuredLesson ? (
-                    <span className="text-xs text-muted-foreground">HTML source · layout preserved</span>
+                    <span className="text-xs text-muted-foreground">{legacyUi("HTML source · layout preserved")}</span>
                   ) : (
                     <Button type="button" size="sm" variant="outline" onClick={() => setSourceMode(mode => !mode)}>
-                      {sourceMode ? 'Visual editor' : 'HTML source'}
+                      {sourceMode ? legacyUi("Visual editor") : legacyUi("HTML source")}
                     </Button>
                   )}
                 </div>
                 {sourceMode || structuredLesson ? (
                   <Textarea
-                    aria-label="Translation HTML source"
+                    aria-label={legacyUi("Translation HTML source")}
                     value={form.content}
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                     placeholder={t("contentEditor.contentPlaceholder", { lang: SUPPORTED_LANGUAGES.find(l => l.code === selectedLang)?.nativeLabel ?? selectedLang })}

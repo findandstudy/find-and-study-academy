@@ -545,6 +545,21 @@
       "partnerZone": "İş Ortağı Bölgesi",
       "findyAssistant": "Findy Asistan",
       "findyAssistantDesc": "Tüm panellerin sağ alt köşesinde görünen sohbet widget'ı. Kapatıldığında hem admin hem de agent panellerinde gizlenir."
+    },
+    "sidebarLinks": {
+      "validationTitle": "Eksik alanlar",
+      "validationDesc": "Her bağlantının bir adı ve bir URL olmalıdır.",
+      "savedTitle": "Kaydedildi",
+      "savedDesc": "Yan panel bağlantıları güncellendi.",
+      "title": "Yan Panel Bağlantıları",
+      "description": "Ajan yan panelinde gösterilen bağlantıları yönetin. Bunlar yeni bir sekmede açılır.",
+      "addLink": "Bağlantı ekle",
+      "empty": "Henüz bağlantı yok. Oluşturmak için “Bağlantı ekle”ye tıklayın.",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "uploadIcon": "Simge yükle",
+      "namePlaceholder": "Görünen ad (ör. Ajan Portalı)",
+      "enabled": "Ajanlar için görünür"
     }
   },
   "home": {

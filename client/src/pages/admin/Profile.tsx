@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useState, useRef } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,7 +103,7 @@ export default function AdminProfile() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload profile picture');
+        throw new Error(legacyUi("Failed to upload profile picture"));
       }
 
       const result = await response.json();

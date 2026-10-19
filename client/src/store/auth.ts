@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { create } from 'zustand';
 import type { User, Role } from '../types';
 import { login as authLogin, signupAgent as authSignup, logout as authLogout, getSession, validateSession, SignupData, LoginCredentials, Session, SignupResult } from '../lib/auth';
@@ -66,7 +67,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error('Signup failed:', error);
       set({ isLoading: false });
-      return { pending: false, error: true, message: error instanceof Error ? error.message : 'Signup failed' };
+      return { pending: false, error: true, message: error instanceof Error ? legacyMessage(error.message) : legacyUi("Signup failed") };
     }
   },
 

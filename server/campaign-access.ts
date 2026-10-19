@@ -88,7 +88,7 @@ export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,re
   const ch=check.rows[0];if(!ch||ch.code_hash!==verificationHash(v.email+':'+v.verificationCode))fail(400,'EMAIL_CODE_INVALID');
   await tx(async c=>{const a=await campaign(c,v.promoCode);if(a.id!==ch.campaign_id)fail(400,'EMAIL_CODE_INVALID');
    const verified=(await c.query('DELETE FROM academy_email_challenges WHERE email=$1 AND code_hash=$2 AND expires_at>now() RETURNING email',[v.email,ch.code_hash])).rows[0];if(!verified)fail(400,'EMAIL_CODE_INVALID');
-   await c.query('INSERT INTO agencies (id,name,status,primary_contact_name,primary_contact_email,country,contact_phone) VALUES ($1,$2,$3,$4,$5,$6,$7)',[agencyId,v.agencyName,'pending',v.name,v.email,v.country,v.phone]);
+   await c.query('INSERT INTO agencies (id,name,status,primary_contact_name,primary_contact_email,contact_email,country,contact_phone) VALUES ($1,$2,$3,$4,$5,$5,$6,$7)',[agencyId,v.agencyName,'pending',v.name,v.email,v.country,v.phone]);
    await c.query('INSERT INTO users (id,username,password,name,email,role,status,agency_id,country,phone,language_preference) VALUES ($1,$2,$3,$4,$2,$5,$6,$7,$8,$9,$10)',[userId,v.email,password,v.name,'agent','inactive',agencyId,v.country,v.phone,v.languagePreference]);
    await c.query('INSERT INTO academy_campaign_members (user_id,campaign_id,access_until) VALUES ($1,$2,now()+$3*interval \'1 day\')',[userId,a.id,a.access_days]);
   });res.status(201).json({success:true,pending:true,message:'Your verified application is awaiting administrator approval.'});

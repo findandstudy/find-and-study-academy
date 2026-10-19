@@ -1,3 +1,4 @@
+import { legacyUi, legacyStatus } from "@/lib/legacy-ui";
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -8,23 +9,23 @@ import { Bell } from 'lucide-react';
 const subscriptionOptions = [
   {
     key: 'enrolled' as const,
-    title: 'Student Enrolled',
-    description: 'Get notified when a student enrolls in a course through your agency'
+    get title(){return legacyUi("Student Enrolled");},
+    get description(){return legacyUi("Get notified when a student enrolls in a course through your agency");}
   },
   {
     key: 'fiftyPercent' as const,
-    title: '50% Progress',
-    description: 'Get notified when a student reaches 50% course completion'
+    get title(){return legacyUi("50% Progress");},
+    get description(){return legacyUi("Get notified when a student reaches 50% course completion");}
   },
   {
     key: 'seventyFivePercent' as const,
-    title: '75% Progress',
-    description: 'Get notified when a student reaches 75% course completion'
+    get title(){return legacyUi("75% Progress");},
+    get description(){return legacyUi("Get notified when a student reaches 75% course completion");}
   },
   {
     key: 'completed' as const,
-    title: 'Course Completed',
-    description: 'Get notified when a student successfully completes a course'
+    get title(){return legacyUi("Course Completed");},
+    get description(){return legacyUi("Get notified when a student successfully completes a course");}
   }
 ];
 
@@ -41,8 +42,8 @@ export default function AgentSubscriptions() {
     updateSubscriptionPreferences(newPreferences);
     
     toast({
-      title: 'Preferences Updated',
-      description: `${value ? 'Enabled' : 'Disabled'} notifications for ${subscriptionOptions.find(o => o.key === key)?.title}`
+      title: legacyUi("Preferences Updated"),
+      description: legacyUi("{value0} notifications for {value1}",{value0:legacyStatus(value ? 'Enabled' : 'Disabled'),value1:subscriptionOptions.find(o => o.key === key)?.title})
     });
   };
 
@@ -53,11 +54,9 @@ export default function AgentSubscriptions() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Notification Preferences
-          </h1>
+            {legacyUi("Notification Preferences")}</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Choose which student progress notifications you'd like to receive.
-          </p>
+            {legacyUi("Choose which student progress notifications you'd like to receive.")}</p>
         </div>
       </div>
 
@@ -65,8 +64,7 @@ export default function AgentSubscriptions() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5" />
-            Student Progress Notifications
-          </CardTitle>
+            {legacyUi("Student Progress Notifications")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {subscriptionOptions.map((option) => (
@@ -93,9 +91,7 @@ export default function AgentSubscriptions() {
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
-            📧 Notifications will be sent to your registered email address. 
-            You can change your email preferences in your profile settings.
-          </p>
+            {legacyUi("📧 Notifications will be sent to your registered email address. You can change your email preferences in your profile settings.")}</p>
         </CardContent>
       </Card>
     </div>

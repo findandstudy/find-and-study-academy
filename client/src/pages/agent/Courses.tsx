@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { courseText, countryLabel, sectionLabel } from '@/i18n/course-labels';
 import { CourseView } from '@/components/course/CourseView';
 import { useDataStore } from '@/store/data';
@@ -59,7 +60,7 @@ export default function AgentCourses() {
     queryKey: ['/api/public/quizzes', currentLang],
     queryFn: async () => {
       const response = await fetch(`/api/public/quizzes?lang=${encodeURIComponent(currentLang)}`);
-      if (!response.ok) throw new Error('Could not load quizzes');
+      if (!response.ok) throw new Error(legacyUi("Could not load quizzes"));
       return response.json();
     },
     staleTime: 0, // Always fetch fresh data
@@ -90,7 +91,7 @@ export default function AgentCourses() {
         code: 'TR',
         flag: '🇹🇷',
         status: 'active' as const,
-        description: 'Turkey training course',
+        description: legacyUi("Turkey training course"),
         createdAt: new Date()
       });
     }

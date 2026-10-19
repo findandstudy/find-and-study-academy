@@ -64,9 +64,12 @@ echo
 [[ -z "$PG_PASSWORD" ]] && PG_PASSWORD="$(openssl rand -hex 24)"
 
 SESSION_SECRET="$(openssl rand -hex 64)"
-read -rsp "İlk admin parolası (boşsa varsayılan 'admin123' kullanılır — DEPLOY SONRASI DEĞİŞTİRİN): " ADMIN_PWD
+read -rsp "İlk admin parolası (16-128 karakter; harf, rakam, . _ @ % + = -): " ADMIN_PWD
 echo
-[[ -z "$ADMIN_PWD" ]] && ADMIN_PWD="admin123"
+if [[ ! "$ADMIN_PWD" =~ ^[A-Za-z0-9._@%+=-]{16,128}$ ]]; then
+  err "Güçlü bir admin parolası gerekli; varsayılan parola oluşturulmaz."
+  exit 1
+fi
 
 echo
 log "Domain        : $DOMAIN"
@@ -453,6 +456,6 @@ echo "  • bash $APP_DIR/scripts/deploy.sh                — yeni release çek
 echo "  • $LSWS_DIR/bin/lswsctrl restart                 — OpenLiteSpeed yeniden başlat"
 echo "  • cat $APP_DIR/.env.production                   — env dosyası"
 echo
-warn "İLK GİRİŞ: en@findandstudy.com / ${ADMIN_PWD}"
+warn "İLK GİRİŞ: en@findandstudy.com — kurulum başında girdiğiniz parolayı kullanın."
 warn "İLK İŞ olarak admin parolasını mutlaka değiştirin!"
 echo

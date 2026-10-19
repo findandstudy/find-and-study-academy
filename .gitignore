@@ -95,3 +95,12 @@ tmp/
 *.sql.gz
 *.dump
 backups/
+
+# Private runtime and recovery material
+.env.*
+!.env.example
+!.env.production.example
+*.pem
+*.key
+*.cms
+private/

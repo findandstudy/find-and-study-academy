@@ -34,7 +34,28 @@
     "continue": "ادامه",
     "start": "شروع",
     "viewAll": "نمایش همه",
-    "profilePictureAlt": "تصویر پروفایل"
+    "profilePictureAlt": "تصویر پروفایل",
+    "draft": "پیش‌نویس",
+    "published": "منتشر شده",
+    "status": "وضعیت",
+    "title": "عنوان",
+    "description": "توضیحات",
+    "document": "سند",
+    "video": "ویدئو",
+    "image": "تصویر",
+    "files": "فایل‌ها",
+    "allCountries": "تمام کشورها",
+    "allTypes": "تمام انواع",
+    "newestFirst": "جدیدترین‌ها ابتدا",
+    "oldestFirst": "قدیمی‌ترین‌ها ابتدا",
+    "searchPlaceholder": "جستجو...",
+    "open": "باز",
+    "download": "دانلود",
+    "subfolders": "زیرپوشه‌ها",
+    "category": "دسته‌بندی",
+    "country": "کشور",
+    "order": "مرتب‌سازی",
+    "name": "نام"
   },
   "toast": {
     "saved": "تنظیمات ذخیره شد",
@@ -215,7 +236,7 @@
       }
     },
     "partnerZone": {
-      "title": "منطقه شریک",
+      "title": "منطقه همکار",
       "subtitle": "منابع، راهنماها و مواد به اشتراک گذاشته شده توسط Find And Study Academy.",
       "searchPlaceholder": "جستجو...",
       "allCountries": "همه کشورها",
@@ -505,9 +526,24 @@
       "profile": "نمایه",
       "examsOrders": "آزمون‌ها / سفارشات",
       "subscriptions": "اشتراک‌ها",
-      "partnerZone": "منطقه شریک",
+      "partnerZone": "منطقه همکار",
       "findyAssistant": "دستیار Findy",
       "findyAssistantDesc": "ویجت چت قابل مشاهده در گوشه پایین سمت راست همه پنل‌ها. هنگام غیرفعال بودن، در هر دو پنل پنهان می‌شود."
+    },
+    "sidebarLinks": {
+      "validationTitle": "فیلدهای از دست رفته",
+      "validationDesc": "هر پیوند نیاز به یک نام و یک URL دارد.",
+      "savedTitle": "ذخیره‌شده",
+      "savedDesc": "پیوندهای نوار کناری به‌روزرسانی شد.",
+      "title": "پیوندهای نوار کناری",
+      "description": "پیوندهای نمایش داده شده در نوار کناری نماینده را مدیریت کنید. آنها در یک برگه جدید باز می‌شوند.",
+      "addLink": "افزودن پیوند",
+      "empty": "هنوز پیوندی وجود ندارد. برای ایجاد یکی روی «افزودن پیوند» کلیک کنید.",
+      "moveUp": "جابجایی به بالا",
+      "moveDown": "جابجایی به پایین",
+      "uploadIcon": "بارگذاری آیکون",
+      "namePlaceholder": "نام قابل نمایش (مثلاً درگاه کارگزار)",
+      "enabled": "برای کارگزاران قابل مشاهده"
     }
   },
   "contentEditor": {

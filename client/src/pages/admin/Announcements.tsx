@@ -1,3 +1,4 @@
+import { legacyUi, legacyStatus, legacyLocale, legacyMessage } from "@/lib/legacy-ui";
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -72,13 +73,13 @@ const getTypeIcon = (type: string) => {
 // Priority badges
 const getPriorityBadge = (priority: string) => {
   const variant = announcementPriorityVariants[priority as keyof typeof announcementPriorityVariants] || 'default';
-  return <Badge variant={variant as any}>{priority}</Badge>;
+  return <Badge variant={variant as any}>{legacyStatus(priority)}</Badge>;
 };
 
 // Status badges
 const getStatusBadge = (status: string) => {
   const variant = announcementStatusVariants[status as keyof typeof announcementStatusVariants] || 'default';
-  return <Badge variant={variant as any}>{status}</Badge>;
+  return <Badge variant={variant as any}>{legacyStatus(status)}</Badge>;
 };
 
 export default function AdminAnnouncements() {
@@ -124,16 +125,16 @@ export default function AdminAnnouncements() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       toast({
-        title: 'Success',
-        description: 'Announcement created successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Announcement created successfully."),
       });
       setIsCreateDialogOpen(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to create announcement.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to create announcement."),
         variant: 'destructive',
       });
     },
@@ -146,8 +147,8 @@ export default function AdminAnnouncements() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       toast({
-        title: 'Success',
-        description: 'Announcement updated successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Announcement updated successfully."),
       });
       setIsEditDialogOpen(false);
       setEditingAnnouncement(null);
@@ -155,8 +156,8 @@ export default function AdminAnnouncements() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to update announcement.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to update announcement."),
         variant: 'destructive',
       });
     },
@@ -169,14 +170,14 @@ export default function AdminAnnouncements() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       toast({
-        title: 'Success',
-        description: 'Announcement deleted successfully.',
+        title: legacyUi("Success"),
+        description: legacyUi("Announcement deleted successfully."),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'Failed to delete announcement.',
+        title: legacyUi("Error"),
+        description: legacyMessage(error?.message) || legacyUi("Failed to delete announcement."),
         variant: 'destructive',
       });
     },
@@ -214,22 +215,20 @@ export default function AdminAnnouncements() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">Announcements</h1>
+          <h1 className="text-3xl font-bold text-foreground" data-testid="text-heading">{legacyUi("Announcements")}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage system announcements and notifications.
-          </p>
+            {legacyUi("Manage system announcements and notifications.")}</p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-announcement">
               <Plus className="w-4 h-4 mr-2" />
-              Create Announcement
-            </Button>
+              {legacyUi("Create Announcement")}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Announcement</DialogTitle>
+              <DialogTitle>{legacyUi("Create New Announcement")}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleCreateSubmit)} className="space-y-4">
@@ -399,14 +398,13 @@ export default function AdminAnnouncements() {
                     onClick={() => setIsCreateDialogOpen(false)}
                     data-testid="button-cancel-create"
                   >
-                    Cancel
-                  </Button>
+                    {legacyUi("Cancel")}</Button>
                   <Button
                     type="submit"
                     disabled={createAnnouncementMutation.isPending}
                     data-testid="button-submit-create"
                   >
-                    {createAnnouncementMutation.isPending ? 'Creating...' : 'Create'}
+                    {createAnnouncementMutation.isPending ? legacyUi("Creating...") : legacyUi("Create")}
                   </Button>
                 </div>
               </form>
@@ -421,7 +419,7 @@ export default function AdminAnnouncements() {
           <div className="flex items-center space-x-2">
             <Search className="w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search announcements..."
+              placeholder={legacyUi("Search announcements...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
@@ -436,7 +434,7 @@ export default function AdminAnnouncements() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="w-5 h-5" />
-            Announcements ({filteredAnnouncements.length})
+            {legacyUi("Announcements (")}{filteredAnnouncements.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -449,15 +447,14 @@ export default function AdminAnnouncements() {
           ) : filteredAnnouncements.length === 0 ? (
             <div className="text-center py-8">
               <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No Announcements Found</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{legacyUi("No Announcements Found")}</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'No announcements match your search criteria.' : 'Get started by creating your first announcement.'}
+                {searchTerm ? legacyUi("No announcements match your search criteria.") : legacyUi("Get started by creating your first announcement.")}
               </p>
               {!searchTerm && (
                 <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-first">
                   <Plus className="w-4 h-4 mr-2" />
-                  Create First Announcement
-                </Button>
+                  {legacyUi("Create First Announcement")}</Button>
               )}
             </div>
           ) : (
@@ -465,14 +462,14 @@ export default function AdminAnnouncements() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Creator</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{legacyUi("Title")}</TableHead>
+                    <TableHead>{legacyUi("Type")}</TableHead>
+                    <TableHead>{legacyUi("Priority")}</TableHead>
+                    <TableHead>{legacyUi("Status")}</TableHead>
+                    <TableHead>{legacyUi("Target")}</TableHead>
+                    <TableHead>{legacyUi("Created")}</TableHead>
+                    <TableHead>{legacyUi("Creator")}</TableHead>
+                    <TableHead className="text-right">{legacyUi("Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -495,18 +492,18 @@ export default function AdminAnnouncements() {
                       <TableCell>{getPriorityBadge(announcement.priority)}</TableCell>
                       <TableCell>{getStatusBadge(announcement.status)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{announcement.targetAudience}</Badge>
+                        <Badge variant="outline">{legacyStatus(announcement.targetAudience)}</Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          {new Date(announcement.createdAt).toLocaleDateString()}
+                          {new Date(announcement.createdAt).toLocaleDateString(legacyLocale())}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <User className="w-3 h-3" />
-                          {announcement.creatorName || 'Unknown'}
+                          {announcement.creatorName || legacyUi("Unknown")}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -528,20 +525,18 @@ export default function AdminAnnouncements() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
+                                <AlertDialogTitle>{legacyUi("Delete Announcement")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{announcement.title}"? This action cannot be undone.
-                                </AlertDialogDescription>
+                                  {legacyUi("Are you sure you want to delete \"{value0}\"? This action cannot be undone.",{value0:announcement.title})}</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>{legacyUi("Cancel")}</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDelete(announcement.id)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   data-testid={`button-confirm-delete-${announcement.id}`}
                                 >
-                                  Delete
-                                </AlertDialogAction>
+                                  {legacyUi("Delete")}</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -560,7 +555,7 @@ export default function AdminAnnouncements() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Announcement</DialogTitle>
+            <DialogTitle>{legacyUi("Edit Announcement")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
@@ -730,14 +725,13 @@ export default function AdminAnnouncements() {
                   onClick={() => setIsEditDialogOpen(false)}
                   data-testid="button-cancel-edit"
                 >
-                  Cancel
-                </Button>
+                  {legacyUi("Cancel")}</Button>
                 <Button
                   type="submit"
                   disabled={updateAnnouncementMutation.isPending}
                   data-testid="button-submit-edit"
                 >
-                  {updateAnnouncementMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updateAnnouncementMutation.isPending ? legacyUi("Saving...") : legacyUi("Save Changes")}
                 </Button>
               </div>
             </form>

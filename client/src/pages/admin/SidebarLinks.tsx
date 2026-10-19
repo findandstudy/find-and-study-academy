@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ export default function SidebarLinks() {
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       const url = data?.url || data?.fileUrl || data?.path;
-      if (!url) throw new Error('no url');
+      if (!url) throw new Error(legacyUi("no url"));
       update(i, { iconUrl: url });
     } catch {
       toast({ title: t('common.error'), variant: 'destructive' });

@@ -172,7 +172,13 @@
     "E-posta yok": "无电子邮件",
     "Yok": "无",
     "Etkinlik yok": "无活动",
-    "Rapor": "报告"
+    "Rapor": "报告",
+    "Bilgi tamamlama": "资料完整度",
+    "Bilgileri tam": "资料完整",
+    "Bilgileri eksik": "资料不完整",
+    "Eksik alanlar": "缺失字段",
+    "Ad, e-posta veya acente ara": "搜索姓名、邮箱或机构",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "必填项按照培训访问规则检查。资料完整不代表账户已获批准或拥有活动访问权限。"
   },
   "ko": {
     "Başvuru onaylandı": "신청 승인됨",
@@ -347,7 +353,13 @@
     "E-posta yok": "이메일 없음",
     "Yok": "없음",
     "Etkinlik yok": "활동 없음",
-    "Rapor": "보고서"
+    "Rapor": "보고서",
+    "Bilgi tamamlama": "프로필 완성도",
+    "Bilgileri tam": "정보 입력 완료",
+    "Bilgileri eksik": "정보 미완성",
+    "Eksik alanlar": "누락된 항목",
+    "Ad, e-posta veya acente ara": "이름, 이메일 또는 기관 검색",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "필수 항목은 교육 접근 규칙에 따라 확인됩니다. 정보 입력 완료가 계정 승인이나 캠페인 접근 권한을 대신하지는 않습니다."
   },
   "ky": {
     "Başvuru onaylandı": "Өтүнүңүз кабыл алынды",
@@ -522,7 +534,13 @@
     "E-posta yok": "Электрондук почта жок",
     "Yok": "Жок",
     "Etkinlik yok": "Иштөө жок",
-    "Rapor": "Доклад"
+    "Rapor": "Доклад",
+    "Bilgi tamamlama": "Профилдин толуктугу",
+    "Bilgileri tam": "Маалыматтар толук",
+    "Bilgileri eksik": "Маалыматтар толук эмес",
+    "Eksik alanlar": "Жетишпеген талаалар",
+    "Ad, e-posta veya acente ara": "Аты, электрондук почтасы же агенттиги боюнча издөө",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Милдеттүү талаалар окууга кирүү эрежелери менен текшерилет. Толук маалымат эсептин жактырылышын же өнөктүккө кирүүнү алмаштырбайт."
   },
   "ru": {
     "Başvuru onaylandı": "Заявка одобрена",
@@ -697,7 +715,13 @@
     "E-posta yok": "Электронной почты нет",
     "Yok": "Отсутствует",
     "Etkinlik yok": "Нет активности",
-    "Rapor": "Отчёт"
+    "Rapor": "Отчёт",
+    "Bilgi tamamlama": "Заполнение профиля",
+    "Bilgileri tam": "Данные заполнены",
+    "Bilgileri eksik": "Данные не заполнены",
+    "Eksik alanlar": "Недостающие поля",
+    "Ad, e-posta veya acente ara": "Поиск по имени, почте или агентству",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Обязательные поля проверяются по правилам доступа к обучению. Полные данные не заменяют одобрение аккаунта или доступ по кампании."
   },
   "bn": {
     "Başvuru onaylandı": "অনুমোদিত আবেদন",
@@ -872,7 +896,13 @@
     "E-posta yok": "ইমেল নেই",
     "Yok": "নেই",
     "Etkinlik yok": "কোন কার্যক্রম নেই",
-    "Rapor": "রিপোর্ট"
+    "Rapor": "রিপোর্ট",
+    "Bilgi tamamlama": "প্রোফাইলের সম্পূর্ণতা",
+    "Bilgileri tam": "তথ্য সম্পূর্ণ",
+    "Bilgileri eksik": "তথ্য অসম্পূর্ণ",
+    "Eksik alanlar": "অনুপস্থিত ঘর",
+    "Ad, e-posta veya acente ara": "নাম, ইমেইল বা এজেন্সি খুঁজুন",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "প্রশিক্ষণ প্রবেশের নিয়ম অনুযায়ী আবশ্যক ঘর পরীক্ষা করা হয়। সম্পূর্ণ তথ্য অ্যাকাউন্ট অনুমোদন বা প্রচারাভিযানের প্রবেশাধিকারের বিকল্প নয়।"
   },
   "tk": {
     "Başvuru onaylandı": "Arza tassyklanyldy",
@@ -1047,7 +1077,13 @@
     "E-posta yok": "Email ýok",
     "Yok": "Ýok",
     "Etkinlik yok": "Çärä gatnaşma ýok",
-    "Rapor": "Hasabat"
+    "Rapor": "Hasabat",
+    "Bilgi tamamlama": "Profil maglumatlarynyň dolulygy",
+    "Bilgileri tam": "Maglumatlar doly",
+    "Bilgileri eksik": "Maglumatlar doly däl",
+    "Eksik alanlar": "Ýetmeýän meýdanlar",
+    "Ad, e-posta veya acente ara": "Ady, e-poçtany ýa-da agentligi gözle",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Hökmany meýdanlar okuwa giriş düzgünleri boýunça barlanýar. Doly maglumat hasabyň tassyklanmagynyň ýa-da kampaniýa girişiniň ornuny tutmaýar."
   },
   "vi": {
     "Başvuru onaylandı": "Đơn đăng ký đã được chấp thuận",
@@ -1222,7 +1258,13 @@
     "E-posta yok": "Không có email",
     "Yok": "Không có",
     "Etkinlik yok": "Không hoạt động",
-    "Rapor": "Báo cáo"
+    "Rapor": "Báo cáo",
+    "Bilgi tamamlama": "Mức độ hoàn thiện hồ sơ",
+    "Bilgileri tam": "Thông tin đầy đủ",
+    "Bilgileri eksik": "Thông tin chưa đầy đủ",
+    "Eksik alanlar": "Trường còn thiếu",
+    "Ad, e-posta veya acente ara": "Tìm tên, email hoặc đại lý",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Các trường bắt buộc được kiểm tra theo quy tắc truy cập đào tạo. Thông tin đầy đủ không thay thế phê duyệt tài khoản hoặc quyền truy cập chiến dịch."
   },
   "tr": {
     "Başvuru onaylandı": "Başvuru onaylandı",
@@ -1397,7 +1439,13 @@
     "E-posta yok": "E-posta yok",
     "Yok": "Yok",
     "Etkinlik yok": "Etkinlik yok",
-    "Rapor": "Rapor"
+    "Rapor": "Rapor",
+    "Bilgi tamamlama": "Bilgi tamamlama",
+    "Bilgileri tam": "Bilgileri tam",
+    "Bilgileri eksik": "Bilgileri eksik",
+    "Eksik alanlar": "Eksik alanlar",
+    "Ad, e-posta veya acente ara": "Ad, e-posta veya acente ara",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez."
   },
   "kk": {
     "Başvuru onaylandı": "Тіркелім мақұлданды",
@@ -1572,7 +1620,13 @@
     "E-posta yok": "Электрондық пошта жоқ",
     "Yok": "Жоқ",
     "Etkinlik yok": "Іс-шара жоқ",
-    "Rapor": "Есеп"
+    "Rapor": "Есеп",
+    "Bilgi tamamlama": "Профильдің толықтығы",
+    "Bilgileri tam": "Мәліметтер толық",
+    "Bilgileri eksik": "Мәліметтер толық емес",
+    "Eksik alanlar": "Жетіспейтін өрістер",
+    "Ad, e-posta veya acente ara": "Аты, электрондық поштасы немесе агенттігі бойынша іздеу",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Міндетті өрістер оқуға кіру ережелерімен тексеріледі. Толық мәліметтер есептік жазбаны мақұлдауды немесе науқанға қолжетімділікті алмастырмайды."
   },
   "ne": {
     "Başvuru onaylandı": "आवेदन स्वीकृत भयो",
@@ -1747,7 +1801,13 @@
     "E-posta yok": "इमेल छैन",
     "Yok": "छैन",
     "Etkinlik yok": "कुनै घटना छैन",
-    "Rapor": "प्रतिवेदन"
+    "Rapor": "प्रतिवेदन",
+    "Bilgi tamamlama": "प्रोफाइलको पूर्णता",
+    "Bilgileri tam": "जानकारी पूर्ण",
+    "Bilgileri eksik": "जानकारी अपूर्ण",
+    "Eksik alanlar": "नपुगेका विवरण",
+    "Ad, e-posta veya acente ara": "नाम, इमेल वा एजेन्सी खोज्नुहोस्",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "अनिवार्य विवरणहरू प्रशिक्षण पहुँचका नियमअनुसार जाँचिन्छन्। पूर्ण जानकारीले खाता स्वीकृति वा अभियान पहुँचलाई प्रतिस्थापन गर्दैन।"
   },
   "fa": {
     "Başvuru onaylandı": "درخواست تایید شد",
@@ -1922,7 +1982,13 @@
     "E-posta yok": "ایمیل ندارد",
     "Yok": "ندارد",
     "Etkinlik yok": "فعالیت ندارد",
-    "Rapor": "گزارش"
+    "Rapor": "گزارش",
+    "Bilgi tamamlama": "تکمیل مشخصات",
+    "Bilgileri tam": "اطلاعات کامل",
+    "Bilgileri eksik": "اطلاعات ناقص",
+    "Eksik alanlar": "فیلدهای ناقص",
+    "Ad, e-posta veya acente ara": "جستجوی نام، ایمیل یا آژانس",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "فیلدهای الزامی با قواعد دسترسی به آموزش بررسی می‌شوند. اطلاعات کامل جایگزین تأیید حساب یا دسترسی کمپین نیست."
   },
   "pt": {
     "Başvuru onaylandı": "Pedido aprovado",
@@ -2097,7 +2163,13 @@
     "E-posta yok": "Sem e-mail",
     "Yok": "Nenhum",
     "Etkinlik yok": "Nenhuma atividade",
-    "Rapor": "Relatório"
+    "Rapor": "Relatório",
+    "Bilgi tamamlama": "Preenchimento do perfil",
+    "Bilgileri tam": "Informações completas",
+    "Bilgileri eksik": "Informações incompletas",
+    "Eksik alanlar": "Campos em falta",
+    "Ad, e-posta veya acente ara": "Pesquisar nome, email ou agência",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Os campos obrigatórios seguem as regras de acesso à formação. As informações completas não substituem a aprovação da conta nem o acesso à campanha."
   },
   "ur": {
     "Başvuru onaylandı": "درخواست منظور ہو گئی",
@@ -2272,7 +2344,13 @@
     "E-posta yok": "ای میل موجود نہیں",
     "Yok": "موجود نہیں",
     "Etkinlik yok": "کوئی ایونٹ نہیں",
-    "Rapor": "رپورٹ"
+    "Rapor": "رپورٹ",
+    "Bilgi tamamlama": "پروفائل کی تکمیل",
+    "Bilgileri tam": "معلومات مکمل",
+    "Bilgileri eksik": "معلومات نامکمل",
+    "Eksik alanlar": "نامکمل خانے",
+    "Ad, e-posta veya acente ara": "نام، ای میل یا ایجنسی تلاش کریں",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "لازمی خانے تربیت تک رسائی کے قواعد کے مطابق جانچے جاتے ہیں۔ مکمل معلومات اکاؤنٹ کی منظوری یا مہم تک رسائی کا متبادل نہیں ہیں۔"
   },
   "it": {
     "Başvuru onaylandı": "Domanda approvata",
@@ -2447,7 +2525,13 @@
     "E-posta yok": "Nessuna email",
     "Yok": "Nessuno",
     "Etkinlik yok": "Nessuna attività",
-    "Rapor": "Rapporto"
+    "Rapor": "Rapporto",
+    "Bilgi tamamlama": "Completezza del profilo",
+    "Bilgileri tam": "Informazioni complete",
+    "Bilgileri eksik": "Informazioni incomplete",
+    "Eksik alanlar": "Campi mancanti",
+    "Ad, e-posta veya acente ara": "Cerca nome, email o agenzia",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "I campi obbligatori seguono le regole di accesso alla formazione. I dati completi non sostituiscono l’approvazione dell’account né l’accesso alla campagna."
   },
   "uz": {
     "Başvuru onaylandı": "Ariza tasdiqlangan",
@@ -2622,7 +2706,13 @@
     "E-posta yok": "Elektron pochta yo'q",
     "Yok": "Yo'q",
     "Etkinlik yok": "Faoliyat yo'q",
-    "Rapor": "Hisobot"
+    "Rapor": "Hisobot",
+    "Bilgi tamamlama": "Profil toʻliqligi",
+    "Bilgileri tam": "Maʼlumotlar toʻliq",
+    "Bilgileri eksik": "Maʼlumotlar toʻliq emas",
+    "Eksik alanlar": "Yetishmayotgan maydonlar",
+    "Ad, e-posta veya acente ara": "Ism, email yoki agentlikni qidirish",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Majburiy maydonlar taʼlimga kirish qoidalari asosida tekshiriladi. Toʻliq maʼlumotlar hisobni tasdiqlash yoki kampaniyaga kirish oʻrnini bosmaydi."
   },
   "fr": {
     "Başvuru onaylandı": "Demande approuvée",
@@ -2797,7 +2887,13 @@
     "E-posta yok": "Pas d'e-mail",
     "Yok": "Aucun",
     "Etkinlik yok": "Aucune activité",
-    "Rapor": "Rapport"
+    "Rapor": "Rapport",
+    "Bilgi tamamlama": "Complétude du profil",
+    "Bilgileri tam": "Informations complètes",
+    "Bilgileri eksik": "Informations incomplètes",
+    "Eksik alanlar": "Champs manquants",
+    "Ad, e-posta veya acente ara": "Rechercher un nom, email ou agence",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Les champs obligatoires suivent les règles d’accès à la formation. Un profil complet ne remplace pas l’approbation du compte ni l’accès à la campagne."
   },
   "tg": {
     "Başvuru onaylandı": "Аризаро тасдиқ карданд",
@@ -2972,7 +3068,13 @@
     "E-posta yok": "Почтаи электронӣ нест",
     "Yok": "Нест",
     "Etkinlik yok": "Фаъолият нест",
-    "Rapor": "Ҳисобот"
+    "Rapor": "Ҳисобот",
+    "Bilgi tamamlama": "Пуррагии профил",
+    "Bilgileri tam": "Маълумот пурра",
+    "Bilgileri eksik": "Маълумот нопурра",
+    "Eksik alanlar": "Майдонҳои нопурра",
+    "Ad, e-posta veya acente ara": "Ҷустуҷӯи ном, почтаи электронӣ ё агентӣ",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Майдонҳои ҳатмӣ бо қоидаҳои дастрасӣ ба омӯзиш санҷида мешаванд. Маълумоти пурра ҷойгузини тасдиқи ҳисоб ё дастрасии маърака нест."
   },
   "id": {
     "Başvuru onaylandı": "Pengajuan disetujui",
@@ -3147,7 +3249,13 @@
     "E-posta yok": "Tidak ada email",
     "Yok": "Tidak ada",
     "Etkinlik yok": "Tidak ada aktivitas",
-    "Rapor": "Laporan"
+    "Rapor": "Laporan",
+    "Bilgi tamamlama": "Kelengkapan profil",
+    "Bilgileri tam": "Informasi lengkap",
+    "Bilgileri eksik": "Informasi belum lengkap",
+    "Eksik alanlar": "Kolom yang kurang",
+    "Ad, e-posta veya acente ara": "Cari nama, email, atau agensi",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Kolom wajib diperiksa sesuai aturan akses pelatihan. Informasi lengkap tidak menggantikan persetujuan akun atau akses kampanye."
   },
   "uk": {
     "Başvuru onaylandı": "Заявку схвалено",
@@ -3322,7 +3430,13 @@
     "E-posta yok": "Немає електронної пошти",
     "Yok": "Немає",
     "Etkinlik yok": "Немає подій",
-    "Rapor": "Звіт"
+    "Rapor": "Звіт",
+    "Bilgi tamamlama": "Заповнення профілю",
+    "Bilgileri tam": "Дані заповнено",
+    "Bilgileri eksik": "Дані не заповнено",
+    "Eksik alanlar": "Відсутні поля",
+    "Ad, e-posta veya acente ara": "Пошук за ім’ям, поштою або агенцією",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Обов’язкові поля перевіряються за правилами доступу до навчання. Повні дані не замінюють схвалення облікового запису або доступ до кампанії."
   },
   "es": {
     "Başvuru onaylandı": "Solicitud aprobada",
@@ -3497,7 +3611,13 @@
     "E-posta yok": "Sin correo electrónico",
     "Yok": "Ninguno",
     "Etkinlik yok": "No hay actividades",
-    "Rapor": "Reporte"
+    "Rapor": "Reporte",
+    "Bilgi tamamlama": "Información del perfil",
+    "Bilgileri tam": "Información completa",
+    "Bilgileri eksik": "Información incompleta",
+    "Eksik alanlar": "Campos pendientes",
+    "Ad, e-posta veya acente ara": "Buscar nombre, email o agencia",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Los campos obligatorios se comprueban según las reglas de acceso a la formación. Los datos completos no sustituyen la aprobación de la cuenta ni el acceso de campaña."
   },
   "en": {
     "Başvuru onaylandı": "Application approved",
@@ -3672,7 +3792,13 @@
     "E-posta yok": "No email",
     "Yok": "None",
     "Etkinlik yok": "No activity",
-    "Rapor": "Report"
+    "Rapor": "Report",
+    "Bilgi tamamlama": "Profile completeness",
+    "Bilgileri tam": "Complete information",
+    "Bilgileri eksik": "Incomplete information",
+    "Eksik alanlar": "Missing fields",
+    "Ad, e-posta veya acente ara": "Search name, email or agency",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "Required fields are checked using the training access rules. Complete information does not replace account approval or campaign access."
   },
   "hi": {
     "Başvuru onaylandı": "आवेदन स्वीकृत",
@@ -3847,7 +3973,13 @@
     "E-posta yok": "ईमेल नहीं है",
     "Yok": "नहीं है",
     "Etkinlik yok": "कोई गतिविधि नहीं",
-    "Rapor": "रिपोर्ट"
+    "Rapor": "रिपोर्ट",
+    "Bilgi tamamlama": "प्रोफ़ाइल की पूर्णता",
+    "Bilgileri tam": "जानकारी पूरी",
+    "Bilgileri eksik": "जानकारी अधूरी",
+    "Eksik alanlar": "अनुपस्थित फ़ील्ड",
+    "Ad, e-posta veya acente ara": "नाम, ईमेल या एजेंसी खोजें",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "आवश्यक फ़ील्ड प्रशिक्षण पहुँच के नियमों से जाँचे जाते हैं। पूरी जानकारी खाते की स्वीकृति या अभियान पहुँच का विकल्प नहीं है।"
   },
   "ar": {
     "Başvuru onaylandı": "تمت الموافقة على الطلب",
@@ -4022,6 +4154,12 @@
     "E-posta yok": "لا يوجد بريد إلكتروني",
     "Yok": "لا يوجد",
     "Etkinlik yok": "لا توجد أحداث",
-    "Rapor": "تقارير"
+    "Rapor": "تقارير",
+    "Bilgi tamamlama": "اكتمال البيانات",
+    "Bilgileri tam": "بيانات مكتملة",
+    "Bilgileri eksik": "بيانات غير مكتملة",
+    "Eksik alanlar": "الحقول الناقصة",
+    "Ad, e-posta veya acente ara": "ابحث بالاسم أو البريد أو الوكالة",
+    "Güncel zorunlu alanlar eğitim erişimiyle aynı kurallarla kontrol edilir. Bilgilerin tam olması, hesap onayı ve kampanya erişiminin yerine geçmez.": "تُفحص الحقول المطلوبة وفق قواعد الوصول إلى التدريب. اكتمال البيانات لا يغني عن الموافقة على الحساب أو صلاحية الحملة."
   }
 }

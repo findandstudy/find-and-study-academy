@@ -1,3 +1,4 @@
+import { legacyCountry, legacyUi, legacyStatus, legacyMessage } from "@/lib/legacy-ui";
 import { useState, useMemo, useRef } from 'react';
 import { WORLD_COUNTRIES } from '@/lib/world-countries';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -180,7 +181,7 @@ export default function AdminUsers() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User created successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("User created successfully") });
       setIsCreateDialogOpen(false);
       setCreateForm({
         username: '',
@@ -196,8 +197,8 @@ export default function AdminUsers() {
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to create user',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to create user"),
         variant: 'destructive' 
       });
     },
@@ -209,12 +210,12 @@ export default function AdminUsers() {
     if (!file) return;
     const allowed = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!allowed.includes(file.type)) {
-      toast({ title: 'Geçersiz dosya', description: 'Sadece PNG, JPG veya JPEG yükleyebilirsiniz.', variant: 'destructive' });
+      toast({ title: legacyUi("Geçersiz dosya"), description: legacyUi("Sadece PNG, JPG veya JPEG yükleyebilirsiniz."), variant: 'destructive' });
       e.target.value = '';
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Dosya çok büyük', description: 'Profil fotoğrafı en fazla 5MB olabilir.', variant: 'destructive' });
+      toast({ title: legacyUi("Dosya çok büyük"), description: legacyUi("Profil fotoğrafı en fazla 5MB olabilir."), variant: 'destructive' });
       e.target.value = '';
       return;
     }
@@ -236,9 +237,9 @@ export default function AdminUsers() {
         throw new Error(json.message || 'Yükleme başarısız');
       }
       setCreateForm((prev) => ({ ...prev, profilePicture: json.url }));
-      toast({ title: 'Yüklendi', description: 'Profil fotoğrafı yüklendi.' });
+      toast({ title: legacyUi("Yüklendi"), description: legacyUi("Profil fotoğrafı yüklendi.") });
     } catch (err: any) {
-      toast({ title: 'Yükleme hatası', description: err.message || 'Profil fotoğrafı yüklenemedi', variant: 'destructive' });
+      toast({ title: legacyUi("Yükleme hatası"), description: legacyMessage(err.message) || legacyUi("Profil fotoğrafı yüklenemedi"), variant: 'destructive' });
     } finally {
       setCreatePhotoUploading(false);
       if (createPhotoInputRef.current) createPhotoInputRef.current.value = '';
@@ -253,14 +254,14 @@ export default function AdminUsers() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("User updated successfully") });
       setIsEditDialogOpen(false);
       setEditingUser(null);
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update user',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to update user"),
         variant: 'destructive' 
       });
     },
@@ -274,13 +275,13 @@ export default function AdminUsers() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("User deleted successfully") });
       setDeleteUserId(null);
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to delete user',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to delete user"),
         variant: 'destructive' 
       });
     },
@@ -294,13 +295,13 @@ export default function AdminUsers() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'User statuses updated successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("User statuses updated successfully") });
       setSelectedUsers(new Set());
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to update user statuses',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to update user statuses"),
         variant: 'destructive' 
       });
     },
@@ -314,14 +315,14 @@ export default function AdminUsers() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
-      toast({ title: 'Success', description: 'Users deleted successfully' });
+      toast({ title: legacyUi("Success"), description: legacyUi("Users deleted successfully") });
       setSelectedUsers(new Set());
       setShowBulkDeleteConfirm(false);
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to delete users',
+        title: legacyUi("Error"), 
+        description: legacyMessage(error.message) || legacyUi("Failed to delete users"),
         variant: 'destructive' 
       });
     },
@@ -380,18 +381,18 @@ export default function AdminUsers() {
   const downloadUserTemplate = () => {
     const wb = XLSX.utils.book_new();
     const instructionData = [
-      ['FIELD', 'REQUIRED', 'ALLOWED VALUES', 'EXAMPLE', 'NOTES'],
-      ['name', 'Yes', 'Free text', 'John Smith', 'Full name of the user / Kullanıcının tam adı.'],
-      ['email', 'Yes', 'name@domain.tld', 'john@agency.com', 'Must be a valid, unique email address. / Geçerli ve benzersiz bir e-posta olmalı.'],
-      ['username', 'Yes', '≥3 chars, no spaces', 'johnsmith', 'Must be unique. Letters, numbers, dot, underscore, dash. / Benzersiz, boşluksuz.'],
-      ['password', 'Yes', '≥6 characters', 'SecurePass123', 'Minimum 6 characters. Will be hashed on the server. / En az 6 karakter, sunucuda şifrelenir.'],
-      ['role', 'No', 'admin | agent | staff', 'agent', 'Default: agent. / Varsayılan: agent.'],
-      ['status', 'No', 'active | inactive', 'active', 'Default: active. / Varsayılan: active.'],
-      ['companyName', 'No', 'Free text', 'ABC Agency', 'Optional agency or company name. / Opsiyonel firma adı.'],
-      ['country', 'No', 'ISO 3166-1 alpha-2', 'TR', '2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none. / 2 harfli ülke kodu, boş bırakılabilir.'],
-      ['phone', 'No', 'E.164 format', '+905551234567', 'Optional. Must start with "+" and have 6–18 digits total. / Opsiyonel, "+" ile başlamalı, 6–18 rakam.'],
-      ['profilePicture', 'No', 'http(s) URL or /uploads/... path', 'https://example.com/avatar.png', 'Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path. / Genel erişime açık URL veya /uploads/... yolu.'],
-      ['agencyId', 'No', 'Existing agency UUID', 'a1b2c3d4-...', 'Optional. Overrides the "Atanacak Acente" picker. Leave blank to use the picker. / Boş bırakılırsa diyalogdaki seçici kullanılır.'],
+      [legacyUi("FIELD"), legacyUi("REQUIRED"), legacyUi("ALLOWED VALUES"), legacyUi("EXAMPLE"), legacyUi("NOTES")],
+      ['name', 'Yes', legacyUi("Free text"), 'John Smith', legacyUi("Full name of the user / Kullanıcının tam adı.")],
+      ['email', 'Yes', 'name@domain.tld', 'john@agency.com', legacyUi("Must be a valid, unique email address. / Geçerli ve benzersiz bir e-posta olmalı.")],
+      ['username', 'Yes', legacyUi("≥3 chars, no spaces"), 'johnsmith', legacyUi("Must be unique. Letters, numbers, dot, underscore, dash. / Benzersiz, boşluksuz.")],
+      ['password', 'Yes', legacyUi("≥6 characters"), 'SecurePass123', legacyUi("Minimum 6 characters. Will be hashed on the server. / En az 6 karakter, sunucuda şifrelenir.")],
+      ['role', 'No', 'admin | agent | staff', 'agent', legacyUi("Default: agent. / Varsayılan: agent.")],
+      ['status', 'No', 'active | inactive', 'active', legacyUi("Default: active. / Varsayılan: active.")],
+      ['companyName', 'No', legacyUi("Free text"), 'ABC Agency', legacyUi("Optional agency or company name. / Opsiyonel firma adı.")],
+      ['country', 'No', legacyUi("ISO 3166-1 alpha-2"), 'TR', legacyUi("2-letter country code (e.g. TR, US, DE, FR, GB). Leave blank for none. / 2 harfli ülke kodu, boş bırakılabilir.")],
+      ['phone', 'No', legacyUi("E.164 format"), '+905551234567', legacyUi("Optional. Must start with \"+\" and have 6–18 digits total. / Opsiyonel, \"+\" ile başlamalı, 6–18 rakam.")],
+      ['profilePicture', 'No', legacyUi("http(s) URL or /uploads/... path"), 'https://example.com/avatar.png', legacyUi("Optional URL to a publicly reachable PNG/JPG image, or an existing /uploads/... path. / Genel erişime açık URL veya /uploads/... yolu.")],
+      ['agencyId', 'No', legacyUi("Existing agency UUID"), 'a1b2c3d4-...', legacyUi("Optional. Overrides the \"Atanacak Acente\" picker. Leave blank to use the picker. / Boş bırakılırsa diyalogdaki seçici kullanılır.")],
     ];
     const instrSheet = XLSX.utils.aoa_to_sheet(instructionData);
     instrSheet['!cols'] = [{ wch: 16 }, { wch: 10 }, { wch: 32 }, { wch: 30 }, { wch: 80 }];
@@ -423,25 +424,25 @@ export default function AdminUsers() {
   // as errors here even if they look unusual.
   const validateImportRow = (row: ImportRow): string | null => {
     if (!row.name || !row.email || !row.username || !row.password) {
-      return 'name, email, username, and password are required';
+      return legacyUi("name, email, username, and password are required");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
-      return 'email is not a valid address';
+      return legacyUi("email is not a valid address");
     }
     if (row.username.length < 3 || /\s/.test(row.username)) {
-      return 'username must be ≥3 chars and contain no spaces';
+      return legacyUi("username must be ≥3 chars and contain no spaces");
     }
     if (row.password.length < 6) {
-      return 'password must be at least 6 characters';
+      return legacyUi("password must be at least 6 characters");
     }
     if (row.country && !VALID_COUNTRY_SET.has(row.country)) {
-      return 'country must be a valid ISO alpha-2 code (e.g. TR, US, DE)';
+      return legacyUi("country must be a valid ISO alpha-2 code (e.g. TR, US, DE)");
     }
     if (row.profilePicture && !/^https?:\/\//i.test(row.profilePicture) && !row.profilePicture.startsWith('/uploads/')) {
-      return 'profilePicture must be an http(s) URL or /uploads/... path';
+      return legacyUi("profilePicture must be an http(s) URL or /uploads/... path");
     }
     if (row.phone && !/^\+\d{6,18}$/.test(row.phone)) {
-      return 'phone must be in E.164 format (e.g. +905551234567)';
+      return legacyUi("phone must be in E.164 format (e.g. +905551234567)");
     }
     return null;
   };
@@ -489,7 +490,7 @@ export default function AdminUsers() {
         setImportData(mapped);
         setImportStep(2);
       } catch {
-        toast({ title: 'Error', description: 'Could not parse the file. Please use the template.', variant: 'destructive' });
+        toast({ title: legacyUi("Error"), description: legacyUi("Could not parse the file. Please use the template."), variant: 'destructive' });
       }
     };
     reader.readAsBinaryString(file);
@@ -506,7 +507,7 @@ export default function AdminUsers() {
       await queryClient.refetchQueries({ queryKey: ['/api/admin/users'] });
     },
     onError: (error: any) => {
-      toast({ title: 'Import Failed', description: error.message || 'An error occurred', variant: 'destructive' });
+      toast({ title: legacyUi("Import Failed"), description: legacyMessage(error.message) || legacyUi("An error occurred"), variant: 'destructive' });
     },
   });
 
@@ -541,15 +542,13 @@ export default function AdminUsers() {
       return (
         <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
           <CheckCircle2 className="w-3 h-3 mr-1" />
-          Active
-        </Badge>
+          {legacyUi("Active")}</Badge>
       );
     }
     return (
       <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
         <XCircle className="w-3 h-3 mr-1" />
-        Inactive
-      </Badge>
+        {legacyUi("Inactive")}</Badge>
     );
   };
 
@@ -557,8 +556,8 @@ export default function AdminUsers() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground mt-1">Loading users...</p>
+          <h1 className="text-3xl font-bold text-foreground">{legacyUi("User Management")}</h1>
+          <p className="text-muted-foreground mt-1">{legacyUi("Loading users...")}</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -577,20 +576,17 @@ export default function AdminUsers() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-heading">User Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-heading">{legacyUi("User Management")}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage users, roles, and permissions across the platform.
-          </p>
+            {legacyUi("Manage users, roles, and permissions across the platform.")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} data-testid="button-bulk-import-users">
             <Upload className="w-4 h-4 mr-2" />
-            Bulk Import
-          </Button>
+            {legacyUi("Bulk Import")}</Button>
           <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-user">
             <UserPlus className="w-4 h-4 mr-2" />
-            Create User
-          </Button>
+            {legacyUi("Create User")}</Button>
         </div>
       </div>
 
@@ -600,7 +596,7 @@ export default function AdminUsers() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Total Users")}</p>
                 <p className="text-2xl font-bold" data-testid="text-total-users">{stats.total}</p>
               </div>
               <Users className="w-8 h-8 text-muted-foreground" />
@@ -612,7 +608,7 @@ export default function AdminUsers() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Administrators</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Administrators")}</p>
                 <p className="text-2xl font-bold" data-testid="text-admin-count">{stats.admins}</p>
               </div>
               <Crown className="w-8 h-8 text-muted-foreground" />
@@ -624,7 +620,7 @@ export default function AdminUsers() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Agents</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Agents")}</p>
                 <p className="text-2xl font-bold" data-testid="text-agent-count">{stats.agents}</p>
               </div>
               <UserCheck className="w-8 h-8 text-muted-foreground" />
@@ -636,7 +632,7 @@ export default function AdminUsers() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Staff / Active</p>
+                <p className="text-sm font-medium text-muted-foreground">{legacyUi("Staff / Active")}</p>
                 <p className="text-2xl font-bold" data-testid="text-active-users">{stats.staff} / {stats.active}</p>
               </div>
               <Calendar className="w-8 h-8 text-muted-foreground" />
@@ -650,7 +646,7 @@ export default function AdminUsers() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, username, or agency..."
+            placeholder={legacyUi("Search by name, email, username, or agency...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -659,23 +655,23 @@ export default function AdminUsers() {
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
           <SelectTrigger className="w-full sm:w-48" data-testid="select-role-filter">
-            <SelectValue placeholder="Filter by role" />
+            <SelectValue placeholder={legacyUi("Filter by role")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Administrators</SelectItem>
-            <SelectItem value="staff">Staff</SelectItem>
-            <SelectItem value="agent">Agents</SelectItem>
+            <SelectItem value="all">{legacyUi("All Roles")}</SelectItem>
+            <SelectItem value="admin">{legacyUi("Administrators")}</SelectItem>
+            <SelectItem value="staff">{legacyUi("Staff")}</SelectItem>
+            <SelectItem value="agent">{legacyUi("Agents")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-48" data-testid="select-status-filter">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder={legacyUi("Filter by status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="all">{legacyUi("All Statuses")}</SelectItem>
+            <SelectItem value="active">{legacyUi("Active")}</SelectItem>
+            <SelectItem value="inactive">{legacyUi("Inactive")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -688,8 +684,7 @@ export default function AdminUsers() {
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-primary" />
                 <span className="font-medium" data-testid="text-selected-count">
-                  {selectedUsers.size} user(s) selected
-                </span>
+                  {selectedUsers.size} {legacyUi(" user(s) selected")}</span>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -700,8 +695,7 @@ export default function AdminUsers() {
                   data-testid="button-bulk-activate"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Set Active
-                </Button>
+                  {legacyUi("Set Active")}</Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -710,8 +704,7 @@ export default function AdminUsers() {
                   data-testid="button-bulk-deactivate"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
-                  Set Inactive
-                </Button>
+                  {legacyUi("Set Inactive")}</Button>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -720,8 +713,7 @@ export default function AdminUsers() {
                   data-testid="button-bulk-delete"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
-                </Button>
+                  {legacyUi("Delete Selected")}</Button>
               </div>
             </div>
           </CardContent>
@@ -735,38 +727,38 @@ export default function AdminUsers() {
             <Checkbox
               checked={isAllSelected}
               onCheckedChange={handleSelectAll}
-              aria-label="Select all users"
+              aria-label={legacyUi("Select all users")}
               data-testid="checkbox-select-all"
               className={isSomeSelected ? 'data-[state=checked]:bg-primary/50' : ''}
             />
             <Users className="w-5 h-5 ml-2" />
-            User Directory ({filteredUsers.length})
+            {legacyUi("User Directory (")}{filteredUsers.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredUsers.length === 0 ? (
             <div className="text-center py-8">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No users found matching your search criteria.</p>
+              <p className="text-muted-foreground">{legacyUi("No users found matching your search criteria.")}</p>
             </div>
           ) : (
             <div className="space-y-4">
               {filteredUsers.map((user) => (
                 <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg hover-elevate" data-testid={`card-user-${user.id}`}>
-                  <div className="flex items-center gap-4">
+                  <div className="flex min-w-0 w-full sm:w-auto sm:flex-1 items-center gap-3 sm:gap-4">
                     <Checkbox
                       checked={selectedUsers.has(user.id)}
                       onCheckedChange={() => handleSelectUser(user.id)}
-                      aria-label={`Select ${user.name}`}
+                      aria-label={legacyUi("Select {value0}",{value0:user.name})}
                       data-testid={`checkbox-user-${user.id}`}
                     />
-                    <Avatar className="w-12 h-12">
+                    <Avatar className="w-12 h-12 shrink-0">
                       {user.profilePicture ? (
                         <AvatarImage src={user.profilePicture} alt={user.name} />
                       ) : null}
                       <AvatarFallback>{getUserInitials(user.name)}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="min-w-0 flex-1 break-words">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold" data-testid={`text-user-name-${user.id}`}>{user.name}</h3>
                         <Badge variant={getRoleBadgeVariant(user.role)} data-testid={`badge-role-${user.id}`}>
@@ -774,7 +766,7 @@ export default function AdminUsers() {
                         </Badge>
                         {getStatusBadge(user.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-user-email-${user.id}`}>{user.email}</p>
+                      <p className="text-sm text-muted-foreground break-all" data-testid={`text-user-email-${user.id}`}>{user.email}</p>
                       {user.agency && (
                         <p className="text-sm text-muted-foreground" data-testid={`text-user-agency-${user.id}`}>
                           {user.agency.name} • {user.agency.city}, {user.agency.country}
@@ -816,15 +808,15 @@ export default function AdminUsers() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent data-testid="dialog-create-user" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
+            <DialogTitle>{legacyUi("Create New User")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Profile picture upload */}
             <div>
-              <Label>Profile Picture</Label>
+              <Label>{legacyUi("Profile Picture")}</Label>
               <div className="mt-2 flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={createForm.profilePicture || undefined} alt="Profile preview" />
+                  <AvatarImage src={createForm.profilePicture || undefined} alt={legacyUi("Profile preview")} />
                   <AvatarFallback>
                     <Camera className="w-6 h-6 text-muted-foreground" />
                   </AvatarFallback>
@@ -848,9 +840,9 @@ export default function AdminUsers() {
                       data-testid="button-upload-photo"
                     >
                       {createPhotoUploading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Yükleniyor...</>
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{legacyUi("Yükleniyor...")}</>
                       ) : (
-                        <><Upload className="w-4 h-4 mr-2" />Fotoğraf Yükle</>
+                        <><Upload className="w-4 h-4 mr-2" />{legacyUi("Fotoğraf Yükle")}</>
                       )}
                     </Button>
                     {createForm.profilePicture && (
@@ -862,108 +854,107 @@ export default function AdminUsers() {
                         data-testid="button-remove-photo"
                       >
                         <X className="w-4 h-4 mr-2" />
-                        Kaldır
-                      </Button>
+                        {legacyUi("Kaldır")}</Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">PNG, JPG veya JPEG · en fazla 5MB</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("PNG, JPG veya JPEG · en fazla 5MB")}</p>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="create-username">Username *</Label>
+              <Label htmlFor="create-username">{legacyUi("Username *")}</Label>
               <Input
                 id="create-username"
                 value={createForm.username}
                 onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                placeholder="Enter username"
+                placeholder={legacyUi("Enter username")}
                 data-testid="input-create-username"
               />
             </div>
             <div>
-              <Label htmlFor="create-password">Password *</Label>
+              <Label htmlFor="create-password">{legacyUi("Password *")}</Label>
               <Input
                 id="create-password"
                 type="password"
                 value={createForm.password}
                 onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                placeholder="Enter password"
+                placeholder={legacyUi("Enter password")}
                 data-testid="input-create-password"
               />
             </div>
             <div>
-              <Label htmlFor="create-name">Full Name *</Label>
+              <Label htmlFor="create-name">{legacyUi("Full Name *")}</Label>
               <Input
                 id="create-name"
                 value={createForm.name}
                 onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                placeholder="Enter full name"
+                placeholder={legacyUi("Enter full name")}
                 data-testid="input-create-name"
               />
             </div>
             <div>
-              <Label htmlFor="create-email">Email *</Label>
+              <Label htmlFor="create-email">{legacyUi("Email *")}</Label>
               <Input
                 id="create-email"
                 type="email"
                 value={createForm.email}
                 onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                placeholder="Enter email address"
+                placeholder={legacyUi("Enter email address")}
                 data-testid="input-create-email"
               />
             </div>
             <div>
-              <Label htmlFor="create-role">Role</Label>
+              <Label htmlFor="create-role">{legacyUi("Role")}</Label>
               <Select value={createForm.role} onValueChange={(value: 'admin' | 'agent' | 'staff') => setCreateForm({ ...createForm, role: value })}>
                 <SelectTrigger data-testid="select-create-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="agent">Agent</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="agent">{legacyUi("Agent")}</SelectItem>
+                  <SelectItem value="staff">{legacyUi("Staff")}</SelectItem>
+                  <SelectItem value="admin">{legacyUi("Administrator")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="create-company">Company Name</Label>
+              <Label htmlFor="create-company">{legacyUi("Company Name")}</Label>
               <Input
                 id="create-company"
                 value={createForm.companyName}
                 onChange={(e) => setCreateForm({ ...createForm, companyName: e.target.value })}
-                placeholder="Enter company name (optional)"
+                placeholder={legacyUi("Enter company name (optional)")}
                 data-testid="input-create-company"
               />
             </div>
             <div>
-              <Label htmlFor="create-country">Country</Label>
+              <Label htmlFor="create-country">{legacyUi("Country")}</Label>
               <Select
                 value={createForm.country || undefined}
                 onValueChange={(value) => setCreateForm({ ...createForm, country: value === 'none' ? '' : value })}
               >
                 <SelectTrigger id="create-country" data-testid="select-create-country">
-                  <SelectValue placeholder="Select a country" />
+                  <SelectValue placeholder={legacyUi("Select a country")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-72">
-                  <SelectItem value="none">— None —</SelectItem>
+                  <SelectItem value="none">{legacyUi("— None —")}</SelectItem>
                   {WORLD_COUNTRIES.map((c) => (
                     <SelectItem key={c.code} value={c.code} data-testid={`option-country-${c.code}`}>
-                      {c.name}
+                      {legacyCountry(c.code,c.name)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="create-status">Status</Label>
+              <Label htmlFor="create-status">{legacyUi("Status")}</Label>
               <Select value={createForm.status} onValueChange={(value: 'active' | 'inactive') => setCreateForm({ ...createForm, status: value })}>
                 <SelectTrigger data-testid="select-create-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="active">{legacyUi("Active")}</SelectItem>
+                  <SelectItem value="inactive">{legacyUi("Inactive")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -975,15 +966,14 @@ export default function AdminUsers() {
               data-testid="button-cancel-create"
             >
               <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
+              {legacyUi("Cancel")}</Button>
             <Button
               onClick={handleCreateUser}
               disabled={createUserMutation.isPending || createPhotoUploading || !createForm.username || !createForm.password || !createForm.name || !createForm.email}
               data-testid="button-submit-create"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              {createUserMutation.isPending ? 'Creating...' : 'Create User'}
+              {createUserMutation.isPending ? legacyUi("Creating...") : legacyUi("Create User")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -993,12 +983,12 @@ export default function AdminUsers() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent data-testid="dialog-edit-user">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>{legacyUi("Edit User")}</DialogTitle>
           </DialogHeader>
           {editingUser && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-name">Name</Label>
+                <Label htmlFor="edit-name">{legacyUi("Name")}</Label>
                 <Input
                   id="edit-name"
                   value={editForm.name}
@@ -1007,7 +997,7 @@ export default function AdminUsers() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-email">Email</Label>
+                <Label htmlFor="edit-email">{legacyUi("Email")}</Label>
                 <Input
                   id="edit-email"
                   type="email"
@@ -1017,37 +1007,37 @@ export default function AdminUsers() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-role">Role</Label>
+                <Label htmlFor="edit-role">{legacyUi("Role")}</Label>
                 <Select value={editForm.role} onValueChange={(value: 'admin' | 'agent' | 'staff') => setEditForm({ ...editForm, role: value })}>
                   <SelectTrigger data-testid="select-edit-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="agent">Agent</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="agent">{legacyUi("Agent")}</SelectItem>
+                    <SelectItem value="staff">{legacyUi("Staff")}</SelectItem>
+                    <SelectItem value="admin">{legacyUi("Administrator")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="edit-company">Company Name</Label>
+                <Label htmlFor="edit-company">{legacyUi("Company Name")}</Label>
                 <Input
                   id="edit-company"
                   value={editForm.companyName}
                   onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
-                  placeholder="Enter company name (optional)"
+                  placeholder={legacyUi("Enter company name (optional)")}
                   data-testid="input-edit-company"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-status">Status</Label>
+                <Label htmlFor="edit-status">{legacyUi("Status")}</Label>
                 <Select value={editForm.status} onValueChange={(value: 'active' | 'inactive') => setEditForm({ ...editForm, status: value })}>
                   <SelectTrigger data-testid="select-edit-status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="active">{legacyUi("Active")}</SelectItem>
+                    <SelectItem value="inactive">{legacyUi("Inactive")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1060,15 +1050,14 @@ export default function AdminUsers() {
               data-testid="button-cancel-edit"
             >
               <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
+              {legacyUi("Cancel")}</Button>
             <Button
               onClick={handleUpdateUser}
               disabled={updateUserMutation.isPending}
               data-testid="button-save-user"
             >
               <Save className="w-4 h-4 mr-2" />
-              {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+              {updateUserMutation.isPending ? legacyUi("Saving...") : legacyUi("Save Changes")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1078,20 +1067,18 @@ export default function AdminUsers() {
       <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
         <AlertDialogContent data-testid="dialog-delete-user">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{legacyUi("Are you sure?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this user. This action cannot be undone.
-            </AlertDialogDescription>
+              {legacyUi("This will permanently delete this user. This action cannot be undone.")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">{legacyUi("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteUser}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
-              Delete User
-            </AlertDialogAction>
+              {legacyUi("Delete User")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1100,20 +1087,18 @@ export default function AdminUsers() {
       <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
         <AlertDialogContent data-testid="dialog-bulk-delete">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedUsers.size} user(s)?</AlertDialogTitle>
+            <AlertDialogTitle>{legacyUi("Delete ")}{selectedUsers.size} {legacyUi(" user(s)?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the selected users. This action cannot be undone.
-            </AlertDialogDescription>
+              {legacyUi("This will permanently delete the selected users. This action cannot be undone.")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">{legacyUi("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-bulk-delete"
             >
-              Delete Users
-            </AlertDialogAction>
+              {legacyUi("Delete Users")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1124,8 +1109,7 @@ export default function AdminUsers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5" />
-              Bulk Import Users
-            </DialogTitle>
+              {legacyUi("Bulk Import Users")}</DialogTitle>
           </DialogHeader>
 
           {/* Step Indicator */}
@@ -1150,12 +1134,12 @@ export default function AdminUsers() {
           {importStep === 1 && (
             <div className="space-y-4">
               <div className="rounded-md border p-4 bg-muted/30 space-y-2">
-                <p className="font-medium text-sm">Before uploading, download the Excel template:</p>
+                <p className="font-medium text-sm">{legacyUi("Before uploading, download the Excel template:")}</p>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li><strong>name</strong>, <strong>email</strong>, <strong>username</strong>, <strong>password</strong> — required</li>
-                  <li><strong>role</strong> — admin | agent | staff (default: agent)</li>
-                  <li><strong>status</strong> — active | inactive (default: active)</li>
-                  <li><strong>companyName</strong> — optional agency/company name</li>
+                  <li><strong>{legacyUi("name")}</strong>, <strong>{legacyUi("email")}</strong>, <strong>{legacyUi("username")}</strong>, <strong>{legacyUi("password")}</strong> {legacyUi(" — required")}</li>
+                  <li><strong>{legacyUi("role")}</strong> {legacyUi(" — admin | agent | staff (default: agent)")}</li>
+                  <li><strong>{legacyUi("status")}</strong> {legacyUi(" — active | inactive (default: active)")}</li>
+                  <li><strong>{legacyUi("companyName")}</strong> {legacyUi(" — optional agency/company name")}</li>
                 </ul>
               </div>
 
@@ -1163,17 +1147,15 @@ export default function AdminUsers() {
               <div className="rounded-md border p-3 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Users className="w-4 h-4" />
-                  Atanacak Acente
-                  <Badge variant="secondary" className="ml-1">Opsiyonel</Badge>
+                  {legacyUi("Atanacak Acente")}<Badge variant="secondary" className="ml-1">{legacyUi("Opsiyonel")}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Seçilirse, içe aktarılan tüm kullanıcılar bu acenteye atanır. Excel dosyasında <code>agencyId</code> sütunu varsa o öncelik kazanır.
-                </p>
+                  {legacyUi("Seçilirse, içe aktarılan tüm kullanıcılar bu acenteye atanır. Excel dosyasında ")}<code>{legacyUi("agencyId")}</code> {legacyUi(" sütunu varsa o öncelik kazanır.")}</p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     <Input
-                      placeholder="Acente ara: isim veya şehir..."
+                      placeholder={legacyUi("Acente ara: isim veya şehir...")}
                       value={importAgencySearch}
                       onChange={(e) => setImportAgencySearch(e.target.value)}
                       className="pl-9"
@@ -1188,8 +1170,7 @@ export default function AdminUsers() {
                       data-testid="button-clear-import-agency"
                     >
                       <X className="w-4 h-4 mr-1" />
-                      Seçimi Temizle
-                    </Button>
+                      {legacyUi("Seçimi Temizle")}</Button>
                   )}
                 </div>
                 <ScrollArea className="h-40 rounded-md border">
@@ -1206,7 +1187,7 @@ export default function AdminUsers() {
                     if (list.length === 0) {
                       return (
                         <div className="p-4 text-sm text-muted-foreground text-center">
-                          {q ? 'Aramanızla eşleşen acente bulunamadı.' : 'Henüz acente yok.'}
+                          {q ? legacyUi("Aramanızla eşleşen acente bulunamadı.") : legacyUi("Henüz acente yok.")}
                         </div>
                       );
                     }
@@ -1226,7 +1207,7 @@ export default function AdminUsers() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium truncate">{a.name}</span>
                                   {a.status && (
-                                    <Badge variant="outline" className="capitalize">{a.status}</Badge>
+                                    <Badge variant="outline" className="capitalize">{legacyStatus(a.status)}</Badge>
                                   )}
                                 </div>
                                 {(a.city || a.country) && (
@@ -1246,11 +1227,10 @@ export default function AdminUsers() {
               </div>
               <Button onClick={downloadUserTemplate} className="w-full" variant="outline" data-testid="button-download-user-template">
                 <Download className="w-4 h-4 mr-2" />
-                Download Excel Template
-              </Button>
+                {legacyUi("Download Excel Template")}</Button>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or upload your file</span></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">{legacyUi("or upload your file")}</span></div>
               </div>
               <div
                 className="border-2 border-dashed rounded-md p-8 text-center cursor-pointer hover-elevate"
@@ -1258,8 +1238,8 @@ export default function AdminUsers() {
                 data-testid="drop-zone-import"
               >
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">Click to choose your Excel or CSV file</p>
-                <p className="text-xs text-muted-foreground mt-1">Supported: .xlsx, .xls, .csv</p>
+                <p className="text-sm font-medium">{legacyUi("Click to choose your Excel or CSV file")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{legacyUi("Supported: .xlsx, .xls, .csv")}</p>
                 <input
                   ref={importFileRef}
                   type="file"
@@ -1276,18 +1256,17 @@ export default function AdminUsers() {
           {importStep === 2 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">{importData.length} row(s) found in file</p>
+                <p className="text-sm font-medium">{importData.length} {legacyUi(" row(s) found in file")}</p>
                 <Button variant="ghost" size="sm" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>
                   <RotateCcw className="w-3 h-3 mr-1" />
-                  Choose another file
-                </Button>
+                  {legacyUi("Choose another file")}</Button>
               </div>
               <div className="overflow-x-auto max-h-64 border rounded-md">
                 <table className="w-full text-xs">
                   <thead className="bg-muted sticky top-0">
                     <tr>
                       {['#', 'Name', 'Email', 'Username', 'Role', 'Status', 'Company', 'Country', 'Phone', 'Photo', 'Issue'].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
+                        <th key={h} className="px-3 py-2 text-left font-medium">{legacyUi(h)}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1297,11 +1276,11 @@ export default function AdminUsers() {
                       return (
                         <tr key={i} className={`border-t ${issue ? 'bg-destructive/5' : ''}`} data-testid={`row-import-preview-${i}`}>
                           <td className="px-3 py-1.5 text-muted-foreground">{i + 2}</td>
-                          <td className="px-3 py-1.5">{row.name || <span className="text-destructive">Missing</span>}</td>
-                          <td className="px-3 py-1.5">{row.email || <span className="text-destructive">Missing</span>}</td>
-                          <td className="px-3 py-1.5">{row.username || <span className="text-destructive">Missing</span>}</td>
-                          <td className="px-3 py-1.5"><Badge variant="outline" className="text-xs">{row.role || 'agent'}</Badge></td>
-                          <td className="px-3 py-1.5">{row.status || 'active'}</td>
+                          <td className="px-3 py-1.5">{row.name || <span className="text-destructive">{legacyUi("Missing")}</span>}</td>
+                          <td className="px-3 py-1.5">{row.email || <span className="text-destructive">{legacyUi("Missing")}</span>}</td>
+                          <td className="px-3 py-1.5">{row.username || <span className="text-destructive">{legacyUi("Missing")}</span>}</td>
+                          <td className="px-3 py-1.5"><Badge variant="outline" className="text-xs">{row.role || legacyUi("agent")}</Badge></td>
+                          <td className="px-3 py-1.5">{row.status || legacyUi("active")}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.companyName || '—'}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.country || '—'}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{row.phone || '—'}</td>
@@ -1319,14 +1298,14 @@ export default function AdminUsers() {
                             {issue ? (
                               <span className="text-destructive" data-testid={`text-import-issue-${i}`}>{issue}</span>
                             ) : (
-                              <span className="text-green-600 dark:text-green-400">OK</span>
+                              <span className="text-green-600 dark:text-green-400">{legacyUi("OK")}</span>
                             )}
                           </td>
                         </tr>
                       );
                     })}
                     {importData.length > 100 && (
-                      <tr className="border-t bg-muted/20"><td colSpan={11} className="px-3 py-2 text-center text-muted-foreground">...and {importData.length - 100} more rows</td></tr>
+                      <tr className="border-t bg-muted/20"><td colSpan={11} className="px-3 py-2 text-center text-muted-foreground">{legacyUi("...and ")}{importData.length - 100} {legacyUi(" more rows")}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1336,12 +1315,11 @@ export default function AdminUsers() {
                 if (invalidCount === 0) return null;
                 return (
                   <p className="text-xs text-destructive" data-testid="text-import-invalid-count">
-                    {invalidCount} row(s) have validation issues and will be skipped on import.
-                  </p>
+                    {invalidCount} {legacyUi(" row(s) have validation issues and will be skipped on import.")}</p>
                 );
               })()}
               <DialogFooter>
-                <Button variant="outline" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>Back</Button>
+                <Button variant="outline" onClick={() => { setImportStep(1); setImportData([]); if (importFileRef.current) importFileRef.current.value = ''; }}>{legacyUi("Back")}</Button>
                 <Button
                   onClick={() => {
                     const payload = importData.map(r => ({
@@ -1353,7 +1331,7 @@ export default function AdminUsers() {
                   disabled={bulkImportMutation.isPending || importData.length === 0}
                   data-testid="button-confirm-import"
                 >
-                  {bulkImportMutation.isPending ? 'Importing...' : `Import ${importData.length} Users`}
+                  {bulkImportMutation.isPending ? legacyUi("Importing...") : legacyUi("Import {value0} Users",{value0:importData.length})}
                 </Button>
               </DialogFooter>
             </div>
@@ -1365,15 +1343,15 @@ export default function AdminUsers() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-md border p-3 text-center">
                   <p className="text-2xl font-bold">{importResults.successCount + importResults.errorCount}</p>
-                  <p className="text-xs text-muted-foreground">Total Rows</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Total Rows")}</p>
                 </div>
                 <div className="rounded-md border p-3 text-center bg-green-500/5">
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importResults.successCount}</p>
-                  <p className="text-xs text-muted-foreground">Imported</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Imported")}</p>
                 </div>
                 <div className="rounded-md border p-3 text-center bg-destructive/5">
                   <p className="text-2xl font-bold text-destructive">{importResults.errorCount}</p>
-                  <p className="text-xs text-muted-foreground">Errors</p>
+                  <p className="text-xs text-muted-foreground">{legacyUi("Errors")}</p>
                 </div>
               </div>
               {importResults.errorCount > 0 && (
@@ -1381,10 +1359,10 @@ export default function AdminUsers() {
                   <table className="w-full text-xs">
                     <thead className="bg-muted sticky top-0">
                       <tr>
-                        <th className="px-3 py-2 text-left">Row</th>
-                        <th className="px-3 py-2 text-left">Email</th>
-                        <th className="px-3 py-2 text-left">Status</th>
-                        <th className="px-3 py-2 text-left">Reason</th>
+                        <th className="px-3 py-2 text-left">{legacyUi("Row")}</th>
+                        <th className="px-3 py-2 text-left">{legacyUi("Email")}</th>
+                        <th className="px-3 py-2 text-left">{legacyUi("Status")}</th>
+                        <th className="px-3 py-2 text-left">{legacyUi("Reason")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1392,7 +1370,7 @@ export default function AdminUsers() {
                         <tr key={i} className="border-t">
                           <td className="px-3 py-1.5 text-muted-foreground">{r.row}</td>
                           <td className="px-3 py-1.5">{r.email}</td>
-                          <td className="px-3 py-1.5"><Badge variant="destructive" className="text-xs">Error</Badge></td>
+                          <td className="px-3 py-1.5"><Badge variant="destructive" className="text-xs">{legacyUi("Error")}</Badge></td>
                           <td className="px-3 py-1.5 text-destructive">{r.message}</td>
                         </tr>
                       ))}
@@ -1401,7 +1379,7 @@ export default function AdminUsers() {
                 </div>
               )}
               <DialogFooter>
-                <Button onClick={closeBulkImport} data-testid="button-close-import">Done</Button>
+                <Button onClick={closeBulkImport} data-testid="button-close-import">{legacyUi("Done")}</Button>
               </DialogFooter>
             </div>
           )}

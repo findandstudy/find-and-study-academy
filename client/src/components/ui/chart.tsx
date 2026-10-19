@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale } from "@/lib/legacy-ui";
 "use client"
 
 import * as React from "react"
@@ -28,7 +29,7 @@ function useChart() {
   const context = React.useContext(ChartContext)
 
   if (!context) {
-    throw new Error("useChart must be used within a <ChartContainer />")
+    throw new Error(legacyUi("useChart must be used within a <ChartContainer />"))
   }
 
   return context
@@ -186,7 +187,7 @@ const ChartTooltipContent = React.forwardRef<
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
           {payload.map((item, index) => {
-            const key = `${nameKey || item.name || item.dataKey || "value"}`
+            const key = `${nameKey || item.name || item.dataKey || legacyUi("value")}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             const indicatorColor = color || item.payload.fill || item.color
 
@@ -240,7 +241,7 @@ const ChartTooltipContent = React.forwardRef<
                       </div>
                       {item.value && (
                         <span className="font-mono font-medium tabular-nums text-foreground">
-                          {item.value.toLocaleString()}
+                          {item.value.toLocaleString(legacyLocale())}
                         </span>
                       )}
                     </div>
@@ -286,7 +287,7 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`
+          const key = `${nameKey || item.dataKey || legacyUi("value")}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (

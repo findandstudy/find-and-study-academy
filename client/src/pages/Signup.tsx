@@ -41,7 +41,7 @@ export default function Signup() {
     email: '',
     password: '',
     agencyName: '',
-    country: DEFAULT_COUNTRY,
+    country: '',
     phoneCountry: DEFAULT_COUNTRY,
     phoneNumber: '',
   });
@@ -80,6 +80,25 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // HTML minLength alone accepts whitespace. Validate the same trimmed names
+    // that the server stores before allowing the user to leave a step.
+    for (const id of ['name', 'agencyName']) {
+      const input = formRef.current?.querySelector<HTMLInputElement>(`#${id}`);
+      input?.setCustomValidity(input.value.trim().length < 2 ?
+        t(id === 'name' ? 'registration.fullName' : 'registration.agencyName') : '');
+    }
+    const phoneInput = formRef.current?.querySelector<HTMLInputElement>('#phoneNumber');
+    const digits = formData.phoneNumber.replace(/\D/g, '').replace(/^0+/, '');
+    phoneInput?.setCustomValidity(
+      digits.length < 4 || !/^[\d\s().-]+$/.test(formData.phoneNumber) ||
+      !/^\+[1-9]\d{5,17}$/.test(`+${selectedDial}${digits}`)
+        ? t('registration.invalidPhone') : '');
+    if (step >= 1 && !formData.country) {
+      setStep(1);
+      toast({ title: t('registration.failedTitle'), description: t('registration.selectCountry'), variant: 'destructive' });
+      return;
+    }
 
     const target = step < 2 ? step : [0, 1, 2].find(index => {
       const fields = formRef.current?.querySelectorAll<HTMLInputElement>(`[data-step="${index}"] input`);

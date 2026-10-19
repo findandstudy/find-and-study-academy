@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { useTranslation } from 'react-i18next';
 import { courseText } from '@/i18n/course-labels';
 import { useState, useEffect } from 'react';
@@ -114,14 +115,14 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
       queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
       
       toast({
-        title: 'Lesson Completed',
-        description: 'Your progress has been saved.'
+        title: legacyUi("Lesson Completed"),
+        description: legacyUi("Your progress has been saved.")
       });
     },
     onError: (error) => {
       toast({
-        title: 'Save Failed',
-        description: error instanceof Error ? error.message : 'Could not save your progress.',
+        title: legacyUi("Save Failed"),
+        description: error instanceof Error ? legacyMessage(error.message) : legacyUi("Could not save your progress."),
         variant: 'destructive'
       });
     }
@@ -229,7 +230,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                 <div className="relative mb-4">
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="shrink-0 bg-primary/10 text-primary border-primary/30">
-                      {section.title.match(/^[A-Z]\d/)?.[0] || `S${sectionIndex + 1}`}
+                      {section.title.match(/^[A-Z]\d/)?.[0] || legacyUi("S{value0}",{value0:sectionIndex + 1})}
                     </Badge>
                     <h3 className="font-semibold text-sm bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                       {section.title}

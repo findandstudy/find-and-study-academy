@@ -1,3 +1,4 @@
+import { legacyLocale } from "@/lib/legacy-ui";
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import type { Certificate, User, Course, Agency } from '../types';
@@ -65,7 +66,7 @@ export const generateCertificatePDF = async (
   doc.setFont('helvetica', 'normal');
   doc.text(`Final Score: ${certificate.scorePercent}%`, 148.5, 160, { align: 'center' });
   doc.text(`Certificate Code: ${certificate.code}`, 148.5, 170, { align: 'center' });
-  doc.text(`Date of Issue: ${new Date(certificate.issuedAt).toLocaleDateString()}`, 148.5, 180, { align: 'center' });
+  doc.text(`Date of Issue: ${new Date(certificate.issuedAt).toLocaleDateString(legacyLocale())}`, 148.5, 180, { align: 'center' });
 
   // Signature (2cm yukarı kaldırıldı)
   doc.setFontSize(12);

@@ -1,3 +1,5 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
+import { AgencyLogoManager } from '@/components/AgencyBranding';
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,7 +45,7 @@ export default function AgentAgency() {
   // Update form when agency data is fetched
   useEffect(() => {
     if (userAgency) {
-      setAgencyData(userAgency);
+      setAgencyData({...userAgency, phone:userAgency.phone || (userAgency as any).contactPhone || '', primaryContactEmail:userAgency.primaryContactEmail || (userAgency as any).contactEmail || ''});
     }
   }, [userAgency]);
 
@@ -56,8 +58,8 @@ export default function AgentAgency() {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Invalid File Type',
-        description: 'Please select an image file.',
+        title: legacyUi("Invalid File Type"),
+        description: legacyUi("Please select an image file."),
         variant: 'destructive'
       });
       return;
@@ -66,8 +68,8 @@ export default function AgentAgency() {
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'File Too Large',
-        description: 'Please select an image smaller than 5MB.',
+        title: legacyUi("File Too Large"),
+        description: legacyUi("Please select an image smaller than 5MB."),
         variant: 'destructive'
       });
       return;
@@ -91,7 +93,7 @@ export default function AgentAgency() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload agency logo');
+        throw new Error(legacyUi("Failed to upload agency logo"));
       }
 
       const result = await response.json();
@@ -109,14 +111,14 @@ export default function AgentAgency() {
       queryClient.invalidateQueries({ queryKey: ['/api/agency'] });
 
       toast({
-        title: 'Logo Uploaded',
-        description: 'Agency logo has been updated successfully.'
+        title: legacyUi("Logo Uploaded"),
+        description: legacyUi("Agency logo has been updated successfully.")
       });
     } catch (error) {
       console.error('Logo upload failed:', error);
       toast({
-        title: 'Upload Failed',
-        description: 'Failed to upload logo. Please try again.',
+        title: legacyUi("Upload Failed"),
+        description: legacyUi("Failed to upload logo. Please try again."),
         variant: 'destructive'
       });
     } finally {
@@ -131,7 +133,6 @@ export default function AgentAgency() {
       // Build update payload from current state
       const updatePayload: Partial<InsertAgency> = {
         name: agencyData.name,
-        logoUrl: agencyData.logoUrl,
         address: agencyData.address,
         googleMapUrl: agencyData.googleMapUrl,
         yandexMapUrl: agencyData.yandexMapUrl,
@@ -143,9 +144,6 @@ export default function AgentAgency() {
         primaryContactEmail: agencyData.primaryContactEmail,
       };
       
-      console.log('[AGENCY SAVE] Current agencyData state:', agencyData);
-      console.log('[AGENCY SAVE] Sending update payload:', updatePayload);
-      console.log('[AGENCY SAVE] User agencyId:', user.agencyId);
 
       // Send update request to backend
       const response = await fetch('/api/agency', {
@@ -165,7 +163,6 @@ export default function AgentAgency() {
       }
 
       const result = await response.json();
-      console.log('[AGENCY SAVE] Success:', result);
 
       // Update local store with backend response
       updateAgency(userAgency.id, result.agency);
@@ -174,14 +171,14 @@ export default function AgentAgency() {
       queryClient.invalidateQueries({ queryKey: ['/api/agency'] });
 
       toast({
-        title: 'Agency Updated',
-        description: 'Your agency information has been saved successfully.'
+        title: legacyUi("Agency Updated"),
+        description: legacyUi("Your agency information has been saved successfully.")
       });
     } catch (error) {
       console.error('Error updating agency:', error);
       toast({
-        title: 'Update Failed',
-        description: error instanceof Error ? error.message : 'Failed to save agency information. Please try again.',
+        title: legacyUi("Update Failed"),
+        description: error instanceof Error ? legacyMessage(error.message) : legacyUi("Failed to save agency information. Please try again."),
         variant: 'destructive'
       });
     }
@@ -211,11 +208,9 @@ export default function AgentAgency() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            My Agency
-          </h1>
+            {legacyUi("My Agency")}</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Manage your agency information and profile.
-          </p>
+            {legacyUi("Manage your agency information and profile.")}</p>
         </div>
       </div>
 
@@ -225,73 +220,42 @@ export default function AgentAgency() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="w-5 h-5" />
-              Basic Information
-            </CardTitle>
+              {legacyUi("Basic Information")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Agency Name</Label>
+              <Label htmlFor="name">{legacyUi("Agency Name")}</Label>
               <Input
                 id="name"
                 value={agencyData.name || ''}
                 onChange={(e) => updateField('name', e.target.value)}
-                placeholder="Your agency name"
+                placeholder={legacyUi("Your agency name")}
                 data-testid="input-agency-name"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="logo">Agency Logo</Label>
-              <div className="flex items-center gap-4">
-                {agencyData.logoUrl && (
-                  <img
-                    src={agencyData.logoUrl}
-                    alt="Agency Logo"
-                    className="w-16 h-16 rounded-md object-cover border"
-                  />
-                )}
-                <div>
-                  <Input
-                    id="logo"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                    data-testid="input-logo-upload"
-                    disabled={uploadingLogo}
-                  />
-                  <Label htmlFor="logo" className="cursor-pointer">
-                    <Button type="button" variant="outline" size="sm" asChild disabled={uploadingLogo}>
-                      <span>
-                        <Upload className="w-4 h-4 mr-2" />
-                        {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                      </span>
-                    </Button>
-                  </Label>
-                </div>
-              </div>
-            </div>
+            <AgencyLogoManager />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="staffSize">Staff Size</Label>
+                <Label htmlFor="staffSize">{legacyUi("Staff Size")}</Label>
                 <Input
                   id="staffSize"
                   type="number"
                   value={agencyData.staffSize || ''}
                   onChange={(e) => updateField('staffSize', parseInt(e.target.value) || 0)}
-                  placeholder="Number of staff"
+                  placeholder={legacyUi("Number of staff")}
                   data-testid="input-staff-size"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="annualStudents">Annual Students</Label>
+                <Label htmlFor="annualStudents">{legacyUi("Annual Students")}</Label>
                 <Input
                   id="annualStudents"
                   type="number"
                   value={agencyData.annualStudents || ''}
                   onChange={(e) => updateField('annualStudents', parseInt(e.target.value) || 0)}
-                  placeholder="Students per year"
+                  placeholder={legacyUi("Students per year")}
                   data-testid="input-annual-students"
                 />
               </div>
@@ -304,12 +268,11 @@ export default function AgentAgency() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Contact Information
-            </CardTitle>
+              {legacyUi("Contact Information")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
+              <Label htmlFor="website">{legacyUi("Website")}</Label>
               <Input
                 id="website"
                 type="url"
@@ -321,7 +284,7 @@ export default function AgentAgency() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">{legacyUi("Phone")}</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -333,18 +296,18 @@ export default function AgentAgency() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primaryContactName">Primary Contact Name</Label>
+              <Label htmlFor="primaryContactName">{legacyUi("Primary Contact Name")}</Label>
               <Input
                 id="primaryContactName"
                 value={agencyData.primaryContactName || ''}
                 onChange={(e) => updateField('primaryContactName', e.target.value)}
-                placeholder="Contact person name"
+                placeholder={legacyUi("Contact person name")}
                 data-testid="input-contact-name"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primaryContactEmail">Primary Contact Email</Label>
+              <Label htmlFor="primaryContactEmail">{legacyUi("Primary Contact Email")}</Label>
               <Input
                 id="primaryContactEmail"
                 type="email"
@@ -362,17 +325,16 @@ export default function AgentAgency() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Location
-            </CardTitle>
+              {legacyUi("Location")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">{legacyUi("Address")}</Label>
               <Textarea
                 id="address"
                 value={agencyData.address || ''}
                 onChange={(e) => updateField('address', e.target.value)}
-                placeholder="Full address including city and country"
+                placeholder={legacyUi("Full address including city and country")}
                 rows={3}
                 data-testid="input-address"
               />
@@ -382,8 +344,7 @@ export default function AgentAgency() {
               <div className="space-y-2">
                 <Label htmlFor="googleMapUrl" className="flex items-center gap-2">
                   <Globe className="w-4 h-4" />
-                  Google Map Link
-                </Label>
+                  {legacyUi("Google Map Link")}</Label>
                 <Input
                   id="googleMapUrl"
                   type="url"
@@ -396,8 +357,7 @@ export default function AgentAgency() {
               <div className="space-y-2">
                 <Label htmlFor="yandexMapUrl" className="flex items-center gap-2">
                   <Globe className="w-4 h-4" />
-                  Yandex Map Link
-                </Label>
+                  {legacyUi("Yandex Map Link")}</Label>
                 <Input
                   id="yandexMapUrl"
                   type="url"
@@ -415,8 +375,7 @@ export default function AgentAgency() {
       {/* Save Button */}
       <div className="flex justify-start">
         <Button onClick={handleSave} data-testid="button-save-agency">
-          Save Changes
-        </Button>
+          {legacyUi("Save Changes")}</Button>
       </div>
     </div>
   );

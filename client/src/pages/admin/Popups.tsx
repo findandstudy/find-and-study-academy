@@ -1,3 +1,4 @@
+import { legacyUi, legacyDate } from "@/lib/legacy-ui";
 import { useState, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -242,7 +243,7 @@ export default function AdminPopups() {
       if (!res.ok) throw new Error(`${res.status}`);
       const json = await res.json();
       const url = json?.url || json?.fileUrl || json?.path;
-      if (!url) throw new Error('URL not returned');
+      if (!url) throw new Error(legacyUi("URL not returned"));
       setForm((f) => ({ ...f, imageUrl: url }));
       toast({ title: t('admin.popups.imageUploaded') });
     } catch (e: unknown) {
@@ -312,7 +313,7 @@ export default function AdminPopups() {
         </div>
         {form.imageUrl && (
           <div className="mt-2 rounded-md overflow-hidden border border-border max-w-xs">
-            <img src={form.imageUrl} alt="preview" className="w-full h-auto object-cover max-h-40" />
+            <img src={form.imageUrl} alt={legacyUi("preview")} className="w-full h-auto object-cover max-h-40" />
           </div>
         )}
       </div>
@@ -542,12 +543,12 @@ export default function AdminPopups() {
                         <Badge variant={STATUS_VARIANT[p.status]}>{statusLabel[p.status]}</Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {p.startsAt ? dayjs(p.startsAt).format('DD MMM YYYY') : '—'}
+                        {p.startsAt ? legacyDate(p.startsAt,'DD MMM YYYY') : '—'}
                         {' → '}
-                        {p.expiresAt ? dayjs(p.expiresAt).format('DD MMM YYYY') : '—'}
+                        {p.expiresAt ? legacyDate(p.expiresAt,'DD MMM YYYY') : '—'}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {dayjs(p.createdAt).format('DD MMM YYYY')}
+                        {legacyDate(p.createdAt,'DD MMM YYYY')}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">

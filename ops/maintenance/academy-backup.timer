@@ -1,0 +1,7 @@
+[Unit]
+Description=Weekly verified Academy backup with bounded retention queue
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00 UTC
+Persistent=true
+[Install]
+WantedBy=timers.target

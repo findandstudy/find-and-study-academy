@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 // API utility for server-side certificate verification
 import { getSession } from './auth';
 export interface CertificateVerificationResponse {
@@ -30,7 +31,7 @@ export async function verifyCertificate(code: string): Promise<CertificateVerifi
     console.error('Certificate verification API error:', error);
     return {
       success: false,
-      message: 'Network error during verification'
+      message: legacyUi("Network error during verification")
     };
   }
 }
@@ -57,6 +58,7 @@ export interface CertificateIssuanceResponse {
 // Submit quiz attempt to server (auto-generates certificate for passing Final Exam)
 export async function submitAttempt(attemptData: {
   quizId: string;
+  answers: Record<string, boolean | number>;
   scorePercent: number;
   correct: number;
   incorrect: number;
@@ -77,7 +79,7 @@ export async function submitAttempt(attemptData: {
     if (!session) {
       return {
         success: false,
-        message: 'Authentication required'
+        message: legacyUi("Authentication required")
       };
     }
 
@@ -97,7 +99,7 @@ export async function submitAttempt(attemptData: {
     console.error('Attempt submission error:', error);
     return {
       success: false,
-      message: 'Network error during attempt submission'
+      message: legacyUi("Network error during attempt submission")
     };
   }
 }
@@ -109,7 +111,7 @@ export async function issueCertificate(data: { courseId: string; quizId: string 
     if (!session) {
       return {
         success: false,
-        message: 'Authentication required'
+        message: legacyUi("Authentication required")
       };
     }
 
@@ -129,7 +131,7 @@ export async function issueCertificate(data: { courseId: string; quizId: string 
     console.error('Certificate issuance API error:', error);
     return {
       success: false,
-      message: 'Network error during certificate issuance'
+      message: legacyUi("Network error during certificate issuance")
     };
   }
 }

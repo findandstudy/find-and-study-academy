@@ -1,3 +1,4 @@
+import { legacyUi, legacyLocale } from "@/lib/legacy-ui";
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,11 +36,9 @@ export default function AgentExamsOrders() {
         <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Exams & Orders
-          </h1>
+            {legacyUi("Exams & Orders")}</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Manage your exam registrations and payment history.
-          </p>
+            {legacyUi("Manage your exam registrations and payment history.")}</p>
         </div>
       </div>
 
@@ -50,10 +49,9 @@ export default function AgentExamsOrders() {
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-yellow-600" />
               <div>
-                <p className="font-medium text-yellow-800">Payments Coming Soon</p>
+                <p className="font-medium text-yellow-800">{legacyUi("Payments Coming Soon")}</p>
                 <p className="text-sm text-yellow-700">
-                  All courses and exams are currently free while we set up payment processing.
-                </p>
+                  {legacyUi("All courses and exams are currently free while we set up payment processing.")}</p>
               </div>
             </div>
           </CardContent>
@@ -65,14 +63,13 @@ export default function AgentExamsOrders() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            Order History
-          </CardTitle>
+            {legacyUi("Order History")}</CardTitle>
         </CardHeader>
         <CardContent>
           {userOrders.length === 0 ? (
             <div className="text-center py-8">
               <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No orders yet</p>
+              <p className="text-muted-foreground">{legacyUi("No orders yet")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -89,9 +86,9 @@ export default function AgentExamsOrders() {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                      <span>Order #{order.id}</span>
+                      <span>{legacyUi("Order #")}{order.id}</span>
                       <span>{order.amount} {order.currency}</span>
-                      <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                      <span>{new Date(order.createdAt).toLocaleDateString(legacyLocale())}</span>
                     </div>
                   </div>
 
@@ -106,14 +103,13 @@ export default function AgentExamsOrders() {
                               data-testid={`button-pay-${order.id}`}
                             >
                               <CreditCard className="w-4 h-4 mr-2" />
-                              Pay Now
-                            </Button>
+                              {legacyUi("Pay Now")}</Button>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
                           {paymentConfig.enabled 
-                            ? 'Click to pay for this order' 
-                            : 'Payments are not enabled yet'
+                            ? legacyUi("Click to pay for this order") 
+                            : legacyUi("Payments are not enabled yet")
                           }
                         </TooltipContent>
                       </Tooltip>

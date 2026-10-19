@@ -34,7 +34,28 @@
     "continue": "متابعة",
     "start": "ابدأ",
     "viewAll": "عرض الكل",
-    "profilePictureAlt": "صورة الملف الشخصي"
+    "profilePictureAlt": "صورة الملف الشخصي",
+    "draft": "مسودة",
+    "published": "منشور",
+    "status": "الحالة",
+    "title": "العنوان",
+    "description": "الوصف",
+    "document": "مستند",
+    "video": "فيديو",
+    "image": "صورة",
+    "files": "ملفات",
+    "allCountries": "كل البلدان",
+    "allTypes": "جميع الأنواع",
+    "newestFirst": "الأحدث أولاً",
+    "oldestFirst": "الأقدم أولاً",
+    "searchPlaceholder": "بحث...",
+    "open": "فتح",
+    "download": "تنزيل",
+    "subfolders": "المجلدات الفرعية",
+    "category": "الفئة",
+    "country": "البلد",
+    "order": "الترتيب",
+    "name": "الاسم"
   },
   "toast": {
     "saved": "تم حفظ الإعدادات",
@@ -524,6 +545,21 @@
       "partnerZone": "منطقة الشريك",
       "findyAssistant": "مساعد Findy",
       "findyAssistantDesc": "أداة الدردشة المرئية في أسفل يمين جميع اللوحات. عند التعطيل، تُخفى في لوحتي الإدارة والوكيل."
+    },
+    "sidebarLinks": {
+      "validationTitle": "حقول مفقودة",
+      "validationDesc": "كل رابط يحتاج إلى اسم و URL.",
+      "savedTitle": "تم الحفظ",
+      "savedDesc": "تم تحديث روابط الشريط الجانبي.",
+      "title": "روابط الشريط الجانبي",
+      "description": "إدارة الروابط المعروضة في الشريط الجانبي للوكيل. يتم فتحها في نافذة جديدة.",
+      "addLink": "إضافة رابط",
+      "empty": "لا توجد روابط بعد. اضغط \"إضافة رابط\" لإنشاء واحد.",
+      "moveUp": "تحريك للأعلى",
+      "moveDown": "تحريك للأسفل",
+      "uploadIcon": "تحميل الأيقونة",
+      "namePlaceholder": "الاسم الظاهر (مثلاً بوابة الوكيل)",
+      "enabled": "مرئي للوكلاء"
     }
   },
   "home": {

@@ -1,3 +1,4 @@
+import { completionState } from '@shared/profile-completion';
 import type { Express, RequestHandler } from 'express';
 import { storage } from './storage';
 import { db } from './db';
@@ -28,11 +29,14 @@ export function registerAdminOperations(app: Express, auth: RequestHandler, admi
         db.select({ id: quizTranslations.quizId, language: quizTranslations.language, status: quizTranslations.status }).from(quizTranslations)
       ]);
       const now = Date.now();
+      const agencyById = new Map(agencies.map(a => [a.id, a]));
       const agents = users.filter(u => u.role === 'agent').map(u => {
         const progress = progresses.filter(p => p.userId === u.id);
         const exams = attempts.filter(a => a.userId === u.id);
         const lastActivity = Math.max(0, ...progress.map(p => new Date(p.lastAccessed).getTime()), ...exams.map(a => new Date(a.date).getTime()));
-        return { id: u.id, name: u.name, email: u.email, agencyId: u.agencyId, status: u.status, enrolled: progress.length, completed: progress.filter(p => p.percent >= 100).length, averageProgress: progress.length ? Math.round(progress.reduce((n,p) => n + Math.min(100,p.percent),0)/progress.length) : 0, lastActivity: lastActivity ? new Date(lastActivity).toISOString() : null, notStarted: progress.length === 0, stalled: progress.some(p => p.percent < 100) && now-lastActivity > 14*86400000, struggling: exams.length >= 3 && exams.slice().sort((a,b) => +new Date(b.date)-+new Date(a.date)).slice(0,3).every(a => a.scorePercent < 70) };
+        const agency = u.agencyId ? agencyById.get(u.agencyId) : undefined;
+        const completion = completionState(u, agency);
+        return { profileComplete: !completion.required, missingFields: completion.missing, agencyName: agency?.name ?? null, id: u.id, name: u.name, email: u.email, agencyId: u.agencyId, status: u.status, enrolled: progress.length, completed: progress.filter(p => p.percent >= 100).length, averageProgress: progress.length ? Math.round(progress.reduce((n,p) => n + Math.min(100,p.percent),0)/progress.length) : 0, lastActivity: lastActivity ? new Date(lastActivity).toISOString() : null, notStarted: progress.length === 0, stalled: progress.some(p => p.percent < 100) && now-lastActivity > 14*86400000, struggling: exams.length >= 3 && exams.slice().sort((a,b) => +new Date(b.date)-+new Date(a.date)).slice(0,3).every(a => a.scorePercent < 70) };
       });
       const publishedLessons = contents.filter(c => c.status === 'published' && c.type === 'lesson');
       const activeQuizzes = quizzes.filter(q => q.status === 'active');
@@ -76,7 +80,6 @@ export function registerAdminOperations(app: Express, auth: RequestHandler, admi
         if (agency.status!=='pending') return {code:409,message:'Only pending applications can be reviewed'};
         const [updated] = await tx.update(agencyTable).set({status:decision==='approve'?'active':'inactive'}).where(eq(agencyTable.id,agency.id)).returning();
         if (decision==='approve') await tx.update(userTable).set({status:'active'}).where(and(eq(userTable.agencyId,agency.id),eq(userTable.role,'agent'),eq(userTable.status,'inactive')));
-        else await tx.update(userTable).set({status:'inactive'}).where(and(eq(userTable.agencyId,agency.id),eq(userTable.role,'agent')));
         await tx.insert(analyticsMetrics).values({userId:(req as any).user.id,metricType:'admin_action',metricValue:JSON.stringify({agencyId:agency.id,decision,reason:reason.trim()})});
         return {code:200,agency:updated};
       });

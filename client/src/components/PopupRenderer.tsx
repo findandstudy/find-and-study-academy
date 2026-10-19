@@ -1,3 +1,4 @@
+import { legacyUi } from "@/lib/legacy-ui";
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
@@ -106,7 +107,7 @@ export function PopupRenderer() {
       <DialogContent className="max-w-lg" data-testid={`dialog-popup-${visiblePopup.id}`}>
         <DialogHeader>
           <DialogTitle data-testid="text-popup-title">{visiblePopup.title}</DialogTitle>
-          <DialogDescription className="sr-only">Duyuru pop-up</DialogDescription>
+          <DialogDescription className="sr-only">{legacyUi("Duyuru pop-up")}</DialogDescription>
         </DialogHeader>
 
         {visiblePopup.imageUrl && (
@@ -136,7 +137,7 @@ export function PopupRenderer() {
             data-testid="link-popup-cta"
           >
             <Button size="sm">
-              {visiblePopup.linkText || 'Daha fazla bilgi'}
+              {visiblePopup.linkText || legacyUi("Daha fazla bilgi")}
               <ExternalLink className="w-3 h-3 ml-2" />
             </Button>
           </a>
@@ -150,14 +151,12 @@ export function PopupRenderer() {
                 onCheckedChange={(v) => setDontShowAgain(!!v)}
                 data-testid="checkbox-dont-show-again"
               />
-              Bir daha gösterme
-            </label>
+              {legacyUi("Bir daha gösterme")}</label>
           ) : (
             <span />
           )}
           <Button variant="outline" onClick={() => handleClose(false)} data-testid="button-popup-close">
-            Kapat
-          </Button>
+            {legacyUi("Kapat")}</Button>
         </div>
       </DialogContent>
     </Dialog>

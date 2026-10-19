@@ -34,7 +34,28 @@
     "continue": "Continuar",
     "start": "Comenzar",
     "viewAll": "Ver todo",
-    "profilePictureAlt": "Foto de perfil"
+    "profilePictureAlt": "Foto de perfil",
+    "draft": "Borrador",
+    "published": "Publicado",
+    "status": "Estado",
+    "title": "Título",
+    "description": "Descripción",
+    "document": "Documento",
+    "video": "Vídeo",
+    "image": "Imagen",
+    "files": "Archivos",
+    "allCountries": "Todos los países",
+    "allTypes": "Todos los tipos",
+    "newestFirst": "Más recientes primero",
+    "oldestFirst": "Más antiguos primero",
+    "searchPlaceholder": "Buscar...",
+    "open": "Abrir",
+    "download": "Descargar",
+    "subfolders": "Subcarpetas",
+    "category": "Categoría",
+    "country": "País",
+    "order": "Orden",
+    "name": "Nombre"
   },
   "toast": {
     "saved": "Configuración guardada",
@@ -508,6 +529,21 @@
       "partnerZone": "Zona de socios",
       "findyAssistant": "Asistente Findy",
       "findyAssistantDesc": "Widget de chat visible en la parte inferior derecha de todos los paneles. Cuando está deshabilitado, se oculta en ambos paneles."
+    },
+    "sidebarLinks": {
+      "validationTitle": "Campos faltantes",
+      "validationDesc": "Cada enlace necesita un nombre y un URL.",
+      "savedTitle": "Guardado",
+      "savedDesc": "Enlaces de la barra lateral actualizados.",
+      "title": "Enlaces de la barra lateral",
+      "description": "Administra los enlaces mostrados en la barra lateral del agente. Se abren en una pestaña nueva.",
+      "addLink": "Agregar enlace",
+      "empty": "Aún no hay enlaces. Haz clic en “Agregar enlace” para crear uno.",
+      "moveUp": "Mover arriba",
+      "moveDown": "Mover abajo",
+      "uploadIcon": "Subir ícono",
+      "namePlaceholder": "Nombre visible (por ejemplo, Portal del Agente)",
+      "enabled": "Visible para los agentes"
     }
   },
   "contentEditor": {

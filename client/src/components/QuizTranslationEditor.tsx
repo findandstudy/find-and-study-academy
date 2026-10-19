@@ -1,3 +1,4 @@
+import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +55,7 @@ export function QuizTranslationEditor({ quiz, onClose }: { quiz: QuizDTO; onClos
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!data?.sourceHash || !form.title.trim()) throw new Error('A translated title is required');
+      if (!data?.sourceHash || !form.title.trim()) throw new Error(legacyUi("A translated title is required"));
       mergeQuestionTranslations(base, form.questions);
       return (await apiRequest('PUT', `${url}/${language}`, { ...form, sourceHash: data.sourceHash })).json();
     },
@@ -63,7 +64,7 @@ export function QuizTranslationEditor({ quiz, onClose }: { quiz: QuizDTO; onClos
       queryClient.invalidateQueries({ queryKey: ['/api/public/quizzes'] });
       toast({ title: t('toast.saved') });
     },
-    onError: error => toast({ title: t('toast.failed'), description: error.message, variant: 'destructive' }),
+    onError: error => toast({ title: t('toast.failed'), description: legacyMessage(error.message), variant: 'destructive' }),
   });
 
   const updateQuestion = (index: number, patch: Partial<QuestionTranslation>) => setForm(previous => ({
@@ -83,22 +84,22 @@ export function QuizTranslationEditor({ quiz, onClose }: { quiz: QuizDTO; onClos
           <SelectContent><SelectItem value="draft">{t('common.draft')}</SelectItem><SelectItem value="published">{t('common.published')}</SelectItem></SelectContent>
         </Select>
       </div>
-      {error && <p role="alert" className="text-destructive">{error.message}</p>}
-      {existing?.stale && <p role="alert" className="text-amber-700">The source quiz changed. Review every question before publishing this translation.</p>}
+      {error && <p role="alert" className="text-destructive">{legacyMessage(error.message)}</p>}
+      {existing?.stale && <p role="alert" className="text-amber-700">{legacyUi("The source quiz changed. Review every question before publishing this translation.")}</p>}
       {isFetching ? <p>{t('common.loading')}</p> : <div className="space-y-5" dir={getLanguageMeta(language).dir}>
         <div className="space-y-2"><Label htmlFor="quiz-translation-title">{t('common.title')}</Label><p className="text-sm text-muted-foreground" dir="auto">{quiz.title}</p><Input id="quiz-translation-title" value={form.title} onChange={event => setForm(previous => ({ ...previous, title: event.target.value }))} /></div>
         <div className="space-y-2"><Label htmlFor="quiz-translation-description">{t('common.description')}</Label><p className="text-sm text-muted-foreground" dir="auto">{quiz.description}</p><Textarea id="quiz-translation-description" value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} /></div>
         {base.map((question, index) => <fieldset key={question.id} className="space-y-3 rounded-lg border p-4">
           <legend className="px-2 font-semibold">{index + 1}</legend>
           <p dir="auto" className="text-sm text-muted-foreground">{question.text}</p>
-          <Textarea aria-label={`Question ${index + 1}`} value={form.questions[index]?.text ?? ''} onChange={event => updateQuestion(index, { text: event.target.value })} />
+          <Textarea aria-label={legacyUi("Question {value0}",{value0:index + 1})} value={form.questions[index]?.text ?? ''} onChange={event => updateQuestion(index, { text: event.target.value })} />
           {question.type === 'mcq' && question.options.map((option, optionIndex) => <div key={optionIndex} className="space-y-1">
             <p dir="auto" className="text-sm text-muted-foreground">{optionIndex + 1}. {option}</p>
-            <Input aria-label={`Question ${index + 1}, option ${optionIndex + 1}`} value={form.questions[index]?.options?.[optionIndex] ?? ''} onChange={event => {
+            <Input aria-label={legacyUi("Question {value0}, option {value1}",{value0:index + 1,value1:optionIndex + 1})} value={form.questions[index]?.options?.[optionIndex] ?? ''} onChange={event => {
               const options = [...(form.questions[index]?.options ?? [])]; options[optionIndex] = event.target.value; updateQuestion(index, { options });
             }} />
           </div>)}
-          {question.explanation && <div className="space-y-1"><p dir="auto" className="text-sm text-muted-foreground">{question.explanation}</p><Textarea aria-label={`Question ${index + 1}, explanation`} value={form.questions[index]?.explanation ?? ''} onChange={event => updateQuestion(index, { explanation: event.target.value })} /></div>}
+          {question.explanation && <div className="space-y-1"><p dir="auto" className="text-sm text-muted-foreground">{question.explanation}</p><Textarea aria-label={legacyUi("Question {value0}, explanation",{value0:index + 1})} value={form.questions[index]?.explanation ?? ''} onChange={event => updateQuestion(index, { explanation: event.target.value })} /></div>}
         </fieldset>)}
       </div>}
       <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>{t('common.close')}</Button><Button disabled={isFetching || !!error || save.isPending || !data || !base.length} onClick={() => save.mutate()}>{t(save.isPending ? 'common.saving' : 'common.save')}</Button></div>
