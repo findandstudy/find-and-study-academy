@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction, RequestHandler } from 'express';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import createRateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { pool as sharedPool } from './db';
 import type { Pool } from 'pg';
@@ -12,6 +13,8 @@ const verificationHash=(s:string)=>crypto.createHmac('sha256',process.env.SESSIO
 const hash=(s:string)=>crypto.createHash('sha256').update(s).digest('hex');
 export const normalizePromo=(s:string)=>s.trim().toUpperCase();
 const promo=z.string().trim().min(6).max(64).regex(/^[A-Za-z0-9-]+$/).transform(normalizePromo);
+const campaignPreviewSchema=z.object({promoCode:promo}).strict();
+const campaignPreviewRateLimit=createRateLimit({windowMs:60*1000,limit:30,standardHeaders:true,legacyHeaders:false,message:{success:false,code:'REQUEST_LIMIT_REACHED',message:'REQUEST_LIMIT_REACHED'}});
 const signupSchema=publicSignupSchema.extend({promoCode:promo,verificationCode:z.string().regex(/^\d{6}$/)});
 const campaignSchema=z.object({code:promo,label:z.string().trim().min(2).max(120),expiresAt:z.string().datetime({offset:true}).refine(s=>Date.parse(s)>Date.now()),maxUses:z.number().int().min(1).max(100000),accessDays:z.number().int().min(1).max(3650)}).strict();
 class Failure extends Error { constructor(public status:number,public code:string){super(code)} }
@@ -58,6 +61,15 @@ export async function enforceAcademyAccess(req:Request,res:Response,next:NextFun
  if(!d)return void res.status(401).json({success:false,code:'DEVICE_REVOKED'});next();
  }catch(e){console.error('[device] access check failed');res.status(503).json({success:false,code:'ACCESS_CHECK_UNAVAILABLE'})}}
 export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,requireAdmin:RequestHandler,rateLimit:RequestHandler){
+ app.post('/api/public/campaign-preview',(_req,res,next)=>{res.set('Cache-Control','no-store');next()},campaignPreviewRateLimit,endpoint(async(req,res)=>{
+  const v=campaignPreviewSchema.safeParse(req.body);if(!v.success)return fail(400,'PROMO_INVALID_OR_EXPIRED');
+  // Preview never reserves access or touches the email verification and registration flow.
+  const r=await pool.query(`SELECT c.access_days,c.expires_at,c.enabled,c.max_uses,
+   (SELECT count(*)::int FROM academy_campaign_members m WHERE m.campaign_id=c.id) AS registrations
+   FROM academy_campaigns c WHERE c.code_hash=$1`,[hash(v.data.promoCode)]);
+  const a=r.rows[0];if(!a||!a.enabled||new Date(a.expires_at).getTime()<=Date.now()||a.registrations>=a.max_uses)fail(400,'PROMO_INVALID_OR_EXPIRED');
+  res.json({success:true,campaign:{accessDays:a.access_days,expiresAt:new Date(a.expires_at).toISOString(),deviceLimit:2,emailVerificationRequired:true,administratorApprovalRequired:true}});
+ }));
  app.get('/api/admin/campaigns',requireAuth,requireAdmin,endpoint(async(req,res)=>{
   const r=await pool.query(`SELECT c.id,c.label,c.expires_at,c.max_uses,c.access_days,c.enabled,c.created_at,
    count(m.user_id)::int AS registrations,count(m.user_id) FILTER(WHERE u.status<>'active')::int AS pending,
