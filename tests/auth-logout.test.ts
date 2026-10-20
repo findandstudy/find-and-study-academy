@@ -15,6 +15,7 @@ Object.defineProperty(globalThis, 'sessionStorage', { value: new MemoryStorage()
 const auth = await import('../client/src/lib/auth');
 const { storage } = await import('../client/src/lib/storage');
 const { useAuthStore } = await import('../client/src/store/auth');
+const attribution = await import('../client/src/lib/email-attribution');
 const originalFetch = globalThis.fetch;
 after(() => { globalThis.fetch = originalFetch; });
 const admin = { id: 'fixture-admin', name: 'Fixture', email: 'fixture@example.test', role: 'admin' as const };
@@ -160,4 +161,67 @@ test('a hanging earlier login bounds logout to ten seconds and never publishes i
   loginResponse.resolve(json({ success: true, user: agent }));
   assert.equal(await login, false);
   assert.equal(storage.getSession()?.user.id, admin.id);
+});
+
+const signupData = { name: 'Fixture', email: 'fixture@example.test', password: 'fixture-password', agencyName: 'Fixture Agency', country: 'TR', phone: '+905551234567' };
+
+test('signup measurement is success-only and exposes only the fixed promo/standard method', async () => {
+  const methods: string[] = [];
+  const unsubscribe = attribution.onSuccessfulSignup(method => methods.push(method));
+  const throwing = attribution.onSuccessfulSignup(() => { throw new Error('measurement fixture'); });
+  const originalError = console.error; console.error = () => {};
+  try {
+    globalThis.fetch = async () => json({ success: false, message: 'Signup failed' }, 400);
+    await assert.rejects(auth.signupAgent(signupData));
+    assert.deepEqual(methods, []);
+    globalThis.fetch = async () => json({ success: 'true', pending: true });
+    await assert.rejects(auth.signupAgent(signupData));
+    assert.deepEqual(methods, [], 'malformed success flags never count a registration');
+    globalThis.fetch = async () => json({ success: true, pending: true });
+    assert.equal((await auth.signupAgent({ ...signupData, promoCode: 'PRIVATE_PROMO' })).pending, true);
+    assert.equal((await auth.signupAgent(signupData)).pending, true);
+    assert.deepEqual(methods, ['promo', 'standard']);
+    assert.equal(JSON.stringify(methods).includes('PRIVATE_PROMO'), false);
+  } finally { console.error = originalError; unsubscribe(); throwing(); }
+});
+
+test('signup only forwards the current accepted public receipt; withdrawal removes the optional field', async () => {
+  const opaque = 'cGF5bG9hZA.c2lnbmF0dXJl';
+  const win = {
+    location: new URL('https://academy.findandstudy.com/signup?utm_source=newsletter&utm_medium=email&utm_campaign=academy_launch_2026&utm_content=email_01_en'),
+    localStorage, setTimeout, clearTimeout,
+  } as unknown as Window;
+  const client = attribution.emailAttributionClient(win, {
+    randomUUID: () => '00000000-0000-4000-8000-000000000001',
+    fetcher: async () => json({ success: true, token: opaque, expiresAt: new Date(Date.now() + 30 * 86400_000).toISOString() }),
+  });
+  client.setContext({ consent: 'accepted', enabled: true, anonymous: true });
+  assert.equal(await client.registrationToken(), opaque);
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { value: win, configurable: true });
+  const payloads: Record<string, unknown>[] = [];
+  globalThis.fetch = async (_url, init) => { payloads.push(JSON.parse(String(init?.body))); return json({ success: true, pending: true }); };
+  try {
+    await auth.signupAgent({ ...signupData, emailAttributionToken: opaque });
+    assert.equal(payloads[0].emailAttributionToken, opaque);
+    client.setContext({ consent: 'declined', enabled: true, anonymous: true });
+    await auth.signupAgent({ ...signupData, emailAttributionToken: opaque });
+    assert.equal('emailAttributionToken' in payloads[1], false);
+  } finally {
+    client.destroy();
+    if (descriptor) Object.defineProperty(globalThis, 'window', descriptor);
+    else delete (globalThis as any).window;
+  }
+});
+
+test('a stale signup response after logout cannot emit a conversion', async () => {
+  const response = deferred<Response>();
+  const methods: string[] = [];
+  const unsubscribe = attribution.onSuccessfulSignup(method => methods.push(method));
+  globalThis.fetch = async url => String(url) === '/api/signup' ? response.promise : json({ success: true });
+  const signup = auth.signupAgent(signupData);
+  const logout = auth.logout();
+  response.resolve(json({ success: true, pending: true }));
+  await signup; assert.equal(await logout, true); assert.deepEqual(methods, []);
+  unsubscribe();
 });

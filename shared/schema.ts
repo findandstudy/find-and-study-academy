@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, unique, jsonb, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, unique, jsonb, uuid, index, check, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -245,6 +245,27 @@ export const analyticsMetrics = pgTable("analytics_metrics", {
   quizId: varchar("quiz_id"),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
+
+// Consent-based campaign attribution is separate from account activity JSON.
+// Existing accounts are never backfilled with inferred email sources.
+export const academyEmailVisits = pgTable('academy_email_visits', {
+  id: uuid('id').primaryKey(),
+  messageId: text('message_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  messageAllowed: check('academy_email_visits_message_id_check', sql`${table.messageId} IN ('email_01_en','email_02_en','email_03_en','email_04_en','email_05_en','email_01_tr','email_02_tr','email_03_tr','email_04_tr','email_05_tr')`),
+  createdMessage: index('academy_email_visits_created_message').on(table.createdAt, table.messageId),
+}));
+export const academyEmailRegistrations = pgTable('academy_email_registrations', {
+  userId: varchar('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  messageId: text('message_id').notNull(),
+  visitId: uuid('visit_id').notNull().references(() => academyEmailVisits.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  messageAllowed: check('academy_email_registrations_message_id_check', sql`${table.messageId} IN ('email_01_en','email_02_en','email_03_en','email_04_en','email_05_en','email_01_tr','email_02_tr','email_03_tr','email_04_tr','email_05_tr')`),
+  createdMessage: index('academy_email_registrations_created_message').on(table.createdAt, table.messageId),
+  visitLookup: index('academy_email_registrations_visit').on(table.visitId),
+}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

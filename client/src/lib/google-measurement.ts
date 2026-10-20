@@ -3,6 +3,7 @@
  * automatic DOM/history listeners cannot observe the Academy's forms or panels.
  * Destroying that frame also destroys its timers and listeners on withdrawal.
  */
+import { isEmailMessageId, type EmailMessageId } from '@shared/email-attribution';
 export const MEASUREMENT_CONSENT_KEY = 'fas_optional_analytics_v1';
 export const MEASUREMENT_COOKIE_PREFIX = 'fas_analytics';
 const CONSENT_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
@@ -16,9 +17,12 @@ export type MeasurementConfig = {
   measurementId: string | null;
   consentRequired: true;
 };
-export type MeasurementPage = { page_location: string; page_referrer: string; page_title: string };
+export type MeasurementPage = { page_location: string; page_referrer: string; page_title: string; campaign_source?: 'newsletter'; campaign_medium?: 'email'; campaign_name?: 'academy_launch_2026'; campaign_content?: EmailMessageId };
 type TagWindow = Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void };
-export type MeasurementTransport = { pageView: (page: MeasurementPage) => void; stop: () => void };
+export type MeasurementTransport = { pageView: (page: MeasurementPage) => void; signUp?: (page: MeasurementPage, method: 'promo' | 'standard') => void; stop: () => void };
+export function emailCampaignFields(messageId: unknown): Partial<MeasurementPage> {
+  return isEmailMessageId(messageId) ? { campaign_source: 'newsletter', campaign_medium: 'email', campaign_name: 'academy_launch_2026', campaign_content: messageId } : {};
+}
 
 export function isMeasurementPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname);
@@ -90,7 +94,7 @@ export function createGoogleTagTransport(win: Window, measurementId: string, ini
   let initialized = false;
   let tagWindow: TagWindow | null = null;
   let gtag: ((...args: unknown[]) => void) | null = null;
-  let queuedPages: MeasurementPage[] = [];
+  let queuedPages: { page: MeasurementPage; method?: 'promo' | 'standard' }[] = [];
   let removePolicyListener = () => {};
   const stop = () => {
     if (stopped) return;
@@ -107,11 +111,11 @@ export function createGoogleTagTransport(win: Window, measurementId: string, ini
     frame.onerror = null;
     frame.remove();
   };
-  const sendPage = (page: MeasurementPage) => {
+  const sendPage = (page: MeasurementPage, method?: 'promo' | 'standard') => {
     if (stopped || !gtag) return;
     // Also update defaults for unavoidable GA session/engagement events.
     gtag('set', page);
-    gtag('event', 'page_view', { ...page, send_to: measurementId });
+    gtag('event', method ? 'sign_up' : 'page_view', { ...page, ...(method ? { method } : {}), send_to: measurementId });
   };
   frame.onload = () => {
     if (stopped) return;
@@ -182,7 +186,7 @@ export function createGoogleTagTransport(win: Window, measurementId: string, ini
       script.onerror = () => { if (!stopped) frame.setAttribute('data-tag-status', 'error'); };
       initialized = true;
       frame.setAttribute('data-document-initialized', 'true');
-      for (const page of queuedPages) sendPage(page);
+      for (const event of queuedPages) sendPage(event.page, event.method);
       queuedPages = [];
       // Queue consent, sanitized globals and pending views before the SDK loads.
       tagDocument.head.appendChild(script);
@@ -204,13 +208,18 @@ export function createGoogleTagTransport(win: Window, measurementId: string, ini
     pageView(page) {
       if (stopped) return;
       if (initialized) sendPage(page);
-      else queuedPages.push({ ...page });
+      else queuedPages.push({ page: { ...page } });
+    },
+    signUp(page, method) {
+      if (stopped || (method !== 'promo' && method !== 'standard')) return;
+      if (initialized) sendPage(page, method);
+      else queuedPages.push({ page: { ...page }, method });
     },
     stop,
   };
 }
 
-export function createMeasurementController(win: Window, createTransport = createGoogleTagTransport) {
+export function createMeasurementController(win: Window, createTransport = createGoogleTagTransport, email?: { messageId: () => EmailMessageId | null; pause: () => void }) {
   let config: MeasurementConfig | null = null;
   let consent: MeasurementConsent = null;
   let permitted = false;
@@ -220,14 +229,19 @@ export function createMeasurementController(win: Window, createTransport = creat
   let activeId: string | null = null;
   let publicRoute = !!sanitizeMeasurementLocation(win.location.href, win.location.origin);
   let configEpoch = 0;
+  let activeMessage: EmailMessageId | null = null;
+  let lastMeasurementPage: MeasurementPage | null = null;
   const stop = () => {
     if (activeId) setDisabled(win, activeId, true);
     transport?.stop();
     transport = null;
     activeId = null;
     lastPage = '';
+    lastMeasurementPage = null;
+    activeMessage = null;
   };
   const invalidateConfig = () => {
+    email?.pause();
     config = null;
     configEpoch++;
     stop();
@@ -246,6 +260,9 @@ export function createMeasurementController(win: Window, createTransport = creat
       return;
     }
     if (activeId && activeId !== config.measurementId) stop();
+    const messageId = email?.messageId() || null;
+    // A fresh frame clears old global campaign defaults on expiry/source change.
+    if (transport && activeMessage !== messageId) stop();
     if (location === lastPage) return;
     const path = new URL(location).pathname;
     const page: MeasurementPage = {
@@ -253,15 +270,18 @@ export function createMeasurementController(win: Window, createTransport = creat
       page_referrer: previousPublicPage,
       // Never read user-controlled DOM titles or account details.
       page_title: path === '/login' ? 'Find And Study Academy | Sign in' : path === '/signup' ? 'Find And Study Academy | Sign up' : 'Find And Study Academy',
+      ...emailCampaignFields(messageId),
     };
     try {
       if (!transport) {
         activeId = config.measurementId;
         transport = createTransport(win, activeId, page);
+        activeMessage = messageId;
       }
       transport.pageView(page);
       lastPage = location;
       previousPublicPage = location;
+      lastMeasurementPage = page;
     } catch { stop(); }
   };
   const originals = { pushState: win.history.pushState, replaceState: win.history.replaceState };
@@ -286,6 +306,12 @@ export function createMeasurementController(win: Window, createTransport = creat
   return {
     setConfig(value: MeasurementConfig | null) { config = value; sync(); },
     getConfigEpoch() { return configEpoch; },
+    signUp(method: 'promo' | 'standard') {
+      if (method !== 'promo' && method !== 'standard') return;
+      if (win.location.pathname !== '/signup' || !permitted || consent !== 'accepted' || !config?.analyticsEnabled) return;
+      sync();
+      if (transport && lastMeasurementPage) transport.signUp?.(lastMeasurementPage, method);
+    },
     setPermitted(value: boolean) {
       // Preserve initial setConfig → setPermitted ordering, but an eligibility
       // loss must never retain an enabled configuration for a later return.

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/auth';
 import { useGoogleMeasurementCopy } from '@/lib/google-measurement-copy';
+import { EMAIL_ATTRIBUTION_STORAGE_KEY, emailAttributionClient, onSuccessfulSignup } from '@/lib/email-attribution';
 import {
   createMeasurementController, isMeasurementPublicPath, MEASUREMENT_CONSENT_KEY,
   readMeasurementConfig, readMeasurementConsent, saveMeasurementConsent,
@@ -21,6 +22,8 @@ export function GoogleMeasurement() {
   const [config, setConfig] = useState<MeasurementConfig | null>(null);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const controller = useRef<ReturnType<typeof createMeasurementController> | null>(null);
+  const email = useRef<ReturnType<typeof emailAttributionClient> | null>(null);
+  const emailContext = useRef({ consent, enabled: false, anonymous: false });
   const eligible = useRef(false);
   const publicPage = isMeasurementPublicPath(location);
   const permitted = authReady && !user && !role;
@@ -28,19 +31,29 @@ export function GoogleMeasurement() {
   useEffect(() => { if (!isLoading) setAuthReady(true); }, [isLoading]);
 
   useLayoutEffect(() => {
-    const measurement = createMeasurementController(window);
+    const attribution = emailAttributionClient(window, { isAnonymous: () => !useAuthStore.getState().user && !useAuthStore.getState().role });
+    email.current = attribution;
+    const measurement = createMeasurementController(window, undefined, attribution);
+    const unsubscribe = onSuccessfulSignup(method => measurement.signUp(method));
     controller.current = measurement;
-    return () => { measurement.destroy(); controller.current = null; };
+    return () => { unsubscribe(); attribution.destroy(); measurement.destroy(); controller.current = null; email.current = null; };
   }, []);
   useLayoutEffect(() => {
     eligible.current = publicPage && permitted;
+    emailContext.current.anonymous = eligible.current;
+    if (!eligible.current) emailContext.current.enabled = false;
+    email.current?.setContext(emailContext.current);
     controller.current?.setPermitted(permitted);
     if (!eligible.current) {
       controller.current?.setConfig(null);
       setConfig(null);
     }
   }, [publicPage, permitted]);
-  useLayoutEffect(() => { controller.current?.setConsent(consent); }, [consent]);
+  useLayoutEffect(() => {
+    emailContext.current.consent = consent;
+    email.current?.setContext(emailContext.current);
+    controller.current?.setConsent(consent);
+  }, [consent]);
 
   useEffect(() => {
     if (!publicPage || !permitted) return;
@@ -50,6 +63,8 @@ export function GoogleMeasurement() {
     const applyConfig = (value: MeasurementConfig | null, epoch: number) => {
       const auth = useAuthStore.getState();
       if (!active || !eligible.current || auth.user || auth.role || !isMeasurementPublicPath(window.location.pathname) || controller.current?.getConfigEpoch() !== epoch) return;
+      emailContext.current.enabled = value?.analyticsEnabled === true;
+      email.current?.setContext(emailContext.current);
       controller.current?.setConfig(value);
       setConfig(value);
     };
@@ -87,8 +102,11 @@ export function GoogleMeasurement() {
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== null && event.key !== MEASUREMENT_CONSENT_KEY) return;
+      if (event.key !== null && event.key !== MEASUREMENT_CONSENT_KEY && event.key !== EMAIL_ATTRIBUTION_STORAGE_KEY) return;
       const choice = storedConsent();
+      emailContext.current.consent = choice;
+      email.current?.setContext(emailContext.current);
+      if (event.key === EMAIL_ATTRIBUTION_STORAGE_KEY && choice === 'accepted') email.current?.storageChanged();
       controller.current?.setConsent(choice);
       setConsent(choice);
     };
@@ -98,6 +116,8 @@ export function GoogleMeasurement() {
 
   const choose = (choice: Exclude<MeasurementConsent, null>) => {
     // Stop collection synchronously on withdrawal, before a React rerender.
+    emailContext.current.consent = choice;
+    email.current?.setContext(emailContext.current);
     controller.current?.setConsent(choice);
     try { saveMeasurementConsent(window.localStorage, choice); } catch { /* Storage may be unavailable. */ }
     setConsent(choice);

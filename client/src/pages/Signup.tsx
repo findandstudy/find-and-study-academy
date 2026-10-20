@@ -21,6 +21,7 @@ import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES } from '@/lib/world-countries';
 import { COUNTRY_DIAL_CODES, getDialCode } from '@shared/country-dial-codes';
+import { publicEmailHref } from '@/lib/email-attribution';
 
 const DEFAULT_COUNTRY = 'TR';
 
@@ -369,7 +370,7 @@ export default function Signup() {
       <div className="mt-3 text-center">
         <p className="text-sm text-muted-foreground">
           {t('registration.alreadyAccount')}{' '}
-          <Link href="/login">
+          <Link href={publicEmailHref('/login')}>
             <span className="text-primary hover:underline cursor-pointer">
               {t('auth.signIn')}
             </span>

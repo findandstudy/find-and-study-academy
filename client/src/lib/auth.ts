@@ -1,5 +1,6 @@
 import type { User, Role } from '../types';
 import { storage } from './storage';
+import { allowedSignupAttributionToken, emailAttributionClient, recordSuccessfulSignup } from './email-attribution';
 
 // Every explicit authentication change invalidates older async results before
 // they can repopulate (or clear) the browser's session cache.
@@ -21,6 +22,7 @@ export interface LoginCredentials {
 }
 
 export interface SignupData {
+  emailAttributionToken?: string;
   promoCode?: string;
   verificationCode?: string;
   name: string;
@@ -82,12 +84,17 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
   const revision = ++authRevision;
   return trackAuthWrite(async () => {
     try {
+      // The store has already entered its submitting state. Wait briefly for
+      // a receipt without leaving the form enabled for duplicate submissions.
+      const attributionToken = typeof window === 'undefined' ? undefined : await emailAttributionClient(window).registrationToken();
+      if (!currentRevision(revision)) return { pending: false, error: true, message: 'Request failed' };
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          emailAttributionToken: allowedSignupAttributionToken(data.emailAttributionToken || attributionToken),
           promoCode: data.promoCode,
           verificationCode: data.verificationCode,
           name: data.name,
@@ -107,9 +114,13 @@ export const signupAgent = async (data: SignupData): Promise<SignupResult> => {
 
       const result = await response.json();
       if (!currentRevision(revision)) return { pending: false, error: true, message: 'Request failed' };
-      if (result.success) {
-        if (result.pending) return { pending: true, message: result.message };
+      if (result.success === true) {
+        if (result.pending === true) {
+          recordSuccessfulSignup(data.promoCode ? 'promo' : 'standard');
+          return { pending: true, message: result.message };
+        }
         if (result.user?.role === 'agent') {
+          recordSuccessfulSignup(data.promoCode ? 'promo' : 'standard');
           const session: Session = { user: result.user, role: 'agent' };
           storage.setSession(session);
           return { pending: false, message: result.message, session };
