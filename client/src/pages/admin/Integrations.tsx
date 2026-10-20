@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationEventLog } from '@/components/IntegrationEventLog';
 import { IntegrationApiKeys } from '@/components/IntegrationApiKeys';
+import { GoogleMeasurementSettings } from '@/components/GoogleMeasurementSettings';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -184,7 +185,10 @@ export default function AdminIntegrations() {
     staleTime: 30000,
   });
 
-  const integrations = integrationsData?.integrations || [];
+  // These providers are managed exclusively by GoogleMeasurementSettings.
+  const integrations = (integrationsData?.integrations || []).filter(
+    integration => !['google_analytics', 'google_search_console'].includes(integration.name),
+  );
 
   // Filter integrations
   const filteredIntegrations = integrations.filter(integration => {
@@ -434,6 +438,8 @@ export default function AdminIntegrations() {
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-4 space-y-4">
+
+      <GoogleMeasurementSettings />
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

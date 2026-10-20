@@ -11,6 +11,7 @@ import helmet from "helmet";
 import cors from "cors";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import { createGoogleMeasurementService, registerAcademyCrawling, type GoogleMeasurementPool } from './google-measurement';
 
 // ── Augment express-session typings so req.session.userId is type-safe ───────
 declare module "express-session" {
@@ -20,6 +21,7 @@ declare module "express-session" {
 }
 
 const app = express();
+const googleMeasurement = createGoogleMeasurementService(pool as unknown as GoogleMeasurementPool);
 
 // Trust the first proxy hop in production so secure cookies + req.ip work
 // behind OpenLiteSpeed / nginx / Replit's edge.
@@ -27,7 +29,7 @@ app.set("trust proxy", 1);
 
 // ── Security middleware ─────────────────────────────────────────────────────
 // CSP whitelist (Task #44):
-//   • script-src 'self' — the Findy launcher used to be an inline <script>,
+//   • script-src 'self' plus the Google tag loader — the Findy launcher used to be an inline <script>,
 //     but it was extracted to /findy-launcher.js so we no longer need
 //     'unsafe-inline'. We do NOT enable CSP in development because Vite's
 //     HMR client injects inline modules and uses eval-based source maps.
@@ -35,8 +37,8 @@ app.set("trust proxy", 1);
 //     style="" attributes in legacy templates) and Google Fonts.
 //   • frame-src whitelists the third-party players we embed (YouTube,
 //     Vimeo) and the maps providers we link to (Google, Yandex).
-//   • connect-src is just 'self' because all AI / n8n calls happen
-//     server-side; the browser only ever talks to our own /api.
+//   • AI / n8n calls stay same-origin. The only additional connection hosts
+//     are GA4 collection endpoints, used after analytics consent.
 //   • frame-ancestors is set to 'self' here; routes under /embed override
 //     it below so the chat widget can be embedded on third-party sites.
 const isProd = process.env.NODE_ENV === "production";
@@ -47,13 +49,13 @@ app.use(
           useDefaults: true,
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://www.googletagmanager.com"],
             scriptSrcAttr: ["'none'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
             imgSrc: ["'self'", "data:", "blob:", "https:"],
             mediaSrc: ["'self'", "blob:", "https:"],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", "https://www.google-analytics.com", "https://region1.google-analytics.com"],
             frameSrc: [
               "'self'",
               "https://www.youtube.com",
@@ -79,6 +81,8 @@ app.use(
     frameguard: false,
   }),
 );
+
+registerAcademyCrawling(app);
 
 // Routes under /embed need to be embeddable on third-party sites (the Findy
 // chat widget). Re-emit the FULL CSP with only `frame-ancestors` widened to
@@ -392,9 +396,9 @@ async function seedEssentialData() {
   });
 
   if (app.get("env") === "development") {
-    await setupVite(app, server);
+    await setupVite(app, server, googleMeasurement.read);
   } else {
-    serveStatic(app);
+    serveStatic(app, googleMeasurement.read);
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);

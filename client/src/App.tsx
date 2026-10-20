@@ -62,6 +62,7 @@ import Home from './pages/Home';
 
 // Components
 import { PopupRenderer } from './components/PopupRenderer';
+import { GoogleMeasurement } from './components/GoogleMeasurement';
 import AgentAnnouncements from './pages/agent/Announcements';
 
 // Error Pages
@@ -500,6 +501,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="min-h-screen bg-background">
+          <GoogleMeasurement />
           <Router />
           <PopupRenderer />
           <FindyLauncherGate />
