@@ -6,6 +6,8 @@ import { chromium } from '@playwright/test';
 // All Google URLs are fulfilled locally; no request reaches a Google provider.
 const providerFixture = `
 (() => {
+  // The real GA SDK aborts collection from about: documents.
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') throw new Error('Invalid measurement document protocol');
   const defaults = {};
   const consent = {};
   let id = '';
@@ -45,7 +47,13 @@ test('isolated transport: basic consent, sanitized SPA views, zero private/revok
     const unexpected: string[] = [];
     await context.route('**/*', async route => {
       const url = new URL(route.request().url());
-      if (url.hostname === 'academy.findandstudy.com') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>SECRET account title</title><form><input name="email" value="SECRET@example.com"></form>' });
+      if (url.hostname === 'academy.findandstudy.com') {
+        if (url.pathname === '/api/public/measurement-frame') {
+          assert.equal(url.search, '');
+          return route.fulfill({ contentType: 'text/html', body: '<!doctype html><meta name="referrer" content="no-referrer"><body></body>' });
+        }
+        return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>SECRET account title</title><form><input name="email" value="SECRET@example.com"></form>' });
+      }
       if (url.hostname === 'www.googletagmanager.com' && url.pathname === '/gtag/js') {
         tags.push(route.request().url());
         assert.equal(route.request().headers().referer, undefined);

@@ -154,6 +154,13 @@ export type GoogleMeasurementService = ReturnType<typeof createGoogleMeasurement
 export function registerGoogleMeasurement(
   app: Express, requireAuth: RequestHandler, requireAdmin: RequestHandler, service: GoogleMeasurementService,
 ) {
+  // gtag aborts hits in about:blank because it requires an HTTP(S) document.
+  // This empty, same-origin document supplies that context without app data,
+  // forms, navigation, or a provider script until optional consent is granted.
+  app.get('/api/public/measurement-frame', (_req, res) => {
+    res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' });
+    res.type('html').send('<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex, nofollow"><title></title></head><body></body></html>');
+  });
   app.get('/api/public/measurement-config', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     try {

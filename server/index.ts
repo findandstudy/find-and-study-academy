@@ -55,7 +55,9 @@ app.use(
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
             imgSrc: ["'self'", "data:", "blob:", "https:"],
             mediaSrc: ["'self'", "blob:", "https:"],
-            connectSrc: ["'self'", "https://www.google-analytics.com", "https://region1.google-analytics.com"],
+            // Google tag's non-Ads transport also uses its loader host.
+            // https://developers.google.com/tag-platform/security/guides/csp#google_analytics
+            connectSrc: ["'self'", "https://www.googletagmanager.com", "https://www.google-analytics.com", "https://region1.google-analytics.com"],
             frameSrc: [
               "'self'",
               "https://www.youtube.com",

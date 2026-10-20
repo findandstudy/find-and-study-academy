@@ -13,7 +13,7 @@ The Google tag loads only after explicit optional-analytics acceptance by an ano
 
 Page locations and same-site public referrers have every query and fragment removed. Titles are fixed. Advertising consent is denied, Google signals/personalization are disabled, and automatic page views are disabled. Public config refreshes within a minute while browser timers are active, with fail-closed handling of errors or disabled config.
 
-The tag runs in an empty same-origin iframe so provider DOM/history listeners do not observe app forms and its timers can be destroyed on private navigation or withdrawal. This is lifecycle separation, not a security sandbox for untrusted JavaScript; only Google's gtag loader is permitted, without a GTM container.
+The tag runs in an empty same-origin HTTPS iframe (`/api/public/measurement-frame`) so provider DOM/history listeners do not observe app forms and its timers can be destroyed on private navigation or withdrawal. Google rejects measurement from `about:blank`; initialization waits for the exact empty HTTPS document and discards pending views when eligibility is lost. The helper response contains no application data or scripts and is no-store/noindex. This is lifecycle separation, not a security sandbox for untrusted JavaScript; only Google's gtag loader is permitted, without a GTM container.
 
 ## Search discovery
 

@@ -154,6 +154,16 @@ test('HTTP public/admin endpoints enforce authorization, validate before writes,
     assert.equal(publicResponse.headers.get('cache-control'), 'no-store');
     assert.equal(publicAuthCalls, 0);
     assert.deepEqual(await publicResponse.json(), { success: true, analyticsEnabled: false, measurementId: null, consentRequired: true });
+    const measurementFrame = await fetch(http.base + '/api/public/measurement-frame?token=not-reflected');
+    assert.equal(measurementFrame.status, 200);
+    assert.match(measurementFrame.headers.get('content-type')!, /text\/html/);
+    assert.equal(measurementFrame.headers.get('cache-control'), 'no-store');
+    assert.equal(measurementFrame.headers.get('x-robots-tag'), 'noindex, nofollow');
+    assert.equal(measurementFrame.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(publicAuthCalls, 0);
+    const frameHtml = await measurementFrame.text();
+    assert.match(frameHtml, /<body><\/body>/);
+    assert.doesNotMatch(frameHtml, /script|form|not-reflected|test-admin|G-TEST/);
     assert.equal((await request('GET')).status, 401);
     assert.equal((await request('PUT', undefined, enabledConfig())).status, 401);
     assert.equal((await request('PUT', 'staff', enabledConfig())).status, 403);

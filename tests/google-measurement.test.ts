@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  clearMeasurementCookies, createGoogleTagTransport, createMeasurementController, isMeasurementPublicPath, MEASUREMENT_CONSENT_KEY,
+  clearMeasurementCookies, createGoogleTagTransport, createMeasurementController, isMeasurementPublicPath, MEASUREMENT_CONSENT_KEY, MEASUREMENT_FRAME_PATH,
   readMeasurementConfig, readMeasurementConsent, sanitizeMeasurementLocation,
   saveMeasurementConsent, type MeasurementPage,
 } from '../client/src/lib/google-measurement';
@@ -200,13 +200,19 @@ test('loss of eligibility requires fresh config before an anonymous public retur
 
 test('real transport keeps Google and queued commands in an empty frame with denied ads and safe defaults', () => {
   const nodes: Record<string, any>[] = [];
-  const tagWindow: Record<string, any> = {};
+  const tagWindow: Record<string, any> = { location: { href: 'about:blank' } };
+  const policyListeners = new Map<string, (event: Record<string, string>) => void>();
+  let cookies = 'fas_analytics_ga=COOKIE_SECRET; session=SESSION_SECRET';
+  let cookiesBlocked = false;
   let removed = false;
   const frame = {
     attributes: {} as Record<string, string>,
     setAttribute(key: string, value: string) { this.attributes[key] = value; },
     contentWindow: tagWindow,
     contentDocument: {
+      get cookie() { if (cookiesBlocked) throw new Error('cookie access blocked'); return cookies; },
+      addEventListener(type: string, listener: (event: Record<string, string>) => void) { policyListeners.set(type, listener); },
+      removeEventListener(type: string) { policyListeners.delete(type); },
       createElement(tag: string) { return { tag }; },
       head: { appendChild(node: Record<string, any>) { nodes.push(node); } },
     },
@@ -216,6 +222,7 @@ test('real transport keeps Google and queued commands in an empty frame with den
     },
   };
   const win = {
+    location: { origin },
     document: {
       createElement(tag: string) { assert.equal(tag, 'iframe'); return frame; },
       body: { appendChild(node: unknown) { assert.equal(node, frame); } },
@@ -223,6 +230,15 @@ test('real transport keeps Google and queued commands in an empty frame with den
   } as unknown as Window;
   const page = { page_location: origin + '/login', page_referrer: '', page_title: 'Find And Study Academy | Sign in' };
   const transport = createGoogleTagTransport(win, config.measurementId!, page);
+  assert.equal(frame.attributes['data-document-initialized'], 'false');
+  assert.equal(frame.attributes['data-tag-status'], 'frame-loading');
+  assert.equal((frame as any).src, origin + MEASUREMENT_FRAME_PATH);
+  transport.pageView(page);
+  (frame as any).onload();
+  assert.equal(nodes.length, 0, 'initial about:blank never loads Google');
+  assert.equal(tagWindow.dataLayer, undefined);
+  tagWindow.location.href = origin + MEASUREMENT_FRAME_PATH;
+  (frame as any).onload();
   assert.equal((win as any).gtag, undefined);
   assert.equal((win as any).dataLayer, undefined);
   assert.equal(frame.attributes['aria-hidden'], 'true');
@@ -232,8 +248,24 @@ test('real transport keeps Google and queued commands in an empty frame with den
   assert.equal(nodes[1].tag, 'script');
   assert.equal(nodes[1].src, 'https://www.googletagmanager.com/gtag/js?id=G-TEST12345');
   assert.equal(nodes[1].referrerPolicy, 'no-referrer');
+  assert.equal(policyListeners.size, 1);
+  const onViolation = policyListeners.get('securitypolicyviolation')!;
+  onViolation({ effectiveDirective: 'connect-src', blockedURI: 'https://user:SECRET@www.google.com/g/collect?token=SECRET#SECRET' });
+  assert.equal(frame.attributes['data-csp-blocked-directive'], 'connect-src');
+  assert.equal(frame.attributes['data-csp-blocked-host'], 'www.google.com');
+  onViolation({ effectiveDirective: 'SECRET', blockedURI: 'https://example.com/path?token=SECRET' });
+  assert.equal(frame.attributes['data-csp-blocked-directive'], 'connect-src', 'only known directive labels are exposed');
+  onViolation({ effectiveDirective: 'script-src-elem', blockedURI: 'inline' });
+  assert.equal(frame.attributes['data-csp-blocked-host'], '', 'inline violations expose no URI text');
   nodes[1].onload();
   assert.equal(frame.attributes['data-tag-status'], 'loaded');
+  assert.equal(frame.attributes['data-analytics-cookie-present'], 'true');
+  cookies = 'session=SESSION_SECRET';
+  nodes[1].onload();
+  assert.equal(frame.attributes['data-analytics-cookie-present'], 'false');
+  cookiesBlocked = true;
+  nodes[1].onload();
+  assert.equal(frame.attributes['data-analytics-cookie-present'], 'false');
   nodes[1].onerror();
   assert.equal(frame.attributes['data-tag-status'], 'error');
   const commands = tagWindow.dataLayer.map((command: IArguments) => Array.from(command));
@@ -246,29 +278,37 @@ test('real transport keeps Google and queued commands in an empty frame with den
   assert.equal(setup.allow_ad_personalization_signals, false);
   assert.equal(setup.cookie_prefix, 'fas_analytics');
   assert.equal(setup.page_location, origin + '/login');
-  assert.equal(commands.filter((command: any[]) => command[0] === 'event').length, 0);
+  assert.equal(commands.filter((command: any[]) => command[0] === 'event').length, 1, 'queued view is flushed once after the HTTP document loads');
   transport.pageView(page);
-  assert.equal(tagWindow.dataLayer.filter((command: IArguments) => command[0] === 'event' && command[1] === 'page_view').length, 1);
+  assert.equal(tagWindow.dataLayer.filter((command: IArguments) => command[0] === 'event' && command[1] === 'page_view').length, 2);
   transport.stop();
   transport.stop();
   assert.equal(removed, true);
   assert.equal((win as any)['ga-disable-G-TEST12345'], true);
   transport.pageView(page);
   assert.equal(tagWindow.dataLayer.length, 0);
+  assert.equal(policyListeners.size, 0, 'policy listener is removed on stop');
+  onViolation({ effectiveDirective: 'connect-src', blockedURI: 'https://example.com/private?token=SECRET' });
+  assert.equal(frame.attributes['data-csp-blocked-directive'], 'script-src-elem', 'late policy events cannot mutate a stopped transport');
   nodes[1].onload();
   assert.equal(frame.attributes['data-tag-status'], 'error', 'late loader events cannot mutate a stopped transport');
   assert.equal(JSON.stringify(frame.attributes).includes('G-TEST12345'), false);
+  assert.equal(JSON.stringify(frame.attributes).includes('SECRET'), false);
+  assert.equal(JSON.stringify(frame.attributes).includes('fas_analytics'), false);
 });
 
 test('partial transport initialization disables collection and removes the orphan frame', () => {
   for (const failure of ['missing-document', 'meta', 'script']) {
-    const tagWindow: Record<string, any> = {};
+    const tagWindow: Record<string, any> = { location: { href: origin + MEASUREMENT_FRAME_PATH } };
     let removed = 0;
+    let policyListeners = 0;
     let win: Window;
     const frame = {
       setAttribute() {},
       contentWindow: tagWindow,
       contentDocument: failure === 'missing-document' ? null : {
+        addEventListener() { policyListeners++; },
+        removeEventListener() { policyListeners--; },
         createElement(tag: string) { return { tag }; },
         head: { appendChild(node: { tag: string }) { if (node.tag === failure) throw new Error('fixture setup failure'); } },
       },
@@ -278,10 +318,46 @@ test('partial transport initialization disables collection and removes the orpha
         assert.equal((win as any)['ga-disable-G-TEST12345'], true);
       },
     };
-    win = { document: { createElement() { return frame; }, body: { appendChild() {} } } } as unknown as Window;
-    assert.throws(() => createGoogleTagTransport(win, 'G-TEST12345', { page_location: origin + '/', page_referrer: '', page_title: 'Academy' }));
+    win = { location: { origin }, document: { createElement() { return frame; }, body: { appendChild() {} } } } as unknown as Window;
+    const transport = createGoogleTagTransport(win, 'G-TEST12345', { page_location: origin + '/', page_referrer: '', page_title: 'Academy' });
+    transport.pageView({ page_location: origin + '/', page_referrer: '', page_title: 'Academy' });
+    (frame as any).onload();
     assert.equal(removed, 1, failure);
     assert.equal(tagWindow.dataLayer?.length ?? 0, 0, failure);
+    assert.equal(policyListeners, 0, failure + ' removes policy listeners');
+  }
+});
+
+test('stopped or unexpected frame loads never initialize Google or flush pending views', () => {
+  for (const scenario of ['stopped', 'wrong-origin', 'wrong-path', 'query', 'hash']) {
+    const tagWindow: Record<string, any> = { location: { href: 'about:blank' } };
+    const nodes: unknown[] = [];
+    let removed = 0;
+    const frame = {
+      setAttribute() {},
+      contentWindow: tagWindow,
+      contentDocument: {
+        createElement(tag: string) { return { tag }; },
+        addEventListener() {}, removeEventListener() {},
+        head: { appendChild(node: unknown) { nodes.push(node); } },
+      },
+      remove() { removed++; },
+    };
+    const win = { location: { origin }, document: { createElement() { return frame; }, body: { appendChild() {} } } } as unknown as Window;
+    const page = { page_location: origin + '/', page_referrer: '', page_title: 'Academy' };
+    const transport = createGoogleTagTransport(win, 'G-TEST12345', page);
+    transport.pageView(page);
+    const onLoad = (frame as any).onload;
+    if (scenario === 'stopped') transport.stop();
+    tagWindow.location.href = scenario === 'wrong-origin' ? 'https://example.com' + MEASUREMENT_FRAME_PATH
+      : scenario === 'wrong-path' ? origin + '/login'
+      : origin + MEASUREMENT_FRAME_PATH + (scenario === 'query' ? '?token=SECRET' : scenario === 'hash' ? '#SECRET' : '');
+    onLoad();
+    transport.pageView(page);
+    assert.equal(nodes.length, 0, scenario);
+    assert.equal(tagWindow.dataLayer, undefined, scenario);
+    assert.equal(removed, 1, scenario);
+    assert.equal((win as any)['ga-disable-G-TEST12345'], true, scenario);
   }
 });
 

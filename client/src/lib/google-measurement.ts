@@ -8,6 +8,7 @@ export const MEASUREMENT_COOKIE_PREFIX = 'fas_analytics';
 const CONSENT_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
 const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
 const MEASUREMENT_ID = /^G-[A-Z0-9]{4,20}$/;
+const CSP_DIAGNOSTIC_DIRECTIVES = new Set(['connect-src', 'script-src', 'script-src-elem', 'script-src-attr', 'img-src', 'frame-src', 'child-src', 'default-src', 'worker-src', 'style-src', 'style-src-elem', 'style-src-attr', 'font-src', 'media-src', 'object-src', 'base-uri', 'form-action', 'manifest-src', 'frame-ancestors']);
 
 export type MeasurementConsent = 'accepted' | 'declined' | null;
 export type MeasurementConfig = {
@@ -71,87 +72,142 @@ function setDisabled(target: Window, id: string, disabled: boolean): void {
   (target as unknown as Record<string, unknown>)[`ga-disable-${id}`] = disabled;
 }
 
+export const MEASUREMENT_FRAME_PATH = '/api/public/measurement-frame';
+
 export function createGoogleTagTransport(win: Window, measurementId: string, initialPage: MeasurementPage): MeasurementTransport {
   if (!MEASUREMENT_ID.test(measurementId)) throw new Error('Invalid measurement ID');
+  const frameUrl = new URL(MEASUREMENT_FRAME_PATH, win.location.origin);
+  if (!['http:', 'https:'].includes(frameUrl.protocol)) throw new Error('Invalid measurement origin');
   const frame = win.document.createElement('iframe');
   frame.hidden = true;
   frame.tabIndex = -1;
   frame.setAttribute('aria-hidden', 'true');
   frame.setAttribute('data-academy-measurement', '');
   frame.setAttribute('data-document-initialized', 'false');
-  frame.setAttribute('data-tag-status', 'initializing');
+  frame.setAttribute('data-tag-status', 'frame-loading');
   frame.referrerPolicy = 'no-referrer';
   let stopped = false;
-  let cleanupWindow: TagWindow | null = null;
-  try {
-    // No navigation, forms, inputs, chat, or app history exists in this document.
-    win.document.body.appendChild(frame);
-    const tagWindow = frame.contentWindow as TagWindow | null;
-    const tagDocument = frame.contentDocument;
-    cleanupWindow = tagWindow;
-    if (!tagWindow || !tagDocument) throw new Error('Measurement frame unavailable');
-    const referrerPolicy = tagDocument.createElement('meta');
-    referrerPolicy.name = 'referrer';
-    referrerPolicy.content = 'no-referrer';
-    tagDocument.head.appendChild(referrerPolicy);
-    setDisabled(win, measurementId, false);
-    setDisabled(tagWindow, measurementId, false);
-    tagWindow.dataLayer = [];
-    tagWindow.gtag = function () { tagWindow.dataLayer!.push(arguments); };
-    const gtag = tagWindow.gtag;
-    gtag('consent', 'default', {
-      analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
-      functionality_storage: 'denied', personalization_storage: 'denied', security_storage: 'granted',
-    });
-    gtag('set', {
-      ...initialPage,
-      allow_google_signals: false, allow_ad_personalization_signals: false,
-      ads_data_redaction: true, url_passthrough: false, send_page_view: false,
-    });
-    gtag('js', new Date());
-    gtag('config', measurementId, {
-      ...initialPage, send_page_view: false,
-      allow_google_signals: false, allow_ad_personalization_signals: false,
-      cookie_prefix: MEASUREMENT_COOKIE_PREFIX, cookie_path: '/', cookie_flags: 'SameSite=Lax;Secure',
-      ignore_referrer: true,
-    });
-    frame.setAttribute('data-document-initialized', 'true');
-    const script = tagDocument.createElement('script');
-    script.async = true;
-    script.referrerPolicy = 'no-referrer';
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-    // Static DOM diagnostics expose loading state only, never IDs or user data.
-    frame.setAttribute('data-tag-status', 'loading');
-    script.onload = () => { if (!stopped) frame.setAttribute('data-tag-status', 'loaded'); };
-    script.onerror = () => { if (!stopped) frame.setAttribute('data-tag-status', 'error'); };
-    tagDocument.head.appendChild(script);
-    return {
-      pageView(page) {
-        if (stopped) return;
-        // Also update defaults for unavoidable GA session/engagement events.
-        gtag('set', page);
-        gtag('event', 'page_view', { ...page, send_to: measurementId });
-      },
-      stop() {
-        if (stopped) return;
-        stopped = true;
-        // Do this before destroying the frame: even unload events must be denied.
-        setDisabled(win, measurementId, true);
-        setDisabled(tagWindow, measurementId, true);
-        tagWindow.dataLayer!.length = 0;
-        frame.remove();
-      },
-    };
-  } catch (error) {
+  let initialized = false;
+  let tagWindow: TagWindow | null = null;
+  let gtag: ((...args: unknown[]) => void) | null = null;
+  let queuedPages: MeasurementPage[] = [];
+  let removePolicyListener = () => {};
+  const stop = () => {
+    if (stopped) return;
     stopped = true;
+    // Disable before removing the document, including during a pending load.
     setDisabled(win, measurementId, true);
-    if (cleanupWindow) {
-      setDisabled(cleanupWindow, measurementId, true);
-      if (cleanupWindow.dataLayer) cleanupWindow.dataLayer.length = 0;
+    if (tagWindow) {
+      setDisabled(tagWindow, measurementId, true);
+      if (tagWindow.dataLayer) tagWindow.dataLayer.length = 0;
     }
+    queuedPages = [];
+    removePolicyListener();
+    frame.onload = null;
+    frame.onerror = null;
     frame.remove();
+  };
+  const sendPage = (page: MeasurementPage) => {
+    if (stopped || !gtag) return;
+    // Also update defaults for unavoidable GA session/engagement events.
+    gtag('set', page);
+    gtag('event', 'page_view', { ...page, send_to: measurementId });
+  };
+  frame.onload = () => {
+    if (stopped) return;
+    try {
+      const loadedWindow = frame.contentWindow as TagWindow | null;
+      if (!loadedWindow) throw new Error('Measurement frame unavailable');
+      const location = new URL(loadedWindow.location.href);
+      // Some browsers emit an initial empty-document load. Google itself
+      // aborts on about: URLs, so never initialize against that document.
+      if (location.href === 'about:blank') return;
+      if (location.href !== frameUrl.href) throw new Error('Unexpected measurement frame');
+      if (initialized) return;
+      tagWindow = loadedWindow;
+      const tagDocument = frame.contentDocument;
+      if (!tagDocument?.head) throw new Error('Measurement document unavailable');
+      const onPolicyViolation = (event: SecurityPolicyViolationEvent) => {
+        if (stopped || !CSP_DIAGNOSTIC_DIRECTIVES.has(event.effectiveDirective)) return;
+        let hostname = '';
+        try {
+          const blocked = new URL(event.blockedURI);
+          if (blocked.protocol === 'https:' || blocked.protocol === 'http:') hostname = blocked.hostname;
+        } catch { /* Inline/eval violations have no hostname to expose. */ }
+        frame.setAttribute('data-csp-blocked-directive', event.effectiveDirective);
+        frame.setAttribute('data-csp-blocked-host', hostname);
+      };
+      tagDocument.addEventListener('securitypolicyviolation', onPolicyViolation);
+      removePolicyListener = () => tagDocument.removeEventListener('securitypolicyviolation', onPolicyViolation);
+      const referrerPolicy = tagDocument.createElement('meta');
+      referrerPolicy.name = 'referrer';
+      referrerPolicy.content = 'no-referrer';
+      tagDocument.head.appendChild(referrerPolicy);
+      setDisabled(win, measurementId, false);
+      setDisabled(loadedWindow, measurementId, false);
+      loadedWindow.dataLayer = [];
+      loadedWindow.gtag = function () { loadedWindow.dataLayer!.push(arguments); };
+      gtag = loadedWindow.gtag;
+      gtag('consent', 'default', {
+        analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+        functionality_storage: 'denied', personalization_storage: 'denied', security_storage: 'granted',
+      });
+      gtag('set', {
+        ...initialPage,
+        allow_google_signals: false, allow_ad_personalization_signals: false,
+        ads_data_redaction: true, url_passthrough: false, send_page_view: false,
+      });
+      gtag('js', new Date());
+      gtag('config', measurementId, {
+        ...initialPage, send_page_view: false,
+        allow_google_signals: false, allow_ad_personalization_signals: false,
+        cookie_prefix: MEASUREMENT_COOKIE_PREFIX, cookie_path: '/', cookie_flags: 'SameSite=Lax;Secure',
+        ignore_referrer: true,
+      });
+      const script = tagDocument.createElement('script');
+      script.async = true;
+      script.referrerPolicy = 'no-referrer';
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+      // Diagnostics expose no paths, queries, cookie names/values or IDs.
+      frame.setAttribute('data-tag-status', 'loading');
+      script.onload = () => {
+        if (stopped) return;
+        frame.setAttribute('data-tag-status', 'loaded');
+        let cookiePresent = false;
+        try {
+          cookiePresent = tagDocument.cookie.split(';').some(cookie => cookie.trim().split('=')[0].startsWith(MEASUREMENT_COOKIE_PREFIX + '_'));
+        } catch { /* Cookie access may be blocked. */ }
+        frame.setAttribute('data-analytics-cookie-present', String(cookiePresent));
+      };
+      script.onerror = () => { if (!stopped) frame.setAttribute('data-tag-status', 'error'); };
+      initialized = true;
+      frame.setAttribute('data-document-initialized', 'true');
+      for (const page of queuedPages) sendPage(page);
+      queuedPages = [];
+      // Queue consent, sanitized globals and pending views before the SDK loads.
+      tagDocument.head.appendChild(script);
+    } catch {
+      stop();
+    }
+  };
+  frame.onerror = stop;
+  frame.src = frameUrl.href;
+  try {
+    // This dedicated same-origin document contains no app data or UI. Its
+    // HTTP(S) protocol is required by the real Google Analytics SDK.
+    win.document.body.appendChild(frame);
+  } catch (error) {
+    stop();
     throw error;
   }
+  return {
+    pageView(page) {
+      if (stopped) return;
+      if (initialized) sendPage(page);
+      else queuedPages.push({ ...page });
+    },
+    stop,
+  };
 }
 
 export function createMeasurementController(win: Window, createTransport = createGoogleTagTransport) {
