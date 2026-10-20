@@ -89,7 +89,7 @@ export function createEmailAttributionService(pool: Pool, options: {
       if (!await options.analyticsEnabled()) return false;
       await ready();
       const result = await pool.query(`INSERT INTO academy_email_registrations (user_id,message_id,visit_id,created_at)
-        SELECT $1,v.message_id,v.id,COALESCE((SELECT m.redeemed_at FROM academy_campaign_members m WHERE m.user_id=$1),now())
+        SELECT $1::varchar,v.message_id,v.id,COALESCE((SELECT m.redeemed_at FROM academy_campaign_members m WHERE m.user_id=$1::varchar),now())
         FROM academy_email_visits v WHERE v.id=$2 AND v.message_id=$3
         AND date_trunc('milliseconds',v.created_at)=$4::timestamptz AND v.created_at>now()-interval '30 days'
         ON CONFLICT(user_id) DO NOTHING RETURNING user_id`, [userId, payload.visitId, payload.messageId, new Date(payload.createdAt).toISOString()]);

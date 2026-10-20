@@ -113,7 +113,11 @@ test('only a persisted matching receipt records one conversion per created accou
   const write = f.queries.find(row => row.sql.startsWith('INSERT INTO academy_email_registrations'))!;
   assert.match(write.sql, /ON CONFLICT\(user_id\) DO NOTHING/);
   assert.match(write.sql, /date_trunc\('milliseconds',v.created_at\)=\$4::timestamptz/);
-  assert.match(write.sql, /COALESCE\(\(SELECT m.redeemed_at FROM academy_campaign_members m WHERE m.user_id=\$1\),now\(\)\)/);
+  // PostgreSQL otherwise infers this repeated parameter from both a SELECT
+  // target and comparison, producing 42P08 with real varchar user columns.
+  assert.equal(write.sql.match(/\$1::varchar/g)?.length, 2);
+  assert.match(write.sql, /SELECT \$1::varchar,v.message_id,v.id/);
+  assert.match(write.sql, /COALESCE\(\(SELECT m.redeemed_at FROM academy_campaign_members m WHERE m.user_id=\$1::varchar\),now\(\)\)/);
   assert.doesNotMatch(write.sql, /metric_value|::json|email_address|recipient/);
 });
 
