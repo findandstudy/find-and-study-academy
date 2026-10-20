@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationEventLog } from '@/components/IntegrationEventLog';
 import { IntegrationApiKeys } from '@/components/IntegrationApiKeys';
 import { GoogleMeasurementSettings } from '@/components/GoogleMeasurementSettings';
+import { useGoogleMeasurementCopy } from '@/lib/google-measurement-copy';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -170,6 +171,7 @@ const getTypeBadge = (type: string) => {
 };
 
 export default function AdminIntegrations() {
+  const googleCopy = useGoogleMeasurementCopy();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTypeFilter, setActiveTypeFilter] = useState<string>('all');
   const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
@@ -440,6 +442,9 @@ export default function AdminIntegrations() {
         <TabsContent value="integrations" className="mt-4 space-y-4">
 
       <GoogleMeasurementSettings />
+
+      <section aria-labelledby="other-integrations-heading" className="space-y-4">
+      <h2 id="other-integrations-heading" className="text-xl font-semibold" data-testid="heading-other-integrations">{googleCopy.otherIntegrations}</h2>
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -983,11 +988,13 @@ export default function AdminIntegrations() {
           ) : filteredIntegrations.length === 0 ? (
             <div className="text-center py-8">
               <Plug className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{legacyUi("No Integrations Found")}</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">
+                {searchTerm || activeTypeFilter !== 'all' ? legacyUi("No Integrations Found") : googleCopy.noOtherIntegrations}
+              </h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm || activeTypeFilter !== 'all' 
                   ? legacyUi("No integrations match your search criteria.") 
-                  : legacyUi("Get started by adding your first integration.")}
+                  : googleCopy.otherIntegrationsDescription}
               </p>
               {!searchTerm && activeTypeFilter === 'all' && (
                 <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-first-integration">
@@ -1304,6 +1311,8 @@ export default function AdminIntegrations() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      </section>
 
         </TabsContent>
       </Tabs>
