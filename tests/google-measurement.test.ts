@@ -11,8 +11,9 @@ import { LANGUAGE_CODES } from '../shared/languages';
 const origin = 'https://academy.findandstudy.com';
 const config = { analyticsEnabled: true, measurementId: 'G-TEST12345', consentRequired: true as const };
 
-function fixture(path = '/') {
+function fixture(path = '/', email?: { messageId: () => 'email_01_en' | 'email_05_tr' | null; pause: () => void }) {
   const events: MeasurementPage[] = [];
+  const signups: { page: MeasurementPage; method: string }[] = [];
   const transports: { stopped: boolean }[] = [];
   const listeners = new EventTarget();
   let location = new URL(path, origin);
@@ -39,10 +40,11 @@ function fixture(path = '/') {
     transports.push(transport);
     return {
       pageView(page) { assert.equal(transport.stopped, false); events.push(page); },
+      signUp(page, method) { assert.equal(transport.stopped, false); signups.push({ page, method }); },
       stop() { transport.stopped = true; },
     };
-  });
-  return { controller, events, transports, win, setBeforeHistory(callback: () => void) { beforeHistory = callback; } };
+  }, email);
+  return { controller, events, signups, transports, win, setBeforeHistory(callback: () => void) { beforeHistory = callback; } };
 }
 
 test('only the three exact public routes are eligible and every query/hash is stripped', () => {
@@ -195,6 +197,30 @@ test('loss of eligibility requires fresh config before an anonymous public retur
   assert.equal(f.events.length, 1);
   f.controller.setConfig(config);
   assert.equal(f.events.length, 2);
+  f.controller.destroy();
+});
+
+test('canonical campaign fields accompany clean pageviews and successful signup; expiry/source changes clear old globals', () => {
+  let message: 'email_01_en' | 'email_05_tr' | null = 'email_01_en';
+  let pauses = 0;
+  const f = fixture('/signup?promo=SECRET&email=SECRET@example.test', { messageId: () => message, pause() { pauses++; } });
+  f.controller.setConfig(config); f.controller.setPermitted(true); f.controller.setConsent('accepted');
+  assert.equal(f.events[0].campaign_content, 'email_01_en');
+  assert.equal(f.events[0].campaign_source, 'newsletter');
+  assert.equal(f.events[0].campaign_medium, 'email');
+  assert.equal(f.events[0].campaign_name, 'academy_launch_2026');
+  assert.equal(f.events[0].page_location, origin + '/signup');
+  f.controller.signUp('promo');
+  assert.equal(f.signups.length, 1); assert.equal(f.signups[0].method, 'promo');
+  assert.equal(JSON.stringify(f.signups).includes('SECRET'), false);
+  message = 'email_05_tr'; f.controller.setConfig(config);
+  assert.equal(f.transports[0].stopped, true); assert.equal(f.events.at(-1)?.campaign_content, 'email_05_tr');
+  message = null; f.controller.setConfig(config);
+  assert.equal(f.events.at(-1)?.campaign_content, undefined);
+  assert.equal(f.events.at(-1)?.campaign_source, undefined);
+  f.controller.setConsent('declined'); f.controller.signUp('standard'); assert.equal(f.signups.length, 1);
+  f.controller.setConsent('accepted'); f.win.history.pushState(null, '', '/agent/dashboard'); f.controller.signUp('promo');
+  assert.equal(f.signups.length, 1); assert.equal(pauses, 1);
   f.controller.destroy();
 });
 

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/layouts/AuthCard';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/hooks/use-toast';
+import { publicEmailHref } from '@/lib/email-attribution';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -81,7 +82,7 @@ export default function Login() {
       <div className="mt-6 text-center space-y-2">
         <p className="text-sm text-muted-foreground">
           {t('auth.newAgent')}{' '}
-          <Link href="/signup">
+          <Link href={publicEmailHref('/signup')}>
             <span className="text-primary hover:underline cursor-pointer">
               {t('auth.signUp')}
             </span>

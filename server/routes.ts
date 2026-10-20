@@ -40,6 +40,7 @@ import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translati
 import { publicSignupSchema } from "@shared/signup-validation";
 import { db, pool } from "./db";
 import { createGoogleMeasurementService, isGoogleMeasurementIntegration, registerGoogleMeasurement, type GoogleMeasurementPool } from './google-measurement';
+import { createEmailAttributionService, registerEmailAttribution } from './email-attribution';
 import { agencies as agencyTable, users as userTable } from "@shared/schema";
 
 // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
@@ -484,9 +485,12 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  registerGoogleMeasurement(app, requireAuth, requireAdmin, createGoogleMeasurementService(pool as unknown as GoogleMeasurementPool));
+  const googleMeasurement = createGoogleMeasurementService(pool as unknown as GoogleMeasurementPool);
+  const emailAttribution = createEmailAttributionService(pool as any, { analyticsEnabled: async () => (await googleMeasurement.read()).analytics.enabled });
+  registerGoogleMeasurement(app, requireAuth, requireAdmin, googleMeasurement);
+  registerEmailAttribution(app, requireAuth, requireAdmin, emailAttribution);
   registerProfileCompletion(app, requireAuth);
-  registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit);
+  registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit, emailAttribution.recordRegistration);
   registerAdminOperations(app, requireAuth, requireAdmin);
   registerTranslationControl(app, requireAuth, requireAdmin);
   registerPartnership(app, requireAuth, requireAdmin);
@@ -879,7 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validation.success) {
         return res.status(400).json({ success: false, message: validation.error.issues[0]?.message || 'Invalid registration data', errors: validation.error.issues.map(issue => ({ field: issue.path[0], message: issue.message })) });
       }
-      const { name, email, password, agencyName, country, phone: normalizedPhone, languagePreference } = validation.data;
+      const { name, email, password, agencyName, country, phone: normalizedPhone, languagePreference, emailAttributionToken } = validation.data;
 
       // Check if email already exists
       const users = await storage.getUsers();
@@ -933,6 +937,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [createdUser] = await tx.insert(userTable).values(newUser).returning();
         return { createdAgency, createdUser };
       });
+
+      try { await emailAttribution.recordRegistration(createdUser.id, emailAttributionToken); }
+      catch { /* Optional analytics cannot reject a committed account. */ }
 
       // Send notification to all admins about new registration (non-blocking)
       (async () => {

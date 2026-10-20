@@ -11,6 +11,7 @@ import {SUPPORTED_LANGUAGES} from '@/i18n/languages';
 import {useCampaignPreview,useTrainingCoverage} from '@/hooks/use-homepage-data';
 import {destinationLabel,formatCampaignDeadline,isInvitationCode,normalizeInvitationCode} from '@/lib/homepage-data';
 import publicUiCatalog from '@/lib/public-ui-catalog.json';
+import {publicEmailHref} from '@/lib/email-attribution';
 import logoImage from '@assets/Find and Study Logo-01_1758200859271.png';
 
 export default function Home(){
@@ -23,16 +24,16 @@ export default function Home(){
  const dir=['ar','fa','ur'].includes(locale)?'rtl':'ltr';const portal=role==='admin'||role==='staff'?'/admin/dashboard':'/agent/dashboard';
  useEffect(()=>{try{if(!localStorage.getItem(I18N_STORAGE_KEY)&&i18n.resolvedLanguage!=='en')i18n.changeLanguage('en')}catch{}},[i18n]);
  const features=[BookOpen,MessageSquareText,Palette,Handshake];
- const signup=isInvitationCode(normalizedPromo)?'/signup?promo='+encodeURIComponent(normalizedPromo):'/signup';
+ const signup=publicEmailHref('/signup',isInvitationCode(normalizedPromo)?normalizedPromo:undefined);
  function continueWithCode(e:React.FormEvent){e.preventDefault();const valid=isInvitationCode(normalizedPromo);setPromoError(!valid);if(valid)window.location.assign(signup)}
  const panel='rounded-2xl border border-slate-200 bg-white';
  return <div dir={dir} className="min-h-screen bg-white text-slate-700">
   <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-    <Link href="/" aria-label="Find And Study Academy"><img src={logoImage} alt="Find And Study" className="h-10 w-36 object-contain sm:w-44"/></Link>
+    <Link href={publicEmailHref('/')} aria-label="Find And Study Academy"><img src={logoImage} alt="Find And Study" className="h-10 w-36 object-contain sm:w-44"/></Link>
     <LanguageSwitcher variant="inline"/>
     <nav className="flex w-full flex-wrap items-center gap-2 sm:w-auto" aria-label={tl('home.footerLinksHead')}>
-     <Link href={user?portal:'/login'} className="flex-1 sm:flex-none"><Button variant="ghost" className="h-auto min-h-10 w-full whitespace-normal">{user?tl('home.ctaLoginPortal'):tl('home.navLogin')}</Button></Link>
+     <Link href={user?portal:publicEmailHref('/login')} className="flex-1 sm:flex-none"><Button variant="ghost" className="h-auto min-h-10 w-full whitespace-normal">{user?tl('home.ctaLoginPortal'):tl('home.navLogin')}</Button></Link>
      <Link href={signup} className="flex-1 sm:flex-none"><Button className="h-auto min-h-10 w-full whitespace-normal bg-[#143591] hover:bg-[#102b76]">{tl('home.navSignup')}</Button></Link>
     </nav>
    </div>

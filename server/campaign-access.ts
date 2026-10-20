@@ -7,6 +7,7 @@ import { pool as sharedPool } from './db';
 import type { Pool } from 'pg';
 const pool = sharedPool as unknown as Pool;
 import { publicSignupSchema } from '@shared/signup-validation';
+import type { RecordEmailRegistration } from './email-attribution';
 
 declare module 'express-session' { interface SessionData { academyDeviceId?:string; pendingDeviceUser?:string; pendingDeviceUntil?:number; } }
 const verificationHash=(s:string)=>crypto.createHmac('sha256',process.env.SESSION_SECRET||'development-only').update(s).digest('hex');
@@ -60,7 +61,7 @@ export async function enforceAcademyAccess(req:Request,res:Response,next:NextFun
  const d=(await pool.query('SELECT id FROM academy_devices WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL',[req.session.academyDeviceId,id])).rows[0];
  if(!d)return void res.status(401).json({success:false,code:'DEVICE_REVOKED'});next();
  }catch(e){console.error('[device] access check failed');res.status(503).json({success:false,code:'ACCESS_CHECK_UNAVAILABLE'})}}
-export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,requireAdmin:RequestHandler,rateLimit:RequestHandler){
+export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,requireAdmin:RequestHandler,rateLimit:RequestHandler,recordEmailRegistration?:RecordEmailRegistration){
  app.post('/api/public/campaign-preview',(_req,res,next)=>{res.set('Cache-Control','no-store');next()},campaignPreviewRateLimit,endpoint(async(req,res)=>{
   const v=campaignPreviewSchema.safeParse(req.body);if(!v.success)return fail(400,'PROMO_INVALID_OR_EXPIRED');
   // Preview never reserves access or touches the email verification and registration flow.
@@ -103,7 +104,9 @@ export function registerCampaignAccess(app:Express,requireAuth:RequestHandler,re
    await c.query('INSERT INTO agencies (id,name,status,primary_contact_name,primary_contact_email,contact_email,country,contact_phone) VALUES ($1,$2,$3,$4,$5,$5,$6,$7)',[agencyId,v.agencyName,'pending',v.name,v.email,v.country,v.phone]);
    await c.query('INSERT INTO users (id,username,password,name,email,role,status,agency_id,country,phone,language_preference) VALUES ($1,$2,$3,$4,$2,$5,$6,$7,$8,$9,$10)',[userId,v.email,password,v.name,'agent','inactive',agencyId,v.country,v.phone,v.languagePreference]);
    await c.query('INSERT INTO academy_campaign_members (user_id,campaign_id,access_until) VALUES ($1,$2,now()+$3*interval \'1 day\')',[userId,a.id,a.access_days]);
-  });res.status(201).json({success:true,pending:true,message:'Your verified application is awaiting administrator approval.'});
+  });
+  try { await recordEmailRegistration?.(userId,v.emailAttributionToken); } catch { /* Optional analytics cannot reject a committed account. */ }
+  res.status(201).json({success:true,pending:true,message:'Your verified application is awaiting administrator approval.'});
  });
  app.post('/api/signup',(req,res,next)=>{if(!req.body?.promoCode)return next();return rateLimit(req,res,()=>campaignSignup(req,res,next));});
  app.post('/api/auth/replace-device',rateLimit,endpoint(async(req,res)=>{
