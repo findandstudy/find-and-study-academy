@@ -77,6 +77,8 @@ test('isolated transport: basic consent, sanitized SPA views, zero private/revok
     assert.equal(hits.length, 0);
 
     await page.evaluate(() => (window as any).measurementController.setConsent('accepted'));
+    await page.waitForFunction(() => document.querySelector('iframe[data-academy-measurement]')?.getAttribute('data-tag-status') === 'loaded');
+    assert.equal(await page.locator('iframe[data-academy-measurement]').getAttribute('data-document-initialized'), 'true');
     await page.waitForFunction(() => document.querySelector('iframe[data-academy-measurement]')?.contentWindow?.document.cookie.includes('fas_analytics_ga'));
     await page.waitForTimeout(80);
     assert.equal(tags.length, 1);

@@ -226,10 +226,16 @@ test('real transport keeps Google and queued commands in an empty frame with den
   assert.equal((win as any).gtag, undefined);
   assert.equal((win as any).dataLayer, undefined);
   assert.equal(frame.attributes['aria-hidden'], 'true');
+  assert.equal(frame.attributes['data-document-initialized'], 'true');
+  assert.equal(frame.attributes['data-tag-status'], 'loading');
   assert.deepEqual(nodes[0], { tag: 'meta', name: 'referrer', content: 'no-referrer' });
   assert.equal(nodes[1].tag, 'script');
   assert.equal(nodes[1].src, 'https://www.googletagmanager.com/gtag/js?id=G-TEST12345');
   assert.equal(nodes[1].referrerPolicy, 'no-referrer');
+  nodes[1].onload();
+  assert.equal(frame.attributes['data-tag-status'], 'loaded');
+  nodes[1].onerror();
+  assert.equal(frame.attributes['data-tag-status'], 'error');
   const commands = tagWindow.dataLayer.map((command: IArguments) => Array.from(command));
   const consent = commands.find((command: any[]) => command[0] === 'consent')[2];
   assert.equal(consent.analytics_storage, 'granted');
@@ -249,6 +255,34 @@ test('real transport keeps Google and queued commands in an empty frame with den
   assert.equal((win as any)['ga-disable-G-TEST12345'], true);
   transport.pageView(page);
   assert.equal(tagWindow.dataLayer.length, 0);
+  nodes[1].onload();
+  assert.equal(frame.attributes['data-tag-status'], 'error', 'late loader events cannot mutate a stopped transport');
+  assert.equal(JSON.stringify(frame.attributes).includes('G-TEST12345'), false);
+});
+
+test('partial transport initialization disables collection and removes the orphan frame', () => {
+  for (const failure of ['missing-document', 'meta', 'script']) {
+    const tagWindow: Record<string, any> = {};
+    let removed = 0;
+    let win: Window;
+    const frame = {
+      setAttribute() {},
+      contentWindow: tagWindow,
+      contentDocument: failure === 'missing-document' ? null : {
+        createElement(tag: string) { return { tag }; },
+        head: { appendChild(node: { tag: string }) { if (node.tag === failure) throw new Error('fixture setup failure'); } },
+      },
+      remove() {
+        removed++;
+        assert.equal(tagWindow['ga-disable-G-TEST12345'], true);
+        assert.equal((win as any)['ga-disable-G-TEST12345'], true);
+      },
+    };
+    win = { document: { createElement() { return frame; }, body: { appendChild() {} } } } as unknown as Window;
+    assert.throws(() => createGoogleTagTransport(win, 'G-TEST12345', { page_location: origin + '/', page_referrer: '', page_title: 'Academy' }));
+    assert.equal(removed, 1, failure);
+    assert.equal(tagWindow.dataLayer?.length ?? 0, 0, failure);
+  }
 });
 
 test('withdrawal deletes only this integration’s analytics cookies and leaves login cookies intact', () => {

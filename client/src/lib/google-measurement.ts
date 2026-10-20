@@ -78,60 +78,80 @@ export function createGoogleTagTransport(win: Window, measurementId: string, ini
   frame.tabIndex = -1;
   frame.setAttribute('aria-hidden', 'true');
   frame.setAttribute('data-academy-measurement', '');
+  frame.setAttribute('data-document-initialized', 'false');
+  frame.setAttribute('data-tag-status', 'initializing');
   frame.referrerPolicy = 'no-referrer';
-  // No navigation, forms, inputs, chat, or app history exists in this document.
-  win.document.body.appendChild(frame);
-  const tagWindow = frame.contentWindow as TagWindow | null;
-  const tagDocument = frame.contentDocument;
-  if (!tagWindow || !tagDocument) { frame.remove(); throw new Error('Measurement frame unavailable'); }
-  const referrerPolicy = tagDocument.createElement('meta');
-  referrerPolicy.name = 'referrer';
-  referrerPolicy.content = 'no-referrer';
-  tagDocument.head.appendChild(referrerPolicy);
-  setDisabled(win, measurementId, false);
-  setDisabled(tagWindow, measurementId, false);
-  tagWindow.dataLayer = [];
-  tagWindow.gtag = function () { tagWindow.dataLayer!.push(arguments); };
-  const gtag = tagWindow.gtag;
-  gtag('consent', 'default', {
-    analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
-    functionality_storage: 'denied', personalization_storage: 'denied', security_storage: 'granted',
-  });
-  gtag('set', {
-    ...initialPage,
-    allow_google_signals: false, allow_ad_personalization_signals: false,
-    ads_data_redaction: true, url_passthrough: false, send_page_view: false,
-  });
-  gtag('js', new Date());
-  gtag('config', measurementId, {
-    ...initialPage, send_page_view: false,
-    allow_google_signals: false, allow_ad_personalization_signals: false,
-    cookie_prefix: MEASUREMENT_COOKIE_PREFIX, cookie_path: '/', cookie_flags: 'SameSite=Lax;Secure',
-    ignore_referrer: true,
-  });
   let stopped = false;
-  const script = tagDocument.createElement('script');
-  script.async = true;
-  script.referrerPolicy = 'no-referrer';
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  tagDocument.head.appendChild(script);
-  return {
-    pageView(page) {
-      if (stopped) return;
-      // Also update defaults for unavoidable GA session/engagement events.
-      gtag('set', page);
-      gtag('event', 'page_view', { ...page, send_to: measurementId });
-    },
-    stop() {
-      if (stopped) return;
-      stopped = true;
-      // Do this before destroying the frame: even unload events must be denied.
-      setDisabled(win, measurementId, true);
-      setDisabled(tagWindow, measurementId, true);
-      tagWindow.dataLayer!.length = 0;
-      frame.remove();
-    },
-  };
+  let cleanupWindow: TagWindow | null = null;
+  try {
+    // No navigation, forms, inputs, chat, or app history exists in this document.
+    win.document.body.appendChild(frame);
+    const tagWindow = frame.contentWindow as TagWindow | null;
+    const tagDocument = frame.contentDocument;
+    cleanupWindow = tagWindow;
+    if (!tagWindow || !tagDocument) throw new Error('Measurement frame unavailable');
+    const referrerPolicy = tagDocument.createElement('meta');
+    referrerPolicy.name = 'referrer';
+    referrerPolicy.content = 'no-referrer';
+    tagDocument.head.appendChild(referrerPolicy);
+    setDisabled(win, measurementId, false);
+    setDisabled(tagWindow, measurementId, false);
+    tagWindow.dataLayer = [];
+    tagWindow.gtag = function () { tagWindow.dataLayer!.push(arguments); };
+    const gtag = tagWindow.gtag;
+    gtag('consent', 'default', {
+      analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied',
+      functionality_storage: 'denied', personalization_storage: 'denied', security_storage: 'granted',
+    });
+    gtag('set', {
+      ...initialPage,
+      allow_google_signals: false, allow_ad_personalization_signals: false,
+      ads_data_redaction: true, url_passthrough: false, send_page_view: false,
+    });
+    gtag('js', new Date());
+    gtag('config', measurementId, {
+      ...initialPage, send_page_view: false,
+      allow_google_signals: false, allow_ad_personalization_signals: false,
+      cookie_prefix: MEASUREMENT_COOKIE_PREFIX, cookie_path: '/', cookie_flags: 'SameSite=Lax;Secure',
+      ignore_referrer: true,
+    });
+    frame.setAttribute('data-document-initialized', 'true');
+    const script = tagDocument.createElement('script');
+    script.async = true;
+    script.referrerPolicy = 'no-referrer';
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+    // Static DOM diagnostics expose loading state only, never IDs or user data.
+    frame.setAttribute('data-tag-status', 'loading');
+    script.onload = () => { if (!stopped) frame.setAttribute('data-tag-status', 'loaded'); };
+    script.onerror = () => { if (!stopped) frame.setAttribute('data-tag-status', 'error'); };
+    tagDocument.head.appendChild(script);
+    return {
+      pageView(page) {
+        if (stopped) return;
+        // Also update defaults for unavoidable GA session/engagement events.
+        gtag('set', page);
+        gtag('event', 'page_view', { ...page, send_to: measurementId });
+      },
+      stop() {
+        if (stopped) return;
+        stopped = true;
+        // Do this before destroying the frame: even unload events must be denied.
+        setDisabled(win, measurementId, true);
+        setDisabled(tagWindow, measurementId, true);
+        tagWindow.dataLayer!.length = 0;
+        frame.remove();
+      },
+    };
+  } catch (error) {
+    stopped = true;
+    setDisabled(win, measurementId, true);
+    if (cleanupWindow) {
+      setDisabled(cleanupWindow, measurementId, true);
+      if (cleanupWindow.dataLayer) cleanupWindow.dataLayer.length = 0;
+    }
+    frame.remove();
+    throw error;
+  }
 }
 
 export function createMeasurementController(win: Window, createTransport = createGoogleTagTransport) {
