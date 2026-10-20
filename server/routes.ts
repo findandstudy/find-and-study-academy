@@ -38,7 +38,8 @@ import { LANGUAGE_CODES, isSupportedLanguage, normalizeLanguage } from "@shared/
 import { parseQuizQuestions } from "@shared/quiz-localization";
 import { localizeQuizzes, registerQuizTranslationRoutes } from "./quiz-translations";
 import { publicSignupSchema } from "@shared/signup-validation";
-import { db } from "./db";
+import { db, pool } from "./db";
+import { createGoogleMeasurementService, isGoogleMeasurementIntegration, registerGoogleMeasurement, type GoogleMeasurementPool } from './google-measurement';
 import { agencies as agencyTable, users as userTable } from "@shared/schema";
 
 // Real ISO 3166-1 alpha-2 codes we accept anywhere in the API. Computed once
@@ -483,6 +484,7 @@ async function callAiProvider(a: AiCallArgs): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  registerGoogleMeasurement(app, requireAuth, requireAdmin, createGoogleMeasurementService(pool as unknown as GoogleMeasurementPool));
   registerProfileCompletion(app, requireAuth);
   registerCampaignAccess(app, requireAuth, requireAdmin, authRateLimit);
   registerAdminOperations(app, requireAuth, requireAdmin);
@@ -5057,6 +5059,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (isGoogleMeasurementIntegration(name)) {
+        return res.status(400).json({ success: false, message: 'Use the dedicated Google measurement settings for this provider' });
+      }
+
       const validTypes = ['payment', 'email', 'storage', 'crm', 'analytics', 'automation'];
       if (!validTypes.includes(type)) {
         return res.status(400).json({
@@ -5127,6 +5133,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (isGoogleMeasurementIntegration(existingIntegration.name) || isGoogleMeasurementIntegration(updates.name)) {
+        return res.status(400).json({ success: false, message: 'Use the dedicated Google measurement settings for this provider' });
+      }
+
       const filteredUpdates = { ...updates };
       ['apiKey', 'apiSecret', 'webhookSecret', 'smtpPass', 'crmToken'].forEach(key => {
         if (filteredUpdates[key] === '') {
@@ -5178,6 +5188,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      if (isGoogleMeasurementIntegration(integration.name)) {
+        return res.status(400).json({ success: false, message: 'Google configuration is validated in Google measurement settings; verify collection and ownership in Google' });
+      }
+
       const testResult = await storage.testIntegrationConnection(id);
 
       res.json({
@@ -5204,6 +5218,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false,
           message: 'Integration not found'
         });
+      }
+
+      if (isGoogleMeasurementIntegration(integration.name)) {
+        return res.status(400).json({ success: false, message: 'Use the dedicated Google measurement settings for this provider' });
       }
 
       const enabledIntegration = await storage.enableIntegration(id);
@@ -5241,6 +5259,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: false,
           message: 'Integration not found'
         });
+      }
+
+      if (isGoogleMeasurementIntegration(integration.name)) {
+        return res.status(400).json({ success: false, message: 'Disable this provider in the dedicated Google measurement settings' });
       }
 
       await storage.deleteIntegration(id);
