@@ -1,5 +1,7 @@
 # Academy acente ekranları — uygulama ve doğrulama sonucu
 
+> Güncelleme: Kullanıcının sonraki yayın onayıyla gerçek PostgreSQL entegrasyonu ve canlı kabul tamamlandı. Güncel durum: [yayın kabul raporu](AGENT_UX_RELEASE_ACCEPTANCE_2026-10-30.md). Aşağıdaki içerik yayın öncesi kanıtı olarak korunur.
+
 30 Ekim 2026. Dal: `codex/academy-agent-ux-fixes-20261030`. GitHub tabanı: `4537024a3df4ea488d4a65d16b9138939602aa65`.
 
 ## Sonuç
