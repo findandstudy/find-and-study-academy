@@ -1,4 +1,6 @@
 import {createTrainingIntegrity} from './training-integrity';
+import { resolveTrainingCourse } from '@shared/training-course';
+import { agentAgencyUpdateSchema } from '@shared/agency-update';
 import { registerPartnerBranding } from './partner-branding';
 import { registerGroundedFindy } from './findy-grounded';
 import { registerPartnership } from './partnership';
@@ -1542,11 +1544,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enrich certificates with course and agency information
       const courses = await storage.getCourses();
+      const countries = await storage.getCountries();
       const agencies = await storage.getAgencies();
       const users = await storage.getUsers();
       
       const enrichedCertificates = userCertificates.map(cert => {
-        const course = courses.find(c => c.id === cert.courseId);
+        const course = resolveTrainingCourse(cert.courseId, courses, countries);
         const user = users.find(u => u.id === cert.userId);
         const agency = user?.agencyId ? agencies.find(a => a.id === user.agencyId) : null;
         
@@ -1608,8 +1611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user and course information
       const user = await storage.getUser(certificate.userId);
       const courses = await storage.getCourses();
-      
-      const course = courses.find(c => c.id === certificate.courseId);
+      const countries = await storage.getCountries();
+      const course = resolveTrainingCourse(certificate.courseId, courses, countries);
 
       res.json({
         success: true,
@@ -1881,11 +1884,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allCertificates = await storage.getCertificates();
       const users = await storage.getUsers();
       const courses = await storage.getCourses();
+      const countries = await storage.getCountries();
 
       // Enrich certificates with user and course data
       const enrichedCertificates = allCertificates.map(cert => {
         const user = users.find(u => u.id === cert.userId);
-        const course = courses.find(c => c.id === cert.courseId);
+        const course = resolveTrainingCourse(cert.courseId, courses, countries);
         
         return {
           id: cert.id,
@@ -3566,12 +3570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authenticatedUser = (req as any).user;
       
-      console.log('[AGENCY UPDATE] Request from user:', { 
-        id: authenticatedUser.id, 
-        role: authenticatedUser.role, 
-        agencyId: authenticatedUser.agencyId,
-        requestBody: req.body
-      });
+      console.log('[AGENCY UPDATE] Request received');
       
       // Only agents can update their own agency
       if (authenticatedUser.role !== 'agent') {
@@ -3584,7 +3583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const agencyId = authenticatedUser.agencyId;
       if (!agencyId) {
-        console.log('[AGENCY UPDATE] ERROR: No agencyId found for user:', authenticatedUser);
+        console.log('[AGENCY UPDATE] No agency associated with authenticated user');
         return res.status(400).json({
           success: false,
           message: 'Agent does not have an associated agency'
@@ -3592,7 +3591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate agency data (partial update)
-      const validation = insertAgencySchema.partial().safeParse(req.body);
+      const validation = agentAgencyUpdateSchema.safeParse(req.body);
       
       if (!validation.success) {
         console.log('[AGENCY UPDATE] Validation failed:', validation.error.errors);
@@ -3602,8 +3601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: validation.error.errors
         });
       }
-
-      console.log('[AGENCY UPDATE] Validated data:', validation.data);
 
       // Update agency in database
       const updatedAgency = await storage.updateAgency(agencyId, validation.data);

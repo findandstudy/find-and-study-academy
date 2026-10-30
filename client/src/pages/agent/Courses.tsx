@@ -11,10 +11,15 @@ import type { Content, Country } from '@shared/schema';
 import { CountryFlag } from '@/components/CountryFlag';
 import { useTranslation } from 'react-i18next';
 import { normalizeLanguage } from '@/i18n/languages';
+import { Link, useLocation, useSearch } from 'wouter';
+import { requestedTrainingCourse, trainingCourseHref } from '@shared/training-course';
 
 export default function AgentCourses() {
   const { t, i18n } = useTranslation();
   const { courses } = useDataStore();
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const requestedCourse = requestedTrainingCourse(search);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [defaultInitialized, setDefaultInitialized] = useState(false);
 
@@ -28,7 +33,7 @@ export default function AgentCourses() {
   });
 
   // Fetch countries and contents from public APIs (no auth required)
-  const { data: countries = [] } = useQuery({
+  const { data: countries = [], isPending: countriesLoading } = useQuery({
     queryKey: ['/api/public/countries'],
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: true,
@@ -39,7 +44,7 @@ export default function AgentCourses() {
     }
   });
 
-  const { data: contents = [] } = useQuery({
+  const { data: contents = [], isPending: contentsLoading } = useQuery({
     queryKey: ['/api/public/contents', currentLang],
     queryFn: async () => {
       const url = currentLang && currentLang !== 'en'
@@ -100,6 +105,13 @@ export default function AgentCourses() {
     return countriesWithContent.slice().sort((a, b) => a.name.localeCompare(b.name));
   }, [countries, contents]);
 
+  // The legacy fallback retains its stored ID; it must not be relabelled as a
+  // generated country course when a user follows or creates a deep link.
+  const activeCourseIds = useMemo(() => new Map(activeCountries.map(country => [country.id,
+    country.id === 'turkey' && !contents.some(content => content.countryId === country.id && content.status === 'published')
+      ? courses[0]?.id : `course-${country.id}`,
+  ])), [activeCountries, contents, courses]);
+
   // Initialize the selected country from the admin-configured default.
   // The configured default (Settings → Defaults → "Default Country") is
   // AUTHORITATIVE: we wait until that country actually becomes available
@@ -109,7 +121,13 @@ export default function AgentCourses() {
   // This prevents a slow content fetch from letting Turkey (or the first
   // country) win the race and lock in as the default.
   useEffect(() => {
-    if (defaultInitialized) return;
+    if (requestedCourse !== null) {
+      const country = activeCountries.find(country => activeCourseIds.get(country.id) === requestedCourse);
+      setSelectedCountry(country?.code.toLowerCase() ?? '');
+      setDefaultInitialized(true);
+      return;
+    }
+    if (defaultInitialized && selectedCountry) return;
     if (defaultsData === undefined) return; // wait for defaults to load
     const apiDefault = defaultsData?.defaults?.default_country_code;
     if (apiDefault) {
@@ -128,7 +146,7 @@ export default function AgentCourses() {
       setSelectedCountry(activeCountries[0].code.toLowerCase());
       setDefaultInitialized(true);
     }
-  }, [activeCountries, defaultsData, defaultInitialized, contents.length]);
+  }, [activeCountries, activeCourseIds, defaultsData, defaultInitialized, contents.length, requestedCourse, selectedCountry]);
 
   // Get content for selected country
   const selectedCountryData = activeCountries.find(c => 
@@ -197,6 +215,23 @@ export default function AgentCourses() {
     };
   }, [selectedCountryData, countryContents, courses, selectedCountry, currentLang]);
 
+  if (countriesLoading || contentsLoading) {
+    return <p role="status" aria-live="polite">{t('common.loading')}</p>;
+  }
+
+  if (requestedCourse !== null && !activeCountries.some(country => activeCourseIds.get(country.id) === requestedCourse)) {
+    return <div role="alert" className="space-y-4">
+      <p>{legacyUi('Course content is unavailable.')}</p>
+      <Link href="/agent/courses">{t('common.back')}</Link>
+    </div>;
+  }
+
+  const selectCountry = (code: string) => {
+    const country = activeCountries.find(country => country.code.toLowerCase() === code);
+    const courseId = country && activeCourseIds.get(country.id);
+    if (courseId) navigate(trainingCourseHref(courseId), { replace: true });
+  };
+
   if (activeCountries.length === 0) {
     return (
       <Card className="h-64 flex items-center justify-center">
@@ -223,16 +258,26 @@ export default function AgentCourses() {
         </div>
       </div>
 
-      <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
+      <Tabs value={selectedCountry} onValueChange={selectCountry} className="w-full">
+        <div className="lg:hidden space-y-2">
+          <label htmlFor="training-country" className="text-sm font-medium">{t('common.country')}</label>
+          <select id="training-country" value={selectedCountry} onChange={event => selectCountry(event.target.value)}
+            className="w-full min-h-11 rounded-md border border-input bg-background p-2" data-testid="select-training-country">
+            {activeCountries.map(country => <option key={country.id} value={country.code.toLowerCase()}>
+              {countryLabel(currentLang, country.code, country.name)}
+            </option>)}
+          </select>
+        </div>
         {/* Custom scrollable country selector — avoids Radix TabsList overflow constraints */}
-        <div className="flex flex-wrap gap-2 p-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
+        <div className="hidden lg:flex flex-wrap gap-2 p-2 bg-gradient-to-r from-muted/80 to-muted/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm">
           {activeCountries.map((country) => {
             const isActive = selectedCountry === country.code.toLowerCase();
             return (
               <button
                 key={country.id}
                 type="button"
-                onClick={() => setSelectedCountry(country.code.toLowerCase())}
+                onClick={() => selectCountry(country.code.toLowerCase())}
+                aria-pressed={isActive}
                 data-testid={`tab-country-${country.code.toLowerCase()}`}
                 className={[
                   'flex shrink-0 items-center gap-3 whitespace-nowrap px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300',
@@ -255,7 +300,7 @@ export default function AgentCourses() {
             className="space-y-6"
           >
             {dynamicCourse ? (
-              <CourseView course={dynamicCourse} quizzes={quizzes} countryId={country.id} />
+              <CourseView key={dynamicCourse.id} course={dynamicCourse} quizzes={quizzes} countryId={country.id} resume={requestedCourse !== null} />
             ) : (
               <Card className="h-64 flex items-center justify-center">
                 <div className="text-center">

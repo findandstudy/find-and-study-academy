@@ -14,6 +14,8 @@ export interface User {
 export interface Agency {
   id: string;
   name: string;
+  country?: string | null;
+  city?: string | null;
   logoUrl?: string;
   address?: string;
   googleMapUrl?: string;

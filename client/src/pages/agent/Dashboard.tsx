@@ -1,4 +1,5 @@
 import { AgentStartGuide } from '@/components/AgentStartGuide';
+import { trainingCourseHref } from '@shared/training-course';
 import { legacyDate } from "@/lib/legacy-ui";
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -427,11 +428,11 @@ export default function AgentDashboard() {
                   <span className="text-sm text-muted-foreground">
                     {t('agent.dashboard.lessonsCompletedSimple', { count: progress?.lessonCompletedIds.length || 0 })}
                   </span>
-                  <Link href="/agent/courses">
-                    <Button size="sm" variant="outline" data-testid={`button-view-course-${course.id}`}>
+                  <Button asChild size="sm" variant="outline" data-testid={`button-view-course-${course.id}`}>
+                    <Link href={trainingCourseHref(course.id)}>
                       {progressPercent > 0 ? t('common.continue') : t('common.start')}
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </div>
             );

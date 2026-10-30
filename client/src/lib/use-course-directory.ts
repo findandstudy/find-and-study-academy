@@ -10,6 +10,6 @@ export function useCourseDirectory(){
  const courses=useQuery<{courses:Course[]}>({queryKey:['/api/courses']});
  const countries=useQuery<{countries:Country[]}>({queryKey:['/api/public/countries']});
  const directory=new Map<string,Course>((courses.data?.courses??[]).map(c=>[c.id,c]));
- for(const c of countries.data?.countries??[])directory.set(`course-${c.id}`,{id:`course-${c.id}`,title:`${countryLabel(language,c.code,c.name)} — ${courseText(language,0)}`,slug:`${c.code.toLowerCase()}-training`});
+ for(const c of countries.data?.countries??[])if(!directory.has(`course-${c.id}`))directory.set(`course-${c.id}`,{id:`course-${c.id}`,title:`${countryLabel(language,c.code,c.name)} — ${courseText(language,0)}`,slug:`${c.code.toLowerCase()}-training`});
  return {directory,isLoading:courses.isPending||countries.isPending,isError:courses.isError||countries.isError};
 }

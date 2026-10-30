@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
-import { useDataStore } from '@/store/data';
+import { useCourseDirectory } from '@/lib/use-course-directory';
 import { generateCertificatePDF, generateBadgePNG } from '@/lib/pdf';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 export default function AgentCertificates() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const { courses, agencies } = useDataStore();
+  const { directory } = useCourseDirectory();
   const { toast } = useToast();
 
   // Fetch certificates from backend
@@ -31,50 +31,18 @@ export default function AgentCertificates() {
     if (!certificate || !user) return;
 
     try {
-      // Use course from backend (certificate.course) or fetch from API
-      let course = certificate.course;
+      // Prefer localized API-directory metadata, retaining historical server metadata.
+      const course = directory.get(certificate.courseId) || certificate.course;
       
-      if (!course) {
-        // Try localStorage first
-        const localCourse = courses.find(c => c.id === certificate.courseId);
-        if (localCourse) {
-          course = {
-            id: localCourse.id,
-            title: localCourse.title,
-            slug: localCourse.slug
-          };
-        }
-      }
-
-      // If still no course, fetch from backend
-      if (!course) {
-        const response = await fetch('/api/courses');
-        const data = await response.json();
-        if (data.success && data.courses) {
-          const backendCourse = data.courses.find((c: any) => c.id === certificate.courseId);
-          if (backendCourse) {
-            course = {
-              id: backendCourse.id,
-              title: backendCourse.title,
-              slug: backendCourse.slug
-            };
-          }
-        }
-      }
-
-      // If course not found, use placeholder data to still generate certificate
-      const courseData = course || {
-        id: certificate.courseId,
-        title: legacyUi("Find And Study Agent Training"),
-        slug: 'agent-training'
-      };
+      // Do not manufacture a plausible title for an unresolved certificate.
+      if (!course) throw new Error(legacyUi('Course content is unavailable.'));
 
       // Convert to full course object for PDF generation
       // Use agency from backend certificate response
       await generateCertificatePDF(
         certificate, 
         user, 
-        { ...courseData, sections: [] } as any,
+        { ...course, sections: [] } as any,
         certificate.agency || null
       );
       toast({
@@ -153,8 +121,8 @@ export default function AgentCertificates() {
           {/* Certificates Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userCertificates.map(certificate => {
-              // Use course from backend or fallback to localStorage
-              const course = certificate.course || courses.find(c => c.id === certificate.courseId);
+              // Resolve the same course identity used for PDF generation.
+              const course = directory.get(certificate.courseId) || certificate.course;
               return (
                 <Card key={certificate.id} className="hover-elevate">
                   <CardHeader className="pb-3">
@@ -165,7 +133,7 @@ export default function AgentCertificates() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <h3 className="font-semibold">{course?.title || t('agent.certificates.courseTitleFallback')}</h3>
+                      <h3 className="font-semibold">{course?.title || legacyUi('Course content is unavailable.')}</h3>
                       <p className="text-sm text-muted-foreground">
                         {t('agent.certificates.code', { code: certificate.code })}
                       </p>
