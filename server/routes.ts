@@ -5,6 +5,7 @@ import { registerPartnerBranding } from './partner-branding';
 import { registerGroundedFindy } from './findy-grounded';
 import { registerPartnership } from './partnership';
 import { registerProfileCompletion } from './profile-completion';
+import { fillSsoProfile, ssoProfileFields } from './sso-profile';
 import {registerTranslationControl} from './translation-control';
 import { registerCampaignAccess, claimAcademyDevice, enforceAcademyAccess } from './campaign-access';
 import { registerAdminOperations } from './admin-operations';
@@ -837,16 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try { await storage.updateUser(user.id, { externalId } as any); } catch (e) { console.warn('[sso] externalId backfill failed:', (e as Error).message); }
       }
       if (!user) {
-        // Transfer the agent's company as an agency (link if it already exists).
-        let agencyId: string | null = null;
-        const companyName = String(payload.company || payload.companyName || payload.agencyName || '').trim() || null;
-        if (companyName) {
-          try {
-            const agencies = await storage.getAgencies();
-            const match = agencies.find((a) => a.name.trim().toLowerCase() === companyName.toLowerCase());
-            agencyId = match ? match.id : (await storage.createAgency({ name: companyName, status: 'active' } as any)).id;
-          } catch (e) { console.warn('[sso] agency link failed:', (e as Error).message); }
-        }
+        const profile = ssoProfileFields(payload);
         const randomPassword = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
         const usernameBase = (email.split('@')[0] || 'agent').replace(/[^a-z0-9._-]/gi, '').slice(0, 24) || 'agent';
         // createUser's typed shape is narrow; we insert the extra profile columns
@@ -858,17 +850,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: randomPassword,
           role: 'agent',
           status: 'active',
-          agencyId,
+          agencyId: null,
           externalId,
-          companyName,
-          country: payload.country ? String(payload.country).slice(0, 8) : null,
-          phone: payload.phone ? String(payload.phone).slice(0, 40) : null,
+          ...profile,
         } as any);
         console.log('[sso] provisioned new agent:', email);
       }
 
       if (user.status !== 'active') return res.status(403).send('Hesabınız pasif durumda. Yöneticinizle iletişime geçin.');
 
+      await fillSsoProfile(pool, user.id, externalId, payload);
       if (!await claimAcademyDevice(req, res, user.id)) return;
       await new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
       const dest = (user.role === 'admin' || user.role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
