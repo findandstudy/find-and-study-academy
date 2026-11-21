@@ -68,3 +68,51 @@ The HTML browser regression command also accepts `--snapshot=/path/to/export.jso
 to render a private read-only export of all published source/translation bodies.
 Exports and screenshots stay outside the repository; it makes no application API
 writes and blocks external network requests.
+
+## Published maintenance verification
+
+The supervised curriculum pass is complete. Verification used the live database
+and authenticated agent endpoints over HTTPS in English and all 22 translation
+languages. It did not send email or issue live test certificates.
+
+| Check | Verified result |
+| --- | --- |
+| Published source lessons | 325 |
+| Required non-English lesson/language pairs | 7,150 present; no gaps |
+| Sections containing teaching material | 132 of 132 have an active mini quiz |
+| Newly added mini quizzes | 53, with 1,166 published translation pairs |
+| Destination finals | 17 active replacements, with 374 translation pairs |
+| Final question provenance | 425 exact mini-question copies and 9,350 exact localized copies |
+| All active assessments | 248, with all 5,456 required translation pairs validated |
+| Historical learning records | All 618 previous attempts and 15 certificates unchanged |
+
+New minis contain three multiple-choice and two boolean questions; finals
+contain eighteen multiple-choice and seven boolean questions. Both use a 70%
+pass threshold. Eleven prior final definitions remain inactive rather than
+being deleted. Ten destination sections containing only a Coming Soon message
+remain placeholders; questions were not invented for missing teaching content.
+
+Four Latvia/Malta source corrections were published atomically with all 22
+translations. Confirmed translation, condition, terminology and answer-key
+errors were repaired narrowly from their paired sources. Deliberately false
+quiz statements retain their original truth value. An exact review receipt
+pins all 1,166 new mini translation values before their activation.
+
+Browser checks rendered every published lesson body: 325 sources and 7,152
+translation bodies, including two English overlays. After subsequent content
+repairs, the four changed sources and 110 affected translation bodies were
+rendered again. No visible markup, missing-text or outer-page style regressions
+were found. The final quiz scan checked 135,440 source/translated text fields
+without visible markup or template-token findings.
+
+The 99 regression tests, TypeScript check, 23-language UI key gate, production
+build and browser isolation checks passed. All existing certificate course IDs
+resolve to the correct course title; synthetic PDF checks covered Turkish,
+Arabic, Chinese, Korean, Hindi and long text without modifying earned records.
+
+The ordinary worker is running again with automatic draft generation and manual
+publication. Its queue was empty and its heartbeat healthy when enabled. The
+same USD 100 ledger remains in force: accounted usage was USD 56.4962968,
+including the 17 retained historical uncertain reservations. No ledger was
+reset, and restoring/enabling the worker incurred no API charge. Credentials,
+paid responses, course data and private recovery backups remain outside Git.
