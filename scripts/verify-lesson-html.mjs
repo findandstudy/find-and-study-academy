@@ -11,7 +11,7 @@ const snapshotFile = process.argv.find(x => x.startsWith('--snapshot='))?.slice(
 const out = path.resolve(process.argv.find(x => x.startsWith('--out='))?.slice(6) ?? '../html-audit/lesson-isolation');
 await fs.mkdir(out, { recursive: true });
 const bundle = await build({
-  absWorkingDir: repo, bundle: true, write: false, platform: 'browser', format: 'esm', jsx: 'automatic',
+  absWorkingDir: repo, bundle: true, write: false, platform: 'browser', format: 'esm', jsx: 'automatic', loader: { '.png': 'dataurl' },
   define: { 'process.env.NODE_ENV': '"production"' },
   stdin: { resolveDir: repo, loader: 'tsx', contents: `
     import React from 'react';
@@ -23,7 +23,8 @@ const bundle = await build({
     window.renderOld = html => flushSync(() => root.render(<div dangerouslySetInnerHTML={{__html:html}}/>));
   ` },
 });
-const css = 'body{margin:0;padding:0;background:rgb(250,250,250);font:16px Arial}.outside{color:rgb(20,40,60)}.prose p{line-height:1.6}.prose h2{font-size:24px;font-weight:700}#mount{max-width:900px;margin:auto}';
+const productionCss = await fs.readFile(path.join(repo, 'dist/public/assets', (await fs.readdir(path.join(repo, 'dist/public/assets'))).find(x => /^index-.*\.css$/.test(x))), 'utf8');
+const css = productionCss + 'body{margin:0;padding:0;background:rgb(250,250,250);font:16px Arial}.outside{color:rgb(20,40,60)}.prose p{line-height:1.6}.prose h2{font-size:24px;font-weight:700}#mount{max-width:900px;margin:auto}';
 const server = http.createServer((req, res) => {
   if (req.url === '/fixture.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(bundle.outputFiles[0].contents); }
   else if (req.url === '/app.css') { res.setHeader('Content-Type', 'text/css'); res.end(css); }
@@ -73,20 +74,69 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.renderLesson('<h2>Mobile training</h2><table style="width:1200px"><tr><td>Wide course table</td></tr></table>'));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  assert.ok(await page.locator('[data-testid="lesson-html"] table').evaluate(el => el.closest('.prose').scrollWidth > el.closest('.prose').clientWidth));
+  assert.ok(await page.locator('[data-testid="lesson-html"] table').evaluate(el => el.parentElement.scrollWidth > el.parentElement.clientWidth));
   checked('Wide tables remain scrollable without widening a mobile page');
 
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => {
+    document.documentElement.classList.remove('dark');
+    document.getElementById('mount').style.maxWidth = '760px';
+    window.renderLesson(`<!doctype html><html><head><style>
+      :root { --lesson-blue: #143591; }
+      body { color:#0f172a; padding:18px; background:#fff; }
+      .facts { color:#fff; background:linear-gradient(var(--lesson-blue),#0d2466); border-radius:16px; padding:20px; }
+      .columns { display:grid; grid-template-columns:2fr 1fr; }
+      @media(max-width:920px) { .columns { grid-template-columns:1fr; } }
+      @supports(display:grid) { :root { --nested-color:rgb(20,53,145); } }
+      .nested { color:var(--nested-color); }
+    </style></head><body style="line-height:1.7"><div class="facts">$1,600+<br>Public tuition / year</div>
+      <div class="columns"><div><table style="width:100%"><tr><th>Item</th><th>Fact</th><th>Source</th></tr>
+      <tr><td>International students</td><td>About 402,000 international students in Germany. Study in Germany with verified sources and university information.</td><td>DAAD, Wissenschaft weltoffen</td></tr></table></div><aside>Honest limits</aside></div><p class="nested">Nested variables</p></body></html>`);
+  });
+  const restored = await page.locator('[data-testid="lesson-html"]').evaluate(el => {
+    const root = el.shadowRoot;
+    return {
+      background:getComputedStyle(root.querySelector('.facts')).backgroundImage,
+      padding:getComputedStyle(root.querySelector('body')).padding,
+      lineHeight:getComputedStyle(root.querySelector('body')).lineHeight,
+      nestedColor:getComputedStyle(root.querySelector('.nested')).color,
+      columns:getComputedStyle(root.querySelector('.columns')).gridTemplateColumns,
+      cellWidth:root.querySelector('td').getBoundingClientRect().width,
+    };
+  });
+  assert.match(restored.background, /rgb\(20, 53, 145\)/);
+  assert.equal(restored.padding, '18px');
+  assert.equal(restored.nestedColor, 'rgb(20, 53, 145)');
+  assert.equal(restored.columns.split(' ').length, 1);
+  assert.ok(restored.cellWidth >= 90, 'Labels must not collapse to single letters');
+  assert.deepEqual(await outside(), baseline);
+  checked('Root variables, nested CSS and full-document body styling survive locally', restored);
+  checked('Responsive layouts follow lesson width; table labels keep readable widths');
+  await page.screenshot({ path:path.join(out,'document-layout.png'), fullPage:true });
+  await page.evaluate(() => window.renderLesson('<html lang="en" dir="ltr"><body dir="ltr"><p>دليل الدراسة</p></body></html>', 'ar'));
+  assert.equal(await page.locator('[data-testid="lesson-html"] .lesson-body').evaluate(el => getComputedStyle(el).direction), 'rtl');
+  assert.equal(await page.locator('[data-testid="lesson-html"] html').getAttribute('lang'), 'ar');
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(() => window.renderLesson('<style>.fas-tip{display:flex;gap:16px;padding:18px}.label{flex-shrink:0;width:100px}</style><div class="fas-tip"><span class="label">Agent Tip</span><p class="txt">Keep the whole explanation readable on a narrow screen.</p></div>'));
+  assert.equal(await page.locator('[data-testid="lesson-html"] .fas-tip').evaluate(el => getComputedStyle(el).flexDirection), 'column');
+  assert.ok(await page.locator('[data-testid="lesson-html"] .txt').evaluate(el => el.getBoundingClientRect().width > 280));
+  checked('Explicit source language/direction follow selected locale; mobile callouts stack');
+  await page.evaluate(() => window.renderLesson('<img alt="Dorm Booking" src="https://academy.findandstudy.com/@fs/var/www/academy.findandstudy.com/attached_assets/dorm-removebg_1760296726263.png"><img alt="Other logo" src="/other.png">'));
+  assert.match(await page.locator('[data-testid="lesson-html"] img[alt="Dorm Booking"]').getAttribute('src'), /^data:image\/png/);
+  assert.equal(await page.locator('[data-testid="lesson-html"] img[alt="Other logo"]').getAttribute('src'), '/other.png');
+  checked('Known broken development logo URLs resolve to bundled original; other images unchanged');
   if (snapshotFile) {
     const snapshot = JSON.parse(await fs.readFile(path.resolve(snapshotFile), 'utf8'));
     report.snapshotAt = snapshot.at;
     await page.setViewportSize({ width: 1280, height: 900 });
+    await page.evaluate(() => document.getElementById('mount').style.maxWidth = '900px');
     for (const row of [...snapshot.contents.map(x => ({ ...x, language: 'en', isSource: true })), ...snapshot.translations]) {
       const result = await page.evaluate(({ html, language }) => {
         const before = { padding: getComputedStyle(document.body).padding, color: getComputedStyle(document.querySelector('.outside')).color };
         window.renderLesson(html || '', language);
         const host = document.querySelector('[data-testid="lesson-html"]');
         const root = host.shadowRoot;
-        const article = root.querySelector('.prose');
+        const article = root.querySelector('.lesson-body');
         const text = (article.innerText || '').replace(/\s+/g, ' ').trim();
         const source = new DOMParser().parseFromString(html || '', 'text/html');
         source.querySelectorAll('style,script,title,head').forEach(el => el.remove());

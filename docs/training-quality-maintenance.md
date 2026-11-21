@@ -116,3 +116,50 @@ same USD 100 ledger remains in force: accounted usage was USD 56.4962968,
 including the 17 retained historical uncertain reservations. No ledger was
 reset, and restoring/enabling the worker incurred no API charge. Credentials,
 paid responses, course data and private recovery backups remain outside Git.
+
+
+## Authored lesson visual repair (21 November 2026)
+
+A manual screenshot review found regressions that the earlier text/isolation
+checks did not cover: lesson `:root` variables disappeared in Shadow DOM,
+application prose overrode authored typography, and `overflow-wrap:anywhere`
+collapsed table labels into individual letters. Full-document body styles were
+also lost, and viewport media queries did not reflect the narrower lesson column.
+
+The renderer now keeps a local html/body scope, maps root selectors inside it,
+and uses lesson-width container queries for authored width breakpoints. Authored
+lessons retain their own typography. Tables scroll independently with readable
+cell widths; small-screen callouts stack. Navigation titles wrap fully, and the
+lesson header and quiz controls wrap on narrow screens. Selecting another lesson
+returns the reader to the content start, including desktop navigation from a
+menu item far below a short lesson. Two stored development
+filesystem image references now resolve to the bundled original Dorm Booking logo.
+No course/quiz HTML rewrite is needed for these rendering corrections.
+
+Review evidence outside Git includes 650 desktop/mobile captures of all 325
+source lessons and 92 AZ/DE layout cases across all 23 locales. All 325 source
+lesson overviews and all 23 locale comparison boards were inspected visually;
+this is not a claim that every line of all 7,152 translated bodies was manually
+read. Full-size AZ/DE examples and the Korean correction were checked live.
+The browser regression suite renders 7,477 bodies, preserves text and outer-page
+isolation, and now checks root variables, body styling, container breakpoints,
+cell widths, locale direction, mobile callouts and the repaired image mapping.
+
+The review also found an exact repeated China lesson title (one source and 21
+translated titles) and shifted labels/introductory fragments in one Korean AZ
+lesson. These were repaired with source/value hashes, successful dry runs,
+private backups and publication receipts. The 22 China translation source hashes
+were refreshed atomically; the Korean repair changed only 20 reviewed text slots.
+Historical attempts and certificates, answer keys and the shared budget ledger
+were not edited. The visual repair used zero paid AI requests.
+
+To review an exported snapshot against the real production stylesheet:
+
+```sh
+node scripts/review-lesson-layouts.mjs --snapshot=/private/export.json --capture --serve
+```
+
+The local fixture is for manual visual review only; it does not read login
+sessions, publish translations, submit quizzes or send email. Images/video from
+outside the fixture are blocked during automated captures. External image URLs
+were checked separately; blocked fixture images are not treated as broken assets.

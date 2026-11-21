@@ -136,9 +136,9 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
   }, [course, resume, progressLoading, progressResponse]);
 
   const focusLesson = () => {
-    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    const compact = window.matchMedia('(max-width: 1023px)').matches;
     requestAnimationFrame(() => {
-      lessonContentRef.current?.focus({ preventScroll: true });
+      if (compact) lessonContentRef.current?.focus({ preventScroll: true });
       lessonContentRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
     });
   };
@@ -284,7 +284,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
                         onClick={() => selectLesson(lesson)}
                         aria-pressed={isSelected}
                         className={`
-                          group relative flex items-center w-full p-3 text-left text-sm rounded-lg transition-all duration-200 hover:-translate-y-0.5
+                          group relative flex items-start w-full p-3 text-start text-sm rounded-lg transition-all duration-200 hover:-translate-y-0.5
                           ${isSelected 
                             ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20' 
                             : 'hover:bg-accent/50 hover:shadow-sm'
@@ -297,7 +297,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
                         ) : (
                           <BookOpen className="w-5 h-5 mr-3 shrink-0" />
                         )}
-                        <span className="truncate flex-1">{lesson.title}</span>
+                        <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug">{lesson.title}</span>
                         {!isSelected && <div className="ml-2 w-1.5 h-1.5 rounded-full bg-primary/0 group-hover:bg-primary/50 transition-colors" />}
                       </button>
                     );
@@ -342,16 +342,16 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
         {selectedLesson ? (
           <Card className="h-fit border-primary/10 bg-gradient-to-br from-card to-card/30">
             <CardHeader className="border-b border-border/50 bg-gradient-to-r from-card to-transparent">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <CardTitle className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="shrink-0 p-2 rounded-lg bg-primary/10">
                     {completedLessons.includes(selectedLesson.id) ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
                     ) : (
                       <BookOpen className="w-5 h-5 text-primary" />
                     )}
                   </div>
-                  <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  <span className="min-w-0 break-words bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                     {selectedLesson.title}
                   </span>
                 </CardTitle>
@@ -369,7 +369,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
               {/* Quiz Section */}
               {selectedLesson.quizId && (
                 <div className="border-t pt-6">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
+                  <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-lg bg-primary/10">
                         <PlayCircle className="w-6 h-6 text-primary" />
