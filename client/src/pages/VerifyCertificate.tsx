@@ -1,4 +1,5 @@
 import {LanguageSwitcher} from '@/components/LanguageSwitcher';
+import { legacyUi } from '@/lib/legacy-ui';
 import {usePublicUi} from '@/lib/public-ui';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
@@ -114,7 +115,7 @@ export default function VerifyCertificate() {
                 
                 <div className="space-y-1 text-sm">
                   <p><strong>{tl("Recipient:")}</strong> {certificateData.user?.name}</p>
-                  <p><strong>{tl("Course:")}</strong> {certificateData.course?.title}</p>
+                  <p><strong>{tl("Course:")}</strong> {certificateData.course?.title || legacyUi('Course content is unavailable.')}</p>
                   <p><strong>{tl("Score:")}</strong> {certificateData.scorePercent}%</p>
                   <p><strong>{tl("Issued:")}</strong> {new Date(certificateData.issuedAt).toLocaleDateString(locale)}</p>
                   <p><strong>{tl("Code:")}</strong> {certificateData.code}</p>

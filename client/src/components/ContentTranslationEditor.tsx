@@ -1,5 +1,5 @@
 import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -76,6 +76,14 @@ function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
     },
   });
 
+  // The saved translation arrives after the editor mounts on the first open.
+  // Updating its value must hydrate the document without emitting a user edit.
+  useEffect(() => {
+    if (editor && editor.getHTML() !== value) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [editor, value]);
+
   if (!editor) return null;
 
   const ToolbarButton = ({ onClick, active, title, children }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) => (
@@ -132,7 +140,7 @@ interface ContentTranslationEditorProps {
 
 export function ContentTranslationEditor({ content, open, onClose }: ContentTranslationEditorProps) {
   const { toast } = useToast();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   // Derive a valid initial lang from the current UI language
   const resolvedUiLang = normalizeLanguage(i18n.language);
@@ -152,13 +160,19 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     status: "draft",
   });
 
-  const { data: translationsData, isLoading } = useQuery<{ success: boolean; data: ContentTranslation[] }>({
+  const hydratedTranslationKey = useRef("");
+
+  const { data: translationsData, isLoading, isFetching, error: translationsError } = useQuery<{ success: boolean; data: ContentTranslation[] }>({
     queryKey: ["/api/admin/contents", content.id, "translations"],
     queryFn: async () => {
       const res = await fetch(`/api/admin/contents/${content.id}/translations`, {
         headers: getAuthHeaders(),
       });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok || data?.success !== true || !Array.isArray(data?.data)) {
+        throw new Error(typeof data?.message === "string" ? data.message : t("common.error"));
+      }
+      return data;
     },
     enabled: open,
   });
@@ -179,16 +193,32 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
     }
   }, [translations]);
 
+  // Hydrate the selected language when its first successful response arrives.
+  // A background refetch must not erase an administrator's unsaved edits.
+  useEffect(() => {
+    if (!open) {
+      hydratedTranslationKey.current = "";
+      return;
+    }
+    if (isFetching || translationsError || !translationsData?.success) return;
+    const key = `${content.id}:${selectedLang}`;
+    if (hydratedTranslationKey.current !== key) {
+      loadTranslationToForm(selectedLang);
+      hydratedTranslationKey.current = key;
+    }
+  }, [open, content.id, selectedLang, isFetching, translationsError, translationsData?.success, loadTranslationToForm]);
+
   const handleLangSelect = (lang: string) => {
     setSelectedLang(lang);
     setSourceMode(false);
     loadTranslationToForm(lang);
   };
 
-  const { t } = useTranslation();
-
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (isFetching || translationsError || !translationsData?.success) {
+        throw new Error(t("toast.failedDescription"));
+      }
       const sanitized = {
         ...form,
         content: sanitizeTranslationContent(form.content),
@@ -249,6 +279,12 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
           </p>
         </DialogHeader>
 
+        {translationsError && (
+          <p role="alert" className="text-sm text-destructive">
+            {t("common.error")}{translationsError.message !== t("common.error") && `: ${legacyMessage(translationsError.message)}`}
+          </p>
+        )}
+
         <div className="flex gap-4 mt-2">
           {/* Language selector panel */}
           <div className="w-44 shrink-0 space-y-1">
@@ -266,6 +302,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                   <button
                     key={lang.code}
                     type="button"
+                    disabled={isFetching || !!translationsError}
                     onClick={() => handleLangSelect(lang.code)}
                     className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors ${isSelected ? "bg-primary text-primary-foreground" : "hover-elevate text-foreground"}`}
                   >
@@ -296,7 +333,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
                     size="icon"
                     className="text-destructive"
                     onClick={() => deleteMutation.mutate(selectedLang)}
-                    disabled={deleteMutation.isPending}
+                    disabled={deleteMutation.isPending || isFetching || !!translationsError}
                     title={t("contentEditor.deleteThisTranslation")}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -390,7 +427,7 @@ export function ContentTranslationEditor({ content, open, onClose }: ContentTran
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>{t("common.close")}</Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || isFetching || !!translationsError || !translationsData?.success}>
             {saveMutation.isPending ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("common.saving")}</>
             ) : (

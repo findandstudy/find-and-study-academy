@@ -127,6 +127,8 @@ async function run(plan,c,dir,fetcher=fetch){
     }else{
      if(fs.existsSync(rejectedFile)){needsReview=true;continue;}
      if(fs.existsSync(path.join(dir,'stop.request')))throw Error('Operator stop requested; completed chunks retained');
+     // Lost checkpoints do not make previously paid requests new.
+     if(ledger.entries.some(e=>e.identity===partId&&(e.status==='reserved'||e.status==='charged')))throw Error('RECONCILE_REQUIRED');
      const body=payload(part,c),bound=reservation(body,c);
      if(ledger.chargedUSD+bound.usd>c.approvedBudgetUSD)throw Error('Approved budget limit reached before request');
      const entry={identity:partId,jobHash:job.jobHash,model:c.model,language:job.language,start,reservedUSD:bound.usd,status:'reserved',at:new Date().toISOString()};
