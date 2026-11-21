@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { QuizModal } from './QuizModal';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { LessonHtml } from './LessonHtml';
 import { BookOpen, CheckCircle, PlayCircle, Award } from 'lucide-react';
 import type { Course, Lesson, Quiz, Progress as ProgressType } from '../../types';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -363,10 +364,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId, resume = f
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               {/* Lesson Content */}
-              <div 
-                className="prose prose-sm max-w-none prose-headings:bg-gradient-to-r prose-headings:from-foreground prose-headings:to-foreground/70 prose-headings:bg-clip-text prose-headings:text-transparent"
-                dangerouslySetInnerHTML={{ __html: selectedLesson.html }}
-              />
+              <LessonHtml html={selectedLesson.html} language={i18n.language} />
 
               {/* Quiz Section */}
               {selectedLesson.quizId && (

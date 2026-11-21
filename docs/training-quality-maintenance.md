@@ -12,6 +12,12 @@ blocks writes after an unsuccessful translation read. Source-aligned review
 slots handle an isolated English article becoming punctuation in languages
 without articles, while rejecting lost headings and changed HTML structure.
 
+The learner view sanitizes and renders authored HTML in its own shadow tree.
+Lesson styles cannot change the page body or navigation. App typography,
+authored layouts, safe videos and links, local table-of-contents navigation,
+RTL direction and horizontal scrolling for wide mobile tables are retained.
+This changes rendering only; stored lesson HTML remains unchanged.
+
 Paid translation and paired semantic review share the existing canonical ledger
 and exclusive writer lock. Missing accounting fails closed. Charges without a
 checkpoint and uncertain reservations require reconciliation; they are never
@@ -46,6 +52,7 @@ private backups are not repository assets.
 npm run check
 npm run check:translations
 node --import tsx --test server/*.test.ts server/*.test.cjs shared/*.test.ts
+node scripts/verify-lesson-html.mjs
 npm run build
 ```
 
@@ -56,3 +63,8 @@ and finals require this learner's completed lessons and passing mini attempts.
 Rendering and public API checks are additional deployment evidence, not a claim
 that structural validation certifies every translation's meaning or verifies
 every source policy against external authorities.
+
+The HTML browser regression command also accepts `--snapshot=/path/to/export.json`
+to render a private read-only export of all published source/translation bodies.
+Exports and screenshots stay outside the repository; it makes no application API
+writes and blocks external network requests.
