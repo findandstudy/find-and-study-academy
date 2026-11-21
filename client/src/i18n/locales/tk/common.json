@@ -477,7 +477,7 @@
         "badgeError": "Nişany ýüklemekde säwlik boldy."
       },
       "title": "Meniň Şahadatnamalarym",
-      "subtitle": "Gazanan şahadatnamalaryňyzy we agent niýetnamalaryňyzy ýükläň we dolandyryň.",
+      "subtitle": "Gazanan şahadatnamalaryňyzy we agent nyşanlaryňyzy ýükläň we dolandyryň.",
       "loading": "Şahadatnamalar ýüklenýär...",
       "noCertificatesYet": "Heniz şahadatnama ýok",
       "completeToEarn": "Kepilnama gazanmak üçin kurslary tamamlaň",
@@ -488,7 +488,7 @@
       "pdf": "PDF",
       "badge": "Nişan",
       "agentBadge": "Agent Nişany",
-      "certifiedAgent": "Kepillendirilen Find And Study Agent",
+      "certifiedAgent": "Şahadatnamaly Find And Study agenti",
       "downloadAgentBadge": "Soňky kepilnama kody bilen agent nişanyňyzy göçüriň",
       "downloadBadge": "Nişany Göçürip Alyň"
     },

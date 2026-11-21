@@ -1324,6 +1324,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         attempt: {
           id: savedAttempt.id,
+          userId: savedAttempt.userId,
+          quizId: savedAttempt.quizId,
+          correct: savedAttempt.correct,
+          incorrect: savedAttempt.incorrect,
           scorePercent: savedAttempt.scorePercent,
           date: savedAttempt.date
         },

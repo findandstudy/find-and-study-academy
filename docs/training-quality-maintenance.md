@@ -163,3 +163,18 @@ The local fixture is for manual visual review only; it does not read login
 sessions, publish translations, submit quizzes or send email. Images/video from
 outside the fixture are blocked during automated captures. External image URLs
 were checked separately; blocked fixture images are not treated as broken assets.
+
+## Assessment and certificate visual review (21 November 2026)
+
+The active curriculum contains 231 mini quizzes and 17 destination finals (1,580 source questions). The visual review uses a private, read-only exported snapshot and the actual React components/production styles. `scripts/review-assessment-layouts.mjs` mocks all attempt submissions and certificate verification: it cannot issue a real certificate or send email.
+
+- Checked all 36,340 localized question views for answer/navigation/title overflow at 360px; 23 locales also have desktop and mobile state captures.
+- Manually inspected each of the 248 source assessment longest-question overviews, and 23 locale sets covering long mini/final dialogs, pass/fail results, certificate cards, empty states and valid/invalid/error verification states. This is visual and focused copy review, not a new native-language certification of every translated question.
+- Produced and inspected 23 synthetic PDF certificates and 23 badge PNGs. All 391 destination/language course-title layouts were measured. Synthetic samples have non-valid test codes.
+- Preserve all question IDs, order, answer keys and published translations. Eight French typographic entity references are decoded for visible text only. Finals still match their destination's localized mini-question pools; legacy mini destination bindings are resolved through published lesson links.
+- Quiz results use the server's saved score/counts. The response now includes saved user/quiz IDs and correct/incorrect counts. Finals refresh the certificate query directly, without resolving against seed courses. Duplicate submission is blocked and a rejected submission cannot create local success state.
+- Authored labels use complete localized sentences, with a consistent RTL count ratio. Dialogs trap keyboard focus, close with Escape and place the close button at the logical end. Options, question navigation and certificate controls wrap without shrinking body text.
+- PDF labels use Unicode canvas shaping, localized field captions and separate bounded signature/QR/detail regions. Badge names wrap inside the original circle. Course names use committed CLDR display names for Academy destinations, avoiding browser locale-data fallbacks to English.
+- The local review made no paid API requests. Deployment requires matching source/bundle hashes, a successful dry run, a private rollback backup and HTTPS asset readback. Existing assets, attempts, issued certificate identities and the single shared USD 100 budget ledger remain protected. Publish the SPA index before restarting: the production server captures its HTML template at startup.
+
+Reproduce with a private snapshot at `../assessment-visual-review/live-assessment-snapshot.json`: run `node scripts/review-assessment-layouts.mjs`, then `node scripts/review-assessment-layouts.mjs --interaction-only --port=4202`. Snapshot data and generated images/PDFs stay outside Git.

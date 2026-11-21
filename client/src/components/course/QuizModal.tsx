@@ -1,382 +1,142 @@
-import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
-import { useState, useEffect } from 'react';
+import { legacyUi, legacyMessage, legacyLocale } from '@/lib/legacy-ui';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAuthStore } from '@/store/auth';
 import { useDataStore } from '@/store/data';
 import { useToast } from '@/hooks/use-toast';
 import { submitAttempt } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
-import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight } from 'lucide-react';
-import type { Quiz, Question, Attempt } from '../../types';
+import { quizVisibleText } from '@/lib/quiz-text';
+import { courseText } from '@/i18n/course-labels';
+import { assessmentText } from '@/i18n/assessment-labels';
+import { Clock, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import type { Quiz } from '../../types';
 import { parseQuizQuestions } from '@shared/quiz-localization';
 
 interface QuizModalProps {
-  quiz: Quiz;
-  onClose: () => void;
-  onComplete: (passed: boolean) => void;
+ quiz: Quiz;
+ onClose: () => void;
+ onComplete: (passed: boolean) => void;
 }
+type Grade = { correct: number; incorrect: number; scorePercent: number };
 
-export function QuizModal({ quiz: quizProp, onClose, onComplete }: QuizModalProps) {
-  const quiz = { ...quizProp, questions: parseQuizQuestions(quizProp.questions) };
+export function QuizModal({ quiz, onClose, onComplete }: QuizModalProps) {
+ useTranslation();
+ const questions = useMemo(() => { try { return parseQuizQuestions(quiz.questions); } catch { return []; } }, [quiz.questions]);
+ const [currentQuestion, setCurrentQuestion] = useState(0);
+ const [answers, setAnswers] = useState<Record<string, boolean | number>>({});
+ const [result, setResult] = useState<Grade | null>(null);
+ const [isSubmitting, setIsSubmitting] = useState(false);
+ const submitting = useRef(false);
+ const [startTime] = useState(Date.now());
+ const [timeElapsed, setTimeElapsed] = useState(0);
+ const { user } = useAuthStore();
+ const { addAttempt } = useDataStore();
+ const { toast } = useToast();
+ const locale = legacyLocale();
+ const kind = courseText(locale, quiz.isFinal ? 4 : 7);
+ const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+ const passed = result !== null && result.scorePercent >= quiz.passPercent;
+ const closeModal = () => { if (!submitting.current) result ? onComplete(passed) : onClose(); };
 
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<{ [questionId: string]: boolean | number }>({});
-  const [showResults, setShowResults] = useState(false);
-  const [startTime] = useState(Date.now());
-  const [timeElapsed, setTimeElapsed] = useState(0);
-  
-  const { user } = useAuthStore();
-  const { addAttempt, addCertificate, courses } = useDataStore();
-  const { toast } = useToast();
+ useEffect(() => {
+  if (result) return;
+  const timer = setInterval(() => setTimeElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+  return () => clearInterval(timer);
+ }, [startTime, result]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [startTime]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleAnswer = (answer: boolean | number) => {
-    const question = quiz.questions[currentQuestion];
-    setAnswers(prev => ({
-      ...prev,
-      [question.id]: answer
-    }));
-  };
-
-  const nextQuestion = () => {
-    if (currentQuestion < quiz.questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-    }
-  };
-
-  const previousQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
-    }
-  };
-
-  const submitQuiz = async () => {
-    if (!user) return;
-
-    // Calculate score
-    let correct = 0;
-    quiz.questions.forEach(question => {
-      const userAnswer = answers[question.id];
-      if (question.type === 'boolean') {
-        if (userAnswer === question.answer) correct++;
-      } else if (question.type === 'mcq') {
-        if (userAnswer === question.answerIndex) correct++;
-      }
-    });
-
-    const scorePercent = Math.round((correct / quiz.questions.length) * 100);
-    const passed = scorePercent >= quiz.passPercent;
-
-    // Save attempt locally and to server
-    const attempt: Attempt = {
-      id: `attempt-${Date.now()}`,
-      userId: user.id,
-      quizId: quiz.id,
-      scorePercent,
-      correct,
-      incorrect: quiz.questions.length - correct,
-      date: new Date().toISOString()
-    };
-    // Persist locally only after the server validates and grades the submission.
-
-    // Submit to server - automatically generates certificate for passing Final Exam
-    try {
-      const result = await submitAttempt({
-        quizId: quiz.id,
-        answers,
-        scorePercent,
-        correct,
-        incorrect: quiz.questions.length - correct
-      });
-
-      if (!result.success) throw new Error(result.message || 'Could not submit quiz. Please try again.');
-      addAttempt({...attempt, ...result.attempt});
-
-      // Check if certificate was auto-generated by server
-      if (result.success && result.certificate) {
-        console.log('[QUIZ] Certificate received from backend:', result.certificate);
-        
-        const course = courses.find(c => 
-          c.sections.some(s => s.lessons.some(l => l.quizId === quiz.id))
-        );
-
-        if (course) {
-          // Add to localStorage for immediate UI feedback (always, even if already issued)
-          const certificate = {
-            id: result.certificate.id,
-            userId: user.id,
-            courseId: course.id,
-            scorePercent: result.certificate.scorePercent,
-            code: result.certificate.code,
-            issuedAt: result.certificate.issuedAt
-          };
-          
-          console.log('[QUIZ] Prepared certificate for storage:', certificate);
-          
-          // Check if already exists in localStorage to avoid duplicates
-          const existingCerts = localStorage.getItem('certificates');
-          const certs = existingCerts ? JSON.parse(existingCerts) : [];
-          const alreadyInStore = certs.some((c: any) => c.id === certificate.id);
-          
-          console.log('[QUIZ] Certificate already in store?', alreadyInStore, 'Total certs before:', certs.length);
-          
-          if (!alreadyInStore) {
-            addCertificate(certificate);
-            console.log('[QUIZ] Certificate added to Zustand store');
-          }
-
-          // Invalidate certificates and attempts cache to force refresh
-          queryClient.invalidateQueries({ queryKey: ['/api/certificates'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/attempts'] });
-          console.log('[QUIZ] Cache invalidated for /api/certificates and /api/attempts');
-
-          toast({
-            title: result.certificate.alreadyIssued ? legacyUi("Certificate Already Earned! 🎓") : legacyUi("Congratulations! 🎉"),
-            description: result.certificate.alreadyIssued 
-              ? legacyUi("You already have a certificate for this course. Code: {value0}",{value0:result.certificate.code})
-              : legacyUi("You've earned your certificate with {value0}% score! Code: {value1}",{value0:result.certificate.scorePercent,value1:result.certificate.code}),
-            duration: 6000
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to submit attempt to server:', error);
-      toast({title: legacyUi('Quiz submission failed'), description: legacyMessage(error instanceof Error ? error.message : 'Please try again.'), variant: 'destructive'});
-      return;
-    }
-
-    setShowResults(true);
-  };
-
-  const closeModal = () => {
-    if (quiz.questions.length === 0) {
-    return <Card role="alert"><CardContent className="p-6 space-y-4"><p>{legacyUi("This quiz has no questions available yet.")}</p><Button onClick={onClose}>{legacyUi("Close")}</Button></CardContent></Card>;
+ const allAnswered = questions.length > 0 && questions.every(q => answers[q.id] !== undefined);
+ const submitQuiz = async () => {
+  if (!user || !allAnswered || submitting.current) return;
+  submitting.current = true;
+  setIsSubmitting(true);
+  try {
+   // The server grades the answer IDs; its returned grade is authoritative.
+   const response = await submitAttempt({ quizId: quiz.id, answers, scorePercent: 0, correct: 0, incorrect: 0 });
+   const grade = response.attempt;
+   if (!response.success || !grade || !Number.isInteger(grade.correct) || !Number.isInteger(grade.incorrect)
+    || grade.correct < 0 || grade.incorrect < 0 || grade.correct + grade.incorrect !== questions.length
+    || !Number.isFinite(grade.scorePercent) || grade.scorePercent < 0 || grade.scorePercent > 100) {
+    throw new Error(response.message || legacyUi('Quiz submission failed'));
+   }
+   addAttempt(grade);
+   setResult({correct: grade.correct, incorrect: grade.incorrect, scorePercent: grade.scorePercent});
+   queryClient.invalidateQueries({queryKey: ['/api/attempts']});
+   // Finals need not be attached to a lesson. Refresh earned certificates
+   // directly instead of inventing an identity from the local seed courses.
+   if (response.certificate) {
+    queryClient.invalidateQueries({queryKey: ['/api/certificates']});
+    toast({title: response.certificate.alreadyIssued ? legacyUi('Certificate Already Earned! 🎓') : legacyUi('Congratulations! 🎉'),
+     description: response.certificate.alreadyIssued
+      ? legacyUi('You already have a certificate for this course. Code: {value0}', {value0: response.certificate.code})
+      : legacyUi("You've earned your certificate with {value0}% score! Code: {value1}", {value0: response.certificate.scorePercent, value1: response.certificate.code}), duration: 6000});
+   }
+  } catch (error) {
+   toast({title: legacyUi('Quiz submission failed'), description: legacyMessage(error instanceof Error ? error.message : 'Please try again.'), variant: 'destructive'});
+  } finally {
+   submitting.current = false;
+   setIsSubmitting(false);
   }
-
-  if (showResults) {
-      const correct = Object.keys(answers).filter(qId => {
-        const question = quiz.questions.find(q => q.id === qId);
-        const userAnswer = answers[qId];
-        if (question?.type === 'boolean') {
-          return userAnswer === question.answer;
-        } else if (question?.type === 'mcq') {
-          return userAnswer === question.answerIndex;
-        }
-        return false;
-      }).length;
-      
-      const scorePercent = Math.round((correct / quiz.questions.length) * 100);
-      const passed = scorePercent >= quiz.passPercent;
-      
-      onComplete(passed);
-    } else {
-      onClose();
-    }
-  };
-
-  if (showResults) {
-    const correct = Object.keys(answers).filter(qId => {
-      const question = quiz.questions.find(q => q.id === qId);
-      const userAnswer = answers[qId];
-      if (question?.type === 'boolean') {
-        return userAnswer === question.answer;
-      } else if (question?.type === 'mcq') {
-        return userAnswer === question.answerIndex;
-      }
-      return false;
-    }).length;
-    
-    const scorePercent = Math.round((correct / quiz.questions.length) * 100);
-    const passed = scorePercent >= quiz.passPercent;
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <Card className="w-full max-w-lg">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
-              {passed ? (
-                <CheckCircle className="w-16 h-16 text-green-500" />
-              ) : (
-                <XCircle className="w-16 h-16 text-red-500" />
-              )}
-            </div>
-            <CardTitle className={passed ? 'text-green-700' : 'text-red-700'}>
-              {passed ? legacyUi("Quiz Passed!") : legacyUi("Quiz Failed")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center space-y-2">
-              <div className="text-3xl font-bold">{scorePercent}%</div>
-              <div className="text-sm text-muted-foreground">
-                {legacyUi("{value0} of {value1} questions answered correctly.",{value0:correct,value1:quiz.questions.length})}</div>
-              <div className="text-sm text-muted-foreground">
-                {legacyUi("Time: ")}{formatTime(timeElapsed)}
-              </div>
-              {!passed && (
-                <p className="text-sm text-red-600">
-                  {legacyUi("You need ")}{quiz.passPercent}{legacyUi("% to pass. Please review the content and try again.")}</p>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="p-3 rounded-md bg-green-50">
-                <div className="text-green-700 font-semibold">{correct}</div>
-                <div className="text-sm text-green-600">{legacyUi("Correct")}</div>
-              </div>
-              <div className="p-3 rounded-md bg-red-50">
-                <div className="text-red-700 font-semibold">{quiz.questions.length - correct}</div>
-                <div className="text-sm text-red-600">{legacyUi("Incorrect")}</div>
-              </div>
-            </div>
-
-            <Button onClick={closeModal} className="w-full" data-testid="button-close-results">
-              {legacyUi("Continue")}</Button>
-          </CardContent>
-        </Card>
+ };
+ const question = questions[currentQuestion];
+ return <Dialog open onOpenChange={open => { if (!open) closeModal(); }}>
+  <DialogContent data-testid="quiz-dialog" dir={document.documentElement.dir} className="max-w-2xl min-w-0 gap-5 [overflow-wrap:anywhere]" onInteractOutside={event => event.preventDefault()} onEscapeKeyDown={event => {if (isSubmitting) event.preventDefault();}}>
+   <header className="min-w-0 space-y-3 pe-7 text-start">
+    <Badge variant="secondary" className="max-w-full whitespace-normal">{kind}</Badge>
+    <DialogTitle className="text-xl leading-snug" data-testid="quiz-title">{quizVisibleText(quiz.title)}</DialogTitle>
+    <DialogDescription className="flex flex-wrap items-center justify-between gap-2">
+     <span>{assessmentText(1, {percent: quiz.passPercent})}</span>
+     <span className="inline-flex shrink-0 items-center gap-1"><Clock className="h-4 w-4" /><bdi dir="ltr">{formatTime(timeElapsed)}</bdi></span>
+    </DialogDescription>
+   </header>
+   {!questions.length ? <div role="alert" className="space-y-4"><p>{legacyUi('This quiz has no questions available yet.')}</p><Button onClick={onClose} className="whitespace-normal">{legacyUi('Close')}</Button></div>
+    : result ? <div className="space-y-5" data-testid="quiz-results" aria-live="polite">
+     <div className="space-y-3 text-center">
+      {passed ? <CheckCircle className="mx-auto h-14 w-14 text-green-600" /> : <XCircle className="mx-auto h-14 w-14 text-red-600" />}
+      <h3 className={`text-xl font-semibold ${passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{legacyUi(passed ? 'Quiz Passed!' : 'Quiz Failed')}</h3>
+      <div className="text-3xl font-bold" data-testid="quiz-score"><bdi>{result.scorePercent}%</bdi></div>
+      <p className="text-sm text-muted-foreground">{legacyUi('{value0} of {value1} questions answered correctly.', {value0: result.correct, value1: questions.length})}</p>
+      {!passed && <p className="text-sm text-red-700 dark:text-red-400">{assessmentText(2, {percent: quiz.passPercent})}</p>}
+     </div>
+     <div className="grid grid-cols-2 gap-3 text-center">
+      <div className="rounded-md bg-green-50 p-3 text-green-800 dark:bg-green-950 dark:text-green-300"><div className="font-semibold">{result.correct}</div><div className="text-sm">{legacyUi('Correct')}</div></div>
+      <div className="rounded-md bg-red-50 p-3 text-red-800 dark:bg-red-950 dark:text-red-300"><div className="font-semibold">{result.incorrect}</div><div className="text-sm">{legacyUi('Incorrect')}</div></div>
+     </div>
+     <Button onClick={closeModal} className="w-full whitespace-normal" data-testid="button-close-results">{legacyUi('Continue')}</Button>
+    </div> : question && <>
+     <div className="space-y-2"><p className="text-sm text-muted-foreground">{assessmentText(0, {current: currentQuestion + 1, total: questions.length})}</p><Progress value={(currentQuestion + 1) / questions.length * 100} /></div>
+     <section className="min-w-0 space-y-4" aria-labelledby="quiz-question-text">
+      <h3 id="quiz-question-text" className="text-lg font-medium leading-relaxed">{quizVisibleText(question.text)}</h3>
+      <div className="space-y-2">
+       {(question.type === 'boolean' ? [legacyUi('True'), legacyUi('False')] : question.options).map((option, index) => {
+        const value = question.type === 'boolean' ? index === 0 : index;
+        return <Button key={`${question.id}-${index}`} variant={answers[question.id] === value ? 'default' : 'outline'} aria-pressed={answers[question.id] === value} disabled={isSubmitting}
+         onClick={() => setAnswers(previous => ({...previous, [question.id]: value}))}
+         className="h-auto min-h-11 w-full min-w-0 justify-start whitespace-normal text-start leading-relaxed" data-testid={`button-answer-${question.type === 'boolean' ? String(value) : index}`}>
+         <span className="min-w-0">{quizVisibleText(option)}</span>
+        </Button>;
+       })}
       </div>
-    );
-  }
-
-  const question = quiz.questions[currentQuestion];
-  const hasAnswer = answers[question.id] !== undefined;
-  const allAnswered = quiz.questions.every(q => answers[q.id] !== undefined);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{quiz.title}</CardTitle>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Clock className="w-4 h-4 mr-1" />
-                {formatTime(timeElapsed)}
-              </div>
-              <Button variant="ghost" size="sm" onClick={onClose} data-testid="button-close-quiz">
-                ✕
-              </Button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>{legacyUi("Question ")}{currentQuestion + 1} {legacyUi(" of ")}{quiz.questions.length}</span>
-              <span>{legacyUi("Pass: ")}{quiz.passPercent}%</span>
-            </div>
-            <Progress value={(currentQuestion + 1) / quiz.questions.length * 100} />
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          {/* Question */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">{question.text}</h3>
-            
-            {question.type === 'boolean' ? (
-              <div className="space-y-2">
-                <Button
-                  variant={answers[question.id] === true ? 'default' : 'outline'}
-                  onClick={() => handleAnswer(true)}
-                  className="w-full justify-start"
-                  data-testid="button-answer-true"
-                >
-                  {legacyUi("True")}</Button>
-                <Button
-                  variant={answers[question.id] === false ? 'default' : 'outline'}
-                  onClick={() => handleAnswer(false)}
-                  className="w-full justify-start"
-                  data-testid="button-answer-false"
-                >
-                  {legacyUi("False")}</Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {question.options.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant={answers[question.id] === index ? 'default' : 'outline'}
-                    onClick={() => handleAnswer(index)}
-                    className="w-full justify-start"
-                    data-testid={`button-answer-${index}`}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={previousQuestion}
-              disabled={currentQuestion === 0}
-              data-testid="button-previous"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {legacyUi("Previous")}</Button>
-            
-            <div className="flex space-x-2">
-              {quiz.questions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                    index === currentQuestion
-                      ? 'bg-primary text-primary-foreground'
-                      : answers[quiz.questions[index].id] !== undefined
-                      ? 'bg-green-100 text-green-700 border border-green-300'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                  data-testid={`button-question-${index}`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-            
-            {currentQuestion === quiz.questions.length - 1 ? (
-              <Button
-                onClick={submitQuiz}
-                disabled={!allAnswered}
-                data-testid="button-submit-quiz"
-              >
-                {legacyUi("Submit Quiz")}</Button>
-            ) : (
-              <Button
-                onClick={nextQuestion}
-                disabled={!hasAnswer}
-                data-testid="button-next"
-              >
-                {legacyUi("Next")}<ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
-          </div>
-
-          {/* Answer Summary */}
-          <div className="text-center text-sm text-muted-foreground">
-            {legacyUi("Answered: ")}{Object.keys(answers).length} / {quiz.questions.length}
-            {!allAnswered && legacyUi(" (Answer all questions to submit)")}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+     </section>
+     <nav aria-label={kind} className="space-y-4">
+      <div className="flex flex-wrap justify-center gap-2" data-testid="question-navigation">
+       {questions.map((q, index) => <button key={q.id} type="button" disabled={isSubmitting} onClick={() => setCurrentQuestion(index)} aria-label={assessmentText(0, {current: index + 1, total: questions.length})} aria-current={index === currentQuestion ? 'step' : undefined}
+        className={`h-9 w-9 shrink-0 rounded-full border text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${index === currentQuestion ? 'border-primary bg-primary text-primary-foreground' : answers[q.id] !== undefined ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300' : 'border-border bg-muted text-muted-foreground'}`}
+        data-testid={`button-question-${index}`}>{index + 1}</button>)}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+       <Button variant="outline" onClick={() => setCurrentQuestion(i => i - 1)} disabled={currentQuestion === 0 || isSubmitting} className="min-w-0 whitespace-normal" data-testid="button-previous"><ArrowLeft className="rtl:rotate-180" />{legacyUi('Previous')}</Button>
+       {currentQuestion === questions.length - 1
+        ? <Button onClick={submitQuiz} disabled={!allAnswered || isSubmitting} className="min-w-0 whitespace-normal" data-testid="button-submit-quiz">{isSubmitting && <Loader2 className="animate-spin" />}{legacyUi('Submit Quiz')}</Button>
+        : <Button onClick={() => setCurrentQuestion(i => i + 1)} disabled={answers[question.id] === undefined || isSubmitting} className="min-w-0 whitespace-normal" data-testid="button-next">{legacyUi('Next')}<ArrowRight className="rtl:rotate-180" /></Button>}
+      </div>
+     </nav>
+     <p className="text-center text-sm text-muted-foreground">{assessmentText(3, {answered: Object.keys(answers).length, total: questions.length})}{!allAnswered && legacyUi(' (Answer all questions to submit)')}</p>
+    </>}
+  </DialogContent>
+ </Dialog>;
 }

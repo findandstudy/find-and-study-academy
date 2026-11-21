@@ -1,3 +1,4 @@
+import trainingCountryNames from './training-country-names.json';
 const labels: Record<string, string[]> = {
 fr: ["Formation des agents","Progression globale","{{done}} leçons sur {{total}}","Terminé","Examen final","Terminez toutes les leçons","Terminez tous les quiz","Quiz rapide","Vérifiez vos connaissances avant de continuer","Commencer le quiz","Marquer comme terminée","Terminez le quiz d’abord","Sélectionnez une leçon pour commencer","À propos de {{country}}","Enseignement supérieur et programmes","Candidatures et documents","Visa et séjour","Logement et coûts","Travail et carrière","Offres de services","Outils et ressources","Pages des établissements"],
 it: ["Formazione per agenti","Avanzamento complessivo","{{done}} lezioni su {{total}}","Completato","Esame finale","Completa tutte le lezioni","Completa tutti i quiz","Quiz breve","Verifica le tue conoscenze prima di continuare","Inizia il quiz","Segna come completata","Completa prima il quiz","Seleziona una lezione per iniziare","Informazioni su {{country}}","Istruzione superiore e programmi","Domande e documenti","Visto e soggiorno","Alloggio e costi","Lavoro e carriera","Pacchetti di servizi","Strumenti e risorse","Pagine degli istituti"],
@@ -24,7 +25,12 @@ es: ['Formación de agentes','Progreso general','{{done}} de {{total}} lecciones
 tr: ['Acente Eğitimi','Genel ilerleme','{{total}} dersin {{done}} tanesi','Tamamlandı','Final sınavı','Tüm dersleri tamamlayın','Tüm sınavları tamamlayın','Kısa sınav','Devam etmeden önce bilginizi sınayın','Sınavı başlat','Tamamlandı olarak işaretle','Önce sınavı tamamlayın','Başlamak için bir ders seçin','{{country}} hakkında','Yükseköğretim ve programlar','Başvurular ve belgeler','Vize ve oturum','Konaklama ve maliyetler','Çalışma ve kariyer','Hizmet paketleri','Araçlar ve kaynaklar','Okul sayfaları']
 };
 export function courseText(language:string,index:number,values:Record<string,string|number>={}) {let text=(labels[language.split('-')[0]]||labels.en)[index];for(const [key,value] of Object.entries(values))text=text.replaceAll('{{'+key+'}}',String(value));return text;}
-export function countryLabel(language:string,code:string,fallback:string){try{const region=({UK:'GB',USA:'US'} as Record<string,string>)[code.toUpperCase()]||code.toUpperCase();return new Intl.DisplayNames([language],{type:'region'}).of(region)||fallback;}catch{return fallback;}}
+export function countryLabel(language:string,code:string,fallback:string){
+ const locale=language.split('-')[0],region=({UK:'GB',USA:'US'} as Record<string,string>)[code.toUpperCase()]||code.toUpperCase();
+ const known=(trainingCountryNames as Record<string,Record<string,string>>)[locale]?.[region];
+ if(known)return known;
+ try{return new Intl.DisplayNames([locale],{type:'region'}).of(region)||fallback;}catch{return fallback;}
+}
 const sectionDetails: Record<string,string[]> = {
   "en": [
     "English Courses & Schools",

@@ -1,5 +1,7 @@
+import {useQuery} from '@tanstack/react-query';
+import {countryLabel, courseText} from '@/i18n/course-labels';
 import {LanguageSwitcher} from '@/components/LanguageSwitcher';
-import { legacyUi } from '@/lib/legacy-ui';
+import { legacyUi,legacyDate } from '@/lib/legacy-ui';
 import {usePublicUi} from '@/lib/public-ui';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
@@ -14,9 +16,12 @@ export default function VerifyCertificate() {
   const {tl,locale}=usePublicUi();
   const [location] = useLocation();
   const [code, setCode] = useState('');
-  const [verificationResult, setVerificationResult] = useState<'valid' | 'invalid' | null>(null);
+  const [verificationResult, setVerificationResult] = useState<'valid' | 'invalid' | 'error' | null>(null);
   const [certificateData, setCertificateData] = useState<CertificateVerificationResponse['certificate'] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const {data: countries} = useQuery<{countries: {id:string;code:string;name:string}[]}>({queryKey: ['/api/public/countries'], enabled: verificationResult === 'valid'});
+  const certificateCountry = countries?.countries.find(country => certificateData?.course?.id === `course-${country.id}`);
+  const courseTitle = certificateCountry ? `${countryLabel(locale,certificateCountry.code,certificateCountry.name)} — ${courseText(locale,0)}` : certificateData?.course?.title;
 
   useEffect(() => {
     // Auto-verify if code is in URL params
@@ -43,7 +48,7 @@ export default function VerifyCertificate() {
       }
     } catch (error) {
       console.error('Verification failed:', error);
-      setVerificationResult('invalid');
+      setVerificationResult('error');
       setCertificateData(null);
     } finally {
       setIsLoading(false);
@@ -63,9 +68,9 @@ export default function VerifyCertificate() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+    <div className="min-h-screen bg-background px-4 pb-8 pt-20 flex items-center justify-center [overflow-wrap:anywhere]">
       <div className="absolute top-3 right-3 z-10"><LanguageSwitcher variant="inline" /></div>
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md min-w-0">
         <CardHeader className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-md bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-xl">F&S</span>
@@ -78,15 +83,15 @@ export default function VerifyCertificate() {
         <CardContent className="space-y-6">
           {verificationResult === null && (
             <div className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <Input
-                  dir="ltr" value={code}
+                  className="min-w-0" dir="ltr" value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder={tl("Enter certificate code (e.g., FAS-ABC123)")}
                   disabled={isLoading}
                   data-testid="input-certificate-code"
                 />
-                <Button aria-label={tl('Verify certificate')} onClick={handleVerify} disabled={isLoading || !code.trim()} data-testid="button-verify">
+                <Button className="shrink-0" aria-label={tl('Verify certificate')} onClick={handleVerify} disabled={isLoading || !code.trim()} data-testid="button-verify">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
@@ -115,17 +120,19 @@ export default function VerifyCertificate() {
                 
                 <div className="space-y-1 text-sm">
                   <p><strong>{tl("Recipient:")}</strong> {certificateData.user?.name}</p>
-                  <p><strong>{tl("Course:")}</strong> {certificateData.course?.title || legacyUi('Course content is unavailable.')}</p>
+                  <p><strong>{tl("Course:")}</strong> {courseTitle || legacyUi('Course content is unavailable.')}</p>
                   <p><strong>{tl("Score:")}</strong> {certificateData.scorePercent}%</p>
-                  <p><strong>{tl("Issued:")}</strong> {new Date(certificateData.issuedAt).toLocaleDateString(locale)}</p>
-                  <p><strong>{tl("Code:")}</strong> {certificateData.code}</p>
+                  <p><strong>{tl("Issued:")}</strong> {legacyDate(certificateData.issuedAt,'DD MMM YYYY')}</p>
+                  <p><strong>{tl("Code:")}</strong> <bdi dir="ltr">{certificateData.code}</bdi></p>
                 </div>
               </div>
 
-              <Button onClick={handleReset} variant="outline" data-testid="button-verify-another">
+              <Button onClick={handleReset} className="w-full whitespace-normal" variant="outline" data-testid="button-verify-another">
                 {tl("Verify Another Certificate")}</Button>
             </div>
           )}
+
+          {verificationResult === 'error' && <div role="alert" className="space-y-4"><p>{legacyUi('Request failed')}</p><Button onClick={() => handleVerifyCertificate(code.trim())} className="w-full whitespace-normal" disabled={isLoading}>{tl('Try Again')}</Button></div>}
 
           {verificationResult === 'invalid' && (
             <div className="text-center space-y-4">
@@ -138,7 +145,7 @@ export default function VerifyCertificate() {
                 <Badge variant="destructive" className="mt-1">{tl("Not Found")}</Badge>
               </div>
 
-              <div className="bg-red-50 rounded-lg p-4 text-left">
+              <div className="bg-red-50 rounded-lg p-4 text-start">
                 <p className="text-sm text-red-700">
                   {tl('The certificate code {code} could not be verified. This may mean:',{code})}
                 </p>
@@ -149,7 +156,7 @@ export default function VerifyCertificate() {
                 </ul>
               </div>
 
-              <Button onClick={handleReset} variant="outline" data-testid="button-try-again">
+              <Button onClick={handleReset} className="w-full whitespace-normal" variant="outline" data-testid="button-try-again">
                 {tl("Try Again")}</Button>
             </div>
           )}
