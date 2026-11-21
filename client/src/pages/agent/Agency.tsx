@@ -1,6 +1,6 @@
 import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { AgencyLogoManager } from '@/components/AgencyBranding';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,19 @@ import { queryClient } from '@/lib/queryClient';
 import { Building, Upload, MapPin, Globe, Phone, User, Loader2 } from 'lucide-react';
 import type { Agency } from '../../types';
 import type { InsertAgency } from '@shared/schema';
+import { agentAgencyUpdateSchema } from '@shared/agency-update';
+import { WORLD_COUNTRIES } from '@/lib/world-countries';
+import { useTranslation } from 'react-i18next';
 
 export default function AgentAgency() {
+  const { t, i18n } = useTranslation();
+  const countryOptions = useMemo(() => {
+    const language = i18n.resolvedLanguage || i18n.language;
+    let names: Intl.DisplayNames | undefined;
+    try { names = new Intl.DisplayNames([language], { type: 'region' }); } catch { /* keep catalog names */ }
+    return WORLD_COUNTRIES.map(country => ({ ...country, label: names?.of(country.code) || country.name }))
+      .sort((a, b) => a.label.localeCompare(b.label, language));
+  }, [i18n.resolvedLanguage, i18n.language]);
   const { user } = useAuthStore();
   const { updateAgency } = useDataStore();
   const { toast } = useToast();
@@ -143,7 +154,11 @@ export default function AgentAgency() {
         primaryContactName: agencyData.primaryContactName,
         primaryContactEmail: agencyData.primaryContactEmail,
       };
-      
+      // Preserve untouched legacy country names instead of guessing an ISO code.
+      if (agencyData.country !== userAgency.country) updatePayload.country = agencyData.country || null;
+      if (agencyData.city !== userAgency.city) updatePayload.city = agencyData.city || null;
+      const validation = agentAgencyUpdateSchema.safeParse(updatePayload);
+      if (!validation.success) throw new Error(validation.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; '));
 
       // Send update request to backend
       const response = await fetch('/api/agency', {
@@ -153,7 +168,7 @@ export default function AgentAgency() {
           'x-user-id': user.id,
           'x-user-role': user.role,
         },
-        body: JSON.stringify(updatePayload),
+        body: JSON.stringify(validation.data),
       });
 
       if (!response.ok) {
@@ -328,6 +343,24 @@ export default function AgentAgency() {
               {legacyUi("Location")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="agency-country">{t('common.country')}</Label>
+                <select id="agency-country" value={agencyData.country ?? ''}
+                  onChange={event => updateField('country', event.target.value)}
+                  className="w-full min-h-11 rounded-md border border-input bg-background p-2" data-testid="input-agency-country">
+                  <option value="">—</option>
+                  {agencyData.country && !WORLD_COUNTRIES.some(country => country.code === agencyData.country) &&
+                    <option value={agencyData.country}>{agencyData.country}</option>}
+                  {countryOptions.map(country => <option key={country.code} value={country.code}>{country.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="agency-city">{legacyUi('Şehir:')}</Label>
+                <Input id="agency-city" value={agencyData.city ?? ''} maxLength={160} autoComplete="address-level2"
+                  onChange={event => updateField('city', event.target.value)} data-testid="input-agency-city" />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="address">{legacyUi("Address")}</Label>
               <Textarea

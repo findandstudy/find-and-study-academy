@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {allowProtectedValues} from './translation-numeric-proof.cjs';
 import {decode} from 'html-entities';
 import {parseQuizQuestions,mergeQuestionTranslations} from '@shared/quiz-localization';
 export type Kind='content'|'quiz';
@@ -17,22 +18,42 @@ export function htmlParts(html:string){
  }
  return parts;
 }
-export function manifest(kind:Kind,value:any){
+export function manifest(kind:Kind,value:any,source?:any){
  const fields:{path:string;text:string}[]=[];const add=(path:string,s:any)=>{if(typeof s==='string'&&s.trim())fields.push({path,text:s});};add('title',value.title);add('description',value.description);
  let parts:ReturnType<typeof htmlParts>=[];
- if(kind==='content'){parts=htmlParts(value.content||'');parts.forEach((p,i)=>{if(p.text!==undefined)add('html.'+i,p.text)});}
+ if(kind==='content'){parts=htmlParts(value.content||'');
+  // Target slots follow the source, including an isolated article translated as
+  // punctuation. Do not reclassify a text node as structural HTML after review.
+  if(source){const original=htmlParts(source.content||'');if(original.length===parts.length)parts=parts.map((p,i)=>original[i].text!==undefined&&p.text===undefined&&!/^</.test(p.raw)?{...p,text:decode(p.raw.trim())}:p);}
+  parts.forEach((p,i)=>{if(p.text!==undefined)add('html.'+i,p.text)});}
  else (Array.isArray(value.questions)&&value.questions.every((q:any)=>q.type===undefined)?value.questions:parseQuizQuestions(value.questions)).forEach((q:any,i:number)=>{add('q.'+i+'.text',q.text);if(Array.isArray(q.options))q.options.forEach((s:string,j:number)=>add('q.'+i+'.o.'+j,s));add('q.'+i+'.explanation',q.explanation);});
  return {fields,parts};
 }
 export function reconstruct(kind:Kind,value:any,strings:string[]){const m=manifest(kind,value);if(strings.length!==m.fields.length)throw Error('FRAGMENT_COUNT_MISMATCH');const out=structuredClone(value);const byPath=new Map(m.fields.map((f,i)=>[f.path,strings[i]]));out.title=byPath.get('title')??value.title;out.description=byPath.get('description')??value.description;
  if(kind==='content')out.content=value.content===null?null:m.parts.map((p,i)=>p.text===undefined?p.raw:(p.before||'')+escapeText(byPath.get('html.'+i)!)+(p.after||'')).join('');
  else out.questions=parseQuizQuestions(value.questions).map((q,i)=>({id:q.id,text:byPath.get('q.'+i+'.text')!,...(q.type==='mcq'?{options:q.options.map((_,j)=>byPath.get('q.'+i+'.o.'+j)!)}:{}),...(q.explanation?{explanation:byPath.get('q.'+i+'.explanation')!}:{})}));return out;}
+const letters=new RegExp('\\p{L}','u');
 const protectedValues=(s:string)=>(s.match(/https?:\/\/[^\s<>"']+|\{\{[^{}]+\}\}|\{[A-Za-z_][\w.]*\}|\d+(?:[.,]\d+)*/g)||[]).sort();
-export function validateResult(kind:Kind,source:any,result:any){if(!result||typeof result!=='object'||Object.keys(result).sort().join(',')!==(kind==='quiz'?'description,questions,title':'content,description,title'))throw Error('INVALID_DRAFT_SHAPE');if(typeof result.title!=='string'||!result.title.trim())throw Error('MISSING_TITLE');const a=manifest(kind,source),b=manifest(kind,result);if(a.fields.length!==b.fields.length)throw Error('FRAGMENT_COUNT_MISMATCH');a.fields.forEach((f,i)=>{const t=b.fields[i];if(t.path!==f.path||typeof t.text!=='string'||!t.text.trim()||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(t.text)||JSON.stringify(protectedValues(f.text))!==JSON.stringify(protectedValues(t.text)))throw Error('PROTECTED_VALUES_CHANGED');});if(kind==='content'){const tags=(x:any[])=>x.filter(p=>p.text===undefined).map(p=>p.raw);if(JSON.stringify(tags(a.parts))!==JSON.stringify(tags(b.parts)))throw Error('HTML_STRUCTURE_CHANGED');}else mergeQuestionTranslations(parseQuizQuestions(source.questions),result.questions);return result;}
+export function validateResult(kind:Kind,source:any,result:any){if(!result||typeof result!=='object'||Object.keys(result).sort().join(',')!==(kind==='quiz'?'description,questions,title':'content,description,title'))throw Error('INVALID_DRAFT_SHAPE');if(typeof result.title!=='string'||!result.title.trim())throw Error('MISSING_TITLE');const a=manifest(kind,source),b=manifest(kind,result,source);if(a.fields.length!==b.fields.length)throw Error('FRAGMENT_COUNT_MISMATCH');a.fields.forEach((f,i)=>{const t=b.fields[i];if(t.path!==f.path||typeof t.text!=='string'||!t.text.trim()||(letters.test(f.text)&&!letters.test(t.text)&&!(/^\s*,\s*(?:a|an)\s*$/i.test(f.text)&&/^\s*[,،，、]\s*$/.test(t.text)))||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(t.text)||!allowProtectedValues(f.text,protectedValues(f.text),protectedValues(t.text)))throw Error('PROTECTED_VALUES_CHANGED');});if(kind==='content'){const tags=(x:any[])=>x.filter(p=>p.text===undefined).map(p=>p.raw);if(JSON.stringify(tags(a.parts))!==JSON.stringify(tags(b.parts)))throw Error('HTML_STRUCTURE_CHANGED');}else mergeQuestionTranslations(parseQuizQuestions(source.questions),result.questions);return result;}
 export function reuseFragments(kind:Kind,previous:any,translation:any,current:any){
  const now=manifest(kind,current).fields,out:(string|null)[]=now.map(()=>null);if(!previous||!translation)return out;
- try{const a=manifest(kind,previous),b=manifest(kind,translation);if(a.fields.length!==b.fields.length)return out;
+ try{const a=manifest(kind,previous),b=manifest(kind,translation,previous);if(a.fields.length!==b.fields.length)return out;
  if(kind==='content'&&JSON.stringify(a.parts.filter(p=>p.text===undefined))!==JSON.stringify(b.parts.filter(p=>p.text===undefined)))return out;
  const map=new Map<string,string|null>();a.fields.forEach((f,i)=>{const v=b.fields[i];if(f.path!==v.path)return;const key=f.path.split('.')[0]+':'+f.text;if(map.has(key)&&map.get(key)!==v.text)map.set(key,null);else map.set(key,v.text);});now.forEach((f,i)=>{out[i]=map.get(f.path.split('.')[0]+':'+f.text)||null;});
  }catch{}return out;
+}
+
+export type BudgetLedgerFailure='LEDGER_MISSING'|'LEDGER_UNREADABLE'|'LEDGER_INVALID_JSON'|'LEDGER_INVALID_ACCOUNTING'|'LEDGER_INVALID_ENTRIES';
+export type BudgetLedgerSummary={capUSD:100;accountedUSD:number|null;remainingUSD:number|null;error?:'BUDGET_UNAVAILABLE';reason?:BudgetLedgerFailure};
+// Fail closed against the existing shared ledger. The callback keeps this
+// diagnostic independently testable without a database, credential or API call.
+export function budgetLedgerSummary(readLedger:()=>string):BudgetLedgerSummary{
+ const unavailable=(reason:BudgetLedgerFailure):BudgetLedgerSummary=>({capUSD:100,accountedUSD:null,remainingUSD:null,error:'BUDGET_UNAVAILABLE',reason});
+ let raw:string;
+ try{raw=readLedger();}catch(e:any){return unavailable(e?.code==='ENOENT'?'LEDGER_MISSING':'LEDGER_UNREADABLE');}
+ let ledger:any;
+ try{ledger=JSON.parse(raw);}catch{return unavailable('LEDGER_INVALID_JSON');}
+ if(!ledger||typeof ledger!=='object'||Array.isArray(ledger)||!Number.isFinite(ledger.chargedUSD)||ledger.chargedUSD<0)return unavailable('LEDGER_INVALID_ACCOUNTING');
+ if(!Array.isArray(ledger.entries))return unavailable('LEDGER_INVALID_ENTRIES');
+ return {capUSD:100,accountedUSD:ledger.chargedUSD,remainingUSD:Math.max(0,100-ledger.chargedUSD)};
 }

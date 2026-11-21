@@ -1,7 +1,8 @@
 import { legacyUi, legacyMessage } from "@/lib/legacy-ui";
 import { useTranslation } from 'react-i18next';
 import { courseText } from '@/i18n/course-labels';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { firstUnfinishedLesson, selectFinalQuiz, hasEarnedCourseCertificate } from '@shared/training-course';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,23 +20,27 @@ interface CourseViewProps {
   course: Course;
   quizzes?: Quiz[];
   countryId?: string; // Optional country ID for filtering final exams
+  resume?: boolean;
 }
 
-export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseViewProps) {
-  const { i18n } = useTranslation();
+export function CourseView({ course, quizzes: quizzesProp, countryId, resume = false }: CourseViewProps) {
+  const { t, i18n } = useTranslation();
   const label = (index:number, values:Record<string,string|number>={}) => courseText(i18n.language,index,values);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render after quiz completion
+  const initializedCourse = useRef<string | null>(null);
+  const focusedInitialLesson = useRef(false);
+  const lessonContentRef = useRef<HTMLElement>(null);
   const { user } = useAuthStore();
-  const { quizzes: storeQuizzes, certificates } = useDataStore();
+  const { quizzes: storeQuizzes } = useDataStore();
   const { toast } = useToast();
   
   // Use prop quizzes if provided, otherwise fallback to store quizzes
   const quizzes = quizzesProp || storeQuizzes;
 
   // Fetch progress from backend
-  const { data: progressResponse } = useQuery<{ success: boolean; progress: any }>({
+  const { data: progressResponse, isPending: progressLoading } = useQuery<{ success: boolean; progress: any }>({
     queryKey: ['/api/progress', course.id],
     enabled: !!user
   });
@@ -44,6 +49,10 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   const { data: attemptsResponse } = useQuery<{ success: boolean; attempts: any[] }>({
     queryKey: ['/api/attempts'],
     enabled: !!user
+  });
+
+  const { data: certificatesResponse } = useQuery<{ success:boolean; certificates:any[] }>({
+    queryKey:['/api/certificates'],enabled:!!user
   });
 
   // Use backend attempts if available, otherwise fallback to empty array
@@ -58,25 +67,10 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
 
   // Check if user has certificate for this course
-  const hasCertificate = certificates.some(c => c.userId === user?.id && c.courseId === course.id);
+  const hasCertificate = hasEarnedCourseCertificate(user?.id,course.id,certificatesResponse?.certificates??[]);
 
-  // Get final quiz - filter by countryId if provided
-  const finalQuiz = quizzes.find(q => {
-    if (!q.isFinal) return false;
-    // If countryId is provided, only show final exam for this specific country
-    if (countryId) {
-      // Match by country ID (most specific)
-      if (q.countryId && q.countryId === countryId) return true;
-      // If quiz has no country but matches the default course-1, allow it for backward compatibility
-      if (!q.countryId && q.courseId === 'course-1') return true;
-      return false;
-    }
-    // If no countryId provided, match by courseId
-    if (q.courseId === course.id) return true;
-    // Fallback to default course for backward compatibility
-    if (q.courseId === 'course-1') return true;
-    return false;
-  });
+  // Require a single final for this exact destination/course identity.
+  const finalQuiz = selectFinalQuiz(quizzes, course.id, countryId);
 
   // Get all lesson-level (mini) quizzes for this course
   const miniQuizzes = course.sections.flatMap(section => 
@@ -129,11 +123,36 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   });
 
   useEffect(() => {
+    if (resume && progressLoading && initializedCourse.current !== course.id) return;
     // Replace the selected object when translated lesson data arrives, keeping
     // the lesson ID where possible instead of retaining the previous language.
     const lessons = course.sections.flatMap(section => section.lessons);
-    setSelectedLesson(previous => lessons.find(lesson => lesson.id === previous?.id) ?? lessons[0] ?? null);
-  }, [course]);
+    const alreadyInitialized = initializedCourse.current === course.id;
+    setSelectedLesson(previous => alreadyInitialized
+      ? lessons.find(lesson => lesson.id === previous?.id) ?? lessons[0] ?? null
+      : resume ? firstUnfinishedLesson(lessons, completedLessons) : lessons[0] ?? null);
+    initializedCourse.current = course.id;
+  }, [course, resume, progressLoading, progressResponse]);
+
+  const focusLesson = () => {
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    requestAnimationFrame(() => {
+      lessonContentRef.current?.focus({ preventScroll: true });
+      lessonContentRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    });
+  };
+
+  useEffect(() => {
+    if (selectedLesson && resume && !focusedInitialLesson.current) {
+      focusedInitialLesson.current = true;
+      focusLesson();
+    }
+  }, [selectedLesson, resume]);
+
+  const selectLesson = (lesson: Lesson) => {
+    setSelectedLesson(lesson);
+    focusLesson();
+  };
 
   useEffect(() => {
     setActiveQuiz(previous => previous ? quizzes.find(quiz => quiz.id === previous.id) ?? null : null);
@@ -160,7 +179,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
   };
 
   const startFinalQuiz = () => {
-    if (finalQuiz) {
+    if (finalQuiz && !hasCertificate) {
       setActiveQuiz(finalQuiz);
     }
   };
@@ -224,6 +243,19 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
         {/* Sections & Lessons */}
         <Card className="h-fit">
           <CardContent className="space-y-6 pt-6">
+            <div className="lg:hidden space-y-2">
+              <label htmlFor={`lesson-selector-${course.id}`} className="text-sm font-medium">{label(12)}</label>
+              <select id={`lesson-selector-${course.id}`} value={selectedLesson?.id ?? ''}
+                onChange={event => {
+                  const lesson = course.sections.flatMap(section => section.lessons).find(lesson => lesson.id === event.target.value);
+                  if (lesson) selectLesson(lesson);
+                }} className="w-full min-h-11 rounded-md border border-input bg-background p-2" data-testid="select-training-lesson">
+                {course.sections.map(section => <optgroup key={section.id} label={section.title}>
+                  {section.lessons.map(lesson => <option key={lesson.id} value={lesson.id}>{lesson.title}</option>)}
+                </optgroup>)}
+              </select>
+            </div>
+            <div className="hidden lg:block space-y-6">
             {course.sections.map((section, sectionIndex) => (
               <div key={section.id}>
                 {/* Section Header */}
@@ -248,7 +280,8 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                     return (
                       <button
                         key={lesson.id}
-                        onClick={() => setSelectedLesson(lesson)}
+                        onClick={() => selectLesson(lesson)}
+                        aria-pressed={isSelected}
                         className={`
                           group relative flex items-center w-full p-3 text-left text-sm rounded-lg transition-all duration-200 hover:-translate-y-0.5
                           ${isSelected 
@@ -271,9 +304,18 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
                 </div>
               </div>
             ))}
+            </div>
             
             {/* Final Quiz */}
-            {finalQuiz && (
+            {hasCertificate && (
+              <div className="border-t pt-6 space-y-3" data-testid="course-certificate-earned">
+                <Badge className="gap-2"><Award className="w-4 h-4" />{t('agent.certificates.certified')}</Badge>
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <a href="/agent/certificates">{t('agent.certificates.title')}</a>
+                </Button>
+              </div>
+            )}
+            {finalQuiz && !hasCertificate && (
               <div className="border-t pt-6">
                 <Button
                   onClick={startFinalQuiz}
@@ -295,7 +337,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
       </div>
 
       {/* Lesson Content */}
-      <div className="lg:col-span-3">
+      <section ref={lessonContentRef} tabIndex={-1} aria-label={selectedLesson?.title} className="lg:col-span-3 min-w-0 scroll-mt-20">
         {selectedLesson ? (
           <Card className="h-fit border-primary/10 bg-gradient-to-br from-card to-card/30">
             <CardHeader className="border-b border-border/50 bg-gradient-to-r from-card to-transparent">
@@ -399,7 +441,7 @@ export function CourseView({ course, quizzes: quizzesProp, countryId }: CourseVi
             </div>
           </Card>
         )}
-      </div>
+      </section>
 
       {/* Quiz Modal */}
       {activeQuiz && (

@@ -12,7 +12,7 @@ test('self-registration waits for administrator approval, blocks login, then all
   const { storage } = await import('./storage');
   const { db, pool } = await import('./db');
   const { users: userTable, agencies: agencyTable } = await import('@shared/schema');
-  const savedMethods = { getUsers: storage.getUsers, getUser: storage.getUser, transaction: db.transaction };
+  const savedMethods = { getUsers: storage.getUsers, getUser: storage.getUser, getAgencyById:storage.getAgencyById, transaction: db.transaction };
   let users: any[] = [], agencies: any[] = [], failUserInsert = false;
   // Model the ordinary account's campaign lookups without opening a real DB connection.
   // Campaign-specific membership/device behavior is covered by the isolated PG suite.
@@ -30,6 +30,7 @@ test('self-registration waits for administrator approval, blocks login, then all
   (pool as any).connect = async () => ({ query: fixtureQuery, release() {} });
   storage.getUsers = async () => users;
   storage.getUser = async id => users.find(user => user.id === id);
+  storage.getAgencyById = async id => agencies.find(agency => agency.id === id);
   (db as any).transaction = async (callback: any) => {
     const stagedUsers: any[] = [], stagedAgencies: any[] = [];
     const result = await callback({ insert: (table: unknown) => ({ values: (value: any) => ({ returning: async () => {
@@ -110,6 +111,7 @@ test('self-registration waits for administrator approval, blocks login, then all
     await new Promise<void>(resolve => server.close(() => resolve()));
     storage.getUsers = savedMethods.getUsers;
     storage.getUser = savedMethods.getUser;
+    storage.getAgencyById = savedMethods.getAgencyById;
     (db as any).transaction = savedMethods.transaction;
     (pool as any).query = savedPool.query;
     (pool as any).connect = savedPool.connect;

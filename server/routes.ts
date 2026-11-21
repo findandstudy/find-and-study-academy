@@ -1,8 +1,11 @@
 import {createTrainingIntegrity} from './training-integrity';
+import { resolveTrainingCourse } from '@shared/training-course';
+import { agentAgencyUpdateSchema } from '@shared/agency-update';
 import { registerPartnerBranding } from './partner-branding';
 import { registerGroundedFindy } from './findy-grounded';
 import { registerPartnership } from './partnership';
 import { registerProfileCompletion } from './profile-completion';
+import { fillSsoProfile, ssoProfileFields } from './sso-profile';
 import {registerTranslationControl} from './translation-control';
 import { registerCampaignAccess, claimAcademyDevice, enforceAcademyAccess } from './campaign-access';
 import { registerAdminOperations } from './admin-operations';
@@ -835,16 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try { await storage.updateUser(user.id, { externalId } as any); } catch (e) { console.warn('[sso] externalId backfill failed:', (e as Error).message); }
       }
       if (!user) {
-        // Transfer the agent's company as an agency (link if it already exists).
-        let agencyId: string | null = null;
-        const companyName = String(payload.company || payload.companyName || payload.agencyName || '').trim() || null;
-        if (companyName) {
-          try {
-            const agencies = await storage.getAgencies();
-            const match = agencies.find((a) => a.name.trim().toLowerCase() === companyName.toLowerCase());
-            agencyId = match ? match.id : (await storage.createAgency({ name: companyName, status: 'active' } as any)).id;
-          } catch (e) { console.warn('[sso] agency link failed:', (e as Error).message); }
-        }
+        const profile = ssoProfileFields(payload);
         const randomPassword = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
         const usernameBase = (email.split('@')[0] || 'agent').replace(/[^a-z0-9._-]/gi, '').slice(0, 24) || 'agent';
         // createUser's typed shape is narrow; we insert the extra profile columns
@@ -856,17 +850,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: randomPassword,
           role: 'agent',
           status: 'active',
-          agencyId,
+          agencyId: null,
           externalId,
-          companyName,
-          country: payload.country ? String(payload.country).slice(0, 8) : null,
-          phone: payload.phone ? String(payload.phone).slice(0, 40) : null,
+          ...profile,
         } as any);
         console.log('[sso] provisioned new agent:', email);
       }
 
       if (user.status !== 'active') return res.status(403).send('Hesabınız pasif durumda. Yöneticinizle iletişime geçin.');
 
+      await fillSsoProfile(pool, user.id, externalId, payload);
       if (!await claimAcademyDevice(req, res, user.id)) return;
       await new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
       const dest = (user.role === 'admin' || user.role === 'staff') ? '/admin/dashboard' : '/agent/dashboard';
@@ -1184,6 +1177,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const quiz = await storage.getQuizById(quizId);
         
         if (quiz && quiz.isFinal && scorePercent >= quiz.passPercent) {
+          // The verified attempt is already saved. Do not issue a certificate
+          // for missing or conflicting destination metadata.
+          const [courses, countries] = await Promise.all([storage.getCourses(), storage.getCountries()]);
+          const certificateCourse = resolveTrainingCourse(quiz.courseId, courses, countries);
+          if (!certificateCourse || (quiz.countryId && quiz.courseId !== `course-${quiz.countryId}`)) {
+            throw new Error('CERTIFICATE_COURSE_UNRESOLVED');
+          }
+
           // Check if certificate already exists for this user/course (fresh query)
           const existingCertificates = await storage.getCertificates();
           const existingCert = existingCertificates.find(c => 
@@ -1226,9 +1227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`✅ Auto-generated certificate ${certificateCode} for user ${authenticatedUser.id} on Final Exam ${quizId}`);
                 
                 // Send certificate email to agent (non-blocking)
-                const courses = await storage.getCourses();
-                const course = courses.find(c => c.id === quiz.courseId);
-                const courseName = course?.title || 'Course';
+                const courseName = certificateCourse.title;
                 
                 if (authenticatedUser.certificateNotif && authenticatedUser.emailNotifications) {
                   (async () => {
@@ -1397,10 +1396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Verify course exists
-      const courses = await storage.getCourses();
-      const courseExists = courses.some(c => c.id === courseId);
-      if (!courseExists) {
+      // Destination courses need not have a legacy courses-table row.
+      const [courses, countries] = await Promise.all([storage.getCourses(), storage.getCountries()]);
+      const course = resolveTrainingCourse(courseId, courses, countries);
+      if (!course || (quiz.countryId && courseId !== `course-${quiz.countryId}`)) {
         return res.status(404).json({
           success: false,
           message: 'Course not found'
@@ -1542,11 +1541,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enrich certificates with course and agency information
       const courses = await storage.getCourses();
+      const countries = await storage.getCountries();
       const agencies = await storage.getAgencies();
       const users = await storage.getUsers();
       
       const enrichedCertificates = userCertificates.map(cert => {
-        const course = courses.find(c => c.id === cert.courseId);
+        const course = resolveTrainingCourse(cert.courseId, courses, countries);
         const user = users.find(u => u.id === cert.userId);
         const agency = user?.agencyId ? agencies.find(a => a.id === user.agencyId) : null;
         
@@ -1608,8 +1608,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user and course information
       const user = await storage.getUser(certificate.userId);
       const courses = await storage.getCourses();
-      
-      const course = courses.find(c => c.id === certificate.courseId);
+      const countries = await storage.getCountries();
+      const course = resolveTrainingCourse(certificate.courseId, courses, countries);
 
       res.json({
         success: true,
@@ -1881,11 +1881,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allCertificates = await storage.getCertificates();
       const users = await storage.getUsers();
       const courses = await storage.getCourses();
+      const countries = await storage.getCountries();
 
       // Enrich certificates with user and course data
       const enrichedCertificates = allCertificates.map(cert => {
         const user = users.find(u => u.id === cert.userId);
-        const course = courses.find(c => c.id === cert.courseId);
+        const course = resolveTrainingCourse(cert.courseId, courses, countries);
         
         return {
           id: cert.id,
@@ -3566,12 +3567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const authenticatedUser = (req as any).user;
       
-      console.log('[AGENCY UPDATE] Request from user:', { 
-        id: authenticatedUser.id, 
-        role: authenticatedUser.role, 
-        agencyId: authenticatedUser.agencyId,
-        requestBody: req.body
-      });
+      console.log('[AGENCY UPDATE] Request received');
       
       // Only agents can update their own agency
       if (authenticatedUser.role !== 'agent') {
@@ -3584,7 +3580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const agencyId = authenticatedUser.agencyId;
       if (!agencyId) {
-        console.log('[AGENCY UPDATE] ERROR: No agencyId found for user:', authenticatedUser);
+        console.log('[AGENCY UPDATE] No agency associated with authenticated user');
         return res.status(400).json({
           success: false,
           message: 'Agent does not have an associated agency'
@@ -3592,7 +3588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate agency data (partial update)
-      const validation = insertAgencySchema.partial().safeParse(req.body);
+      const validation = agentAgencyUpdateSchema.safeParse(req.body);
       
       if (!validation.success) {
         console.log('[AGENCY UPDATE] Validation failed:', validation.error.errors);
@@ -3602,8 +3598,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: validation.error.errors
         });
       }
-
-      console.log('[AGENCY UPDATE] Validated data:', validation.data);
 
       // Update agency in database
       const updatedAgency = await storage.updateAgency(agencyId, validation.data);
@@ -5664,10 +5658,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get course information
-      const courses = await storage.getCourses();
-      const course = courses.find(c => c.id === certificate.courseId);
-      const courseName = course?.title || 'Course';
+      // Match the resolved title used by certificate lists and verification.
+      const [courses, countries] = await Promise.all([storage.getCourses(), storage.getCountries()]);
+      const course = resolveTrainingCourse(certificate.courseId, courses, countries);
+      if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+      const courseName = course.title;
 
       const { sendNotificationEmail } = await import('./emailService');
       

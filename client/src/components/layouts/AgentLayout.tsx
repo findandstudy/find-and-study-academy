@@ -101,6 +101,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
   const tNavGroup = (key: string, fallback: string) =>
     t(`nav.groups.${key}`, { defaultValue: fallback });
   const tNavItem = (key: string, fallback: string) =>
+    key === 'subscriptions' ? legacyUi('Notification Preferences') :
     key==='partnership' ? partnershipCopy(normalizeLanguage(i18n.resolvedLanguage||i18n.language)).text(0) : t(`nav.items.${key}`, { defaultValue: fallback });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -258,6 +259,7 @@ export function AgentLayout({ children }: AgentLayoutProps) {
 
       {/* Sidebar */}
       <div
+        id="agent-navigation"
         className={`
           fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-card-border transform transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -286,6 +288,9 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               size="icon"
               className="lg:hidden absolute right-2"
               onClick={() => setSidebarOpen(false)}
+              aria-label={`${t('common.close')} ${legacyUi('Sidebar')}`}
+              aria-controls="agent-navigation"
+              aria-expanded={sidebarOpen}
               data-testid="button-close-sidebar"
             >
               <X className="h-5 w-5" />
@@ -390,6 +395,9 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               size="icon"
               className="lg:hidden"
               onClick={() => setSidebarOpen(true)}
+              aria-label={`${t('common.open')} ${legacyUi('Sidebar')}`}
+              aria-controls="agent-navigation"
+              aria-expanded={sidebarOpen}
               data-testid="button-open-sidebar"
             >
               <Menu className="h-5 w-5" />
@@ -399,6 +407,9 @@ export function AgentLayout({ children }: AgentLayoutProps) {
               size="icon"
               className="hidden lg:flex"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label={`${sidebarCollapsed ? t('common.open') : t('common.close')} ${legacyUi('Sidebar')}`}
+              aria-controls="agent-navigation"
+              aria-expanded={!sidebarCollapsed}
               data-testid="button-toggle-sidebar"
             >
               <Menu className="h-5 w-5" />
@@ -412,7 +423,8 @@ export function AgentLayout({ children }: AgentLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="p-6">{children}</main>
+        {/* Keep the final action above the fixed Findy launcher at page end. */}
+        <main className="p-3 sm:p-6 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-[calc(7rem+env(safe-area-inset-bottom))]">{children}</main>
       </div>
     </div>
   );
