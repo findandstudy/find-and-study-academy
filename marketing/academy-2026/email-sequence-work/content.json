@@ -1,0 +1,388 @@
+{
+  "en": [
+    {
+      "id": "01",
+      "stage": "A new destination",
+      "timing": "Day 0",
+      "purpose": "Show how Academy helps an agency prepare to enter an unfamiliar destination.",
+      "subjects": [
+        "New destination. Where do you start?",
+        "Your next study destination starts here",
+        "17 destinations. 180 days of free access."
+      ],
+      "preview": "Learn the process for your next destination. Your code gives you 180 days of free access.",
+      "eyebrow": "PREPARE FOR YOUR NEXT STUDY DESTINATION",
+      "headline": "A new destination.<br>Start with know-how.",
+      "intro": "Holding back from a new study destination because you are unsure how the process works?",
+      "paragraphs": [
+        "Find And Study Academy offers training for 17 destinations in 23 languages. Learn about application steps, documents and registration processes to prepare for your next student enquiry.",
+        "Created by Find And Study, Academy is for agencies, independent consultants and people entering education consultancy. Start with one destination you want to understand."
+      ],
+      "sectionTitle": "A starting point for your next destination",
+      "cards": [
+        [
+          "Learn the process",
+          "Follow the relevant destination lessons and build your understanding of application and registration steps."
+        ],
+        [
+          "Ask when you need clarification",
+          "Use Findy to explore published Academy guidance and active university, programme and fee listings in our Apply catalogue, with sources you can check."
+        ]
+      ],
+      "calloutTitle": "Your invitation: 180 days of free access",
+      "callout": "Create your account with ACADEMY2026. Your complimentary access lasts 180 days from registration. Redeem the code by 31 December 2026, 23:59 Türkiye time (20:59 UTC).",
+      "coverage": true,
+      "ctaTitle": "Choose a destination. Take the first step.",
+      "cta": "Register for 180 days of free access",
+      "closing": "ACADEMY2026 is already included in your registration link. Create your account, verify your email and start learning once our team approves training access."
+    },
+    {
+      "id": "02",
+      "stage": "From lessons to a certificate",
+      "timing": "Start +3 days",
+      "purpose": "Show the learning path from destination lessons and progress tracking to assessments and a verifiable certificate.",
+      "subjects": [
+        "Learn the destination. Earn a certificate.",
+        "Give your learning a clear goal",
+        "Build knowledge you can put into practice"
+      ],
+      "preview": "Follow the lessons, test your knowledge and work towards a verifiable certificate.",
+      "eyebrow": "GIVE YOUR LEARNING A CLEAR GOAL",
+      "headline": "Build your knowledge.<br>Earn a certificate.",
+      "intro": "Complete the required destination lessons and successfully pass the required assessments and final exam to earn a verifiable Academy certificate.",
+      "paragraphs": [
+        "In Academy, choose a destination you want to understand, follow the relevant lessons and see your learning progress.",
+        "Complete the required lessons and successfully pass the required assessments and final exam to earn your Academy certificate. Certificates can be checked through the public verification page. Earning a certificate does not automatically make you a Find And Study partner."
+      ],
+      "sectionTitle": "Your learning path, step by step",
+      "cards": [
+        [
+          "1. Choose your focus",
+          "Start with training for a destination you want to work with."
+        ],
+        [
+          "2. Follow the lessons",
+          "Explore the content and track the lessons you have completed."
+        ],
+        [
+          "3. Test your knowledge",
+          "Successfully pass the required assessments and final exam."
+        ],
+        [
+          "4. Earn your certificate",
+          "Meet the completion criteria to earn a certificate that can be checked through the public verification page."
+        ]
+      ],
+      "calloutTitle": "Prepare for your next student conversation",
+      "callout": "Use what you learn to understand student questions and identify what to research. Confirm current requirements for the specific university and programme.",
+      "coverage": false,
+      "ctaTitle": "Give your next destination a learning goal.",
+      "cta": "Register for free Academy training",
+      "closing": "Create your account with ACADEMY2026. Choose your first destination and start building your knowledge."
+    },
+    {
+      "id": "03",
+      "stage": "Findy and sources",
+      "timing": "Start +7 days",
+      "purpose": "Demonstrate useful Findy questions while explaining source and catalogue limits.",
+      "subjects": [
+        "Ask Findy. Check the source.",
+        "Programme or fee? Start with our catalogue.",
+        "Your next student question: ask Findy"
+      ],
+      "preview": "Explore Academy guidance and active catalogue listings, with sources you can check.",
+      "eyebrow": "AI ASSISTANCE GROUNDED IN OUR RESOURCES",
+      "headline": "Ask your question.<br>Check the source.",
+      "intro": "A student asks about a programme, a fee or a registration step. Findy helps you explore the relevant information in our resources.",
+      "paragraphs": [
+        "Findy is your AI assistant for published Academy guidance and active university, programme and fee listings in our Apply catalogue. It shows the sources behind its answers.",
+        "Keep the conversation going with follow-up questions. You might ask about listed programmes first, then explore Academy guidance for the destination’s registration process."
+      ],
+      "sectionTitle": "Start with a student question",
+      "cards": [
+        [
+          "First, ask about programmes and fees",
+          "“Which English-taught computer engineering programmes in Türkiye are in your catalogue, and what fees are listed?”"
+        ],
+        [
+          "Then, clarify the process",
+          "“What does the Academy guidance say about the registration process for this destination?”"
+        ]
+      ],
+      "exampleNote": "These are example questions. Available answers depend on current catalogue listings and published Academy material. Academy registration does not automatically grant Apply access; student application management requires separately assigned permissions.",
+      "calloutTitle": "See where the information comes from",
+      "callout": "Findy answers using published Academy material and our active Apply catalogue. If information is unavailable in those sources, Findy says so. A training destination may have no active catalogue programmes. Account usage limits apply.",
+      "coverage": false,
+      "ctaTitle": "Explore your questions and their sources.",
+      "cta": "Create my free account for Findy",
+      "closing": "Register with ACADEMY2026. Once training access is approved, try Findy within your account’s usage limits."
+    },
+    {
+      "id": "04",
+      "stage": "Your brand and partnership",
+      "timing": "Start +12 days",
+      "purpose": "Show the practical marketing benefit and introduce a separate partnership application path.",
+      "subjects": [
+        "Your next post. Your agency’s logo.",
+        "Give your next post your agency’s identity",
+        "Ready-made resources for your agency"
+      ],
+      "preview": "Download eligible posts and stories with your agency logo—or without adding it.",
+      "eyebrow": "READY-MADE MATERIALS FOR YOUR AGENCY",
+      "headline": "Ready-made materials.<br>Your agency’s logo.",
+      "intro": "Give your next post your agency’s identity. Download eligible Partner Zone posts and stories with your uploaded agency logo.",
+      "paragraphs": [
+        "Once you know the destination, you need content to introduce it to students. Eligible Partner Zone posts and stories give your agency a starting point for that marketing.",
+        "Upload your agency logo and choose a branded download. Your version is created separately and the original material is preserved. You can also download without adding your agency logo."
+      ],
+      "sectionTitle": "Choose the version for your next post",
+      "cards": [
+        [
+          "With your agency logo",
+          "Download materials with your logo where a logo area is configured. Check the placement before sharing."
+        ],
+        [
+          "Without adding your logo",
+          "Download the eligible original material without adding your agency logo."
+        ]
+      ],
+      "brandDemo": true,
+      "calloutTitle": "From learning to working with Find And Study",
+      "callout": "Partnership with Find And Study requires a separate application, review, contract, initial partner guidance and final administrator approval. Creating an Academy account or earning a course certificate does not make you an approved partner.",
+      "coverage": false,
+      "ctaTitle": "Prepare your agency’s next post.",
+      "cta": "Register for free Partner Zone access",
+      "closing": "Create your account with ACADEMY2026. Explore Academy resources after email verification and administrator approval.",
+      "secondary": "Explore becoming a Find And Study agency partner"
+    },
+    {
+      "id": "05",
+      "stage": "Invitation deadline",
+      "timing": "28 December 2026; only if still eligible and unregistered",
+      "purpose": "Remind eligible non-registrants of the real code deadline without invented scarcity.",
+      "subjects": [
+        "Your Academy code expires on 31 December",
+        "180 days free. Redeem your Academy code.",
+        "Redeem your Academy code by 31 December"
+      ],
+      "preview": "Redeem your code by 31 December. Your 180 days start when you register.",
+      "eyebrow": "YOUR INVITATION TO 180 DAYS OF FREE ACCESS",
+      "headline": "180 days of free access.<br>Redeem by 31 December.",
+      "intro": "Create your account with ACADEMY2026 by 31 December 2026, 23:59 Türkiye time (20:59 UTC). Your complimentary access lasts 180 days from registration.",
+      "paragraphs": [
+        "Is there a new destination you want to work with? Explore Academy training for 17 destinations in 23 languages, use Findy to investigate the information in our resources and access eligible Partner Zone materials.",
+        "Redeem your invitation code during registration. Your access period starts on that date; it does not end when the code expires on 31 December."
+      ],
+      "sectionTitle": "The code deadline and your access period",
+      "cards": [
+        [
+          "31 December 2026 · 23:59 Türkiye time (20:59 UTC)",
+          "The deadline to redeem ACADEMY2026 when creating a new account."
+        ],
+        [
+          "180 days from registration",
+          "Your complimentary access starts when you register. Email verification and administrator approval are required for training access."
+        ]
+      ],
+      "calloutTitle": "Start with one destination",
+      "callout": "Choose a country you want to work with. Follow its lessons, learn about registration processes and explore the information you need with sources you can check.",
+      "coverage": false,
+      "ctaTitle": "Use your invitation before it expires.",
+      "cta": "Register free with ACADEMY2026",
+      "closing": "Your code is already included in the registration link. Create your account by 31 December 2026, 23:59 Türkiye time (20:59 UTC)."
+    }
+  ],
+  "tr": [
+    {
+      "id": "01",
+      "stage": "Yeni destinasyona ilk adım",
+      "timing": "İlk gün",
+      "purpose": "Süreçleri bilinmeyen bir destinasyona başlamadan önce Academy’nin nasıl hazırlık sağladığını anlatmak.",
+      "subjects": [
+        "Yeni bir destinasyon. Nereden başlamalı?",
+        "Yeni destinasyonunuz için ilk adımı atın",
+        "17 destinasyon için 180 gün ücretsiz erişim"
+      ],
+      "preview": "17 destinasyonda süreçleri öğrenin. Davet kodunuzla 180 gün ücretsiz erişim.",
+      "eyebrow": "YENİ DESTİNASYONUNUZA HAZIRLANIN",
+      "headline": "Yeni bir destinasyon.<br>İlk adımı bilgiyle atın.",
+      "intro": "Süreçlerini bilmediğiniz için yeni bir destinasyona başlamayı erteliyor musunuz?",
+      "paragraphs": [
+        "Find And Study Academy’de 17 destinasyona yönelik eğitimleri 23 dilde inceleyebilirsiniz. Başvuru adımlarını, belgeleri ve kayıt süreçlerini öğrenerek bir sonraki öğrenci talebine hazırlanın.",
+        "Find And Study’nin sunduğu Academy; mevcut acenteler, bağımsız danışmanlar ve sektöre yeni adım atmak isteyenler içindir. Öğrenmek istediğiniz bir destinasyonla başlayın."
+      ],
+      "sectionTitle": "Yeni destinasyonunuz için bir başlangıç noktası",
+      "cards": [
+        [
+          "Süreçleri öğrenin",
+          "İlgili destinasyonun derslerini takip edin; başvuru ve kayıt adımlarına ilişkin bilginizi geliştirin."
+        ],
+        [
+          "Takıldığınız konuyu sorun",
+          "Findy ile yayımlanmış Academy bilgilerini ve aktif Apply kataloğundaki üniversite, program ve ücret kayıtlarını kaynaklarıyla inceleyin."
+        ]
+      ],
+      "calloutTitle": "Davetinize özel: 180 gün ücretsiz erişim",
+      "callout": "Hesabınızı ACADEMY2026 koduyla oluşturun. Ücretsiz erişiminiz kayıt tarihinden itibaren 180 gün sürer. Kodun son kullanım tarihi 31 Aralık 2026, Türkiye saatiyle 23.59’dur.",
+      "coverage": true,
+      "ctaTitle": "Bir destinasyon seçin. İlk adımı atın.",
+      "cta": "180 gün ücretsiz erişim için kaydolun",
+      "closing": "ACADEMY2026 kodu kayıt bağlantınıza ekli. Hesabınızı oluşturun; e-posta doğrulaması ve yönetici onayının ardından öğrenmeye başlayın."
+    },
+    {
+      "id": "02",
+      "stage": "Derslerden sertifikaya",
+      "timing": "Başlangıç +3 gün",
+      "purpose": "Ders, ilerleme takibi ve sınavlardan doğrulanabilir sertifikaya uzanan öğrenme yolunu göstermek.",
+      "subjects": [
+        "Öğrenin, tamamlayın, sertifikanızı kazanın",
+        "Destinasyon bilginizi geliştirin ve belgeleyin",
+        "Yeni destinasyonunuz için bir öğrenme hedefi"
+      ],
+      "preview": "Derslerle ilerleyin, bilginizi sınayın ve sertifika koşullarını sağlayın.",
+      "eyebrow": "ÖĞRENMENİZE SOMUT BİR HEDEF KOYUN",
+      "headline": "Bilginizi geliştirin.<br>Başarınızı belgeleyin.",
+      "intro": "Gerekli destinasyon derslerini tamamlayın ve istenen değerlendirmeler ile final sınavını başarıyla geçerek doğrulanabilir Academy sertifikanızı kazanın.",
+      "paragraphs": [
+        "Academy’de öğrenmek istediğiniz destinasyonu seçebilir, ilgili derslerle ilerleyebilir ve tamamladığınız eğitimleri takip edebilirsiniz.",
+        "Gerekli dersleri tamamlayın; istenen değerlendirmeleri ve final sınavını başarıyla geçerek Academy sertifikanızı kazanın. Sertifikanız herkese açık doğrulama sayfasından kontrol edilebilir. Sertifika kazanmak otomatik Find And Study partnerliği sağlamaz."
+      ],
+      "sectionTitle": "Öğrenme yolunuz adım adım",
+      "cards": [
+        [
+          "1. Hedefinizi seçin",
+          "Çalışmak istediğiniz destinasyona odaklanın ve ilgili eğitimlerle başlayın."
+        ],
+        [
+          "2. Derslerle ilerleyin",
+          "İçerikleri takip edin, tamamladığınız dersleri ve ilerlemenizi görün."
+        ],
+        [
+          "3. Bilginizi sınayın",
+          "İstenen değerlendirmeleri ve final sınavını başarıyla tamamlayın."
+        ],
+        [
+          "4. Başarınızı belgeleyin",
+          "Başarı koşullarını sağlayarak herkese açık doğrulama sayfasından kontrol edilebilen sertifikanızı kazanın."
+        ]
+      ],
+      "calloutTitle": "Bir sonraki öğrenci görüşmesine hazırlanın",
+      "callout": "Eğitimlerde öğrendiklerinizi, öğrencinizin sorularını anlamak ve araştırılacak noktaları belirlemek için kullanın. Güncel koşulları ilgili üniversite ve program özelinde doğrulayın.",
+      "coverage": false,
+      "ctaTitle": "Öğrenme hedefinizi bugün belirleyin.",
+      "cta": "Eğitimler için ücretsiz kaydolun",
+      "closing": "ACADEMY2026 ile hesabınızı oluşturun. İlk destinasyonunuzu seçin ve öğrenme yolculuğunuza başlayın."
+    },
+    {
+      "id": "03",
+      "stage": "Findy ve kaynaklar",
+      "timing": "Başlangıç +7 gün",
+      "purpose": "Findy’ye sorulabilecek soruları ve kaynak/katalog sınırlarını somutlaştırmak.",
+      "subjects": [
+        "Findy’ye sorun, kaynağını inceleyin",
+        "Program, ücret, kayıt: kaynaklarımızdan öğrenin",
+        "Öğrencinizin sorusu için Findy’den destek alın"
+      ],
+      "preview": "Academy ve aktif katalog bilgilerini, kaynaklarını görerek inceleyin.",
+      "eyebrow": "KAYNAKLARIMIZA DAYALI YAPAY ZEKÂ DESTEĞİ",
+      "headline": "Sorunuzu sorun.<br>Kaynağını inceleyin.",
+      "intro": "Öğrenciniz bir programı, ücreti veya kayıt adımını soruyor. Findy, kaynaklarımızdaki ilgili bilgilere ulaşmanıza yardımcı olur.",
+      "paragraphs": [
+        "Findy; Academy’de yayımlanan süreç bilgileri ile Apply kataloğumuzdaki aktif üniversite, program ve ücret kayıtlarını kullanan yapay zekâ asistanınızdır. Yanıtlarının kaynaklarını gösterir.",
+        "Aynı konuşmada takip soruları sorarak konuyu sürdürebilirsiniz. Örneğin önce katalogdaki program seçeneklerini, ardından ilgili destinasyonun kayıt sürecini sorun."
+      ],
+      "sectionTitle": "Bir öğrenci sorusundan başlayın",
+      "cards": [
+        [
+          "Önce programı ve ücreti sorun",
+          "“Kataloğunuzda Türkiye’de İngilizce bilgisayar mühendisliği için hangi programlar var ve hangi ücretler gösteriliyor?”"
+        ],
+        [
+          "Ardından süreci netleştirin",
+          "“Academy’de bu destinasyonun kayıt süreci hakkında hangi bilgiler yer alıyor?”"
+        ]
+      ],
+      "exampleNote": "Bunlar örnek sorulardır. Sunulabilecek yanıtlar güncel katalog kayıtlarına ve yayımlanmış Academy içeriklerine bağlıdır. Academy kaydı otomatik Apply erişimi sağlamaz; öğrenci başvurularını yönetmek için ayrıca yetkilendirme gerekir.",
+      "calloutTitle": "Bilginin hangi kaynağa dayandığını görün",
+      "callout": "Findy yalnızca Academy’de yayımlanan süreç bilgileri ve aktif Apply kataloğundaki üniversite, program ve ücret kayıtlarıyla yanıt verir. Kaynaklarda bilgi yoksa bunu belirtir. Eğitim sunulan her destinasyonda aktif katalog programı bulunmayabilir. Hesap kullanım limitleri geçerlidir.",
+      "coverage": false,
+      "ctaTitle": "Sorularınızı kaynaklarıyla birlikte inceleyin.",
+      "cta": "Findy için ücretsiz hesap oluşturun",
+      "closing": "ACADEMY2026 koduyla kaydolun. Eğitime erişiminiz onaylandıktan sonra Findy’yi hesabınıza tanımlı kullanım limitleriyle deneyin."
+    },
+    {
+      "id": "04",
+      "stage": "Kendi markanız ve partnerlik",
+      "timing": "Başlangıç +12 gün",
+      "purpose": "Kendi logonuzla materyal kullanma faydasını ve ayrı partnerlik başvurusu yolunu göstermek.",
+      "subjects": [
+        "Bir sonraki paylaşımınızda kendi logonuz",
+        "Hazır materyaller. Acentenizin logosu.",
+        "Acentenizin tanıtımına kendi kimliğinizi katın"
+      ],
+      "preview": "Uygun post ve story materyallerini acente logonuzla veya logo eklemeden indirin.",
+      "eyebrow": "ACENTENİZİN TANITIMI İÇİN HAZIR MATERYALLER",
+      "headline": "Hazır materyaller.<br>Acentenizin logosu.",
+      "intro": "Bir sonraki paylaşımınıza acentenizin kimliğini katın. Partner Zone’daki uygun gönderi ve hikâye materyallerini kendi logonuzla indirin.",
+      "paragraphs": [
+        "Destinasyonu öğrendikten sonra öğrencilerinize anlatmak için içerik hazırlamanız gerekir. Partner Zone’daki uygun post ve story materyalleri, tanıtımınızda kullanabileceğiniz bir başlangıç sunar.",
+        "Acente logonuzu yükleyin ve logolu indirmeyi seçin. Size özel bir kopya hazırlanır; orijinal materyal korunur. İsterseniz acente logonuzu eklemeden de indirebilirsiniz."
+      ],
+      "sectionTitle": "Paylaşımınız için uygun sürümü seçin",
+      "cards": [
+        [
+          "Acentenizin logosuyla",
+          "Logo alanı tanımlanmış materyalleri kendi logonuzla indirin. Paylaşmadan önce yerleşimi kontrol edin."
+        ],
+        [
+          "Acente logosu eklemeden",
+          "Uygun materyalin orijinal sürümünü, acente logonuzu eklemeden indirin."
+        ]
+      ],
+      "brandDemo": true,
+      "calloutTitle": "Eğitimden Find And Study işbirliğine",
+      "callout": "Find And Study partnerliği için ayrı başvuru, değerlendirme, sözleşme, başlangıç ve uyum süreci ile son yönetici onayı gerekir. Academy hesabı açmak veya sertifika kazanmak otomatik partnerlik sağlamaz.",
+      "coverage": false,
+      "ctaTitle": "Acentenizin bir sonraki paylaşımına hazırlanın.",
+      "cta": "Partner Zone için ücretsiz kaydolun",
+      "closing": "ACADEMY2026 ile hesabınızı oluşturun. E-posta doğrulaması ve yönetici onayının ardından Academy kaynaklarını inceleyin.",
+      "secondary": "Find And Study ile acente işbirliğini inceleyin"
+    },
+    {
+      "id": "05",
+      "stage": "Davetin son tarihi",
+      "timing": "28 Aralık 2026; yalnız uygun ve kayıt olmamış alıcılar",
+      "purpose": "Yapay kıtlık oluşturmadan gerçek kod son tarihini kayıt olmayanlara hatırlatmak.",
+      "subjects": [
+        "Academy davetiniz 31 Aralık’da sona eriyor",
+        "180 gün ücretsiz erişim: kodunuzu kullanın",
+        "Academy kodunuz için son tarih: 31 Aralık"
+      ],
+      "preview": "Kodunuzu 31 Aralık’a kadar kullanın. 180 gününüz kayıt tarihinden itibaren başlar.",
+      "eyebrow": "180 GÜN ÜCRETSİZ ERİŞİM İÇİN DAVETİNİZ",
+      "headline": "180 gün ücretsiz erişim.<br>Son kullanım: 31 Aralık.",
+      "intro": "ACADEMY2026 koduyla hesabınızı 31 Aralık 2026, Türkiye saatiyle 23.59’a kadar oluşturun. Ücretsiz erişiminiz kayıt tarihinden itibaren 180 gün sürer.",
+      "paragraphs": [
+        "Öğrenmek istediğiniz yeni bir destinasyon var mı? Academy’de 17 destinasyona yönelik eğitimleri 23 dilde inceleyebilir, Findy ile kaynaklarımızdaki bilgileri araştırabilir ve uygun Partner Zone materyallerinden yararlanabilirsiniz.",
+        "Davet kodunuzu kayıt sırasında kullanın. Erişim süreniz kayıt tarihinde başlar; kodun son kullanım tarihi olan 31 Aralık’da sona ermez."
+      ],
+      "sectionTitle": "Kodun son tarihi ve erişim süreniz",
+      "cards": [
+        [
+          "31 Aralık 2026 · 23.59 Türkiye saati",
+          "ACADEMY2026 kodunu yeni hesap oluştururken kullanabileceğiniz son tarih."
+        ],
+        [
+          "Kayıttan itibaren 180 gün",
+          "Ücretsiz erişim süreniz kayıt tarihinde başlar. Eğitime erişim için e-posta doğrulaması ve yönetici onayı gerekir."
+        ]
+      ],
+      "calloutTitle": "İlk adımınız bir destinasyon seçmek olsun",
+      "callout": "Çalışmak istediğiniz bir ülkeyle başlayın. İlgili dersleri takip edin, kayıt süreçlerini öğrenin ve ihtiyaç duyduğunuz bilgileri kaynaklarıyla inceleyin.",
+      "coverage": false,
+      "ctaTitle": "Davetinizi süresi dolmadan kullanın.",
+      "cta": "ACADEMY2026 ile ücretsiz kaydolun",
+      "closing": "Kodunuz kayıt bağlantısına ekli. Hesabınızı 31 Aralık 2026, Türkiye saatiyle 23.59’a kadar oluşturun."
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "verifiedAt": "2026-11-21T14:27:23.167062+00:00",
+  "actualDestinations": 17,
+  "nonDestinationSection": "Find And Study introduction",
+  "languages": [
+    {
+      "code": "en",
+      "name": "English"
+    },
+    {
+      "code": "tr",
+      "name": "Türkçe"
+    },
+    {
+      "code": "ar",
+      "name": "العربية"
+    },
+    {
+      "code": "fr",
+      "name": "Français"
+    },
+    {
+      "code": "ru",
+      "name": "Русский"
+    },
+    {
+      "code": "fa",
+      "name": "فارسی"
+    },
+    {
+      "code": "zh",
+      "name": "中文"
+    },
+    {
+      "code": "hi",
+      "name": "हिन्दी"
+    },
+    {
+      "code": "es",
+      "name": "Español"
+    },
+    {
+      "code": "id",
+      "name": "Bahasa Indonesia"
+    },
+    {
+      "code": "ur",
+      "name": "اردو"
+    },
+    {
+      "code": "tk",
+      "name": "Türkmençe"
+    },
+    {
+      "code": "ky",
+      "name": "Кыргызча"
+    },
+    {
+      "code": "kk",
+      "name": "Қазақша"
+    },
+    {
+      "code": "uz",
+      "name": "O‘zbekcha"
+    },
+    {
+      "code": "tg",
+      "name": "Тоҷикӣ"
+    },
+    {
+      "code": "bn",
+      "name": "বাংলা"
+    },
+    {
+      "code": "pt",
+      "name": "Português"
+    },
+    {
+      "code": "ne",
+      "name": "नेपाली"
+    },
+    {
+      "code": "vi",
+      "name": "Tiếng Việt"
+    },
+    {
+      "code": "ko",
+      "name": "한국어"
+    },
+    {
+      "code": "uk",
+      "name": "Українська"
+    },
+    {
+      "code": "it",
+      "name": "Italiano"
+    }
+  ],
+  "destinations": {
+    "en": [
+      "Azerbaijan",
+      "Belarus",
+      "Canada",
+      "China",
+      "Czechia",
+      "Estonia",
+      "Germany",
+      "Hungary",
+      "Italy",
+      "Latvia",
+      "Lithuania",
+      "Malta",
+      "Poland",
+      "Spain",
+      "Türkiye",
+      "United Kingdom",
+      "United States"
+    ],
+    "tr": [
+      "Azerbaycan",
+      "Belarus",
+      "Kanada",
+      "Çin",
+      "Çekya",
+      "Estonya",
+      "Almanya",
+      "Macaristan",
+      "İtalya",
+      "Letonya",
+      "Litvanya",
+      "Malta",
+      "Polonya",
+      "İspanya",
+      "Türkiye",
+      "Birleşik Krallık",
+      "Amerika Birleşik Devletleri"
+    ]
+  },
+  "emailSentThisReview": false
+}
