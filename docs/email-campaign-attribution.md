@@ -15,6 +15,15 @@ Only this exact finite tuple is recognized:
 
 The existing signup CTAs already contain these values. The updated email package also tags the Academy homepage footer link and carries `promo=ACADEMY2026` into the signup journey. Public navigation reconstructs only allowed campaign values; arbitrary query strings, recipient identifiers and raw promo codes are never sent to Google or the visit endpoint. Do not add email addresses or recipient-specific IDs to links.
 
+The current [versioned email package](../marketing/academy-2026/README.md) contains
+the five-message English/Turkish series and standalone drafts. On 21 November
+2026, the owner extended ACADEMY2026 to **31 December 2026, 23:59:59 Türkiye time**
+(20:59:59 UTC). The 180-day access period from registration, two-device policy,
+verification/approval requirements and existing technical registration limit
+remain unchanged. The extension does not change existing members' access
+periods. These are drafts only; adding them to GitHub does not send or schedule
+email.
+
 ## Consent and counting
 
 Source data is persisted only for an anonymous visitor on the public homepage/sign-in/signup pages after optional analytics consent and while measurement is enabled. An explicit tagged entry creates one measured visit per message/browser within 30 minutes. Direct returns retain the last valid source for up to 30 days without creating another email visit. Visits are not email opens or unique people. Withdrawal clears browser attribution and prevents further collection.

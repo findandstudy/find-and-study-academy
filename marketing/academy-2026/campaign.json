@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "campaignCode": "ACADEMY2026",
+  "redeemByTurkey": "2026-12-31T23:59:59+03:00",
+  "redeemByUTC": "2026-12-31T20:59:59.000Z",
+  "freeAccessDaysFromRegistration": 180,
+  "deviceLimit": 2,
+  "maxRegistrations": 3000,
+  "emailVerificationRequired": true,
+  "administratorApprovalRequired": true,
+  "existingMembersAccessPeriodsChanged": false,
+  "trainingDestinations": 17,
+  "supportedLanguages": 23,
+  "publicPreviewEndpoint": "https://academy.findandstudy.com/api/public/campaign-preview",
+  "liveVerifiedAt": "2026-11-21T14:27:23.167062+00:00",
+  "publicationState": "email_drafts_only",
+  "emailsSentByThisUpdate": 0,
+  "scheduledEmailsByThisUpdate": 0,
+  "runtimeSource": "Existing live database campaign; this JSON documents the approved terms and is not loaded as a runtime override."
+}

@@ -1,0 +1,317 @@
+{
+  "reviewedAt": "2026-11-21T14:27:23.167062+00:00",
+  "liveVerifiedAt": "2026-11-21T14:27:23.167062+00:00",
+  "site": "https://academy.findandstudy.com/",
+  "mainCommit": "30c540041d3e194b978cbb9bc02c31d73fbe8e72",
+  "languages": [
+    "en",
+    "tr"
+  ],
+  "htmlEmails": 10,
+  "plainTextAlternatives": 10,
+  "allMaterialClaimsAligned": true,
+  "unresolvedMismatches": [],
+  "campaignDeadlineTurkey": "2026-12-31T23:59:59+03:00",
+  "campaignDeadlineUTC": "2026-12-31T20:59:59+00:00",
+  "coverage": {
+    "verifiedAt": "2026-11-21T14:27:23.167062+00:00",
+    "actualDestinations": 17,
+    "nonDestinationSection": "Find And Study introduction",
+    "languages": [
+      {
+        "code": "en",
+        "name": "English"
+      },
+      {
+        "code": "tr",
+        "name": "Türkçe"
+      },
+      {
+        "code": "ar",
+        "name": "العربية"
+      },
+      {
+        "code": "fr",
+        "name": "Français"
+      },
+      {
+        "code": "ru",
+        "name": "Русский"
+      },
+      {
+        "code": "fa",
+        "name": "فارسی"
+      },
+      {
+        "code": "zh",
+        "name": "中文"
+      },
+      {
+        "code": "hi",
+        "name": "हिन्दी"
+      },
+      {
+        "code": "es",
+        "name": "Español"
+      },
+      {
+        "code": "id",
+        "name": "Bahasa Indonesia"
+      },
+      {
+        "code": "ur",
+        "name": "اردو"
+      },
+      {
+        "code": "tk",
+        "name": "Türkmençe"
+      },
+      {
+        "code": "ky",
+        "name": "Кыргызча"
+      },
+      {
+        "code": "kk",
+        "name": "Қазақша"
+      },
+      {
+        "code": "uz",
+        "name": "O‘zbekcha"
+      },
+      {
+        "code": "tg",
+        "name": "Тоҷикӣ"
+      },
+      {
+        "code": "bn",
+        "name": "বাংলা"
+      },
+      {
+        "code": "pt",
+        "name": "Português"
+      },
+      {
+        "code": "ne",
+        "name": "नेपाली"
+      },
+      {
+        "code": "vi",
+        "name": "Tiếng Việt"
+      },
+      {
+        "code": "ko",
+        "name": "한국어"
+      },
+      {
+        "code": "uk",
+        "name": "Українська"
+      },
+      {
+        "code": "it",
+        "name": "Italiano"
+      }
+    ],
+    "destinations": {
+      "en": [
+        "Azerbaijan",
+        "Belarus",
+        "Canada",
+        "China",
+        "Czechia",
+        "Estonia",
+        "Germany",
+        "Hungary",
+        "Italy",
+        "Latvia",
+        "Lithuania",
+        "Malta",
+        "Poland",
+        "Spain",
+        "Türkiye",
+        "United Kingdom",
+        "United States"
+      ],
+      "tr": [
+        "Azerbaycan",
+        "Belarus",
+        "Kanada",
+        "Çin",
+        "Çekya",
+        "Estonya",
+        "Almanya",
+        "Macaristan",
+        "İtalya",
+        "Letonya",
+        "Litvanya",
+        "Malta",
+        "Polonya",
+        "İspanya",
+        "Türkiye",
+        "Birleşik Krallık",
+        "Amerika Birleşik Devletleri"
+      ]
+    },
+    "emailSentThisReview": false
+  },
+  "checks": [
+    {
+      "topic": "Training coverage",
+      "result": "MATCH",
+      "value": "17 destinations, plus a separate Find And Study introduction",
+      "emails": [
+        "01",
+        "05"
+      ],
+      "source": "https://academy.findandstudy.com/api/public/countries"
+    },
+    {
+      "topic": "Languages",
+      "result": "MATCH",
+      "value": "23 supported languages, native names retained",
+      "emails": [
+        "01",
+        "05"
+      ],
+      "source": "https://academy.findandstudy.com/"
+    },
+    {
+      "topic": "Campaign",
+      "result": "MATCH",
+      "value": {
+        "accessDays": 180,
+        "expiresAt": "2026-12-31T20:59:59.000Z",
+        "deviceLimit": 2,
+        "emailVerificationRequired": true,
+        "administratorApprovalRequired": true
+      },
+      "emails": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05"
+      ],
+      "source": "https://academy.findandstudy.com/api/public/campaign-preview"
+    },
+    {
+      "topic": "Certificate",
+      "result": "MATCH_AFTER_CLARIFICATION",
+      "value": "Required lessons, assessments and final exam; public verification; no automatic partnership",
+      "emails": [
+        "02"
+      ],
+      "source": "https://academy.findandstudy.com/#access-conditions"
+    },
+    {
+      "topic": "Findy",
+      "result": "MATCH_AFTER_CLARIFICATION",
+      "value": "Published Academy guidance and active Apply listings only; citations, follow-up context, usage limits; missing information stated",
+      "emails": [
+        "01",
+        "03",
+        "05"
+      ],
+      "source": "https://academy.findandstudy.com/#access-conditions"
+    },
+    {
+      "topic": "Apply permissions",
+      "result": "MATCH_AFTER_CLARIFICATION",
+      "value": "Academy registration does not automatically grant Apply access",
+      "emails": [
+        "03"
+      ],
+      "source": "https://academy.findandstudy.com/#access-conditions"
+    },
+    {
+      "topic": "Materials",
+      "result": "MATCH",
+      "value": "Eligible materials with uploaded agency logo or without adding it; originals preserved",
+      "emails": [
+        "04"
+      ],
+      "source": "https://academy.findandstudy.com/"
+    },
+    {
+      "topic": "Partnership",
+      "result": "MATCH_AFTER_CLARIFICATION",
+      "value": "Separate application, review, contract, initial partner guidance and final administrator approval; account/certificate is not approval",
+      "emails": [
+        "02",
+        "04"
+      ],
+      "source": "https://academy.findandstudy.com/#access-conditions"
+    },
+    {
+      "topic": "Owner and cooperation link",
+      "result": "MATCH",
+      "value": "Find And Study; https://www.findandstudy.com/become-an-agent/",
+      "emails": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05"
+      ],
+      "source": "https://www.findandstudy.com/become-an-agent/"
+    }
+  ],
+  "liveFaqs": {
+    "tr": [
+      "Sertifikayı nasıl kazanırım?Gerekli dersleri tamamlayın ve istenen değerlendirmeler ile final sınavını başarıyla geçin. Sertifikalar herkese açık sertifika doğrulama sayfası üzerinden doğrulanabilir.",
+      "Findy hangi soruları yanıtlayabilir?Findy, Academy’de yayımlanan süreç bilgilerini ve Apply kataloğundaki aktif üniversite, program ve ücret kayıtlarını kullanır. Kaynaklarını gösterir, takip sorularında konuyu hatırlar ve hesap kullanım limitleriyle çalışır. Kaynaklarda bilgi yoksa bunu belirtir. Eğitim verilen her destinasyonda aktif katalog programı bulunmayabilir.",
+      "Kayıt olunca partner oluyor muyum?Hayır. Partnerlik için ayrı başvuru, değerlendirme, sözleşme, başlangıç ve uyum süreci ile son yönetici onayı gerekir. Eğitim sertifikası bu sürecin yerine geçmez.",
+      "Öğrenci başvurularını nerede yönetirim?Academy eğitim ve kaynaklara odaklanır. Öğrenci başvuruları, hesabınıza tanımlanan yetkilerle Apply üzerinden yönetilir. Academy kaydı otomatik olarak Apply erişimi sağlamaz.Apply'e git"
+    ],
+    "en": [
+      "How do I earn a certificate?Complete the required lessons and successfully pass the required assessments and final exam. Certificates can be verified through the public certificate verification page.",
+      "What can Findy answer?Findy uses published Academy guidance and active university, programme and fee listings in Apply. It shows its sources, keeps the context of follow-up questions and works within account usage limits. If the information is unavailable, it says so. Training coverage does not mean active programmes are available in every destination.",
+      "Does registration make me a partner?No. Partnership requires a separate application, review, contract, initial partner guidance and final administrator approval. A course certificate does not replace this process.",
+      "Where do I manage student applications?Academy focuses on training and resources. Student application work is handled in Apply, with the permissions assigned to your account. Academy registration does not automatically grant Apply access.Go to Apply"
+    ]
+  },
+  "emailsSentThisReview": 0,
+  "bulkEmailsSent": 0,
+  "newProviderDraftsCreated": 0,
+  "scheduledJobsCreated": 0,
+  "paidTranslationApiCalls": 0,
+  "visualChanges": "No CSS or existing inline styles changed; added the Hungary/Macaristan destination chip using the existing chip style.",
+  "emailClientRendering": "No new inbox test sent in this review; previous first Turkish test remains historical.",
+  "linkVerification": {
+    "verifiedAt": "2026-10-19T19:18:14.908234+00:00",
+    "links": [
+      {
+        "url": "https://academy.findandstudy.com/",
+        "status": 200,
+        "contentType": "text/html; charset=UTF-8",
+        "finalURL": "https://academy.findandstudy.com/"
+      },
+      {
+        "url": "https://academy.findandstudy.com/signup?promo=ACADEMY2026",
+        "status": 200,
+        "contentType": "text/html; charset=UTF-8",
+        "finalURL": "https://academy.findandstudy.com/signup?promo=ACADEMY2026"
+      },
+      {
+        "url": "https://www.findandstudy.com/become-an-agent/",
+        "status": 200,
+        "contentType": "text/html; charset=UTF-8",
+        "finalURL": "https://www.findandstudy.com/become-an-agent/"
+      },
+      {
+        "url": "https://www.findandstudy.com/wp-content/uploads/2026/07/find-and-study-4.png",
+        "status": 200,
+        "contentType": "image/png",
+        "finalURL": "https://www.findandstudy.com/wp-content/uploads/2026/07/find-and-study-4.png"
+      },
+      {
+        "url": "https://www.findandstudy.com/wp-content/uploads/2025/10/Eymen-NAMAZCI-1-1.png",
+        "status": 200,
+        "contentType": "image/png",
+        "finalURL": "https://www.findandstudy.com/wp-content/uploads/2025/10/Eymen-NAMAZCI-1-1.png"
+      }
+    ]
+  },
+  "destinationNamesAndNativeLanguageNamesMatchLiveDOM": true,
+  "previousFullClaimReviewAt": "2026-10-19T19:17:30.591529+00:00",
+  "revisionScope": "Campaign deadline extended by owner; 17 live destinations including Hungary; static content and tracking retained."
+}
