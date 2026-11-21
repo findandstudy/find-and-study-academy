@@ -1426,7 +1426,8 @@
     "Are you sure you want to delete {value0} agencies? This action cannot be undone.": "legacy.b3e9f550b924c726",
     "{value0} of {value1} questions answered correctly.": "legacy.63bd4ed9e49a17f7",
     "For authenticated endpoints, include the {value0} header with the user's ID.": "legacy.81de09dcb5953bac",
-    "When an agent asks a question, only the {value0} most relevant knowledge chunks are sent to the AI.": "legacy.a9f072f3965dfea3"
+    "When an agent asks a question, only the {value0} most relevant knowledge chunks are sent to the AI.": "legacy.a9f072f3965dfea3",
+    "Try Again": "assessment.retry.20261121"
   },
   "dictionaries": {
     "en": {
@@ -2856,7 +2857,8 @@
       "legacy.b3e9f550b924c726": "Are you sure you want to delete {value0} agencies? This action cannot be undone.",
       "legacy.63bd4ed9e49a17f7": "{value0} of {value1} questions answered correctly.",
       "legacy.81de09dcb5953bac": "For authenticated endpoints, include the {value0} header with the user's ID.",
-      "legacy.a9f072f3965dfea3": "When an agent asks a question, only the {value0} most relevant knowledge chunks are sent to the AI."
+      "legacy.a9f072f3965dfea3": "When an agent asks a question, only the {value0} most relevant knowledge chunks are sent to the AI.",
+      "assessment.retry.20261121": "Try Again"
     },
     "tr": {
       "legacy.a43f3627c39f1354": "Oturum yükleniyor",
@@ -4285,7 +4287,8 @@
       "legacy.b3e9f550b924c726": "{value0} ajansları silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
       "legacy.63bd4ed9e49a17f7": "{value0} / {value1} soruya doğru cevap verildi.",
       "legacy.81de09dcb5953bac": "Kimlik doğrulaması gerektiren uç noktalarda, kullanıcıya ait ID ile birlikte {value0} başlığını ekleyin.",
-      "legacy.a9f072f3965dfea3": "Bir danışman soru sorduğunda, yalnızca en ilgili {value0} bilgi parçası yapay zekaya gönderilir."
+      "legacy.a9f072f3965dfea3": "Bir danışman soru sorduğunda, yalnızca en ilgili {value0} bilgi parçası yapay zekaya gönderilir.",
+      "assessment.retry.20261121": "Tekrar Dene"
     },
     "ar": {
       "legacy.a43f3627c39f1354": "جارٍ تحميل الجلسة",
@@ -5714,7 +5717,8 @@
       "legacy.b3e9f550b924c726": "هل أنت متأكد أنك تريد حذف {value0} وكالات؟ لا يمكن التراجع عن هذا الإجراء.",
       "legacy.63bd4ed9e49a17f7": "تمت الإجابة بشكل صحيح على {value0} من أصل {value1} سؤالاً.",
       "legacy.81de09dcb5953bac": "بالنسبة لنقاط النهاية التي تتطلب التحقق من الهوية، أدرج رأس {value0} مع ID الخاصة بالمستخدم.",
-      "legacy.a9f072f3965dfea3": "عندما يطرح وكيل سؤالاً، يتم إرسال {value0} من أكثر أجزاء المعرفة صلة إلى الذكاء الاصطناعي فقط."
+      "legacy.a9f072f3965dfea3": "عندما يطرح وكيل سؤالاً، يتم إرسال {value0} من أكثر أجزاء المعرفة صلة إلى الذكاء الاصطناعي فقط.",
+      "assessment.retry.20261121": "حاول مرة أخرى"
     },
     "fr": {
       "legacy.a43f3627c39f1354": "Chargement de la session",
@@ -7143,7 +7147,8 @@
       "legacy.b3e9f550b924c726": "Êtes-vous sûr de vouloir supprimer {value0} agences ? Cette action est irréversible.",
       "legacy.63bd4ed9e49a17f7": "Réponses correctes : {value0} sur {value1}.",
       "legacy.81de09dcb5953bac": "Pour les points de terminaison authentifiés, incluez l’en-tête {value0} avec l’ID de l’utilisateur.",
-      "legacy.a9f072f3965dfea3": "Lorsqu'un agent pose une question, seuls les {value0} fragments de connaissance les plus pertinents sont envoyés à l'IA."
+      "legacy.a9f072f3965dfea3": "Lorsqu'un agent pose une question, seuls les {value0} fragments de connaissance les plus pertinents sont envoyés à l'IA.",
+      "assessment.retry.20261121": "Réessayer"
     },
     "ru": {
       "legacy.a43f3627c39f1354": "Загрузка сессии",
@@ -8572,7 +8577,8 @@
       "legacy.b3e9f550b924c726": "Вы уверены, что хотите удалить {value0} агентства? Это действие невозможно отменить.",
       "legacy.63bd4ed9e49a17f7": "Правильных ответов: {value0} из {value1}.",
       "legacy.81de09dcb5953bac": "Для аутентифицированных конечных точек добавьте заголовок {value0} с ID пользователя.",
-      "legacy.a9f072f3965dfea3": "Когда агент задает вопрос, только {value0} наиболее релевантных фрагментов знаний отправляются ИИ."
+      "legacy.a9f072f3965dfea3": "Когда агент задает вопрос, только {value0} наиболее релевантных фрагментов знаний отправляются ИИ.",
+      "assessment.retry.20261121": "Попробуйте снова"
     },
     "fa": {
       "legacy.a43f3627c39f1354": "در حال بارگذاری جلسه",
@@ -10001,7 +10007,8 @@
       "legacy.b3e9f550b924c726": "آیا مطمئن هستید که می‌خواهید {value0} آژانس را حذف کنید؟ این عملیات قابل بازگشت نیست.",
       "legacy.63bd4ed9e49a17f7": "{value0} از {value1} سوال به درستی پاسخ داده شده است.",
       "legacy.81de09dcb5953bac": "برای نقطه‌های پایانی احراز هویت‌شده، هدر {value0} را همراه با ID کاربر وارد کنید.",
-      "legacy.a9f072f3965dfea3": "وقتی یک کارگزار سؤال می‌پرسد، فقط {value0} مورد از مرتبط‌ترین بخش‌های دانش به هوش مصنوعی ارسال می‌شود."
+      "legacy.a9f072f3965dfea3": "وقتی یک کارگزار سؤال می‌پرسد، فقط {value0} مورد از مرتبط‌ترین بخش‌های دانش به هوش مصنوعی ارسال می‌شود.",
+      "assessment.retry.20261121": "دوباره تلاش کنید"
     },
     "zh": {
       "legacy.a43f3627c39f1354": "加载会话",
@@ -11430,7 +11437,8 @@
       "legacy.b3e9f550b924c726": "您确定要删除{value0}个机构吗？此操作无法撤销。",
       "legacy.63bd4ed9e49a17f7": "已正确回答 {value0} / {value1} 个问题。",
       "legacy.81de09dcb5953bac": "对于需身份验证的端点，请在请求中包含 {value0} 标头和用户的 ID。",
-      "legacy.a9f072f3965dfea3": "当代理提问时，只有 {value0} 个最相关的知识块会发送给 AI。"
+      "legacy.a9f072f3965dfea3": "当代理提问时，只有 {value0} 个最相关的知识块会发送给 AI。",
+      "assessment.retry.20261121": "再试一次"
     },
     "hi": {
       "legacy.a43f3627c39f1354": "सत्र लोड हो रहा है",
@@ -12859,7 +12867,8 @@
       "legacy.b3e9f550b924c726": "क्या आप वाकई {value0} एजेंसियों को हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
       "legacy.63bd4ed9e49a17f7": "{value1} में से {value0} प्रश्नों के सही उत्तर दिए गए हैं।",
       "legacy.81de09dcb5953bac": "प्रमाणित एंडपॉइंट्स के लिए, उपयोगकर्ता के ID के साथ {value0} हेडर शामिल करें।",
-      "legacy.a9f072f3965dfea3": "जब कोई एजेंट कोई प्रश्न पूछता है, तो केवल {value0} सबसे प्रासंगिक ज्ञान अनुभाग AI को भेजे जाते हैं।"
+      "legacy.a9f072f3965dfea3": "जब कोई एजेंट कोई प्रश्न पूछता है, तो केवल {value0} सबसे प्रासंगिक ज्ञान अनुभाग AI को भेजे जाते हैं।",
+      "assessment.retry.20261121": "फिर प्रयास करें"
     },
     "es": {
       "legacy.a43f3627c39f1354": "Cargando sesión",
@@ -14288,7 +14297,8 @@
       "legacy.b3e9f550b924c726": "¿Está seguro de que desea eliminar {value0} agencias? Esta acción no se puede deshacer.",
       "legacy.63bd4ed9e49a17f7": "{value0} de {value1} preguntas respondidas correctamente.",
       "legacy.81de09dcb5953bac": "Para los endpoints autenticados, incluya la cabecera {value0} con el ID del usuario.",
-      "legacy.a9f072f3965dfea3": "Cuando un agente hace una pregunta, solo se envían a la IA los {value0} fragmentos de conocimiento más relevantes."
+      "legacy.a9f072f3965dfea3": "Cuando un agente hace una pregunta, solo se envían a la IA los {value0} fragmentos de conocimiento más relevantes.",
+      "assessment.retry.20261121": "Intentar de nuevo"
     },
     "id": {
       "legacy.a43f3627c39f1354": "Memuat sesi",
@@ -15717,7 +15727,8 @@
       "legacy.b3e9f550b924c726": "Apakah Anda yakin ingin menghapus {value0} instansi? Tindakan ini tidak bisa dibatalkan.",
       "legacy.63bd4ed9e49a17f7": "{value0} dari {value1} pertanyaan dijawab dengan benar.",
       "legacy.81de09dcb5953bac": "Untuk endpoint terautentikasi, sertakan header {value0} dengan ID milik pengguna.",
-      "legacy.a9f072f3965dfea3": "Ketika agen mengajukan pertanyaan, hanya {value0} bagian pengetahuan paling relevan yang dikirim ke AI."
+      "legacy.a9f072f3965dfea3": "Ketika agen mengajukan pertanyaan, hanya {value0} bagian pengetahuan paling relevan yang dikirim ke AI.",
+      "assessment.retry.20261121": "Coba Lagi"
     },
     "ur": {
       "legacy.a43f3627c39f1354": "سیشن لوڈ ہو رہا ہے",
@@ -17146,7 +17157,8 @@
       "legacy.b3e9f550b924c726": "کیا آپ واقعی {value0} ایجنسیاں حذف کرنا چاہتے ہیں؟ یہ عمل واپس نہیں لیا جا سکتا۔",
       "legacy.63bd4ed9e49a17f7": "{value1} میں سے {value0} سوالات کے درست جواب دیے گئے۔",
       "legacy.81de09dcb5953bac": "مجاز اختتامیات کے لیے، صارف کے ID کے ساتھ {value0} ہیڈر شامل کریں۔",
-      "legacy.a9f072f3965dfea3": "جب کوئی ایجنٹ سوال کرتا ہے، تو صرف {value0} سب سے زیادہ متعلقہ معلوماتی حصے AI کو بھیجے جاتے ہیں۔"
+      "legacy.a9f072f3965dfea3": "جب کوئی ایجنٹ سوال کرتا ہے، تو صرف {value0} سب سے زیادہ متعلقہ معلوماتی حصے AI کو بھیجے جاتے ہیں۔",
+      "assessment.retry.20261121": "دوبارہ کوشش کریں"
     },
     "tk": {
       "legacy.a43f3627c39f1354": "Sessiya ýüklenýär",
@@ -18575,7 +18587,8 @@
       "legacy.b3e9f550b924c726": "{value0} agentliklerini pozmak isleýärsiňizmi? Bu hereket yzyna dolanyp bolmaýar.",
       "legacy.63bd4ed9e49a17f7": "{value1} soragdan {value0} sanysyna dogry jogap berildi.",
       "legacy.81de09dcb5953bac": "Barlanan uç nokatlar üçin, ulanyjynyň ID bilen {value0} başlygyny goşuň.",
-      "legacy.a9f072f3965dfea3": "Bir agent bir sorag bereninde, diňe iň degişli {value0} sany bilim bölegi AI-a iberilýär."
+      "legacy.a9f072f3965dfea3": "Bir agent bir sorag bereninde, diňe iň degişli {value0} sany bilim bölegi AI-a iberilýär.",
+      "assessment.retry.20261121": "Täzeden synanyşyň"
     },
     "ky": {
       "legacy.a43f3627c39f1354": "Сессия жүктөлүп жатат",
@@ -20004,7 +20017,8 @@
       "legacy.b3e9f550b924c726": "{value0} агенттиктерди өчүргүңүз келет дегенге ишениңизби? Бул аракет кайтарылгыс.",
       "legacy.63bd4ed9e49a17f7": "{value0} суроого туура жооп берилди, бардыгы {value1} суроонун ичинен.",
       "legacy.81de09dcb5953bac": "Аутентификация талап кылынган акыркы чекиттер үчүн {value0} аталышындагы баш талаага колдонуучунун ID маанисин кошуңуз.",
-      "legacy.a9f072f3965dfea3": "Өкүл суроо бергенде, ИИге эң тиешелүү {value0} билим бөлүктөрү гана жөнөтүлөт."
+      "legacy.a9f072f3965dfea3": "Өкүл суроо бергенде, ИИге эң тиешелүү {value0} билим бөлүктөрү гана жөнөтүлөт.",
+      "assessment.retry.20261121": "Кайра аракет кылыңыз"
     },
     "kk": {
       "legacy.a43f3627c39f1354": "Сессия жүктелуде",
@@ -21433,7 +21447,8 @@
       "legacy.b3e9f550b924c726": "{value0} агенттіктерін жоюға сенімдісіз бе? Бұл әрекетті кері қайтару мүмкін емес.",
       "legacy.63bd4ed9e49a17f7": "{value0} / {value1} сұраққа дұрыс жауап берілді.",
       "legacy.81de09dcb5953bac": "Аутентификацияланған соңғы нүктелер үшін пайдаланушының ID мәнімен бірге {value0} тақырыбын қосыңыз.",
-      "legacy.a9f072f3965dfea3": "Агент сұрақ қойған кезде, ең өзекті {value0} білім бөлшегі ғана AI-ға жіберіледі."
+      "legacy.a9f072f3965dfea3": "Агент сұрақ қойған кезде, ең өзекті {value0} білім бөлшегі ғана AI-ға жіберіледі.",
+      "assessment.retry.20261121": "Қайталап көріңіз"
     },
     "uz": {
       "legacy.a43f3627c39f1354": "Sessiya yuklanmoqda",
@@ -22862,7 +22877,8 @@
       "legacy.b3e9f550b924c726": "{value0} agentliklarni oʻchirishni xohlaysizmi? Bu amalni qaytarib boʻlmaydi.",
       "legacy.63bd4ed9e49a17f7": "{value1} ta savoldan {value0} tasiga to‘g‘ri javob berildi.",
       "legacy.81de09dcb5953bac": "Autentifikatsiya qilingan so‘rovlar uchun foydalanuvchining ID si bilan birga {value0} sarlavhasini kiriting.",
-      "legacy.a9f072f3965dfea3": "Agent savol berganda, AI ga faqat {value0} ta eng tegishli bilim bo‘laklari yuboriladi."
+      "legacy.a9f072f3965dfea3": "Agent savol berganda, AI ga faqat {value0} ta eng tegishli bilim bo‘laklari yuboriladi.",
+      "assessment.retry.20261121": "Qayta urinib ko‘ring"
     },
     "tg": {
       "legacy.a43f3627c39f1354": "Боргирии сессия",
@@ -24291,7 +24307,8 @@
       "legacy.b3e9f550b924c726": "Оё шумо мутмаин ҳастед, ки мехоҳед {value0} агентиро нест кунед? Ин амалро дигар барқарор кардан ғайриимкон аст.",
       "legacy.63bd4ed9e49a17f7": "{value0} аз {value1} саволҳо дуруст ҷавоб дода шудаанд.",
       "legacy.81de09dcb5953bac": "Барои нуқтаҳои ниҳоие, ки аутентификатсияро талаб мекунанд, сарлавҳаи {value0}-ро бо ID-и корбар илова кунед.",
-      "legacy.a9f072f3965dfea3": "Вақте ки агент савол медиҳад, танҳо {value0} порчаи донишҳои мувофиқтарин ба ИИ фиристода мешаванд."
+      "legacy.a9f072f3965dfea3": "Вақте ки агент савол медиҳад, танҳо {value0} порчаи донишҳои мувофиқтарин ба ИИ фиристода мешаванд.",
+      "assessment.retry.20261121": "Бор дигар кӯшиш кунед"
     },
     "bn": {
       "legacy.a43f3627c39f1354": "সেশন লোড হচ্ছে",
@@ -25720,7 +25737,8 @@
       "legacy.b3e9f550b924c726": "আপনি কি নিশ্চিত যে আপনি {value0} এজেন্সি মুছে ফেলতে চান? এই ক্রিয়া পূর্বাবস্থায় ফিরিয়ে আনা যাবে না।",
       "legacy.63bd4ed9e49a17f7": "{value1} টি প্রশ্নের মধ্যে {value0} টির সঠিক উত্তর দেওয়া হয়েছে।",
       "legacy.81de09dcb5953bac": "প্রমাণীকৃত এন্ডপয়েন্টের জন্য, ব্যবহারকারীর ID সহ {value0} হেডারটি অন্তর্ভুক্ত করুন।",
-      "legacy.a9f072f3965dfea3": "কোনো প্রতিনিধি একটি প্রশ্ন করলে, শুধুমাত্র {value0} টি সবচেয়ে প্রাসঙ্গিক জ্ঞানের অংশ AI-র কাছে পাঠানো হয়।"
+      "legacy.a9f072f3965dfea3": "কোনো প্রতিনিধি একটি প্রশ্ন করলে, শুধুমাত্র {value0} টি সবচেয়ে প্রাসঙ্গিক জ্ঞানের অংশ AI-র কাছে পাঠানো হয়।",
+      "assessment.retry.20261121": "আবার চেষ্টা করুন"
     },
     "pt": {
       "legacy.a43f3627c39f1354": "Carregando sessão",
@@ -27149,7 +27167,8 @@
       "legacy.b3e9f550b924c726": "Tem certeza de que deseja excluir {value0} agências? Esta ação não pode ser desfeita.",
       "legacy.63bd4ed9e49a17f7": "{value0} de {value1} perguntas respondidas corretamente.",
       "legacy.81de09dcb5953bac": "Para endpoints autenticados, inclua o cabeçalho {value0} com o ID do usuário.",
-      "legacy.a9f072f3965dfea3": "Quando um agente faz uma pergunta, apenas os {value0} blocos de conhecimento mais relevantes são enviados para a IA."
+      "legacy.a9f072f3965dfea3": "Quando um agente faz uma pergunta, apenas os {value0} blocos de conhecimento mais relevantes são enviados para a IA.",
+      "assessment.retry.20261121": "Tentar novamente"
     },
     "ne": {
       "legacy.a43f3627c39f1354": "सत्र लोड हुँदैछ",
@@ -28578,7 +28597,8 @@
       "legacy.b3e9f550b924c726": "के तपाईं निश्चित रूपमा {value0} एजेन्सीहरू मेटाउन चाहानुहुन्छ? यो क्रिया उल्टाउन सकिने छैन।",
       "legacy.63bd4ed9e49a17f7": "{value1} मध्ये {value0} प्रश्नको सही उत्तर दिइयो।",
       "legacy.81de09dcb5953bac": "प्रमाणित अन्तर्बिन्दुहरूका लागि, प्रयोगकर्ताको ID सहित {value0} हेडर समावेश गर्नुहोस्।",
-      "legacy.a9f072f3965dfea3": "जब कुनै एजेन्टले प्रश्न सोध्छ, केवल {value0} सबैभन्दा सान्दर्भिक ज्ञानका खण्डहरू AI मा पठाइन्छ।"
+      "legacy.a9f072f3965dfea3": "जब कुनै एजेन्टले प्रश्न सोध्छ, केवल {value0} सबैभन्दा सान्दर्भिक ज्ञानका खण्डहरू AI मा पठाइन्छ।",
+      "assessment.retry.20261121": "फेरि कोशिश गर्नुहोस्"
     },
     "vi": {
       "legacy.a43f3627c39f1354": "Đang tải phiên",
@@ -30007,7 +30027,8 @@
       "legacy.b3e9f550b924c726": "Bạn có chắc muốn xóa {value0} cơ quan không? Hành động này không thể hoàn tác.",
       "legacy.63bd4ed9e49a17f7": "{value0} trong số {value1} câu hỏi đã được trả lời đúng.",
       "legacy.81de09dcb5953bac": "Đối với các endpoint xác thực, hãy thêm header {value0} cùng với ID của người dùng.",
-      "legacy.a9f072f3965dfea3": "Khi một đại lý đặt câu hỏi, chỉ {value0} phần kiến thức liên quan nhất được gửi tới AI."
+      "legacy.a9f072f3965dfea3": "Khi một đại lý đặt câu hỏi, chỉ {value0} phần kiến thức liên quan nhất được gửi tới AI.",
+      "assessment.retry.20261121": "Thử lại"
     },
     "ko": {
       "legacy.a43f3627c39f1354": "세션 로딩 중",
@@ -31436,7 +31457,8 @@
       "legacy.b3e9f550b924c726": "{value0} 기관을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
       "legacy.63bd4ed9e49a17f7": "{value0} / {value1} 문제를 올바르게 답했습니다.",
       "legacy.81de09dcb5953bac": "인증이 필요한 엔드포인트에는 {value0} 헤더에 사용자의 ID를 넣어 보내세요.",
-      "legacy.a9f072f3965dfea3": "에이전트가 질문할 때, AI에게는 {value0}개의 가장 관련성 높은 지식 조각만 전송됩니다."
+      "legacy.a9f072f3965dfea3": "에이전트가 질문할 때, AI에게는 {value0}개의 가장 관련성 높은 지식 조각만 전송됩니다.",
+      "assessment.retry.20261121": "다시 시도"
     },
     "uk": {
       "legacy.a43f3627c39f1354": "Завантаження сесії",
@@ -32865,7 +32887,8 @@
       "legacy.b3e9f550b924c726": "Ви впевнені, що хочете видалити {value0} агентств? Цю дію не можна скасувати.",
       "legacy.63bd4ed9e49a17f7": "{value0} з {value1} питань відповіли правильно.",
       "legacy.81de09dcb5953bac": "Для автентифікованих кінцевих точок додайте заголовок {value0} із ID користувача.",
-      "legacy.a9f072f3965dfea3": "Коли агент ставить запитання, лише {value0} найбільш релевантних фрагментів знань надсилаються ШІ."
+      "legacy.a9f072f3965dfea3": "Коли агент ставить запитання, лише {value0} найбільш релевантних фрагментів знань надсилаються ШІ.",
+      "assessment.retry.20261121": "Спробуйте знову"
     },
     "it": {
       "legacy.a43f3627c39f1354": "Caricamento sessione",
@@ -34294,7 +34317,8 @@
       "legacy.b3e9f550b924c726": "Sei sicuro di voler eliminare {value0} agenzie? Questa azione non può essere annullata.",
       "legacy.63bd4ed9e49a17f7": "Risposte corrette: {value0} su {value1}.",
       "legacy.81de09dcb5953bac": "Per gli endpoint autenticati, includere l’intestazione {value0} con l’ID dell’utente.",
-      "legacy.a9f072f3965dfea3": "Quando un agente pone una domanda, solo i {value0} frammenti di conoscenza più rilevanti vengono inviati all'AI."
+      "legacy.a9f072f3965dfea3": "Quando un agente pone una domanda, solo i {value0} frammenti di conoscenza più rilevanti vengono inviati all'AI.",
+      "assessment.retry.20261121": "Riprova"
     }
   }
 }
